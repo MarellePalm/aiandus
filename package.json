@@ -16,6 +16,7 @@
         "@tailwindcss/vite": "^4.1.11",
         "@types/node": "^22.13.5",
         "@vitejs/plugin-vue": "^6.0.0",
+        "@vue/devtools": "^8.0.5",
         "@vue/eslint-config-typescript": "^14.3.0",
         "concurrently": "^9.0.1",
         "eslint": "^9.17.0",
