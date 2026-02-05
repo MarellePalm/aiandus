@@ -24,30 +24,44 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="min-h-screen flex flex-col bg-[#f8f7f7] dark:bg-[#292623] text-[#3B3835] dark:text-gray-100">
+    <div
+        class="flex min-h-screen flex-col bg-[#f8f7f7] text-[#3B3835] dark:bg-[#292623] dark:text-gray-100"
+    >
         <Head title="Registreerimine">
             <!-- Add your Stitch script tag here if needed -->
             <!-- Example: <script src="YOUR_STITCH_SCRIPT_URL" async></script> -->
         </Head>
 
         <!-- Top Navigation / Bar -->
-        <div class="flex items-center bg-transparent p-4 pb-2 justify-between">
-            <Link href="/" class="text-[#3B3835] dark:text-gray-200 flex size-12 shrink-0 items-center justify-start cursor-pointer">
+        <div class="flex items-center justify-between bg-transparent p-4 pb-2">
+            <Link
+                href="/"
+                class="flex size-12 shrink-0 cursor-pointer items-center justify-start text-[#3B3835] dark:text-gray-200"
+            >
                 <span class="material-symbols-outlined">arrow_back_ios</span>
             </Link>
             <div class="flex-1"></div>
         </div>
 
-        <main class="flex-1 flex flex-col px-6">
+        <main class="flex flex-1 flex-col px-6">
             <!-- Seedling Icon & Heading Section -->
             <div class="flex flex-col items-center pt-4 pb-10">
-                <div class="w-16 h-16 bg-[#597d36]/10 dark:bg-[#597d36]/20 rounded-full flex items-center justify-center mb-6">
-                    <span class="material-symbols-outlined text-[#597d36] text-4xl">potted_plant</span>
+                <div
+                    class="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#597d36]/10 dark:bg-[#597d36]/20"
+                >
+                    <span
+                        class="material-symbols-outlined text-4xl text-[#597d36]"
+                        >potted_plant</span
+                    >
                 </div>
-                <h1 class="text-[#3B3835] dark:text-white text-3xl font-bold leading-tight tracking-tight text-center pb-2">
+                <h1
+                    class="pb-2 text-center text-3xl leading-tight font-bold tracking-tight text-[#3B3835] dark:text-white"
+                >
                     Registreerimine
                 </h1>
-                <p class="text-[#3B3835]/70 dark:text-gray-400 text-base font-normal leading-normal text-center max-w-[280px]">
+                <p
+                    class="max-w-[280px] text-center text-base leading-normal font-normal text-[#3B3835]/70 dark:text-gray-400"
+                >
                     Alusta oma rohelist teekonda ja loo isiklik aia päevik täna.
                 </p>
             </div>
@@ -61,8 +75,13 @@ onMounted(() => {
             >
                 <!-- Name Field -->
                 <div class="flex flex-col gap-2">
-                    <label class="flex flex-col bg-[#F5EFE9]/50 dark:bg-white/5 p-1 rounded-xl border border-[#597d36]/10 dark:border-white/10 transition-shadow focus-within:shadow-md">
-                        <span class="text-[#3B3835] dark:text-gray-300 text-xs font-semibold px-4 pt-3 uppercase tracking-wider">Nimi</span>
+                    <label
+                        class="flex flex-col rounded-xl border border-[#597d36]/10 bg-[#F5EFE9]/50 p-1 transition-shadow focus-within:shadow-md dark:border-white/10 dark:bg-white/5"
+                    >
+                        <span
+                            class="px-4 pt-3 text-xs font-semibold tracking-wider text-[#3B3835] uppercase dark:text-gray-300"
+                            >Nimi</span
+                        >
                         <input
                             id="name"
                             name="name"
@@ -72,7 +91,7 @@ onMounted(() => {
                             :tabindex="1"
                             autocomplete="name"
                             placeholder="Sinu nimi"
-                            class="form-input w-full border-none bg-transparent focus:ring-0 text-[#3B3835] dark:text-white h-12 placeholder:text-[#3B3835]/40 dark:placeholder:text-gray-500 px-4 text-base font-normal"
+                            class="form-input h-12 w-full border-none bg-transparent px-4 text-base font-normal text-[#3B3835] placeholder:text-[#3B3835]/40 focus:ring-0 dark:text-white dark:placeholder:text-gray-500"
                         />
                     </label>
                     <InputError :message="errors.name" />
@@ -80,8 +99,13 @@ onMounted(() => {
 
                 <!-- Email Field -->
                 <div class="flex flex-col gap-2">
-                    <label class="flex flex-col bg-[#F5EFE9]/50 dark:bg-white/5 p-1 rounded-xl border border-[#597d36]/10 dark:border-white/10 transition-shadow focus-within:shadow-md">
-                        <span class="text-[#3B3835] dark:text-gray-300 text-xs font-semibold px-4 pt-3 uppercase tracking-wider">E-post</span>
+                    <label
+                        class="flex flex-col rounded-xl border border-[#597d36]/10 bg-[#F5EFE9]/50 p-1 transition-shadow focus-within:shadow-md dark:border-white/10 dark:bg-white/5"
+                    >
+                        <span
+                            class="px-4 pt-3 text-xs font-semibold tracking-wider text-[#3B3835] uppercase dark:text-gray-300"
+                            >E-post</span
+                        >
                         <input
                             id="email"
                             name="email"
@@ -90,7 +114,7 @@ onMounted(() => {
                             :tabindex="2"
                             autocomplete="email"
                             placeholder="aiapidaja@mail.ee"
-                            class="form-input w-full border-none bg-transparent focus:ring-0 text-[#3B3835] dark:text-white h-12 placeholder:text-[#3B3835]/40 dark:placeholder:text-gray-500 px-4 text-base font-normal"
+                            class="form-input h-12 w-full border-none bg-transparent px-4 text-base font-normal text-[#3B3835] placeholder:text-[#3B3835]/40 focus:ring-0 dark:text-white dark:placeholder:text-gray-500"
                         />
                     </label>
                     <InputError :message="errors.email" />
@@ -98,8 +122,13 @@ onMounted(() => {
 
                 <!-- Password Field -->
                 <div class="flex flex-col gap-2">
-                    <label class="flex flex-col bg-[#F5EFE9]/50 dark:bg-white/5 p-1 rounded-xl border border-[#597d36]/10 dark:border-white/10 transition-shadow focus-within:shadow-md relative">
-                        <span class="text-[#3B3835] dark:text-gray-300 text-xs font-semibold px-4 pt-3 uppercase tracking-wider">Parool</span>
+                    <label
+                        class="relative flex flex-col rounded-xl border border-[#597d36]/10 bg-[#F5EFE9]/50 p-1 transition-shadow focus-within:shadow-md dark:border-white/10 dark:bg-white/5"
+                    >
+                        <span
+                            class="px-4 pt-3 text-xs font-semibold tracking-wider text-[#3B3835] uppercase dark:text-gray-300"
+                            >Parool</span
+                        >
                         <input
                             id="password"
                             name="password"
@@ -108,12 +137,12 @@ onMounted(() => {
                             :tabindex="3"
                             autocomplete="new-password"
                             placeholder="••••••••"
-                            class="form-input w-full border-none bg-transparent focus:ring-0 text-[#3B3835] dark:text-white h-12 placeholder:text-[#3B3835]/40 dark:placeholder:text-gray-500 px-4 text-base font-normal pr-12"
+                            class="form-input h-12 w-full border-none bg-transparent px-4 pr-12 text-base font-normal text-[#3B3835] placeholder:text-[#3B3835]/40 focus:ring-0 dark:text-white dark:placeholder:text-gray-500"
                         />
                         <button
                             type="button"
                             @click="showPassword = !showPassword"
-                            class="material-symbols-outlined absolute right-4 bottom-3 text-[#3B3835]/40 dark:text-gray-500 cursor-pointer hover:text-[#3B3835]/60 dark:hover:text-gray-400"
+                            class="material-symbols-outlined absolute right-4 bottom-3 cursor-pointer text-[#3B3835]/40 hover:text-[#3B3835]/60 dark:text-gray-500 dark:hover:text-gray-400"
                             tabindex="-1"
                         >
                             {{ showPassword ? 'visibility_off' : 'visibility' }}
@@ -124,25 +153,39 @@ onMounted(() => {
 
                 <!-- Password Confirmation Field -->
                 <div class="flex flex-col gap-2">
-                    <label class="flex flex-col bg-[#F5EFE9]/50 dark:bg-white/5 p-1 rounded-xl border border-[#597d36]/10 dark:border-white/10 transition-shadow focus-within:shadow-md relative">
-                        <span class="text-[#3B3835] dark:text-gray-300 text-xs font-semibold px-4 pt-3 uppercase tracking-wider">Kinnita parool</span>
+                    <label
+                        class="relative flex flex-col rounded-xl border border-[#597d36]/10 bg-[#F5EFE9]/50 p-1 transition-shadow focus-within:shadow-md dark:border-white/10 dark:bg-white/5"
+                    >
+                        <span
+                            class="px-4 pt-3 text-xs font-semibold tracking-wider text-[#3B3835] uppercase dark:text-gray-300"
+                            >Kinnita parool</span
+                        >
                         <input
                             id="password_confirmation"
                             name="password_confirmation"
-                            :type="showPasswordConfirmation ? 'text' : 'password'"
+                            :type="
+                                showPasswordConfirmation ? 'text' : 'password'
+                            "
                             required
                             :tabindex="4"
                             autocomplete="new-password"
                             placeholder="••••••••"
-                            class="form-input w-full border-none bg-transparent focus:ring-0 text-[#3B3835] dark:text-white h-12 placeholder:text-[#3B3835]/40 dark:placeholder:text-gray-500 px-4 text-base font-normal pr-12"
+                            class="form-input h-12 w-full border-none bg-transparent px-4 pr-12 text-base font-normal text-[#3B3835] placeholder:text-[#3B3835]/40 focus:ring-0 dark:text-white dark:placeholder:text-gray-500"
                         />
                         <button
                             type="button"
-                            @click="showPasswordConfirmation = !showPasswordConfirmation"
-                            class="material-symbols-outlined absolute right-4 bottom-3 text-[#3B3835]/40 dark:text-gray-500 cursor-pointer hover:text-[#3B3835]/60 dark:hover:text-gray-400"
+                            @click="
+                                showPasswordConfirmation =
+                                    !showPasswordConfirmation
+                            "
+                            class="material-symbols-outlined absolute right-4 bottom-3 cursor-pointer text-[#3B3835]/40 hover:text-[#3B3835]/60 dark:text-gray-500 dark:hover:text-gray-400"
                             tabindex="-1"
                         >
-                            {{ showPasswordConfirmation ? 'visibility_off' : 'visibility' }}
+                            {{
+                                showPasswordConfirmation
+                                    ? 'visibility_off'
+                                    : 'visibility'
+                            }}
                         </button>
                     </label>
                     <InputError :message="errors.password_confirmation" />
@@ -155,7 +198,7 @@ onMounted(() => {
                 <div class="mt-12 mb-8 space-y-4">
                     <Button
                         type="submit"
-                        class="w-full bg-[#597d36] hover:bg-[#597d36]/90 text-white font-bold py-4 rounded-xl shadow-lg shadow-[#597d36]/20 transition-all active:scale-[0.98]"
+                        class="w-full rounded-xl bg-[#597d36] py-4 font-bold text-white shadow-lg shadow-[#597d36]/20 transition-all hover:bg-[#597d36]/90 active:scale-[0.98]"
                         tabindex="5"
                         :disabled="processing"
                         data-test="register-user-button"
@@ -164,11 +207,13 @@ onMounted(() => {
                         Loo konto
                     </Button>
 
-                    <p class="text-center text-sm text-[#3B3835]/60 dark:text-gray-400">
+                    <p
+                        class="text-center text-sm text-[#3B3835]/60 dark:text-gray-400"
+                    >
                         On juba konto?
                         <TextLink
                             :href="login()"
-                            class="text-[#597d36] font-bold ml-1 hover:underline"
+                            class="ml-1 font-bold text-[#597d36] hover:underline"
                             :tabindex="6"
                         >
                             Logi sisse
@@ -179,8 +224,12 @@ onMounted(() => {
         </main>
 
         <!-- Visual Element: Decorative Leaf Pattern (Optional Background Aesthetic) -->
-        <div class="fixed bottom-[-50px] right-[-50px] opacity-[0.03] dark:opacity-[0.07] pointer-events-none">
-            <span class="material-symbols-outlined text-[300px] select-none">eco</span>
+        <div
+            class="pointer-events-none fixed right-[-50px] bottom-[-50px] opacity-[0.03] dark:opacity-[0.07]"
+        >
+            <span class="material-symbols-outlined text-[300px] select-none"
+                >eco</span
+            >
         </div>
     </div>
 </template>
