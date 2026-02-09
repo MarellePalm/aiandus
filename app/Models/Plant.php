@@ -14,12 +14,14 @@ class Plant extends Model
         'image_url',
         'notes',
         'tags',
-        'last_watered_at'
+        'last_watered_at',
+        'planted_at'
     ];
 
     protected $casts = [
         'tags' => 'array',
         'last_watered_at' => 'datetime',
+        'planted_at' => 'date',
     ];
 
     public function user(): BelongsTo

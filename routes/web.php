@@ -17,8 +17,12 @@ Route::get('dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('/plants/{plant}', [PlantController::class, 'show'])->name('plants.show');
 
+    Route::get('/plants/create', [PlantController::class, 'create'])->name('plants.create');
+    Route::post('/plants', [PlantController::class, 'store'])->name('plants.store');
+
+    Route::get('/plants/{plant}', [PlantController::class, 'show'])->name('plants.show');
+    
     Route::post('/plants/{plant}/waterings', [PlantController::class, 'water'])->name('plants.water');
 
 });

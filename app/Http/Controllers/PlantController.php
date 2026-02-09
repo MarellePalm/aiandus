@@ -39,5 +39,26 @@ public function water(Request $request, Plant $plant)
     return redirect()->route('plants.show', $plant->id);
 }
 
+public function create()
+{
+    return Inertia::render('Plants/Create');
+}
+
+public function store(Request $request)
+{
+    $data = $request->validate([
+        'name' => ['required', 'string', 'max:120'],
+        'subtitle' => ['nullable', 'string', 'max:160'],
+        'planted_at' => ['nullable', 'date'],
+    ]);
+
+    $plant = Plant::create([
+        ...$data,
+        'user_id' => $request->user()->id,
+    ]);
+
+    return redirect()->route('plants.show', $plant->id);
+}
+
 
 }
