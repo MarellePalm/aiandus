@@ -8,8 +8,8 @@ type Plant = {
   notes?: string
   tags?: string[]
   watering_in_days?: number
-  fertilizing_frequency?: string
-  next_fertilizing_label?: string
+  fertilizing_frequency?: string | null
+  next_fertilizing_label?: string | null
 }
 
 const props = withDefaults(defineProps<{
