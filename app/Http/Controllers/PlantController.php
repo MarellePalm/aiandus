@@ -48,8 +48,8 @@ public function store(Request $request)
 {
     $data = $request->validate([
         'name' => ['required', 'string', 'max:120'],
-        'subtitle' => ['nullable', 'string', 'max:160'],
-        'planted_at' => ['nullable', 'date'],
+        'subtitle' => ['required', 'string', 'max:160'],
+        'planted_at' => ['required', 'date'],
     ]);
 
     $plant = Plant::create([

@@ -5,6 +5,7 @@ const form = useForm({
   name: "",
   subtitle: "",
   planted_at: "", 
+  image_url:"",
 })
 
 function goBack() {
@@ -38,9 +39,13 @@ function submit() {
       <main class="flex-1 px-6 pb-24 flex flex-col gap-8">
         <!-- EmptyState / Photo Placeholder -->
         <div class="mt-4">
-          <div class="group relative flex flex-col items-center justify-center aspect-square w-full rounded-[3rem] border-2 border-dashed border-[#dfe2df] dark:border-gray-700 bg-white/50 dark:bg-white/5 transition-all hover:border-primary/50 overflow-hidden ios-shadow">
+          <div class="group relative flex flex-col items-center justify-center aspect-square w-full rounded-[3rem] border-2 border-dashed border-[#dfe2df] dark:border-gray-700 bg-white/50 dark:bg-white/5 transition-all hover:border-primary/50 overflow-hidden ios-shadow"
+          :style="form.image_url
+            ? { backgroundImage: `url(${form.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    :       {}"
+          >
             <div class="flex flex-col items-center gap-4 p-8 text-center">
-              <div class="size-16 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+              <div v-if="!form.image_url" class="size-16 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                 <span class="material-symbols-outlined text-3xl!">add_a_photo</span>
               </div>
               <div class="flex flex-col gap-1">
@@ -53,6 +58,24 @@ function submit() {
             </div>
           </div>
         </div>
+         <!-- ✅ Samm 4: Pildi URL input (SIIN) -->
+  <div class="mt-4 flex flex-col gap-2">
+    <label class="text-charcoal dark:text-gray-300 text-sm font-semibold px-1">
+      Pildi URL
+    </label>
+
+    <input
+      v-model="form.image_url"
+      @input="form.clearErrors('image_url')"
+      type="url"
+      placeholder="https://..."
+      class="w-full h-14 px-5 rounded-xl border-none bg-white dark:bg-gray-800 ios-shadow focus:ring-2 focus:ring-primary/20 text-charcoal dark:text-white transition-all"
+    />
+
+    <p v-if="form.errors.image_url" class="text-red-600 dark:text-red-400 text-sm px-1">
+      {{ form.errors.image_url }}
+    </p>
+  </div>
 
         <!-- Form Fields -->
         <div class="flex flex-col gap-6">
@@ -62,11 +85,16 @@ function submit() {
             <div class="relative">
               <input
                 v-model="form.name"
-                class="w-full h-14 px-5 rounded-xl border-none bg-white dark:bg-gray-800 ios-shadow focus:ring-2 focus:ring-primary/20 placeholder:font-serif-journal placeholder:italic placeholder:text-gray-400 text-charcoal dark:text-white transition-all"
+                @input="form.clearErrors('name')"
+                class="w-full  h-14 px-5 rounded-xl border-none bg-white dark:bg-gray-800 ios-shadow focus:ring-2 focus:ring-primary/20 placeholder:font-serif-journal placeholder:italic placeholder:text-gray-400 text-charcoal dark:text-white transition-all"
                 placeholder="Taime nimi"
                 type="text"
               />
             </div>
+            <p v-if="form.errors.name" class="text-red-600 dark:text-red-400 text-sm px-1">
+              {{ form.errors.name }}
+            </p>
+
           </div>
 
           <!-- TextField: Sort -->
@@ -75,11 +103,16 @@ function submit() {
             <div class="relative">
               <input
                 v-model="form.subtitle"
+                @input="form.clearErrors('subtitle')"
                 class="w-full h-14 px-5 rounded-xl border-none bg-white dark:bg-gray-800 ios-shadow focus:ring-2 focus:ring-primary/20 placeholder:text-gray-400 text-charcoal dark:text-white transition-all"
                 placeholder="nt. Monstera Deliciosa"
                 type="text"
               />
             </div>
+            <p v-if="form.errors.subtitle" class="text-red-600 dark:text-red-400 text-sm px-1">
+              {{ form.errors.subtitle }}
+            </p>
+
           </div>
 
           <!-- Select: Istutamise kuupäev -->
@@ -89,10 +122,15 @@ function submit() {
               <input
                 v-model="form.planted_at"
                 type="date"
+                @change="form.clearErrors('planted_at')"
                 @click="($event.target as HTMLInputElement).showPicker?.()"
                 class="w-full h-14 px-5 rounded-xl border-none bg-white dark:bg-gray-800 ios-shadow focus:ring-2 focus:ring-primary/20 text-charcoal dark:text-white transition-all cursor-pointer"
                 />
             </div>
+            <p v-if="form.errors.planted_at" class="text-red-600 dark:text-red-400 text-sm px-1">
+              {{ form.errors.planted_at }}
+            </p>
+
           </div>
         </div>
 
@@ -104,6 +142,7 @@ function submit() {
         <button
             type="button"
             @click="submit"
+            :disabled="form.processing"
             class="w-full h-16 bg-primary text-white font-bold text-lg rounded-xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
         >
         <span class="material-symbols-outlined">potted_plant</span>
