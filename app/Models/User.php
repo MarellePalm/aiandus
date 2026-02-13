@@ -49,4 +49,10 @@ class User extends Authenticatable
             'two_factor_confirmed_at' => 'datetime',
         ];
     }
+
+    public function plants()
+    {
+        return $this->hasMany(\App\Models\Plant::class);
+    }
+
 }
