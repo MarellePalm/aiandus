@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import AppLayout from '@/layouts/app/AppSidebarLayout.vue';
+
+import BottomNav from '@/pages/BottomNav.vue';
 import type { BreadcrumbItemType } from '@/types';
 
 interface Props {
     breadcrumbs?: BreadcrumbItemType[];
 }
+
 
 withDefaults(defineProps<Props>(), {
     breadcrumbs: () => [],
@@ -12,7 +14,14 @@ withDefaults(defineProps<Props>(), {
 </script>
 
 <template>
-    <AppLayout :breadcrumbs="breadcrumbs">
+    <div class="min-h-screen bg-background relative">
+      <!-- Page content -->
+      <main class="pb-24">
         <slot />
-    </AppLayout>
-</template>
+      </main>
+  
+      <!-- Global bottom navigation -->
+      <BottomNav />
+    </div>
+  </template>
+  

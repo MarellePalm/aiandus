@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
+import { usePage } from '@inertiajs/vue3';
+import { useQuery } from '@tanstack/vue-query';
+import { computed, ref, watch } from 'vue';
+
+
+import { useGeolocation } from '@/composables/useGeolocation';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { fetchWeatherMoon } from '@/lib/openMeteo';
+import BottomNav from '@/pages/BottomNav.vue';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 
-import { computed, ref, watch } from 'vue';
-import { useQuery } from '@tanstack/vue-query';
-
-import { fetchWeatherMoon } from '@/lib/openMeteo';
-import { useGeolocation } from '@/composables/useGeolocation';
-import BottomNav from '@/pages/BottomNav.vue';
 
 const { coords, loading: geoLoading, error: geoError } = useGeolocation();
 
@@ -20,6 +22,18 @@ const enabled = computed(() => {
     typeof coords.value?.longitude === 'number' &&
     !geoError.value
   );
+});
+
+const page = usePage();
+const user = page.props.auth.user;
+
+const todayLabel = computed(() => {
+  const date = new Date()
+
+  const weekday = new Intl.DateTimeFormat('et-EE', { weekday: 'long' }).format(date);
+  const day = new Intl.DateTimeFormat('et-EE', { day: 'numeric' }).format(date);
+  const month = new Intl.DateTimeFormat('et-EE', { month: 'long' }).format(date);
+  return `${weekday} ${day}. ${month}`;
 });
 
 const q = useQuery({
@@ -97,13 +111,17 @@ const breadcrumbs: BreadcrumbItem[] = [
   <Head title="Dashboard" />
 
   <AppLayout :breadcrumbs="breadcrumbs">
-    <div class="bg-background-light dark:bg-background-dark font-display text-[#2E2E2E] dark:text-gray-200 min-h-screen pb-24">
+    <div class="min-h-screen pb-24 bg-[#f6f3ee] text-[#2E2E2E] dark:bg-[#151815] dark:text-gray-200">
+
+    <!-- Mobile container -->
+    <div class="mx-auto max-w-md">
       <!-- Header -->
       <div class="px-6 pt-8 pb-4">
         <div class="flex justify-between items-center">
           <div>
-            <h1 class="text-3xl font-bold tracking-tight text-primary">Tere, aednik!</h1>
-            <p class="font-serif italic text-lg opacity-80 mt-1">Esmaspäev, 12. juuni</p>
+            <h1 class="text-3xl font-bold tracking-tight text-primary">Tere, {{  user?.name }}!</h1>
+              
+              <p class="font-serif italic text-lg opacity-80 mt-1">{{ todayLabel }}</p>
           </div>
           <div class="bg-primary/10 p-2 rounded-full">
             <span class="material-symbols-outlined text-primary text-3xl">eco</span>
@@ -263,7 +281,8 @@ const breadcrumbs: BreadcrumbItem[] = [
         <span class="material-symbols-outlined text-4xl">add</span>
       </button>
 
-      <BottomNav active="dashboard" />
+      </div>
+      
     </div>
   </AppLayout>
 </template>

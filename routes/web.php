@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\PlantController;
+use App\Http\Controllers\CalendarNoteController;
 
 
 Route::get('/', function () {
@@ -26,6 +27,25 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/plants/{plant}/waterings', [PlantController::class, 'water'])->name('plants.water');
 
 });
+
+Route::get('map', function () {
+    return Inertia::render('MapView');
+})->middleware(['auth', 'verified'])->name('map');
+
+// Calendar notes
+Route::get('calendar', [CalendarNoteController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('calendar');
+
+Route::get('calendar/note-form', function () {
+    return Inertia::render('NoteForm');
+})->middleware(['auth', 'verified'])->name('calendar.noteForm');
+
+Route::post('calendar/notes', [CalendarNoteController::class, 'store'])
+    ->middleware(['auth', 'verified'])
+    ->name('calendar.notes.store');
+
+
 
 
 require __DIR__.'/settings.php';

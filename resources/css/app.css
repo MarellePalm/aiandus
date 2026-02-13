@@ -90,77 +90,64 @@
 }
 
 :root {
-    --background: hsl(0 0% 100%);
-    --foreground: hsl(0 0% 3.9%);
-    --card: hsl(0 0% 100%);
-    --card-foreground: hsl(0 0% 3.9%);
+    --background: hsl(40 37.5% 96.86%);         /* #faf8f4 */
+    --foreground: hsl(120 2.44% 8.04%);         /* #141514 */
+  
+    --card: hsl(0 0% 100%);                      /* white */
+    --card-foreground: hsl(120 2.44% 8.04%);
+  
     --popover: hsl(0 0% 100%);
-    --popover-foreground: hsl(0 0% 3.9%);
-    --primary: hsl(0 0% 9%);
-    --primary-foreground: hsl(0 0% 98%);
-    --secondary: hsl(0 0% 92.1%);
-    --secondary-foreground: hsl(0 0% 9%);
-    --muted: hsl(0 0% 96.1%);
-    --muted-foreground: hsl(0 0% 45.1%);
-    --accent: hsl(0 0% 96.1%);
-    --accent-foreground: hsl(0 0% 9%);
-    --destructive: hsl(0 84.2% 60.2%);
+    --popover-foreground: hsl(120 2.44% 8.04%);
+  
+    --primary: hsl(114.89 19.18% 48.04%);        /* #679263 */
+    --primary-foreground: hsl(0 0% 100%);        /* white text on green */
+  
+    --secondary: hsl(43.64 31.43% 93.14%);       /* #F3F0E8 (pehme beež) */
+    --secondary-foreground: hsl(120 2.44% 8.04%);
+  
+    --muted: hsl(45.88 25.37% 86.86%);           /* #E6E2D5 */
+    --muted-foreground: hsl(120 2.98% 46.08%);   /* #727972 */
+  
+    --accent: hsl(43.64 31.43% 93.14%);          /* #F3F0E8 */
+    --accent-foreground: hsl(120 2.44% 8.04%);
+  
+    --destructive: hsl(0 84.2% 60.2%);           /* jäta default või hiljem kohanda */
     --destructive-foreground: hsl(0 0% 98%);
-    --border: hsl(0 0% 92.8%);
-    --input: hsl(0 0% 89.8%);
-    --ring: hsl(0 0% 3.9%);
-    --chart-1: hsl(12 76% 61%);
-    --chart-2: hsl(173 58% 39%);
-    --chart-3: hsl(197 37% 24%);
-    --chart-4: hsl(43 74% 66%);
-    --chart-5: hsl(27 87% 67%);
-    --radius: 0.5rem;
-    --sidebar-background: hsl(0 0% 98%);
-    --sidebar-foreground: hsl(240 5.3% 26.1%);
-    --sidebar-primary: hsl(0 0% 10%);
-    --sidebar-primary-foreground: hsl(0 0% 98%);
-    --sidebar-accent: hsl(0 0% 94%);
-    --sidebar-accent-foreground: hsl(0 0% 30%);
-    --sidebar-border: hsl(0 0% 91%);
-    --sidebar-ring: hsl(217.2 91.2% 59.8%);
-    --sidebar: hsl(0 0% 98%);
-}
-
-.dark {
-    --background: hsl(0 0% 3.9%);
-    --foreground: hsl(0 0% 98%);
-    --card: hsl(0 0% 3.9%);
-    --card-foreground: hsl(0 0% 98%);
-    --popover: hsl(0 0% 3.9%);
-    --popover-foreground: hsl(0 0% 98%);
-    --primary: hsl(0 0% 98%);
-    --primary-foreground: hsl(0 0% 9%);
-    --secondary: hsl(0 0% 14.9%);
-    --secondary-foreground: hsl(0 0% 98%);
-    --muted: hsl(0 0% 16.08%);
-    --muted-foreground: hsl(0 0% 63.9%);
-    --accent: hsl(0 0% 14.9%);
-    --accent-foreground: hsl(0 0% 98%);
-    --destructive: hsl(0 84% 60%);
-    --destructive-foreground: hsl(0 0% 98%);
-    --border: hsl(0 0% 14.9%);
-    --input: hsl(0 0% 14.9%);
-    --ring: hsl(0 0% 83.1%);
-    --chart-1: hsl(220 70% 50%);
-    --chart-2: hsl(160 60% 45%);
-    --chart-3: hsl(30 80% 55%);
-    --chart-4: hsl(280 65% 60%);
-    --chart-5: hsl(340 75% 55%);
-    --sidebar-background: hsl(0 0% 7%);
-    --sidebar-foreground: hsl(0 0% 95.9%);
-    --sidebar-primary: hsl(360, 100%, 100%);
-    --sidebar-primary-foreground: hsl(0 0% 100%);
-    --sidebar-accent: hsl(0 0% 15.9%);
-    --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
-    --sidebar-border: hsl(0 0% 15.9%);
-    --sidebar-ring: hsl(217.2 91.2% 59.8%);
-    --sidebar: hsl(240 5.9% 10%);
-}
+  
+    --border: hsl(45.88 25.37% 86.86%);          /* #E6E2D5 */
+    --input: hsl(45.88 25.37% 86.86%);           /* #E6E2D5 */
+    --ring: hsl(114.89 19.18% 48.04%);           /* primary ring */
+  
+    --radius: 1rem;                               /* dashboard zip DEFAULT 1rem */
+  }
+  
+  .dark {
+    --background: hsl(105 10.53% 14.90%);        /* #242a22 */
+    --foreground: hsl(40 37.5% 96.86%);          /* #faf8f4 */
+  
+    --card: hsl(108 4.85% 20.20%);               /* #323631 (dashboard cards) */
+    --card-foreground: hsl(40 37.5% 96.86%);
+  
+    --popover: hsl(108 4.85% 20.20%);
+    --popover-foreground: hsl(40 37.5% 96.86%);
+  
+    --primary: hsl(114.89 19.18% 48.04%);        /* sama roheline ka darkis */
+    --primary-foreground: hsl(0 0% 100%);
+  
+    --secondary: hsl(102.86 12.73% 10.78%);      /* #1a1f18 */
+    --secondary-foreground: hsl(40 37.5% 96.86%);
+  
+    --muted: hsl(102.86 12.73% 10.78%);
+    --muted-foreground: hsl(120 5.56% 64.71%);   /* #a0aaa0 */
+  
+    --accent: hsl(102.86 12.73% 10.78%);
+    --accent-foreground: hsl(40 37.5% 96.86%);
+  
+    --border: hsl(108 4.85% 20.20%);             /* #323631 */
+    --input: hsl(108 4.85% 20.20%);
+    --ring: hsl(114.89 19.18% 48.04%);
+  }
+  
 
 @layer base {
     * {
@@ -170,3 +157,65 @@
         @apply bg-background text-foreground;
     }
 }
+
+@layer components {
+    /* Kaardid (kasuta igal formil / modaalil) */
+    .card {
+      @apply bg-card text-card-foreground rounded-[var(--radius)]
+             border border-border shadow-sm;
+    }
+  
+    /* Vormiväljad */
+    .form-label {
+      @apply block text-sm font-medium text-muted-foreground mb-1;
+    }
+  
+    .form-input {
+      @apply w-full h-12 px-4 rounded-[var(--radius)]
+             bg-background text-foreground
+             border border-input
+             focus-visible:outline-none
+             focus-visible:ring-2 focus-visible:ring-ring
+             transition;
+    }
+  
+    .form-textarea {
+      @apply w-full px-4 py-3 rounded-[var(--radius)]
+             bg-background text-foreground
+             border border-input
+             focus-visible:outline-none
+             focus-visible:ring-2 focus-visible:ring-ring
+             transition resize-none;
+    }
+  
+    /* Ikooniga ümarad nupud */
+    .icon-btn {
+      @apply size-10 flex items-center justify-center
+             rounded-full bg-secondary text-primary
+             hover:bg-secondary/80 transition;
+    }
+  
+    .icon-btn-primary {
+      @apply size-10 flex items-center justify-center
+             rounded-full bg-primary text-primary-foreground
+             shadow active:scale-95 transition;
+    }
+  
+    /* Peamine CTA */
+    .btn-primary {
+      @apply w-full h-14 rounded-full
+             bg-primary text-primary-foreground
+             font-semibold
+             shadow
+             hover:bg-primary/90
+             active:scale-[0.99]
+             transition;
+    }
+  
+    .btn-ghost {
+      @apply w-full py-2 text-sm
+             text-muted-foreground
+             hover:underline;
+    }
+  }
+  
