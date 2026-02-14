@@ -1,221 +1,377 @@
-@import 'tailwindcss';
+/* resources/css/app.css */
 
-@import 'tw-animate-css';
+@import "tailwindcss";
+@import "tw-animate-css";
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
+@source "../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php";
+@source "../../storage/framework/views/*.php";
 
 @custom-variant dark (&:is(.dark *));
 
+/* ==============================
+   Minimal tokens this app uses
+================================ */
 @theme inline {
-    --font-sans:
-        Instrument Sans, ui-sans-serif, system-ui, sans-serif,
-        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-        'Noto Color Emoji';
+  --font-sans:
+    Instrument Sans, ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
 
-    --radius-lg: var(--radius);
-    --radius-md: calc(var(--radius) - 2px);
-    --radius-sm: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
 
-    --color-background: var(--background);
-    --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
 
-    --color-card: var(--card);
-    --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
 
-    --color-popover: var(--popover);
-    --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
 
-    --color-primary: var(--primary);
-    --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
 
-    --color-secondary: var(--secondary);
-    --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
 
-    --color-muted: var(--muted);
-    --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
 
-    --color-accent: var(--accent);
-    --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
 
-    --color-destructive: var(--destructive);
-    --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
 
-    --color-border: var(--border);
-    --color-input: var(--input);
-    --color-ring: var(--ring);
-
-    --color-chart-1: var(--chart-1);
-    --color-chart-2: var(--chart-2);
-    --color-chart-3: var(--chart-3);
-    --color-chart-4: var(--chart-4);
-    --color-chart-5: var(--chart-5);
-
-    --color-sidebar: var(--sidebar-background);
-    --color-sidebar-foreground: var(--sidebar-foreground);
-    --color-sidebar-primary: var(--sidebar-primary);
-    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-    --color-sidebar-accent: var(--sidebar-accent);
-    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-    --color-sidebar-border: var(--sidebar-border);
-    --color-sidebar-ring: var(--sidebar-ring);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 }
 
 /*
-  The default border color has changed to `currentColor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
-
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
+  Tailwind v4 border-color default changed to currentColor.
+  Keep v3-ish look for components relying on defaults.
 */
 @layer base {
-    *,
-    ::after,
-    ::before,
-    ::backdrop,
-    ::file-selector-button {
-        border-color: var(--color-gray-200, currentColor);
-    }
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
+}
+
+/* ==============================
+   Color system (your palette)
+================================ */
+:root {
+  --background: hsl(40 37.5% 96.86%); /* #faf8f4 */
+  --foreground: hsl(120 2.44% 8.04%); /* #141514 */
+
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(120 2.44% 8.04%);
+
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(120 2.44% 8.04%);
+
+  --primary: hsl(114.89 19.18% 48.04%); /* #679263 */
+  --primary-foreground: hsl(0 0% 100%);
+
+  --secondary: hsl(43.64 31.43% 93.14%); /* #F3F0E8 */
+  --secondary-foreground: hsl(120 2.44% 8.04%);
+
+  --muted: hsl(45.88 25.37% 86.86%); /* #E6E2D5 */
+  --muted-foreground: hsl(120 2.98% 46.08%); /* #727972 */
+
+  --accent: hsl(43.64 31.43% 93.14%);
+  --accent-foreground: hsl(120 2.44% 8.04%);
+
+  --destructive: hsl(0 84.2% 60.2%);
+  --destructive-foreground: hsl(0 0% 98%);
+
+  --border: hsl(45.88 25.37% 86.86%);
+  --input: hsl(45.88 25.37% 86.86%);
+  --ring: hsl(114.89 19.18% 48.04%);
+
+  --radius: 1rem;
+}
+
+.dark {
+  --background: hsl(105 10.53% 14.90%); /* #242a22 */
+  --foreground: hsl(40 37.5% 96.86%); /* #faf8f4 */
+
+  --card: hsl(108 4.85% 20.20%); /* #323631 */
+  --card-foreground: hsl(40 37.5% 96.86%);
+
+  --popover: hsl(108 4.85% 20.20%);
+  --popover-foreground: hsl(40 37.5% 96.86%);
+
+  --primary: hsl(114.89 19.18% 48.04%);
+  --primary-foreground: hsl(0 0% 100%);
+
+  --secondary: hsl(102.86 12.73% 10.78%); /* #1a1f18 */
+  --secondary-foreground: hsl(40 37.5% 96.86%);
+
+  --muted: hsl(102.86 12.73% 10.78%);
+  --muted-foreground: hsl(120 5.56% 64.71%); /* #a0aaa0 */
+
+  --accent: hsl(102.86 12.73% 10.78%);
+  --accent-foreground: hsl(40 37.5% 96.86%);
+
+  --border: hsl(108 4.85% 20.20%);
+  --input: hsl(108 4.85% 20.20%);
+  --ring: hsl(114.89 19.18% 48.04%);
+}
+
+/* ==============================
+   Utilities used across views
+================================ */
+
+/* Tailwind v4: allow @apply card */
+@utility card {
+  @apply bg-card text-card-foreground rounded-[var(--radius)]
+         border border-border shadow-sm;
+}
+
+@utility leaf-shape {
+  border-top-left-radius: 2rem;
+  border-bottom-right-radius: 2rem;
+}
+
+@utility soft-shadow {
+  box-shadow: 0 10px 25px -5px rgba(107, 141, 104, 0.1),
+    0 8px 10px -6px rgba(107, 141, 104, 0.1);
+}
+
+@utility shadow-soft {
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
 }
 
 @layer utilities {
-    body,
-    html {
-        --font-sans:
-            'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
-            'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-            'Noto Color Emoji';
-    }
+  /* Hide scrollbar but keep scrolling */
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE/Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+  }
+
+  /* Thin custom scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(107, 141, 104, 0.2);
+    border-radius: 10px;
+  }
+  .custom-scrollbar {
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: rgba(107, 141, 104, 0.2) transparent;
+  }
 }
 
-:root {
-    --background: hsl(40 37.5% 96.86%);         /* #faf8f4 */
-    --foreground: hsl(120 2.44% 8.04%);         /* #141514 */
-  
-    --card: hsl(0 0% 100%);                      /* white */
-    --card-foreground: hsl(120 2.44% 8.04%);
-  
-    --popover: hsl(0 0% 100%);
-    --popover-foreground: hsl(120 2.44% 8.04%);
-  
-    --primary: hsl(114.89 19.18% 48.04%);        /* #679263 */
-    --primary-foreground: hsl(0 0% 100%);        /* white text on green */
-  
-    --secondary: hsl(43.64 31.43% 93.14%);       /* #F3F0E8 (pehme beež) */
-    --secondary-foreground: hsl(120 2.44% 8.04%);
-  
-    --muted: hsl(45.88 25.37% 86.86%);           /* #E6E2D5 */
-    --muted-foreground: hsl(120 2.98% 46.08%);   /* #727972 */
-  
-    --accent: hsl(43.64 31.43% 93.14%);          /* #F3F0E8 */
-    --accent-foreground: hsl(120 2.44% 8.04%);
-  
-    --destructive: hsl(0 84.2% 60.2%);           /* jäta default või hiljem kohanda */
-    --destructive-foreground: hsl(0 0% 98%);
-  
-    --border: hsl(45.88 25.37% 86.86%);          /* #E6E2D5 */
-    --input: hsl(45.88 25.37% 86.86%);           /* #E6E2D5 */
-    --ring: hsl(114.89 19.18% 48.04%);           /* primary ring */
-  
-    --radius: 1rem;                               /* dashboard zip DEFAULT 1rem */
-  }
-  
-  .dark {
-    --background: hsl(105 10.53% 14.90%);        /* #242a22 */
-    --foreground: hsl(40 37.5% 96.86%);          /* #faf8f4 */
-  
-    --card: hsl(108 4.85% 20.20%);               /* #323631 (dashboard cards) */
-    --card-foreground: hsl(40 37.5% 96.86%);
-  
-    --popover: hsl(108 4.85% 20.20%);
-    --popover-foreground: hsl(40 37.5% 96.86%);
-  
-    --primary: hsl(114.89 19.18% 48.04%);        /* sama roheline ka darkis */
-    --primary-foreground: hsl(0 0% 100%);
-  
-    --secondary: hsl(102.86 12.73% 10.78%);      /* #1a1f18 */
-    --secondary-foreground: hsl(40 37.5% 96.86%);
-  
-    --muted: hsl(102.86 12.73% 10.78%);
-    --muted-foreground: hsl(120 5.56% 64.71%);   /* #a0aaa0 */
-  
-    --accent: hsl(102.86 12.73% 10.78%);
-    --accent-foreground: hsl(40 37.5% 96.86%);
-  
-    --border: hsl(108 4.85% 20.20%);             /* #323631 */
-    --input: hsl(108 4.85% 20.20%);
-    --ring: hsl(114.89 19.18% 48.04%);
-  }
-  
 
-@layer base {
-    * {
-        @apply border-border outline-ring/50;
-    }
-    body {
-        @apply bg-background text-foreground;
-    }
-}
-
+/* ==============================
+   Components (design system)
+================================ */
 @layer components {
-    /* Kaardid (kasuta igal formil / modaalil) */
-    .card {
-      @apply bg-card text-card-foreground rounded-[var(--radius)]
-             border border-border shadow-sm;
-    }
-  
-    /* Vormiväljad */
-    .form-label {
-      @apply block text-sm font-medium text-muted-foreground mb-1;
-    }
-  
-    .form-input {
-      @apply w-full h-12 px-4 rounded-[var(--radius)]
-             bg-background text-foreground
-             border border-input
-             focus-visible:outline-none
-             focus-visible:ring-2 focus-visible:ring-ring
-             transition;
-    }
-  
-    .form-textarea {
-      @apply w-full px-4 py-3 rounded-[var(--radius)]
-             bg-background text-foreground
-             border border-input
-             focus-visible:outline-none
-             focus-visible:ring-2 focus-visible:ring-ring
-             transition resize-none;
-    }
-  
-    /* Ikooniga ümarad nupud */
-    .icon-btn {
-      @apply size-10 flex items-center justify-center
-             rounded-full bg-secondary text-primary
-             hover:bg-secondary/80 transition;
-    }
-  
-    .icon-btn-primary {
-      @apply size-10 flex items-center justify-center
-             rounded-full bg-primary text-primary-foreground
-             shadow active:scale-95 transition;
-    }
-  
-    /* Peamine CTA */
-    .btn-primary {
-      @apply w-full h-14 rounded-full
-             bg-primary text-primary-foreground
-             font-semibold
-             shadow
-             hover:bg-primary/90
-             active:scale-[0.99]
-             transition;
-    }
-  
-    .btn-ghost {
-      @apply w-full py-2 text-sm
-             text-muted-foreground
-             hover:underline;
-    }
+  /* Layout */
+  .page {
+    @apply min-h-screen bg-background text-foreground;
   }
-  
+
+  .page-with-bottomnav {
+    @apply pb-24 lg:pb-10;
+  }
+
+  .page-container {
+    @apply mx-auto w-full
+           max-w-md
+           sm:max-w-lg
+           md:max-w-2xl
+           lg:max-w-5xl
+           xl:max-w-6xl
+           px-4 sm:px-6 lg:px-8;
+  }
+
+  .topappbar {
+    @apply sticky top-0 z-20 backdrop-blur-sm
+           flex items-center justify-between
+           px-4 pt-3 pb-2;
+  }
+
+  .panel {
+    @apply card p-6;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    @apply h-14 px-6 rounded-full
+           bg-primary text-primary-foreground
+           font-semibold shadow
+           hover:bg-primary/90
+           active:scale-[0.99]
+           transition
+           inline-flex items-center justify-center gap-2;
+  }
+
+  .btn-outline {
+    @apply h-14 px-6 rounded-full
+           border border-border
+           bg-transparent text-foreground
+           font-semibold
+           hover:bg-secondary/60
+           active:scale-[0.99]
+           transition
+           inline-flex items-center justify-center gap-2;
+  }
+
+  .btn-ghost {
+    @apply h-12 px-4 rounded-full
+           text-muted-foreground
+           hover:bg-secondary/60
+           transition
+           inline-flex items-center justify-center;
+  }
+
+  .btn-lg {
+    @apply h-16 text-lg;
+  }
+
+  .icon-btn {
+    @apply size-10 flex items-center justify-center
+           rounded-full bg-secondary text-primary
+           hover:bg-secondary/80 transition;
+  }
+
+  /* Forms */
+  .form-label {
+    @apply block text-sm font-medium text-muted-foreground mb-1;
+  }
+
+  .form-input {
+    @apply w-full h-12 px-4 rounded-[var(--radius)]
+           bg-background text-foreground
+           border border-input
+           focus-visible:outline-none
+           focus-visible:ring-2 focus-visible:ring-ring
+           transition;
+  }
+
+  .form-textarea {
+    @apply w-full px-4 py-3 rounded-[var(--radius)]
+           bg-background text-foreground
+           border border-input
+           focus-visible:outline-none
+           focus-visible:ring-2 focus-visible:ring-ring
+           transition resize-none;
+  }
+
+  /* Dashboard cards */
+  .weather-card {
+    @apply card relative overflow-hidden p-6;
+  }
+
+  .moon-card {
+    @apply card bg-secondary/60 p-5 flex items-center gap-4;
+  }
+
+  .activity-card {
+    @apply card p-4 flex flex-col items-center text-center;
+  }
+
+  .tip-card {
+    @apply bg-secondary/40 border-2 border-dashed border-border
+           rounded-[var(--radius)] p-6 relative;
+  }
+
+
+  .fab {
+    @apply fixed size-16 rounded-full flex items-center justify-center
+           bg-primary text-primary-foreground shadow-lg
+           transition active:scale-95 z-50 pointer-events-auto;
+
+    right: 1.25rem !important; /* right-5 */
+    bottom: calc(5rem + 1rem + env(safe-area-inset-bottom)) !important; /* nav(h-20) + gap + safe-area */
+  }
+
+
+  /* Calendar/Tasks */
+  .calendar-card {
+    @apply card leaf-shape soft-shadow
+           bg-card/70 backdrop-blur-md
+           p-4;
+  }
+
+  .section-title {
+    @apply text-[22px] font-bold leading-tight tracking-[-0.015em];
+  }
+
+  .badge-date {
+    @apply text-xs bg-primary/20 text-primary font-bold
+           px-2 py-1 rounded-full uppercase tracking-tighter;
+  }
+
+  .task-card {
+    @apply card leaf-shape soft-shadow
+           p-4 border-l-4;
+  }
+
+  .task-meta {
+    @apply flex items-center gap-2 text-xs text-muted-foreground;
+  }
+
+  /* Bottom navigation (pill + plus) */
+  .bottom-floatbar {
+    @apply fixed bottom-4 left-1/2 -translate-x-1/2
+           w-full max-w-md px-4
+           flex justify-between items-center
+           z-50 pointer-events-none;
+  }
+
+  .pill-nav {
+    @apply pointer-events-auto
+           flex gap-6
+           rounded-full px-5 py-2
+           bg-card/80 backdrop-blur-lg
+           border border-border
+           shadow-xl;
+  }
+
+  .nav-item {
+    @apply flex flex-col items-center
+           text-muted-foreground;
+  }
+
+  .nav-item-active {
+    @apply text-primary;
+  }
+
+  .nav-label {
+    @apply text-[10px] font-bold mt-1;
+  }
+
+  .fab-plus {
+    @apply pointer-events-auto
+           size-14 rounded-full
+           bg-primary text-primary-foreground
+           flex items-center justify-center
+           shadow-lg active:scale-95 transition;
+  }
+}
