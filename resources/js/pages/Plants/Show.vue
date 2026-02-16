@@ -35,20 +35,27 @@ function goPlantsView() {
   alert("Taimede vaade: pole veel tehtud 🙂")
 }
 
+const showDeleteModal = ref(false)
 
-function deletePlant() {
+function openDeleteModal() {
   closeMenu()
+  showDeleteModal.value = true
+}
 
-  const ok = confirm("Oled kindel, et soovid taime kustutada?")
-  if (!ok) return
+function closeDeleteModal() {
+  showDeleteModal.value = false
+}
 
-  // NB! kui parentis on plant, mitte props.plant, siis kasuta plant.id
+function confirmDelete() {
   router.delete(`/plants/${plant.id}`, {
     onSuccess: () => {
-      router.visit("/dashboard") // kuhu tagasi pärast kustutamist
-    },
+      showDeleteModal.value = false
+      router.visit("/dashboard")
+    }
   })
 }
+
+
 
 
 function closeMenu () {
@@ -113,12 +120,52 @@ function markWatered() {
     </button>
 
     <button class="w-full text-left px-4 py-3 hover:bg-black/5 dark:hover:bg-white/5 text-red-600"
-    @click="deletePlant">
+    @click="openDeleteModal">
       Kustuta
     </button>
   </div>
 
 </div>
+
+<!-- DELETE MODAL -->
+<div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center">
+  
+  <!-- overlay -->
+  <div 
+    class="absolute inset-0 bg-black/40 backdrop-blur-sm"
+    @click="closeDeleteModal"
+  ></div>
+
+  <!-- modal box -->
+  <div class="relative bg-white dark:bg-surface-dark rounded-3xl p-8 w-80 shadow-2xl border border-black/5 dark:border-white/10 text-center">
+
+    <h3 class="text-lg font-bold mb-3">
+      Kustuta taim?
+    </h3>
+
+    <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
+      Seda tegevust ei saa tagasi võtta.
+    </p>
+
+    <div class="flex gap-3">
+      <button
+        class="flex-1 py-2 rounded-xl bg-gray-100 dark:bg-white/10"
+        @click="closeDeleteModal"
+      >
+        Tühista
+      </button>
+
+      <button
+        class="flex-1 py-2 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700"
+        @click="confirmDelete"
+      >
+        Kustuta
+      </button>
+    </div>
+
+  </div>
+</div>
+
 
 </template>
 
