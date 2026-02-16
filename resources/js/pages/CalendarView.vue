@@ -7,6 +7,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 import { calendar } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
+import UserMenu from '@/pages/UserMenu.vue';
 
 type Note = {
   id?: number | string;
@@ -115,9 +116,7 @@ function selectDay(day: number) {
             <h1 class="text-xl font-bold tracking-tight truncate">Minu Aia Päevik</h1>
           </div>
 
-          <button type="button" class="icon-btn" aria-label="Profiil">
-            <span class="material-symbols-outlined">person</span>
-          </button>
+          <UserMenu settings-href="/settings" />
         </header>
 
         <!-- Calendar card -->

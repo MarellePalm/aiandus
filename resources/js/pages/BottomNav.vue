@@ -72,15 +72,6 @@ function labelClass(key: NavKey) {
           <span :class="labelClass('plants')">Taimed</span>
         </Link>
 
-        <!-- SEADED -->
-        <Link
-          href="/settings"
-          :class="itemClass('settings')"
-          :aria-current="activeKey === 'settings' ? 'page' : undefined"
-        >
-          <span class="material-symbols-outlined text-2xl">settings</span>
-          <span :class="labelClass('settings')">Seaded</span>
-        </Link>
       </div>
     </div>
   </nav>
