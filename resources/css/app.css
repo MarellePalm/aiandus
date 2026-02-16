@@ -374,4 +374,126 @@
            flex items-center justify-center
            shadow-lg active:scale-95 transition;
   }
-}
+
+  .note-card {
+    @apply bg-card/80 backdrop-blur-md border border-border;
+    box-shadow: 0 10px 30px -10px rgba(107, 141, 104, 0.12);
+  }
+
+  .note-label {
+    @apply text-xs font-semibold uppercase tracking-wider text-primary mb-2;
+  }
+
+  .note-sub-label {
+    @apply text-[10px] font-bold uppercase text-muted-foreground mb-2 block;
+  }
+
+  .note-input {
+    @apply bg-background;
+  }
+
+  .note-input--compact {
+    @apply h-10;
+  }
+
+  .note-decor {
+    @apply absolute pointer-events-none opacity-10 text-primary;
+  }
+
+  .note-decor--tr {
+    @apply -top-10 -right-10;
+  }
+
+  .note-decor--bl {
+    @apply -bottom-20 -left-10 rotate-45;
+  }
+
+  .icon-btn-primary {
+    @apply size-10 flex items-center justify-center
+           rounded-full bg-primary text-primary-foreground
+           hover:bg-primary/90 transition
+           disabled:opacity-60 disabled:cursor-not-allowed;
+  }
+
+  .toggle {
+    @apply relative inline-flex h-6 w-11 items-center;
+  }
+
+  .toggle__input {
+    @apply sr-only;
+  }
+
+  .toggle__track {
+    @apply absolute inset-0 rounded-full bg-secondary border border-border transition;
+  }
+
+  .toggle__thumb {
+    @apply absolute left-0.5 top-0.5 size-5 rounded-full bg-card shadow transition;
+  }
+
+  .toggle__input:checked + .toggle__track {
+    @apply bg-primary/90 border-primary/30;
+  }
+
+  .toggle__input:checked + .toggle__track + .toggle__thumb {
+    transform: translateX(20px);
+  }
+
+  /* Journal (stitch-like) panel for Calendar view */
+@layer components {
+  .journal-panel {
+    @apply leaf-shape soft-shadow
+           bg-muted text-foreground
+           dark:bg-card/70 dark:backdrop-blur-md
+           p-6;
+  }
+
+  .journal-subtitle {
+    @apply text-sm font-medium opacity-60 leading-none mb-1;
+  }
+
+  .journal-title {
+    @apply text-[22px] font-semibold;
+  }
+
+  .journal-section-title {
+    @apply text-[12px] font-bold uppercase tracking-[0.1em]
+           text-primary/80 dark:text-primary/80 mb-4;
+  }
+
+  .journal-check-row {
+    @apply flex items-center gap-3;
+  }
+
+  .journal-check {
+    @apply w-5 h-5 rounded-md border-2 border-primary/30 flex-shrink-0;
+  }
+
+  .journal-row-text {
+    @apply text-[15px] font-light;
+  }
+
+  .journal-reminder {
+    @apply pl-4 border-l-[1.5px] border-primary/40 py-1;
+  }
+
+  .journal-note {
+    @apply rounded-lg p-4 bg-card/40 dark:bg-black/5;
+  }
+
+  .journal-note-title {
+    @apply text-sm font-semibold mb-1;
+  }
+
+  .journal-note-body {
+    @apply text-[15px] leading-[1.6] font-light opacity-80;
+  }
+
+  .journal-time {
+    @apply text-[11px] font-medium opacity-40 italic;
+  }
+
+  .journal-empty {
+    @apply text-sm text-muted-foreground;
+  }
+}}
