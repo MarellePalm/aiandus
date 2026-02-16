@@ -62,14 +62,15 @@ function labelClass(key: NavKey) {
           <span :class="labelClass('calendar')">Kalender</span>
         </Link>
 
-        <!-- TAIMED (disabled placeholder by default) -->
-        <div
-          class="flex flex-col items-center gap-1 text-muted-foreground opacity-60 select-none"
-          aria-disabled="true"
+        <!-- TAIMED -->
+        <Link
+          href="/plants"
+          :class="itemClass('plants')"
+          :aria-current="activeKey === 'plants' ? 'page' : undefined"
         >
           <span class="material-symbols-outlined text-2xl">local_florist</span>
-          <span class="text-[10px] font-medium">Taimed</span>
-        </div>
+          <span :class="labelClass('plants')">Taimed</span>
+        </Link>
 
         <!-- SEADED -->
         <Link
