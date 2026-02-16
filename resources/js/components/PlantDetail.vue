@@ -1,5 +1,8 @@
 
 <script setup lang="ts">
+import { router } from '@inertiajs/vue3'
+import { computed } from "vue"
+
 type Plant = {
   id: number
   name: string
@@ -12,6 +15,9 @@ type Plant = {
   next_fertilizing_label?: string | null
 }
 
+function goBack() {
+  router.visit("/dashboard")}
+
 const props = withDefaults(defineProps<{
   plant: Plant
   markingWatered?: boolean
@@ -22,7 +28,7 @@ const props = withDefaults(defineProps<{
 })
 
 
-import { computed } from "vue"
+
 
 const fallbackImage = "https://picsum.photos/900/1200"
 
@@ -71,7 +77,7 @@ const emit = defineEmits<{
         <button
           type="button"
           class="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-full p-2 flex items-center justify-center transition-colors"
-          @click="emit('back')"
+          @click="goBack"
         >
           <span class="material-symbols-outlined">arrow_back</span>
         </button>
