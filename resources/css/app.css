@@ -186,7 +186,6 @@
   }
 }
 
-
 /* ==============================
    Components (design system)
 ================================ */
@@ -208,6 +207,11 @@
            lg:max-w-5xl
            xl:max-w-6xl
            px-4 sm:px-6 lg:px-8;
+  }
+
+  .page-container-wide {
+    @apply mx-auto w-full max-w-none
+           px-4 sm:px-6 lg:px-10 xl:px-12;
   }
 
   .topappbar {
@@ -283,6 +287,61 @@
            transition resize-none;
   }
 
+    /* Auth (Register/Login) */
+    .auth-shell {
+      @apply w-full;
+    }
+  
+    .auth-header {
+      @apply flex flex-col items-center pt-4 pb-10 text-center;
+    }
+  
+    .auth-icon {
+      @apply mb-6 flex h-16 w-16 items-center justify-center
+             rounded-full bg-primary/10 dark:bg-primary/20;
+    }
+  
+    .auth-title {
+      @apply pb-2 text-center text-3xl leading-tight font-bold tracking-tight
+             text-foreground;
+    }
+  
+    .auth-subtitle {
+      @apply text-center text-base leading-normal font-normal text-muted-foreground;
+    }
+  
+    .auth-form {
+      @apply space-y-4;
+    }
+  
+    .auth-field {
+      @apply flex flex-col rounded-xl border border-border bg-secondary/40 p-1
+             transition-shadow focus-within:shadow-md dark:bg-white/5;
+    }
+  
+    .auth-label {
+      @apply px-4 pt-3 text-xs font-semibold tracking-wider text-foreground/80 uppercase;
+    }
+  
+    .auth-input {
+      @apply h-12 w-full border-none bg-transparent px-4 text-base font-normal
+             text-foreground placeholder:text-muted-foreground/60 focus:ring-0;
+    }
+  
+    .auth-eye {
+      @apply absolute right-4 bottom-3 cursor-pointer
+             text-muted-foreground hover:text-foreground transition;
+    }
+  
+    .auth-actions {
+      @apply mt-12 mb-8 space-y-4;
+    }
+  
+    .auth-link {
+      @apply ml-1 font-bold text-primary hover:underline;
+    }
+  
+
   /* Dashboard cards */
   .weather-card {
     @apply card relative overflow-hidden p-6;
@@ -301,7 +360,6 @@
            rounded-[var(--radius)] p-6 relative;
   }
 
-
   .fab {
     @apply fixed size-16 rounded-full flex items-center justify-center
            bg-primary text-primary-foreground shadow-lg
@@ -310,7 +368,6 @@
     right: 1.25rem !important; /* right-5 */
     bottom: calc(5rem + 1rem + env(safe-area-inset-bottom)) !important; /* nav(h-20) + gap + safe-area */
   }
-
 
   /* Calendar/Tasks */
   .calendar-card {
@@ -375,6 +432,7 @@
            shadow-lg active:scale-95 transition;
   }
 
+  /* Note form */
   .note-card {
     @apply bg-card/80 backdrop-blur-md border border-border;
     box-shadow: 0 10px 30px -10px rgba(107, 141, 104, 0.12);
@@ -440,7 +498,6 @@
   }
 
   /* Journal (stitch-like) panel for Calendar view */
-@layer components {
   .journal-panel {
     @apply leaf-shape soft-shadow
            bg-muted text-foreground
@@ -496,4 +553,4 @@
   .journal-empty {
     @apply text-sm text-muted-foreground;
   }
-}}
+}
