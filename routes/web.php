@@ -45,7 +45,7 @@ Route::post('calendar/notes', [CalendarNoteController::class, 'store'])
     ->middleware(['auth', 'verified'])
     ->name('calendar.notes.store');
 
-
+Route::resource('plants', PlantController::class);
 
 
 require __DIR__.'/settings.php';

@@ -60,5 +60,11 @@ public function store(Request $request)
     return redirect()->route('plants.show', $plant->id);
 }
 
+public function destroy(Plant $plant)
+{
+    $plant->delete();
+    return redirect('/dashboard'); // või back()
+}
+
 
 }
