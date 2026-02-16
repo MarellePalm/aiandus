@@ -6,7 +6,6 @@ use Laravel\Fortify\Features;
 use App\Http\Controllers\PlantController;
 use App\Http\Controllers\CalendarNoteController;
 
-
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canRegister' => Features::enabled(Features::registration()),

@@ -1,15 +1,16 @@
 <!-- resources/js/Pages/Dashboard.vue -->
 <script setup lang="ts">
-import { Head, usePage } from '@inertiajs/vue3';
+import { Head, usePage, router } from '@inertiajs/vue3';
 import { useQuery } from '@tanstack/vue-query';
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 
 import { useGeolocation } from '@/composables/useGeolocation';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { fetchWeatherMoon } from '@/lib/openMeteo';
+import { fetchWeatherMoon, iconWeatherMaterial } from '@/lib/openMeteo';
 import BottomNav from '@/pages/BottomNav.vue';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
+import UserMenu from '@/pages/UserMenu.vue';
 
 const page = usePage();
 const user = page.props.auth.user;
@@ -18,11 +19,18 @@ const breadcrumbs: BreadcrumbItem[] = [{ title: 'Dashboard', href: dashboard().u
 
 const todayLabel = computed(() => {
   const date = new Date();
+
   const weekday = new Intl.DateTimeFormat('et-EE', { weekday: 'long' }).format(date);
+  const weekdayCap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+
   const day = new Intl.DateTimeFormat('et-EE', { day: 'numeric' }).format(date);
   const month = new Intl.DateTimeFormat('et-EE', { month: 'long' }).format(date);
-  return `${weekday} ${day}. ${month}`;
+
+  const time = new Intl.DateTimeFormat('et-EE', { hour: '2-digit', minute: '2-digit' }).format(date);
+
+  return `${weekdayCap} ${day}. ${month} • ${time}`;
 });
+
 
 const { coords, loading: geoLoading, error: geoError } = useGeolocation();
 
@@ -51,55 +59,10 @@ const temp = computed(() => q.data?.value?.temp ?? null);
 const tMax = computed(() => q.data?.value?.tMax ?? null);
 const tMin = computed(() => q.data?.value?.tMin ?? null);
 
-function weatherIconFile(code: number) {
-  if (code === 0) return 'sunny';
-  if (code <= 3 || code === 45 || code === 48) return 'cloudy';
-  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95) return 'rainy';
-  if (code >= 71 && code <= 77) return 'snowy';
-  return 'cloudy';
-}
-
-const weatherIconSrc = computed(() => {
-  const code = q.data?.value?.weatherCode;
-  const name = typeof code === 'number' ? weatherIconFile(code) : 'cloudy';
-  return `/icons/weather/${name}.svg`;
-});
-
-const locationName = ref<string | null>(null);
-
-async function reverseGeocodeName(lat: number, lon: number) {
-  const url =
-    'https://geocoding-api.open-meteo.com/v1/reverse' +
-    `?latitude=${encodeURIComponent(lat)}` +
-    `&longitude=${encodeURIComponent(lon)}` +
-    '&language=et' +
-    '&count=1';
-
-  const res = await fetch(url);
-  if (!res.ok) return null;
-
-  const d = await res.json();
-  const r = d?.results?.[0];
-  if (!r) return null;
-
-  return [r.name, r.admin1].filter(Boolean).join(', ');
-}
-
-watch(
-  () => [coords.value?.latitude, coords.value?.longitude],
-  async ([lat, lon]) => {
-    if (typeof lat === 'number' && typeof lon === 'number') {
-      locationName.value = await reverseGeocodeName(lat, lon);
-    } else {
-      locationName.value = null;
-    }
-  },
-  { immediate: true },
-);
-
 function onAddNote() {
-  // TODO: router.visit('/calendar/note-form') vms
+  router.visit('/calendar/note-form');
 }
+
 </script>
 
 <template>
@@ -124,8 +87,8 @@ function onAddNote() {
             </p>
           </div>
 
-          <div class="icon-btn shrink-0" aria-hidden="true">
-            <span class="material-symbols-outlined text-3xl">eco</span>
+          <div class="flex items-center gap-2 shrink-0">
+            <UserMenu settings-href="/settings" />
           </div>
         </section>
 
@@ -138,12 +101,9 @@ function onAddNote() {
 
             <div class="flex items-start justify-between gap-4 mb-4">
               <div class="flex items-start gap-3">
-                <img
-                  v-if="q.isSuccess.value"
-                  :src="weatherIconSrc"
-                  alt=""
-                  class="w-10 h-10 mt-1"
-                />
+                <span v-if="q.isSuccess.value" class="material-symbols-outlined text-7xl text-primary mt-1" aria-hidden="true">
+                  {{ iconWeatherMaterial(q.data?.value?.weatherCode ?? 3) }}
+                </span>
 
                 <div>
                   <div class="text-2xl font-bold">
@@ -153,29 +113,20 @@ function onAddNote() {
                     <template v-else>...</template>
                   </div>
 
-                  <div class="mt-1 text-sm opacity-70 flex items-center gap-1">
-                    <span class="material-symbols-outlined text-base">location_on</span>
-                    <span class="truncate">
-                      <template v-if="locationName">{{ locationName }}</template>
-                      <template v-else-if="geoLoading">Asukoht…</template>
-                      <template v-else>Asukoht pole saadaval</template>
-                    </span>
-                  </div>
+
                 </div>
               </div>
 
-              <div class="text-[11px] opacity-60 shrink-0" v-if="q.data?.value?.updatedAt">
-                {{ q.data.value.updatedAt }}
-              </div>
-            </div>
 
-            <p class="text-base leading-relaxed opacity-80 mb-2">
-              Suurepärane ilm rohimiseks ja kastmiseks. Sinu aed tunneb end täna hästi!
-            </p>
+            </div>
 
             <div class="text-sm opacity-70 mb-6" v-if="q.isSuccess.value && q.data.value">
               Max {{ Math.round(tMax ?? 0) }}° / Min {{ Math.round(tMin ?? 0) }}°
             </div>
+
+            <p class="text-base leading-relaxed opacity-80 mb-2">
+              Kas jätame siia soovituse vastavalt ilmale?
+            </p>
 
             <div v-if="geoError" class="text-xs text-red-600 dark:text-red-400 mb-3">
               Asukoht pole lubatud või pole saadaval. Luba brauseris Location õigused.
@@ -185,7 +136,7 @@ function onAddNote() {
               {{ q.error.value?.message }}
             </div>
 
-            <button class="btn-primary w-full" type="button" @click="onAddNote">
+            <button class="btn-primary w-full cursor-pointer" type="button" @click="onAddNote">
               <span class="material-symbols-outlined text-[18px]">edit</span>
               Lisa märkmed
             </button>
@@ -277,11 +228,6 @@ function onAddNote() {
           </div>
         </section>
       </div>
-
-      <!-- FAB + Bottom nav -->
-      <button class="fab" type="button" aria-label="Lisa">
-        <span class="material-symbols-outlined text-4xl">add</span>
-      </button>
 
       <BottomNav active="dashboard" />
     </div>
