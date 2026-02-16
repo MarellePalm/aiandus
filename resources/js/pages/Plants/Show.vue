@@ -21,6 +21,36 @@ function toggleMenu () {
   showMenu.value = !showMenu.value
 }
 
+function goHome() {
+  closeMenu()
+  router.visit("/dashboard") // kui sul avaleht on muu, muuda siin
+}
+function editPlant() {
+  closeMenu()
+  alert("Muuda taime: pole veel tehtud 🙂")
+}
+
+function goPlantsView() {
+  closeMenu()
+  alert("Taimede vaade: pole veel tehtud 🙂")
+}
+
+
+function deletePlant() {
+  closeMenu()
+
+  const ok = confirm("Oled kindel, et soovid taime kustutada?")
+  if (!ok) return
+
+  // NB! kui parentis on plant, mitte props.plant, siis kasuta plant.id
+  router.delete(`/plants/${plant.id}`, {
+    onSuccess: () => {
+      router.visit("/dashboard") // kuhu tagasi pärast kustutamist
+    },
+  })
+}
+
+
 function closeMenu () {
   showMenu.value = false
 }
@@ -67,15 +97,23 @@ function markWatered() {
     class="absolute right-6 top-20 w-56 rounded-2xl bg-white dark:bg-surface-dark shadow-xl border border-black/5 dark:border-white/10 overflow-hidden"
     @click.stop
   >
-    <button class="w-full text-left px-4 py-3 hover:bg-black/5 dark:hover:bg-white/5">
-      Muuda taim
+     <button class="w-full text-left px-4 py-3 hover:bg-black/5 dark:hover:bg-white/5"
+     @click="goHome">
+      Avalehele
     </button>
 
-    <button class="w-full text-left px-4 py-3 hover:bg-black/5 dark:hover:bg-white/5">
-      Dubleeri
+    <button class="w-full text-left px-4 py-3 hover:bg-black/5 dark:hover:bg-white/5"
+    @click="goPlantsView">
+      Taimede vaade
     </button>
 
-    <button class="w-full text-left px-4 py-3 hover:bg-black/5 dark:hover:bg-white/5 text-red-600">
+    <button class="w-full text-left px-4 py-3 hover:bg-black/5 dark:hover:bg-white/5"
+    @click="editPlant">
+      Muuda taime
+    </button>
+
+    <button class="w-full text-left px-4 py-3 hover:bg-black/5 dark:hover:bg-white/5 text-red-600"
+    @click="deletePlant">
       Kustuta
     </button>
   </div>
