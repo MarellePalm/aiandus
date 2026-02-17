@@ -8,6 +8,11 @@ use Inertia\Inertia;
 
 class PlantController extends Controller
 {
+    public function index()
+    {
+        return Inertia::render('Plants/Index');
+    }
+    
     public function show(Request $request, Plant $plant)
 {
     abort_unless($plant->user_id === $request->user()->id, 403);
