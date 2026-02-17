@@ -1,7 +1,8 @@
 <!-- resources/js/Pages/BottomNav.vue -->
 <script setup lang="ts">
-import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
+import { computed } from 'vue';
+
 
 import { calendar, dashboard, map } from '@/routes';
 
