@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head } from "@inertiajs/vue3";
+import { Head, Link } from "@inertiajs/vue3";
 
 import AppLayout from '@/layouts/AppLayout.vue';
 
@@ -86,11 +86,11 @@ const props = defineProps<{
           <!-- Category Grid -->
           <main class="flex-1 px-6 md:px-8 py-4">
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              <!-- Tomatid -->
-              <div
+              <!-- TAIMEKATEGOORIA NIMI -->
+              <Link :href="`/plants/category/${cat.slug}`"
                 v-for="cat in props.categories"
                 :key="cat.id"
-              class="relative aspect-[1/1] rounded-2xl overflow-hidden shadow-lg group">
+                class="relative aspect-[1/1] rounded-2xl overflow-hidden shadow-lg group">
                 <img
                   alt="Tomatoes"
                   class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
@@ -103,7 +103,7 @@ const props = defineProps<{
                   </span>
                   <h3 class="text-white text-lg font-bold">{{ cat.name }}</h3>
                 </div>
-              </div>
+              </Link>
             </div>
 
         
