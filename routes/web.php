@@ -29,6 +29,10 @@ Route::middleware(['auth'])->group(function () {
     
     Route::post('/plants/{plant}/waterings', [PlantController::class, 'water'])->name('plants.water');
 
+    Route::get('/plants/category/{slug}', [PlantController::class, 'category'])
+    ->name('plants.category');
+
+
 });
 
 Route::get('map', function () {
