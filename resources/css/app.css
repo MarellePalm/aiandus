@@ -271,7 +271,7 @@
   }
 
   .form-input {
-    @apply w-full h-12 px-4 rounded-[var(--radius)]
+    @apply w-full h-12 px-4 rounded-lg
            bg-background text-foreground
            border border-input
            focus-visible:outline-none
@@ -280,7 +280,7 @@
   }
 
   .form-textarea {
-    @apply w-full px-4 py-3 rounded-[var(--radius)]
+    @apply w-full px-4 py-3 rounded-lg
            bg-background text-foreground
            border border-input
            focus-visible:outline-none
@@ -361,9 +361,101 @@
     @apply card relative overflow-hidden p-6;
   }
 
-  .moon-card {
-    @apply card bg-secondary/60 p-5 flex items-center gap-4;
+  /* Weather V2 (Dashboard) – lisaklassid olemasoleva .weather-card kõrvale */
+    .weather-deco {
+      @apply absolute -top-4 -right-4 text-[120px] opacity-[0.04] pointer-events-none rotate-12;
+    }
+  
+    .weather-top {
+      @apply flex items-start justify-between gap-4 mb-6;
+    }
+  
+    .weather-today-chip {
+      @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold
+             bg-primary/15 text-primary;
+    }
+  
+    .weather-temp {
+      @apply text-[44px] font-bold leading-none;
+    }
+  
+    .weather-meta {
+      @apply text-sm text-muted-foreground font-medium;
+    }
+  
+    .weather-icon {
+      @apply text-6xl text-primary drop-shadow-sm;
+    }
+  
+    .weather-divider {
+      @apply h-px w-full my-5 bg-border;
+    }
+  
+    .weather-forecast-grid {
+      @apply grid gap-3;
+    }
+  
+    .weather-forecast-grid-2 {
+      @apply grid-cols-2;
+    }
+  
+    .weather-forecast-grid-3 {
+      @apply grid-cols-3;
+    }
+  
+    .weather-forecast-item {
+      @apply flex flex-col items-center p-3 rounded-2xl
+             bg-secondary/40 dark:bg-black/10 backdrop-blur-sm;
+    }
+  
+    .weather-forecast-day {
+      @apply text-[11px] font-bold uppercase tracking-wide text-muted-foreground;
+    }
+  
+    .weather-forecast-item-icon {
+      @apply my-2 text-primary;
+    }
+  
+    .weather-forecast-max {
+      @apply text-sm font-bold;
+    }
+  
+    .weather-forecast-min {
+      @apply text-xs text-muted-foreground;
+    }
+  
+
+    /* Moon / rhythms panel (shared) */
+    .rhythm-card {
+      @apply card bg-secondary/60 p-5 flex items-center gap-4;
+    }
+  
+    .rhythm-icon {
+      @apply size-16 rounded-full flex items-center justify-center
+             bg-card shadow-inner;
+    }
+  
+    .rhythm-icon-symbol {
+      @apply text-primary text-4xl;
+      font-variation-settings: 'FILL' 1;
+    }
+  
+    .rhythm-title {
+      @apply font-bold text-primary;
+    }
+  
+    .rhythm-body {
+      @apply text-sm text-muted-foreground leading-relaxed;
+    }
+  
+    /* optional: small badge (e.g. illumination %) */
+    .rhythm-badge {
+      @apply inline-flex items-center rounded-full px-2 py-0.5
+             text-[11px] font-semibold
+             bg-primary/15 text-primary;
+    }
   }
+  
 
   .activity-card {
     @apply card p-4 flex flex-col items-center text-center;
@@ -567,4 +659,4 @@
   .journal-empty {
     @apply text-sm text-muted-foreground;
   }
-}
+

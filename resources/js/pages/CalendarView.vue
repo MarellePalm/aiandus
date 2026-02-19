@@ -1,7 +1,7 @@
 <!-- resources/js/Pages/Calendar.vue -->
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
@@ -13,8 +13,12 @@ type Note = {
   id?: number | string;
   title?: string;
   body?: string;
+  type?: string;
+  done?: boolean;
+  due_at?: string | null;
   reminder_enabled?: boolean;
   reminder_time?: string | null;
+  media_urls?: string[];
 };
 
 const { month, year, notesByDate } = defineProps<{
@@ -96,7 +100,45 @@ const selectedWeekday = computed(() =>
 );
 
 const selectedNotes = computed<Note[]>(() => notesByDate?.[selectedISO.value] ?? []);
-const selectedReminders = computed<Note[]>(() => selectedNotes.value.filter((n) => !!n.reminder_enabled));
+const selectedTasks = computed<Note[]>(() =>
+  selectedNotes.value.filter((n) => n.type === 'task'),
+);
+const selectedReminders = computed<Note[]>(() =>
+  selectedNotes.value.filter((n) => n.type === 'reminder' || !!n.reminder_enabled),
+);
+const selectedDiaryNotes = computed<Note[]>(() =>
+  selectedNotes.value.filter((n) => !n.type || n.type === 'note'),
+);
+
+function toggleTaskDone(n: Note) {
+  if (n.id == null) return;
+  router.post(`/calendar/notes/${n.id}/toggle-done`, {}, { preserveScroll: true });
+}
+
+function formatDueAt(iso: string) {
+  const d = new Date(iso);
+  const date = d.toLocaleDateString('et-EE', { day: 'numeric', month: 'numeric', year: 'numeric' });
+  const time = d.toLocaleTimeString('et-EE', { hour: '2-digit', minute: '2-digit' });
+  return `${date} kell ${time}`;
+}
+
+const openMenuId = ref<number | string | null>(null);
+
+function toggleNoteMenu(id: number | string | undefined) {
+  if (id == null) return;
+  openMenuId.value = openMenuId.value === id ? null : id;
+}
+
+function closeNoteMenu() {
+  openMenuId.value = null;
+}
+
+function deleteNote(n: Note) {
+  if (n.id == null) return;
+  if (!confirm('Kustuta see märge?')) return;
+  closeNoteMenu();
+  router.delete(`/calendar/notes/${n.id}`);
+}
 
 function selectDay(day: number) {
   selectedDay.value = day;
@@ -178,23 +220,40 @@ function selectDay(day: number) {
             </div>
           </div>
 
-          <!-- Tänased tööd (placeholder praegu) -->
+          <!-- Tänased tööd -->
           <section class="mb-8">
             <div class="flex items-center justify-between mb-4">
               <h3 class="journal-section-title">Tänased tööd</h3>
             </div>
 
-            <div class="space-y-3">
-              <div class="journal-check-row">
-                <div class="journal-check" aria-hidden="true"></div>
-                <span class="journal-row-text">Kasta toataimi</span>
-              </div>
-
-              <div class="journal-check-row">
-                <div class="journal-check" aria-hidden="true"></div>
-                <span class="journal-row-text">Kontrolli kasvuhoonet</span>
-              </div>
+            <div v-if="selectedTasks.length" class="space-y-3">
+              <label
+                v-for="t in selectedTasks"
+                :key="String(t.id)"
+                class="journal-check-row cursor-pointer items-start"
+              >
+                <input
+                  type="checkbox"
+                  :checked="!!t.done"
+                  class="journal-check accent-primary mt-0.5"
+                  @change="toggleTaskDone(t)"
+                />
+                <span class="min-w-0">
+                  <span
+                    :class="['journal-row-text', t.done ? 'line-through opacity-70' : '']"
+                  >
+                    {{ t.title || t.body || 'Ülesanne' }}
+                  </span>
+                  <span
+                    v-if="t.due_at"
+                    class="journal-time block mt-0.5"
+                  >
+                    Tähtaeg: {{ formatDueAt(t.due_at) }}
+                  </span>
+                </span>
+              </label>
             </div>
+            <p v-else class="journal-empty">Täna ülesandeid pole.</p>
           </section>
 
           <!-- Meeldetuletused -->
@@ -220,14 +279,79 @@ function selectDay(day: number) {
               <span class="journal-time"></span>
             </div>
 
-            <div v-if="selectedNotes.length" class="space-y-3">
-              <div v-for="n in selectedNotes" :key="String(n.id ?? n.title)" class="journal-note">
-                <p class="journal-note-title">{{ n.title || 'Märge' }}</p>
-                <p v-if="n.body" class="journal-note-body">{{ n.body }}</p>
+            <div v-if="selectedDiaryNotes.length" class="space-y-3">
+              <div
+                v-for="n in selectedDiaryNotes"
+                :key="String(n.id ?? n.title)"
+                class="journal-note relative flex gap-2"
+              >
+                <div class="min-w-0 flex-1">
+                  <p class="journal-note-title">{{ n.title || 'Märge' }}</p>
+                  <p v-if="n.body" class="journal-note-body">{{ n.body }}</p>
+                  <div v-if="n.media_urls?.length" class="mt-3 flex flex-wrap gap-2">
+                    <a
+                      v-for="(url, i) in n.media_urls"
+                      :key="i"
+                      :href="url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="block"
+                    >
+                      <img
+                        :src="url"
+                        :alt="`Märkme foto ${i + 1}`"
+                        class="w-16 h-16 object-cover rounded-lg border border-border hover:opacity-90 transition"
+                      />
+                    </a>
+                  </div>
+                </div>
+                <div class="relative shrink-0">
+                  <button
+                    type="button"
+                    class="icon-btn size-9 rounded-full"
+                    aria-label="Valikud"
+                    aria-haspopup="true"
+                    :aria-expanded="openMenuId === n.id"
+                    @click="toggleNoteMenu(n.id)"
+                  >
+                    <span class="material-symbols-outlined text-xl">more_vert</span>
+                  </button>
+                  <!-- Click-outside overlay to close menu -->
+                  <div
+                    v-if="openMenuId === n.id"
+                    class="fixed inset-0 z-[5]"
+                    aria-hidden="true"
+                    @click="closeNoteMenu"
+                  />
+                  <div
+                    v-if="openMenuId === n.id"
+                    class="absolute right-0 top-full z-10 mt-1 min-w-[140px] rounded-lg border border-border bg-card py-1 shadow-lg"
+                    role="menu"
+                  >
+                    <Link
+                      :href="`/calendar/notes/${n.id}/edit`"
+                      class="menu-item flex w-full items-center gap-2 px-4 py-2 text-left"
+                      role="menuitem"
+                      @click="closeNoteMenu"
+                    >
+                      <span class="material-symbols-outlined text-lg">edit</span>
+                      Muuda
+                    </Link>
+                    <button
+                      type="button"
+                      class="menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-destructive"
+                      role="menuitem"
+                      @click="deleteNote(n)"
+                    >
+                      <span class="material-symbols-outlined text-lg">delete</span>
+                      Kustuta
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <p v-else class="journal-empty">Sellel päeval pole veel märkmeid.</p>
+            <p v-else class="journal-empty">Sellel päeval pole veel päevikumärkmeid.</p>
           </section>
         </section>
       </div>
