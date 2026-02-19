@@ -2,16 +2,19 @@
 <script setup lang="ts">
 import { Head, usePage, router } from '@inertiajs/vue3';
 import { useQuery } from '@tanstack/vue-query';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
 import { useGeolocation } from '@/composables/useGeolocation';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { fetchWeatherMoon, iconWeatherMaterial } from '@/lib/openMeteo';
+import { fetchWeatherMoon, iconWeatherMaterial, labelWeather } from '@/lib/openMeteo';
 import BottomNav from '@/pages/BottomNav.vue';
 import UserMenu from '@/pages/UserMenu.vue';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
+import { moonAdvice as getMoonAdvice } from '@/lib/moonAdvice';
+import { getMoonInfo } from '@/lib/moon';
 
+const moon = computed(() => getMoonAdvice(getMoonInfo(new Date())));
 
 const page = usePage();
 const user = page.props.auth.user;
@@ -32,7 +35,6 @@ const todayLabel = computed(() => {
   return `${weekdayCap} ${day}. ${month} • ${time}`;
 });
 
-
 const { coords, loading: geoLoading, error: geoError } = useGeolocation();
 
 const queryEnabled = computed(() => {
@@ -48,22 +50,33 @@ const q = useQuery({
   queryKey: computed(() => ['weather', coords.value?.latitude, coords.value?.longitude]),
   enabled: queryEnabled,
   queryFn: () =>
-    fetchWeatherMoon({
-      latitude: coords.value!.latitude,
-      longitude: coords.value!.longitude,
-    }),
+    fetchWeatherMoon(
+      { latitude: coords.value!.latitude, longitude: coords.value!.longitude },
+      // 4 päeva: täna + 3 järgmist (et saaks Stitchi 3-päeva rea)
+      { days: 4 }
+    ),
   staleTime: 60_000,
   retry: 1,
 });
 
-const temp = computed(() => q.data?.value?.temp ?? null);
-const tMax = computed(() => q.data?.value?.tMax ?? null);
-const tMin = computed(() => q.data?.value?.tMin ?? null);
+const temp = computed(() => q.data.value?.temp ?? null);
+const tMax = computed(() => q.data.value?.tMax ?? null);
+const tMin = computed(() => q.data.value?.tMin ?? null);
+
+const daily = computed(() => q.data.value?.daily ?? []);
+
+// Stitch look: 3 päeva reas (homme+ülehomme+üle-ülehomme), täna jääb “hero” peale
+const forecastDays = computed(() => daily.value.slice(1, 4));
+
+const todayWeatherLabel = computed(() => {
+  const code = q.data.value?.weatherCode;
+  if (typeof code !== 'number') return null;
+  return labelWeather(code);
+});
 
 function onAddNote() {
   router.visit('/calendar/note-form');
 }
-
 </script>
 
 <template>
@@ -71,11 +84,6 @@ function onAddNote() {
 
   <AppLayout :breadcrumbs="breadcrumbs">
     <div class="page page-with-bottomnav">
-      <!-- IMPORTANT:
-           AppLayout should wrap slot with <div class="page-container">...</div>.
-           If not, add a wrapper here: <div class="page-container"> ... </div>
-      -->
-
       <div class="space-y-8 py-8">
         <!-- Header -->
         <section class="flex items-start justify-between gap-4">
@@ -93,74 +101,114 @@ function onAddNote() {
           </div>
         </section>
 
-        <!-- Weather -->
+        <!-- Weather (Stitch-style) -->
         <section>
           <div class="weather-card">
-            <div class="absolute -top-4 -right-4 opacity-5 rotate-12 pointer-events-none">
-              <span class="material-symbols-outlined text-[120px]">psychology_alt</span>
-            </div>
+            <!-- Decorative icon -->
+            <span
+              class="material-symbols-outlined absolute -top-4 -right-4 text-[120px] opacity-[0.04] pointer-events-none"
+              aria-hidden="true"
+            >
+              light_mode
+            </span>
 
-            <div class="flex items-start justify-between gap-4 mb-4">
-              <div class="flex items-start gap-3">
-                <span v-if="q.isSuccess.value" class="material-symbols-outlined text-7xl text-primary mt-1" aria-hidden="true">
-                  {{ iconWeatherMaterial(q.data?.value?.weatherCode ?? 3) }}
-                </span>
+            <!-- Top / Today -->
+            <div class="flex justify-between items-start mb-6">
+              <div class="space-y-1">
+                <div class="inline-flex items-center bg-primary/15 text-primary px-3 py-1 rounded-full text-xs font-semibold mb-2">
+                  Täna
+                </div>
 
-                <div>
-                  <div class="text-2xl font-bold">
+                <div class="flex items-baseline gap-1">
+                  <span class="text-[44px] font-bold leading-none">
                     <template v-if="q.isSuccess.value && temp !== null">
-                      {{ Math.round(temp!) }}°C
+                      {{ Math.round(temp) }}°C
                     </template>
                     <template v-else>...</template>
-                  </div>
-
-
+                  </span>
                 </div>
+
+                <p v-if="q.isSuccess.value" class="text-muted-foreground font-medium">
+                  Max {{ Math.round(tMax ?? 0) }}° / Min {{ Math.round(tMin ?? 0) }}°
+                </p>
               </div>
 
+              <div class="flex flex-col items-end">
+                <span
+                  v-if="q.isSuccess.value"
+                  class="material-symbols-outlined text-10xl text-primary drop-shadow-sm"
+                  aria-hidden="true"
+                >
+                  {{ iconWeatherMaterial(q.data.value?.weatherCode ?? 3) }}
+                </span>
 
+                <p v-if="q.isSuccess.value && todayWeatherLabel" class="text-sm font-medium mt-1 text-muted-foreground">
+                  {{ todayWeatherLabel }}
+                </p>
+              </div>
             </div>
 
-            <div class="text-sm opacity-70 mb-6" v-if="q.isSuccess.value && q.data.value">
-              Max {{ Math.round(tMax ?? 0) }}° / Min {{ Math.round(tMin ?? 0) }}°
+            <!-- Divider -->
+            <div class="h-px bg-border w-full mb-5"></div>
+
+            <!-- Forecast row (3 days) -->
+            <div v-if="q.isSuccess.value && forecastDays.length" class="grid grid-cols-3 gap-3">
+              <div
+                v-for="d in forecastDays"
+                :key="d.date"
+                class="flex flex-col items-center p-3 rounded-2xl bg-secondary/40 dark:bg-black/10 backdrop-blur-sm"
+              >
+                <span class="text-[24px] font-bold uppercase tracking-wide text-muted-foreground">
+                  {{ new Intl.DateTimeFormat('et-EE', { weekday: 'short' }).format(new Date(d.date)) }}
+                </span>
+
+                <span class="material-symbols-outlined my-2 text-primary text-2xl" aria-hidden="true">
+                  {{ iconWeatherMaterial(d.weatherCode ?? 3) }}
+                </span>
+
+                <div class="flex flex-col items-center">
+                  <span class="text-base font-bold">{{ Math.round(d.tMax ?? 0) }}°</span>
+                  <span class="text-base text-muted-foreground">{{ Math.round(d.tMin ?? 0) }}°</span>
+                </div>
+              </div>
             </div>
 
-            <p class="text-base leading-relaxed opacity-80 mb-2">
-              Kas jätame siia soovituse vastavalt ilmale?
-            </p>
-
-            <div v-if="geoError" class="text-xs text-red-600 dark:text-red-400 mb-3">
+            <div v-if="geoError" class="text-xs text-red-600 dark:text-red-400 mt-4">
               Asukoht pole lubatud või pole saadaval. Luba brauseris Location õigused.
             </div>
 
-            <div v-if="q.isError.value" class="text-xs text-red-600 dark:text-red-400 mb-3">
+            <div v-if="q.isError.value" class="text-xs text-red-600 dark:text-red-400 mt-4">
               {{ q.error.value?.message }}
             </div>
-
-            <button class="btn-primary w-full cursor-pointer" type="button" @click="onAddNote">
-              <span class="material-symbols-outlined text-[18px]">edit</span>
-              Lisa märkmed
-            </button>
           </div>
         </section>
+
+        <!-- Button outside the card -->
+        <button class="btn-primary w-full cursor-pointer" type="button" @click="onAddNote">
+          <span class="material-symbols-outlined text-[18px]">edit</span>
+          Lisa märkmed
+        </button>
 
         <!-- Moon -->
         <section>
-          <h3 class="text-lg font-bold mb-3">Looduse rütmid</h3>
+          <h3 class="text-lg font-bold mb-3">Kuufaas täna</h3>
 
-          <div class="moon-card">
-            <div class="w-16 h-16 bg-card rounded-full flex items-center justify-center shadow-inner">
-              <span class="material-symbols-outlined text-primary text-4xl">brightness_3</span>
+          <div class="rhythm-card">
+            <div class="rhythm-icon">
+              <span class="material-symbols-outlined rhythm-icon-symbol">{{ moon.icon }}</span>
             </div>
 
             <div class="flex-1">
-              <h4 class="font-bold text-primary">Kasvav kuu</h4>
-              <p class="text-sm opacity-70">
-                Aeg istutada lehtköögivilju ja lilli. Mahlad liiguvad ülespoole.
-              </p>
+              <div class="flex items-center gap-2">
+                <h4 class="rhythm-title">{{ moon.title }}</h4>
+                <span class="rhythm-badge">{{ moon.subtitle }}</span>
+              </div>
+              <p class="rhythm-body">{{ moon.text }}</p>
             </div>
           </div>
         </section>
+
+
 
         <!-- Recent activity -->
         <section>
@@ -213,19 +261,6 @@ function onAddNote() {
                 <span class="material-symbols-outlined text-xs">content_cut</span>
               </div>
             </div>
-          </div>
-        </section>
-
-        <!-- Tip -->
-        <section class="pb-6">
-          <div class="tip-card">
-            <span class="material-symbols-outlined absolute -top-4 left-6 bg-background px-2 text-primary">
-              tips_and_updates
-            </span>
-            <p class="text-sm italic font-medium opacity-80 leading-relaxed">
-              "Kasta tomateid alati varahommikul otse juurele, et vältida lehtede märjakssaamist ja
-              haiguste levikut."
-            </p>
           </div>
         </section>
       </div>

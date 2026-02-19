@@ -52,6 +52,22 @@ Route::post('calendar/notes', [CalendarNoteController::class, 'store'])
     ->middleware(['auth', 'verified'])
     ->name('calendar.notes.store');
 
+Route::get('calendar/notes/{note}/edit', [CalendarNoteController::class, 'edit'])
+    ->middleware(['auth', 'verified'])
+    ->name('calendar.notes.edit');
+
+Route::put('calendar/notes/{note}', [CalendarNoteController::class, 'update'])
+    ->middleware(['auth', 'verified'])
+    ->name('calendar.notes.update');
+
+Route::delete('calendar/notes/{note}', [CalendarNoteController::class, 'destroy'])
+    ->middleware(['auth', 'verified'])
+    ->name('calendar.notes.destroy');
+
+Route::post('calendar/notes/{note}/toggle-done', [CalendarNoteController::class, 'toggleDone'])
+    ->middleware(['auth', 'verified'])
+    ->name('calendar.notes.toggleDone');
+
 Route::resource('plants', PlantController::class);
 
 

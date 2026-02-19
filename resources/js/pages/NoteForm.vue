@@ -1,64 +1,101 @@
 <!-- resources/js/Pages/Calendar/NoteForm.vue -->
 <script setup lang="ts">
 import { Head, router, useForm } from '@inertiajs/vue3';
-import { watch } from 'vue';
+import { ref } from 'vue';
 
 import AppLayout from '@/layouts/AppLayout.vue';
 import { calendar } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 
-type ReminderFrequency = 'once' | 'daily' | 'weekly' | 'monthly';
+type NoteType = 'note' | 'task';
+
+const props = defineProps<{
+  note?: {
+    id: number;
+    note_date: string;
+    title: string | null;
+    body: string;
+    media_urls?: string[];
+    type?: NoteType;
+    due_date?: string | null;
+    due_time?: string | null;
+  };
+  editMode?: boolean;
+}>();
 
 const breadcrumbs: BreadcrumbItem[] = [
   { title: 'Kalender', href: calendar().url },
-  { title: 'Lisa märge', href: '/calendar/note-form' },
+  { title: props.editMode ? 'Muuda märget' : 'Lisa märge', href: props.editMode ? '#' : '/calendar/note-form' },
 ];
 
 const form = useForm<{
   note_date: string;
   title: string;
   body: string;
+  type: NoteType;
+
+  due_date: string;
+  due_time: string;
 
   bed_id: number | null;
   plant_id: number | null;
 
-  reminder_enabled: boolean;
-  reminder_time: string | null;
-  reminder_frequency: ReminderFrequency | null;
+  photos: File[];
 }>({
-  note_date: new Date().toISOString().slice(0, 10),
-  title: '',
-  body: '',
+  note_date: props.note?.note_date ?? new Date().toISOString().slice(0, 10),
+  title: props.note?.title ?? '',
+  body: props.note?.body ?? '',
+  type: (props.note?.type === 'task' ? 'task' : 'note') as NoteType,
+
+  due_date: props.note?.due_date ?? new Date().toISOString().slice(0, 10),
+  due_time: props.note?.due_time ?? '09:00',
 
   bed_id: null,
   plant_id: null,
 
-  reminder_enabled: true,
-  reminder_time: '09:00',
-  reminder_frequency: 'once',
+  photos: [],
 });
 
-watch(
-  () => form.reminder_enabled,
-  (enabled) => {
-    if (!enabled) {
-      form.reminder_time = null;
-      form.reminder_frequency = null;
-      return;
-    }
-    if (!form.reminder_time) form.reminder_time = '09:00';
-    if (!form.reminder_frequency) form.reminder_frequency = 'once';
-  },
-);
+const typeOptions: { value: NoteType; label: string; icon: string }[] = [
+  { value: 'note', label: 'Märge', icon: 'edit_note' },
+  { value: 'task', label: 'Ülesanne', icon: 'check_circle' },
+];
+
+const photoPreviews = ref<string[]>([]);
+
+function onPhotosChange(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const files = input.files ? Array.from(input.files) : [];
+  form.photos = files;
+  photoPreviews.value = files.map((f) => URL.createObjectURL(f));
+}
+
+function removePhoto(index: number) {
+  form.photos = form.photos.filter((_, i) => i !== index);
+  if (photoPreviews.value[index]) URL.revokeObjectURL(photoPreviews.value[index]);
+  photoPreviews.value = photoPreviews.value.filter((_, i) => i !== index);
+}
 
 function submit() {
-  form.post('/calendar/notes', {
-    preserveScroll: true,
-    onSuccess: () => {
-      form.reset('title', 'body');
-      router.visit(`/calendar?date=${form.note_date}`);
-    },
-  });
+  const onSuccess = () => {
+    form.reset('title', 'body', 'photos');
+    photoPreviews.value = [];
+    router.visit(`/calendar?month=${new Date(form.note_date).getMonth() + 1}&year=${new Date(form.note_date).getFullYear()}`);
+  };
+  if (props.editMode && props.note) {
+    form.transform((data) => ({ ...data, _method: 'PUT' }));
+    form.post(`/calendar/notes/${props.note.id}`, {
+      preserveScroll: true,
+      forceFormData: true,
+      onSuccess,
+    });
+  } else {
+    form.post('/calendar/notes', {
+      preserveScroll: true,
+      forceFormData: true,
+      onSuccess,
+    });
+  }
 }
 
 function cancel() {
@@ -67,7 +104,7 @@ function cancel() {
 </script>
 
 <template>
-  <Head title="Lisa märge" />
+  <Head :title="props.editMode ? 'Muuda märget' : 'Lisa märge'" />
 
   <AppLayout :breadcrumbs="breadcrumbs">
     <div class="page page-with-bottomnav">
@@ -122,9 +159,11 @@ function cancel() {
                   </button>
 
                   <div class="min-w-0 text-center">
-                    <h1 class="text-base sm:text-lg font-bold tracking-tight truncate">Lisa märge</h1>
+                    <h1 class="text-base sm:text-lg font-bold tracking-tight truncate">
+                      {{ props.editMode ? 'Muuda märget' : 'Lisa märge' }}
+                    </h1>
                     <p class="text-xs text-muted-foreground mt-0.5">
-                      Pane kirja tähelepanekud või hooldustegevused 🌱
+                      {{ props.editMode ? 'Uuenda märkme sisu' : 'Pane kirja tähelepanekud või hooldustegevused 🌱' }}
                     </p>
                   </div>
 
@@ -141,6 +180,27 @@ function cancel() {
               </div>
 
               <form class="px-5 sm:px-6 py-6 space-y-6" @submit.prevent="submit">
+                <div>
+                  <label class="form-label note-label mb-2 block">Mida lisad?</label>
+                  <div class="flex gap-2 p-1 rounded-xl bg-muted/60">
+                    <button
+                      v-for="opt in typeOptions"
+                      :key="opt.value"
+                      type="button"
+                      :class="[
+                        'flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-sm font-medium transition cursor-pointer',
+                        form.type === opt.value
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground',
+                      ]"
+                      @click="form.type = opt.value"
+                    >
+                      <span class="material-symbols-outlined text-lg">{{ opt.icon }}</span>
+                      {{ opt.label }}
+                    </button>
+                  </div>
+                </div>
+
                 <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <div>
                     <label class="form-label note-label" for="note_date">Kuupäev</label>
@@ -193,6 +253,79 @@ function cancel() {
                   </p>
                 </div>
 
+                <!-- Ülesande tähtaeg ja meeldetuletus (ainult ülesandel) -->
+                <div v-if="form.type === 'task'" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label class="form-label note-label" for="due_date">Tähtaeg</label>
+                    <input
+                      id="due_date"
+                      v-model="form.due_date"
+                      type="date"
+                      class="form-input note-input"
+                    />
+                    <p v-if="form.errors.due_date" class="text-red-600 dark:text-red-400 text-xs mt-1">
+                      {{ form.errors.due_date }}
+                    </p>
+                  </div>
+                  <div>
+                    <label class="form-label note-label" for="due_time">Meeldetuletus kell</label>
+                    <input
+                      id="due_time"
+                      v-model="form.due_time"
+                      type="time"
+                      class="form-input note-input"
+                    />
+                    <p v-if="form.errors.due_time" class="text-red-600 dark:text-red-400 text-xs mt-1">
+                      {{ form.errors.due_time }}
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Photos -->
+                <div>
+                  <label class="form-label note-label">Fotod</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    class="form-input note-input text-sm file:mr-3 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-primary file:font-medium"
+                    @change="onPhotosChange"
+                  />
+                  <p v-if="form.errors.photos" class="text-red-600 dark:text-red-400 text-xs mt-1">
+                    {{ form.errors.photos }}
+                  </p>
+                  <div v-if="props.note?.media_urls?.length" class="mt-3 flex flex-wrap gap-2">
+                    <img
+                      v-for="(url, i) in props.note.media_urls"
+                      :key="'existing-' + i"
+                      :src="url"
+                      :alt="`Olemasolev foto ${i + 1}`"
+                      class="w-20 h-20 object-cover rounded-lg border border-border"
+                    />
+                  </div>
+                  <div v-if="photoPreviews.length" class="mt-3 flex flex-wrap gap-2">
+                    <div
+                      v-for="(url, i) in photoPreviews"
+                      :key="'new-' + i"
+                      class="relative group"
+                    >
+                      <img
+                        :src="url"
+                        :alt="`Uus foto ${i + 1}`"
+                        class="w-20 h-20 object-cover rounded-lg border border-border"
+                      />
+                      <button
+                        type="button"
+                        class="absolute -top-1.5 -right-1.5 size-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center shadow opacity-90 group-hover:opacity-100"
+                        aria-label="Eemalda foto"
+                        @click="removePhoto(i)"
+                      >
+                        <span class="material-symbols-outlined text-sm">close</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 <!-- Bed + Plant (no duplicate frequency here) -->
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
@@ -224,55 +357,11 @@ function cancel() {
                   </div>
                 </div>
 
-                <!-- Toggle Reminder -->
-                <div class="pt-1">
-                  <label class="flex items-center justify-between gap-4 cursor-pointer select-none">
-                    <span class="text-sm font-medium text-foreground/90">Lisa meeldetuletus</span>
-
-                    <span class="toggle">
-                      <input v-model="form.reminder_enabled" class="toggle__input" type="checkbox" />
-                      <span class="toggle__track"></span>
-                      <span class="toggle__thumb"></span>
-                    </span>
-                  </label>
-                </div>
-
-                <!-- Conditional Fields -->
-                <div v-if="form.reminder_enabled" class="pt-5 border-t border-border space-y-4">
-                  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                      <label class="note-sub-label" for="time">Kellaaeg</label>
-                      <input
-                        id="time"
-                        v-model="form.reminder_time"
-                        type="time"
-                        class="form-input note-input note-input--compact"
-                      />
-                      <p v-if="form.errors.reminder_time" class="text-red-600 dark:text-red-400 text-xs mt-1">
-                        {{ form.errors.reminder_time }}
-                      </p>
-                    </div>
-
-                    <div>
-                      <label class="note-sub-label" for="freq2">Sagedus</label>
-                      <select id="freq2" v-model="form.reminder_frequency" class="form-input note-input note-input--compact">
-                        <option value="once">Ühekordne</option>
-                        <option value="daily">Iga päev</option>
-                        <option value="weekly">Kord nädalas</option>
-                        <option value="monthly">Kord kuus</option>
-                      </select>
-                      <p v-if="form.errors.reminder_frequency" class="text-red-600 dark:text-red-400 text-xs mt-1">
-                        {{ form.errors.reminder_frequency }}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
                 <!-- Actions -->
                 <div class="pt-2 space-y-3">
                   <button type="submit" class="btn-primary w-full" :disabled="form.processing">
                     <span class="material-symbols-outlined text-base">check_circle</span>
-                    Salvesta märge
+                    {{ props.editMode ? 'Salvesta muudatused' : 'Salvesta märge' }}
                   </button>
 
                   <button type="button" class="btn-outline w-full" @click="cancel">
