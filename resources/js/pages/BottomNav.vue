@@ -6,7 +6,7 @@ import { computed } from 'vue';
 
 import { calendar, dashboard, map } from '@/routes';
 
-type NavKey = 'dashboard' | 'calendar' | 'map' | 'plants' | 'settings';
+type NavKey = 'dashboard' | 'calendar' | 'map' | 'plants' | 'seeds';
 
 const props = defineProps<{
   active: NavKey;
@@ -43,15 +43,7 @@ function labelClass(key: NavKey) {
           <span :class="labelClass('dashboard')">Täna</span>
         </Link>
 
-        <!-- AIAPLAAN -->
-        <Link
-          :href="map().url"
-          :class="itemClass('map')"
-          :aria-current="activeKey === 'map' ? 'page' : undefined"
-        >
-          <span class="material-symbols-outlined text-2xl">map</span>
-          <span :class="labelClass('map')">Aiaplaan</span>
-        </Link>
+
 
         <!-- KALENDER -->
         <Link
@@ -73,6 +65,28 @@ function labelClass(key: NavKey) {
           <span :class="labelClass('plants')">Taimed</span>
         </Link>
 
+        <!-- SEEMNEVARUD -->
+        <Link
+          href="/seeds"
+          :class="itemClass('seeds')"
+          :aria-current="activeKey === 'seeds' ? 'page' : undefined"
+        >
+          <span class="material-symbols-outlined text-2xl">inventory_2</span>
+          <span :class="labelClass('seeds')">Seemnevarud</span>
+        </Link>
+
+
+        <!-- AIAPLAAN -->
+        <Link
+          :href="map().url"
+          :class="itemClass('map')"
+          :aria-current="activeKey === 'map' ? 'page' : undefined"
+        >
+          <span class="material-symbols-outlined text-2xl">map</span>
+          <span :class="labelClass('map')">Aiaplaan</span>
+        </Link>
+
+        
       </div>
     </div>
   </nav>
