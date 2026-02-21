@@ -39,10 +39,6 @@ Route::get('map', function () {
     return Inertia::render('MapView');
 })->middleware(['auth', 'verified'])->name('map');
 
-Route::get('seeds', function () {
-    return Inertia::render('Seeds');
-})->middleware(['auth', 'verified'])->name('seeds');
-
 // Calendar notes
 Route::get('calendar', [CalendarNoteController::class, 'index'])
     ->middleware(['auth', 'verified'])

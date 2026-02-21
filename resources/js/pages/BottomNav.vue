@@ -4,10 +4,9 @@ import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 
-import { calendar, dashboard, map, seeds } from '@/routes';
-import plants from '@/routes/plants';
+import { calendar, dashboard, map } from '@/routes';
 
-type NavKey = 'dashboard' | 'calendar' | 'map' | 'plants' | 'seeds';
+type NavKey = 'dashboard' | 'calendar' | 'map' | 'plants' | 'settings';
 
 const props = defineProps<{
   active: NavKey;
@@ -44,6 +43,16 @@ function labelClass(key: NavKey) {
           <span :class="labelClass('dashboard')">Täna</span>
         </Link>
 
+        <!-- AIAPLAAN -->
+        <Link
+          :href="map().url"
+          :class="itemClass('map')"
+          :aria-current="activeKey === 'map' ? 'page' : undefined"
+        >
+          <span class="material-symbols-outlined text-2xl">map</span>
+          <span :class="labelClass('map')">Aiaplaan</span>
+        </Link>
+
         <!-- KALENDER -->
         <Link
           :href="calendar().url"
@@ -56,36 +65,13 @@ function labelClass(key: NavKey) {
 
         <!-- TAIMED -->
         <Link
-          :href="plants.index().url"
+          href="/plants"
           :class="itemClass('plants')"
           :aria-current="activeKey === 'plants' ? 'page' : undefined"
         >
           <span class="material-symbols-outlined text-2xl">local_florist</span>
           <span :class="labelClass('plants')">Taimed</span>
         </Link>
-
-        <!--SEEMNED-->
-        <Link
-          :href="seeds().url"
-          :class="itemClass('seeds')"
-          :aria-current="activeKey === 'seeds' ? 'page' : undefined"
-        >
-          <span class="material-symbols-outlined text-2xl">inventory_2</span>
-          <span :class="labelClass('seeds')">Seemnevarud</span>
-        </Link>
-
-
-        <!-- AIAPLAAN -->
-        <Link
-          :href="map().url"
-          :class="itemClass('map')"
-          :aria-current="activeKey === 'map' ? 'page' : undefined"
-        >
-          <span class="material-symbols-outlined text-2xl">map</span>
-          <span :class="labelClass('map')">Aiaplaan</span>
-        </Link>
-
-
 
       </div>
     </div>
