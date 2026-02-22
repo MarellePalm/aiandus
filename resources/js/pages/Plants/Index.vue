@@ -212,15 +212,20 @@ const toggleFavorite = (id: number) => {
                 <button
   type="button"
   class="absolute top-2 left-2 z-10 h-8 w-8 rounded-full
-         bg-white/70 backdrop-blur-md
-         flex items-center justify-center
-         shadow-sm transition hover:bg-white hover:scale-105"
+         backdrop-blur-md flex items-center justify-center
+         shadow-sm transition hover:scale-105"
+  :class="cat.is_favorite
+    ? 'bg-rose-50 ring-1 ring-rose-200'
+    : 'bg-white/70 ring-1 ring-black/10 hover:bg-white'"
   @click.prevent.stop="toggleFavorite(cat.id)"
   aria-label="Lisa lemmikuks"
 >
   <span
-    class="material-symbols-outlined text-[18px]"
-    :class="cat.is_favorite ? 'text-[#4F6A52]' : 'text-[#2E2E2E]/45'"
+    class="material-symbols-outlined text-[18px] transition"
+    :class="cat.is_favorite ? 'text-rose-600 drop-shadow-sm' : 'text-[#2E2E2E]/45'"
+    :style="cat.is_favorite
+      ? { fontVariationSettings: `'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24` }
+      : { fontVariationSettings: `'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24` }"
   >
     favorite
   </span>
