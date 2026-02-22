@@ -21,11 +21,13 @@ type Category = {
   is_favorite?: boolean;
   created_at?: string;
 };
-const categoryNames = computed(() => props.categories.map(c => c.name));
 
 const props = defineProps<{
   categories: Category[];
 }>();
+const categoryNames = computed(() => props.categories.map(c => c.name));
+
+
 
 type TabKey = "all" | "favorites" | "recent";
 
@@ -71,6 +73,11 @@ const tabClass = (key: TabKey) => {
     return `${base} bg-primary text-white border-primary shadow-sm`;
   }
   return `${base} bg-beige/60 text-forest border-beige hover:bg-beige`;
+};
+
+const resetToAll = () => {
+  activeTab.value = "all";
+  searchQuery.value = "";
 };
 </script>
 
@@ -126,7 +133,7 @@ const tabClass = (key: TabKey) => {
 
             <!-- Horizontal Quick Categories -->
             <div class="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-              <button :class="tabClass('all')" type="button" @click="activeTab = 'all'">
+              <button :class="tabClass('all')" type="button" @click="resetToAll">
                 <p class="text-sm font-semibold">Kõik kategooriad</p>
               </button>
               <button :class="tabClass('favorites')" type="button" @click="activeTab = 'favorites'">
