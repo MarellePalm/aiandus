@@ -27,6 +27,9 @@ Route::patch('/plants/categories/{category}/favorite', [CategoryController::clas
 Route::delete('/plants/categories/{category}', [CategoryController::class, 'destroy'])
     ->name('plants.categories.destroy');
 
+Route::get('/plants/category/{slug}', [PlantController::class, 'category'])
+    ->name('plants.category');
+
 
 Route::middleware(['auth'])->group(function () {
 

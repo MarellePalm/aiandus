@@ -20,10 +20,21 @@ class PlantController extends Controller
 
     public function category(string $slug)
 {
-    return Inertia::render('Plants/CategoryView', [
-        'slug' => $slug,
+    $category = Category::where('slug', $slug)->firstOrFail();
+
+    // ajutiselt tühi list kuni taimed DB-st tulevad
+    $plants = [];
+
+    return Inertia::render('Plants/SortView', [
+        'category' => [
+            'name' => $category->name,
+            'slug' => $category->slug,
+        ],
+        'plants' => $plants,
     ]);
 }
+
+  
 
     
     public function show(Request $request, Plant $plant)
