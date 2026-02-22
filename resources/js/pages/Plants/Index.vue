@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { Head, Link } from "@inertiajs/vue3";
+//import { router } from "@inertiajs/vue3";
 import { ref, computed, } from "vue";
-
 
 import AppLayout from "@/layouts/AppLayout.vue";
 
+import CreateCategoryModal from "../../components/CreateCategoryModal.vue";
 import BottomNav from "../BottomNav.vue";
 
+
 import SearchModal from "./SearchModal.vue";
+
 
 const breadcrumbs = [{ title: "Aed", href: "/plants" }];
 
@@ -29,9 +32,11 @@ const categoryNames = computed(() => props.categories.map(c => c.name));
 
 
 
+
 type TabKey = "all" | "favorites" | "recent";
 
 const activeTab = ref<TabKey>("all");
+const showCreateCategory = ref(false);
 const showSearch = ref(false);
 const searchQuery = ref("");
 
@@ -60,6 +65,8 @@ const filteredCategories = computed(() => {
   }
 
   return list;
+
+  
 });
 
 
@@ -116,7 +123,8 @@ const resetToAll = () => {
               </div>
               <div class="flex gap-3">
                 <button
-                 @click="goToCreateCategory"
+                type="button"
+                 @click="showCreateCategory = true"
                   class=" w-10 h-10 rounded-full bg-primary text-white shadow-lg flex items-center justify-center text-2xl font-light transition-all duration-200 hover:shadow-[0_10px_30px_rgba(0,0,0,0.25)] hover:scale-105 active:scale-95">
                   <span class="-mt-0.5">+</span>
                 </button>
@@ -184,7 +192,8 @@ const resetToAll = () => {
           title="Otsi kategooriat"
           @search="(q) => (searchQuery = q)"
           @clear="searchQuery = ''"
-        />
+          />
+          <CreateCategoryModal v-model:open="showCreateCategory" />
 
 
         </div>
