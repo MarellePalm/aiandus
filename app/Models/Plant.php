@@ -9,14 +9,16 @@ class Plant extends Model
 {
     protected $fillable = [
         'user_id',
+        'category_id',
         'name',
         'subtitle',
+        'planted_at',
         'image_url',
+        'status',
         'notes',
         'tags',
         'last_watered_at',
-        'planted_at'
-    ];
+];
 
     protected $casts = [
         'tags' => 'array',

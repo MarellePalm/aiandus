@@ -6,7 +6,7 @@ use App\Models\Plant;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-
+use Carbon\Carbon;
 class PlantController extends Controller
 {
     public function index()
@@ -22,14 +22,23 @@ class PlantController extends Controller
 {
     $category = Category::where('slug', $slug)->firstOrFail();
 
-    // ajutiselt tühi list kuni taimed DB-st tulevad
-    $plants = [];
-
-    // ⬇️ lisa kõik kategooriad modali selecti jaoks
     $categories = Category::query()
         ->select('id', 'name', 'slug')
         ->orderBy('name')
         ->get();
+
+    $plants = Plant::query()
+        ->where('user_id', request()->user()->id)
+        ->where('category_id', $category->id)
+        ->orderByDesc('created_at')
+        ->get()
+        ->map(fn ($p) => [
+            'id' => $p->id,
+            'name' => $p->name,
+            'planted_at' => $p->planted_at ? date('d.m.Y', strtotime($p->planted_at)) : '',
+            'status' => $p->status ?? 'ISTIK',
+            'image_url' => $p->image_url,
+        ]);
 
     return Inertia::render('Plants/SortView', [
         'category' => [
