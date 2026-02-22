@@ -101,6 +101,13 @@ const resetToAll = () => {
   activeTab.value = "all";
   searchQuery.value = "";
 };
+
+
+const toggleFavorite = (id: number) => {
+  router.patch(`/plants/categories/${id}/favorite`, {}, {
+    onSuccess: () => router.reload({ only: ["categories"] }),
+  });
+};
 </script>
 
 
@@ -192,6 +199,7 @@ const resetToAll = () => {
                     {{ cat.count }} Sorti
                   </span>
                   <h3 class="text-white text-lg font-bold">{{ cat.name }}</h3>
+                  
                 </div>
                 <button
                 type="button"
@@ -201,6 +209,23 @@ const resetToAll = () => {
                   delete
                 </span>
                 </button>
+                <button
+  type="button"
+  class="absolute top-2 left-2 z-10 h-8 w-8 rounded-full
+         bg-white/70 backdrop-blur-md
+         flex items-center justify-center
+         shadow-sm transition hover:bg-white hover:scale-105"
+  @click.prevent.stop="toggleFavorite(cat.id)"
+  aria-label="Lisa lemmikuks"
+>
+  <span
+    class="material-symbols-outlined text-[18px]"
+    :class="cat.is_favorite ? 'text-[#4F6A52]' : 'text-[#2E2E2E]/45'"
+  >
+    favorite
+  </span>
+</button>
+              
               </Link>
             </div>
 

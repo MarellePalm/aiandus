@@ -39,8 +39,19 @@ class CategoryController extends Controller
         return back()->with('success', 'Kategooria lisatud!');
     }
 
+   public function toggleFavorite(Request $request, Category $category)
+    {
+    // Kui hiljem teed user_id põhise, siia 403 kontroll.
+
+    $category->update([
+        'is_favorite' => ! (bool) $category->is_favorite,
+    ]);
+
+    return redirect()->back();
+    }
+
     public function destroy(Category $category)
-{
+    {
     // Kui pilt on sinu storage'ist, kustuta ka fail
     if ($category->image && str_starts_with($category->image, '/storage/')) {
         $path = str_replace('/storage/', '', $category->image);
@@ -50,5 +61,5 @@ class CategoryController extends Controller
     $category->delete();
 
     return redirect()->back()->with('success', 'Kategooria kustutatud!');
-}
+    }
 }
