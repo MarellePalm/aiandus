@@ -21,6 +21,9 @@ Route::get('dashboard', function () {
 Route::post('/plants/categories', [CategoryController::class, 'store'])
   ->name('categories.store');
 
+Route::patch('/plants/categories/{category}/favorite', [CategoryController::class, 'toggleFavorite'])
+    ->name('plants.categories.favorite');
+
 Route::delete('/plants/categories/{category}', [CategoryController::class, 'destroy'])
     ->name('plants.categories.destroy');
 

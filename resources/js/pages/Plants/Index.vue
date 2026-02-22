@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router } from "@inertiajs/vue3";
 import { ref, computed, } from "vue";
+import { watch } from "vue";
 
 import AppLayout from "@/layouts/AppLayout.vue";
 
@@ -42,7 +43,7 @@ const searchQuery = ref("");
 
 
 const filteredCategories = computed(() => {
-  let list = props.categories ?? [];
+  let list = localCategories.value ?? [];
 
   if (activeTab.value === "favorites") {
     list = list.filter((c) => c.is_favorite === true);
@@ -66,6 +67,15 @@ const filteredCategories = computed(() => {
   return list;
 });
 
+const localCategories = ref<Category[]>([...props.categories]);
+
+watch(
+  () => props.categories,
+  (next) => {
+    localCategories.value = [...next];
+  }
+);
+
 const showDeleteModal = ref(false);
 const categoryToDelete = ref<number | null>(null);
 
@@ -86,6 +96,29 @@ const confirmDelete = () => {
   });
 };
 
+const toggleFavorite = (id: number) => {
+  const idx = localCategories.value.findIndex((c) => c.id === id);
+  if (idx === -1) return;
+
+  // Optimistic update (kohe UI-s)
+  const prev = localCategories.value[idx].is_favorite === true;
+  localCategories.value[idx] = {
+    ...localCategories.value[idx],
+    is_favorite: !prev,
+  };
+
+  router.patch(`/plants/categories/${id}/favorite`, {}, {
+    preserveScroll: true,
+    preserveState: true,
+    onError: () => {
+      // Kui server ütleb ei -> pane tagasi
+      localCategories.value[idx] = {
+        ...localCategories.value[idx],
+        is_favorite: prev,
+      };
+    },
+  });
+};
 
 
 const tabClass = (key: TabKey) => {
@@ -101,6 +134,9 @@ const resetToAll = () => {
   activeTab.value = "all";
   searchQuery.value = "";
 };
+
+
+
 </script>
 
 
@@ -192,6 +228,7 @@ const resetToAll = () => {
                     {{ cat.count }} Sorti
                   </span>
                   <h3 class="text-white text-lg font-bold">{{ cat.name }}</h3>
+                  
                 </div>
                 <button
                 type="button"
@@ -201,6 +238,28 @@ const resetToAll = () => {
                   delete
                 </span>
                 </button>
+                <button
+  type="button"
+  class="absolute top-2 left-2 z-10 h-8 w-8 rounded-full
+         backdrop-blur-md flex items-center justify-center
+         shadow-sm transition hover:scale-105"
+  :class="cat.is_favorite
+    ? 'bg-rose-50 ring-1 ring-rose-200'
+    : 'bg-white/70 ring-1 ring-black/10 hover:bg-white'"
+  @click.prevent.stop="toggleFavorite(cat.id)"
+  aria-label="Lisa lemmikuks"
+>
+  <span
+    class="material-symbols-outlined text-[18px] transition"
+    :class="cat.is_favorite ? 'text-rose-600 drop-shadow-sm' : 'text-[#2E2E2E]/45'"
+    :style="cat.is_favorite
+      ? { fontVariationSettings: `'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24` }
+      : { fontVariationSettings: `'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24` }"
+  >
+    favorite
+  </span>
+</button>
+              
               </Link>
             </div>
 
