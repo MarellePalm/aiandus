@@ -6,7 +6,7 @@ use App\Models\Plant;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-
+use Carbon\Carbon;
 class PlantController extends Controller
 {
     public function index()
@@ -20,10 +20,37 @@ class PlantController extends Controller
 
     public function category(string $slug)
 {
-    return Inertia::render('Plants/CategoryView', [
-        'slug' => $slug,
+    $category = Category::where('slug', $slug)->firstOrFail();
+
+    $categories = Category::query()
+        ->select('id', 'name', 'slug')
+        ->orderBy('name')
+        ->get();
+
+    $plants = Plant::query()
+        ->where('user_id', request()->user()->id)
+        ->where('category_id', $category->id)
+        ->orderByDesc('created_at')
+        ->get()
+        ->map(fn ($p) => [
+            'id' => $p->id,
+            'name' => $p->name,
+            'planted_at' => $p->planted_at ? date('d.m.Y', strtotime($p->planted_at)) : '',
+            'status' => $p->status ?? 'ISTIK',
+            'image_url' => $p->image_url,
+        ]);
+
+    return Inertia::render('Plants/SortView', [
+        'category' => [
+            'name' => $category->name,
+            'slug' => $category->slug,
+        ],
+        'plants' => $plants,
+        'categories' => $categories,
     ]);
 }
+
+  
 
     
     public function show(Request $request, Plant $plant)
@@ -64,18 +91,31 @@ public function create()
 
 public function store(Request $request)
 {
-    $data = $request->validate([
-        'name' => ['required', 'string', 'max:120'],
+     $data = $request->validate([
+        'category_id' => ['required', 'exists:categories,id'],
         'subtitle' => ['required', 'string', 'max:160'],
         'planted_at' => ['required', 'date'],
+        'image' => ['nullable', 'image', 'max:4096'],
     ]);
 
+    $imagePath = null;
+    if ($request->hasFile('image')) {
+        $imagePath = $request->file('image')->store('plant-images', 'public');
+    }
+
+    $category = Category::select('id', 'name', 'slug')->findOrFail($data['category_id']);
+
     $plant = Plant::create([
-        ...$data,
+        'name' => $data['subtitle'],
+        'category_id' => $category->id,
+        'subtitle' => $data['subtitle'],
+        'planted_at' => $data['planted_at'],
+        'image_url' => $imagePath ? "/storage/{$imagePath}" : null,
         'user_id' => $request->user()->id,
     ]);
 
-    return redirect()->route('plants.show', $plant->id);
+    return redirect()->route('plants.category', ['slug' => $category->slug])
+        ->with('success', 'Taim lisatud!');
 }
 
 public function destroy(Plant $plant)
