@@ -116,6 +116,11 @@ const resetToAll = () => {
               </div>
               <div class="flex gap-3">
                 <button
+                 @click="goToCreateCategory"
+                  class=" w-10 h-10 rounded-full bg-primary text-white shadow-lg flex items-center justify-center text-2xl font-light transition-all duration-200 hover:shadow-[0_10px_30px_rgba(0,0,0,0.25)] hover:scale-105 active:scale-95">
+                  <span class="-mt-0.5">+</span>
+                </button>
+                <button
                   class="size-10 flex items-center justify-center rounded-full bg-beige/50 text-forest hover:bg-beige transition-colors"
                   type="button"
                   @click="showSearch = true"
