@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link } from "@inertiajs/vue3";
-//import { router } from "@inertiajs/vue3";
+import { router } from "@inertiajs/vue3";
 import { ref, computed, } from "vue";
 
 import AppLayout from "@/layouts/AppLayout.vue";
@@ -193,7 +193,9 @@ const resetToAll = () => {
           @search="(q) => (searchQuery = q)"
           @clear="searchQuery = ''"
           />
-          <CreateCategoryModal v-model:open="showCreateCategory" />
+          <CreateCategoryModal v-model:open="showCreateCategory"
+          @created="router.reload({ only: ['categories'] })"
+           />
 
 
         </div>
