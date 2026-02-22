@@ -106,7 +106,7 @@ public function store(Request $request)
     $category = Category::select('id', 'name', 'slug')->findOrFail($data['category_id']);
 
     $plant = Plant::create([
-        'name' => $category->name,
+        'name' => $data['subtitle'],
         'category_id' => $category->id,
         'subtitle' => $data['subtitle'],
         'planted_at' => $data['planted_at'],
