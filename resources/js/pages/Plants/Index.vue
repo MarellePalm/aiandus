@@ -66,13 +66,25 @@ const filteredCategories = computed(() => {
   return list;
 });
 
-const deleteCategory = (id: number) => {
-  if (!confirm("Kas kustutame selle kategooria?")) return;
+const showDeleteModal = ref(false);
+const categoryToDelete = ref<number | null>(null);
 
-  router.delete(`/plants/categories/${id}`, {
-    onSuccess: () => router.reload(), // toob värske listi
+const openDeleteModal = (id: number) => {
+  categoryToDelete.value = id;
+  showDeleteModal.value = true;
+};
+
+const confirmDelete = () => {
+  if (!categoryToDelete.value) return;
+
+  router.delete(`/plants/categories/${categoryToDelete.value}`, {
+    onSuccess: () => {
+      showDeleteModal.value = false;
+      categoryToDelete.value = null;
+      router.reload();
+    },
   });
-  };
+};
 
 
 
@@ -183,12 +195,12 @@ const resetToAll = () => {
                 </div>
                 <button
                 type="button"
-                class="absolute top-3 right-3 z-10 rounded-full bg-black/30 text-white p-2 backdrop-blur hover:bg-black/40"
-                @click.prevent.stop="deleteCategory(cat.id)"
-                aria-label="Kustuta kategooria"
->
-  <span class="material-symbols-outlined text-base">delete</span>
-</button>
+                class="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-white/70 backdrop-blur-md text-[#6B8C68] flex items-center justify-center shadow-sm transition hover:bg-white hover:scale-105"
+                @click.prevent.stop="openDeleteModal(cat.id)">
+                <span class="material-symbols-outlined text-[18px]">
+                  delete
+                </span>
+                </button>
               </Link>
             </div>
 
@@ -207,6 +219,52 @@ const resetToAll = () => {
           <CreateCategoryModal v-model:open="showCreateCategory"
           @created="router.reload({ only: ['categories'] })"
            />
+           <transition name="fade">
+  <div
+    v-if="showDeleteModal"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4"
+  >
+    <!-- overlay -->
+    <div
+      class="absolute inset-0 bg-black/30 backdrop-blur-[2px]"
+      @click="showDeleteModal = false"
+    />
+
+    <!-- card -->
+    <div class="relative w-full max-w-sm rounded-3xl bg-[#FAF8F4] shadow-xl ring-1 ring-black/5 p-6 text-center">
+
+      <div class="mx-auto mb-4 h-14 w-14 rounded-full bg-[#E6E2D5] flex items-center justify-center">
+        <span class="material-symbols-outlined text-2xl text-[#6B8C68]">
+          delete
+        </span>
+      </div>
+
+      <h3 class="text-lg font-semibold text-[#2E2E2E]">
+        Kustuta kategooria?
+      </h3>
+
+      <p class="mt-2 text-sm text-[#2E2E2E]/70">
+        Seda tegevust ei saa tagasi võtta.
+      </p>
+
+      <div class="mt-6 flex flex-col gap-3">
+        <button
+          class="rounded-2xl bg-[#6B8C68] text-white py-3 font-medium hover:bg-[#4F6A52] transition"
+          @click="confirmDelete"
+        >
+          Jah, kustuta
+        </button>
+
+        <button
+          class="text-sm text-[#2E2E2E]/60 hover:text-[#2E2E2E]"
+          @click="showDeleteModal = false"
+        >
+          Tühista
+        </button>
+      </div>
+    </div>
+  </div>
+</transition>
 
 
         </div>
