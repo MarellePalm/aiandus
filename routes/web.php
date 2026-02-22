@@ -5,7 +5,7 @@ use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use App\Http\Controllers\PlantController;
 use App\Http\Controllers\CalendarNoteController;
-
+use App\Http\Controllers\CategoryController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -18,6 +18,11 @@ Route::get('dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 
+Route::post('/plants/categories', [CategoryController::class, 'store'])
+  ->name('categories.store');
+
+Route::delete('/plants/categories/{category}', [CategoryController::class, 'destroy'])
+    ->name('plants.categories.destroy');
 
 
 Route::middleware(['auth'])->group(function () {

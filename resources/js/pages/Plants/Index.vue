@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { Head, Link } from "@inertiajs/vue3";
+import { Head, Link, router } from "@inertiajs/vue3";
 import { ref, computed, } from "vue";
-
 
 import AppLayout from "@/layouts/AppLayout.vue";
 
+import CreateCategoryModal from "../../components/CreateCategoryModal.vue";
 import BottomNav from "../BottomNav.vue";
 
+
 import SearchModal from "./SearchModal.vue";
+
 
 const breadcrumbs = [{ title: "Aed", href: "/plants" }];
 
@@ -21,15 +23,19 @@ type Category = {
   is_favorite?: boolean;
   created_at?: string;
 };
-const categoryNames = computed(() => props.categories.map(c => c.name));
 
 const props = defineProps<{
   categories: Category[];
 }>();
+const categoryNames = computed(() => props.categories.map(c => c.name));
+
+
+
 
 type TabKey = "all" | "favorites" | "recent";
 
 const activeTab = ref<TabKey>("all");
+const showCreateCategory = ref(false);
 const showSearch = ref(false);
 const searchQuery = ref("");
 
@@ -60,7 +66,25 @@ const filteredCategories = computed(() => {
   return list;
 });
 
+const showDeleteModal = ref(false);
+const categoryToDelete = ref<number | null>(null);
 
+const openDeleteModal = (id: number) => {
+  categoryToDelete.value = id;
+  showDeleteModal.value = true;
+};
+
+const confirmDelete = () => {
+  if (!categoryToDelete.value) return;
+
+  router.delete(`/plants/categories/${categoryToDelete.value}`, {
+    onSuccess: () => {
+      showDeleteModal.value = false;
+      categoryToDelete.value = null;
+      router.reload();
+    },
+  });
+};
 
 
 
@@ -71,6 +95,11 @@ const tabClass = (key: TabKey) => {
     return `${base} bg-primary text-white border-primary shadow-sm`;
   }
   return `${base} bg-beige/60 text-forest border-beige hover:bg-beige`;
+};
+
+const resetToAll = () => {
+  activeTab.value = "all";
+  searchQuery.value = "";
 };
 </script>
 
@@ -109,6 +138,12 @@ const tabClass = (key: TabKey) => {
               </div>
               <div class="flex gap-3">
                 <button
+                type="button"
+                 @click="showCreateCategory = true"
+                  class=" w-10 h-10 rounded-full bg-primary text-white shadow-lg flex items-center justify-center text-2xl font-light transition-all duration-200 hover:shadow-[0_10px_30px_rgba(0,0,0,0.25)] hover:scale-105 active:scale-95">
+                  <span class="-mt-0.5">+</span>
+                </button>
+                <button
                   class="size-10 flex items-center justify-center rounded-full bg-beige/50 text-forest hover:bg-beige transition-colors"
                   type="button"
                   @click="showSearch = true"
@@ -126,7 +161,7 @@ const tabClass = (key: TabKey) => {
 
             <!-- Horizontal Quick Categories -->
             <div class="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-              <button :class="tabClass('all')" type="button" @click="activeTab = 'all'">
+              <button :class="tabClass('all')" type="button" @click="resetToAll">
                 <p class="text-sm font-semibold">Kõik kategooriad</p>
               </button>
               <button :class="tabClass('favorites')" type="button" @click="activeTab = 'favorites'">
@@ -158,6 +193,14 @@ const tabClass = (key: TabKey) => {
                   </span>
                   <h3 class="text-white text-lg font-bold">{{ cat.name }}</h3>
                 </div>
+                <button
+                type="button"
+                class="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-white/70 backdrop-blur-md text-[#6B8C68] flex items-center justify-center shadow-sm transition hover:bg-white hover:scale-105"
+                @click.prevent.stop="openDeleteModal(cat.id)">
+                <span class="material-symbols-outlined text-[18px]">
+                  delete
+                </span>
+                </button>
               </Link>
             </div>
 
@@ -172,7 +215,56 @@ const tabClass = (key: TabKey) => {
           title="Otsi kategooriat"
           @search="(q) => (searchQuery = q)"
           @clear="searchQuery = ''"
-        />
+          />
+          <CreateCategoryModal v-model:open="showCreateCategory"
+          @created="router.reload({ only: ['categories'] })"
+           />
+           <transition name="fade">
+  <div
+    v-if="showDeleteModal"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4"
+  >
+    <!-- overlay -->
+    <div
+      class="absolute inset-0 bg-black/30 backdrop-blur-[2px]"
+      @click="showDeleteModal = false"
+    />
+
+    <!-- card -->
+    <div class="relative w-full max-w-sm rounded-3xl bg-[#FAF8F4] shadow-xl ring-1 ring-black/5 p-6 text-center">
+
+      <div class="mx-auto mb-4 h-14 w-14 rounded-full bg-[#E6E2D5] flex items-center justify-center">
+        <span class="material-symbols-outlined text-2xl text-[#6B8C68]">
+          delete
+        </span>
+      </div>
+
+      <h3 class="text-lg font-semibold text-[#2E2E2E]">
+        Kustuta kategooria?
+      </h3>
+
+      <p class="mt-2 text-sm text-[#2E2E2E]/70">
+        Seda tegevust ei saa tagasi võtta.
+      </p>
+
+      <div class="mt-6 flex flex-col gap-3">
+        <button
+          class="rounded-2xl bg-[#6B8C68] text-white py-3 font-medium hover:bg-[#4F6A52] transition"
+          @click="confirmDelete"
+        >
+          Jah, kustuta
+        </button>
+
+        <button
+          class="text-sm text-[#2E2E2E]/60 hover:text-[#2E2E2E]"
+          @click="showDeleteModal = false"
+        >
+          Tühista
+        </button>
+      </div>
+    </div>
+  </div>
+</transition>
 
 
         </div>
