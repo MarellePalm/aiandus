@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router } from "@inertiajs/vue3";
 import { ref, computed, } from "vue";
+import { watch } from "vue";
 
 import AppLayout from "@/layouts/AppLayout.vue";
 
@@ -42,7 +43,7 @@ const searchQuery = ref("");
 
 
 const filteredCategories = computed(() => {
-  let list = props.categories ?? [];
+  let list = localCategories.value ?? [];
 
   if (activeTab.value === "favorites") {
     list = list.filter((c) => c.is_favorite === true);
@@ -66,6 +67,15 @@ const filteredCategories = computed(() => {
   return list;
 });
 
+const localCategories = ref<Category[]>([...props.categories]);
+
+watch(
+  () => props.categories,
+  (next) => {
+    localCategories.value = [...next];
+  }
+);
+
 const showDeleteModal = ref(false);
 const categoryToDelete = ref<number | null>(null);
 
@@ -86,6 +96,29 @@ const confirmDelete = () => {
   });
 };
 
+const toggleFavorite = (id: number) => {
+  const idx = localCategories.value.findIndex((c) => c.id === id);
+  if (idx === -1) return;
+
+  // Optimistic update (kohe UI-s)
+  const prev = localCategories.value[idx].is_favorite === true;
+  localCategories.value[idx] = {
+    ...localCategories.value[idx],
+    is_favorite: !prev,
+  };
+
+  router.patch(`/plants/categories/${id}/favorite`, {}, {
+    preserveScroll: true,
+    preserveState: true,
+    onError: () => {
+      // Kui server ütleb ei -> pane tagasi
+      localCategories.value[idx] = {
+        ...localCategories.value[idx],
+        is_favorite: prev,
+      };
+    },
+  });
+};
 
 
 const tabClass = (key: TabKey) => {
@@ -103,11 +136,7 @@ const resetToAll = () => {
 };
 
 
-const toggleFavorite = (id: number) => {
-  router.patch(`/plants/categories/${id}/favorite`, {}, {
-    onSuccess: () => router.reload({ only: ["categories"] }),
-  });
-};
+
 </script>
 
 
