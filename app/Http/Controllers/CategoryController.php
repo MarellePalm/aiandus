@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class CategoryController extends Controller
 {
@@ -37,4 +38,17 @@ class CategoryController extends Controller
 
         return back()->with('success', 'Kategooria lisatud!');
     }
+
+    public function destroy(Category $category)
+{
+    // Kui pilt on sinu storage'ist, kustuta ka fail
+    if ($category->image && str_starts_with($category->image, '/storage/')) {
+        $path = str_replace('/storage/', '', $category->image);
+        Storage::disk('public')->delete($path);
+    }
+
+    $category->delete();
+
+    return redirect()->back()->with('success', 'Kategooria kustutatud!');
+}
 }

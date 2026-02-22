@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { Head, Link } from "@inertiajs/vue3";
-import { router } from "@inertiajs/vue3";
+import { Head, Link, router } from "@inertiajs/vue3";
 import { ref, computed, } from "vue";
 
 import AppLayout from "@/layouts/AppLayout.vue";
@@ -65,11 +64,15 @@ const filteredCategories = computed(() => {
   }
 
   return list;
-
-  
 });
 
+const deleteCategory = (id: number) => {
+  if (!confirm("Kas kustutame selle kategooria?")) return;
 
+  router.delete(`/plants/categories/${id}`, {
+    onSuccess: () => router.reload(), // toob värske listi
+  });
+  };
 
 
 
@@ -178,6 +181,14 @@ const resetToAll = () => {
                   </span>
                   <h3 class="text-white text-lg font-bold">{{ cat.name }}</h3>
                 </div>
+                <button
+                type="button"
+                class="absolute top-3 right-3 z-10 rounded-full bg-black/30 text-white p-2 backdrop-blur hover:bg-black/40"
+                @click.prevent.stop="deleteCategory(cat.id)"
+                aria-label="Kustuta kategooria"
+>
+  <span class="material-symbols-outlined text-base">delete</span>
+</button>
               </Link>
             </div>
 

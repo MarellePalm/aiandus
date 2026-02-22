@@ -21,6 +21,9 @@ Route::get('dashboard', function () {
 Route::post('/plants/categories', [CategoryController::class, 'store'])
   ->name('categories.store');
 
+Route::delete('/plants/categories/{category}', [CategoryController::class, 'destroy'])
+    ->name('plants.categories.destroy');
+
 
 Route::middleware(['auth'])->group(function () {
 
