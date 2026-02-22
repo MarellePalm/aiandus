@@ -25,12 +25,19 @@ class PlantController extends Controller
     // ajutiselt tühi list kuni taimed DB-st tulevad
     $plants = [];
 
+    // ⬇️ lisa kõik kategooriad modali selecti jaoks
+    $categories = Category::query()
+        ->select('id', 'name', 'slug')
+        ->orderBy('name')
+        ->get();
+
     return Inertia::render('Plants/SortView', [
         'category' => [
             'name' => $category->name,
             'slug' => $category->slug,
         ],
         'plants' => $plants,
+        'categories' => $categories,
     ]);
 }
 
@@ -75,18 +82,34 @@ public function create()
 
 public function store(Request $request)
 {
-    $data = $request->validate([
-        'name' => ['required', 'string', 'max:120'],
+     $data = $request->validate([
+        'category_id' => ['required', 'exists:categories,id'],
         'subtitle' => ['required', 'string', 'max:160'],
         'planted_at' => ['required', 'date'],
+        'image' => ['nullable', 'image', 'max:4096'], // 4MB
     ]);
 
+    // salvesta pilt (public disk)
+    $imagePath = null;
+    if ($request->hasFile('image')) {
+        $imagePath = $request->file('image')->store('plant-images', 'public');
+    }
+
+    // Leia kategooria nimi -> kasutame Plant.name jaoks (nagu sa soovisid “Taime nime asemel Kategooria”)
+    $category = Category::select('id', 'name')->findOrFail($data['category_id']);
+
     $plant = Plant::create([
-        ...$data,
+        'name' => $category->name,
+        'category_id' => $category->id, // eeldab, et plants tabelis on category_id
+        'subtitle' => $data['subtitle'],
+        'planted_at' => $data['planted_at'],
+        'image_url' => $imagePath ? "/storage/{$imagePath}" : null,
         'user_id' => $request->user()->id,
     ]);
 
-    return redirect()->route('plants.show', $plant->id);
+    // kui tahad tagasi samasse kategooriasse, siis:
+    return redirect()->route('plants.category', $category->slug)
+        ->with('success', 'Taim lisatud!');
 }
 
 public function destroy(Plant $plant)
