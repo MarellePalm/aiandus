@@ -3,35 +3,54 @@
 namespace App\Http\Controllers;
 
 use App\Models\Plant;
+use App\Models\Category;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-
+use Carbon\Carbon;
 class PlantController extends Controller
 {
     public function index()
     {
-        $categories = [
-        ['id' => 1, 'name' => 'Tomatid', 'slug' => 'Tomatid', 'count' => 12, 'image' => 'https://lh3.googleusercontent.com/aida-public/AB6AXuBiSMT8MRygYSTYMB9DNDMCEvoj0H4EuvzGpTM6jo5yerPI2p4Ksx9M2YLBW4ghQBh3sxQSC5RJ182BuqnUM6NSw2lFp7qV-JdchgoafAOg-4H5u79XUTHBAuyWbdsEeZFA3liIrXgnaPL7_-4M3PVEDjP0dD-D35yfNSXtDbUdJf9b1I-NBsOpkpDiKhaHei3VMSYVm5KAhsmHgL2d6uyknTOqUKRo6ZiPOb6cCF8GkZaZkMSjganwT44GB5k_mcga8ZHOEKa147ib'],
-        ['id' => 2, 'name' => 'Kurgid', 'slug' => 'Kurgid', 'count' => 5, 'image' => 'https://lh3.googleusercontent.com/aida-public/AB6AXuDUxO_J_VQlR5nPBiLjJuKC3TGuOuf5qzHgAlXYpe2LxtRsP8qxIepQdY8oeTGTfVsh1yQ3TqIY12DzHI_9T4hBOuqJIBjSgt1-PtJlwUFWEiU4cuS9sykfT2eU_BWanjrLi5fUSR0btRrvOwnF6ZSlxyZ0qBNZxtPHFugpkQfCfIlYVKYF-fEg1ueCshz2PmVpEv46OHbBJt_wye_-imKohE8jUJXCT9Mr6vKy5WlDvo0JfsmLCGXRV59IK6BZ8oBQioH_yYnwF6jx'],
-        ['id' => 3, 'name' => 'Kõrvitsad', 'slug' => 'Kõrvitsad', 'count' => 8, 'image' => 'https://lh3.googleusercontent.com/aida-public/AB6AXuBOzpo2qyOQ7Vc5aRongVnCq-m8fHbpCNbZtQO-78U8Mqx5dmnmqJSAioFupcpnsx5DCOsdi4J0KwJfcmuQazLhU11YiA4eFJFHlSeX2-FjisRW5mD8EkhHvZa-9KBITgWRU91cVfoJ1kDFymU8Nlaqvy9yAPWtneU2BUP2cEsLAYBa97NBOQ9AWODYUdLwzREdcZtn2jkJJbByxqwujSp9dxp1LqZc5eIx3KR9IqHaJwwA4guIjkGsu78jnYga1ccAuQ_SapVETdte'],
-        ['id' => 4, 'name' => 'Lilled', 'slug' => 'Lilled', 'count' => 24, 'is_favorite' => true, 'image' => 'https://lh3.googleusercontent.com/aida-public/AB6AXuDSOpzjcZzmh1GeboogcLyLpgHGXhkN_5aA0qTHmzPXFp7rZO4x1xEGuKhxijAmddUc2gX_Jpbbh3iORfkL9DrYQ9GdOEr_i7VlgU92zanA7TxXfvNzxLvaTVgcTA0u-rxiqbwsCgWos1zSI0mK3k-sdVU-YfCUm3mfttMNErlpdgLRpdxLXrkLtzeYXhkI6Dm_fi7HxEij1B8VdHrOkRboGEd_Xvrji_YxenhpAhZQt7SLvF-RJm9jnc000-0zMRw-cWBO0PsaaZvW'],
-        ['id' => 5, 'name' => 'Põõsad', 'slug' => 'Põõsad', 'count' => 10, 'image' => 'https://lh3.googleusercontent.com/aida-public/AB6AXuAGtzF38dID7SJTIHO8Olk93x3olZEncPqrrOU0OUM2kh_G1mLu0RgLXjtDA13OQtfZxRrOqDvkC4_xzrcpvHy57v9hgyE6nZSul-Vq6vCBYmg0j-hVpjtdt1iV3WZDM75nrOkiiqITm-aM62ZFqvJ-bY31D1swjpBIFcQLKgsiJfWdC38MYCOEWk_KGGWpM9FP2o0eck09i1uuNQ2cSctDjpq0x4t4DzNhVHPc-c3785jZu4qV6CtTZ1cN4ttqVRuTcqwqL4cXzdv1'],
-        ['id' => 6, 'name' => 'Maitsetaimed', 'slug' => 'Maitsetaimed', 'count' => 15, 'image' => 'https://sofikoh.ee/wp-content/uploads/2025/05/fresh-herbs-basil-marjoram-parsley-rosemary-thyme-sage_large-1024x768.jpg'],
-        
-    ];
+       $categories = Category::orderBy('name')->get();
 
-
-        return Inertia::render('Plants/Index', [
-            'categories' => $categories,
-        ]);
+    return Inertia::render('Plants/Index', [
+        'categories' => $categories,
+    ]);
     }
 
     public function category(string $slug)
 {
-    return Inertia::render('Plants/CategoryView', [
-        'slug' => $slug,
+    $category = Category::where('slug', $slug)->firstOrFail();
+
+    $categories = Category::query()
+        ->select('id', 'name', 'slug')
+        ->orderBy('name')
+        ->get();
+
+    $plants = Plant::query()
+        ->where('user_id', request()->user()->id)
+        ->where('category_id', $category->id)
+        ->orderByDesc('created_at')
+        ->get()
+        ->map(fn ($p) => [
+            'id' => $p->id,
+            'name' => $p->name,
+            'planted_at' => $p->planted_at ? date('d.m.Y', strtotime($p->planted_at)) : '',
+            'status' => $p->status ?? 'ISTIK',
+            'image_url' => $p->image_url,
+        ]);
+
+    return Inertia::render('Plants/SortView', [
+        'category' => [
+            'name' => $category->name,
+            'slug' => $category->slug,
+        ],
+        'plants' => $plants,
+        'categories' => $categories,
     ]);
 }
+
+  
 
     
     public function show(Request $request, Plant $plant)
@@ -72,18 +91,31 @@ public function create()
 
 public function store(Request $request)
 {
-    $data = $request->validate([
-        'name' => ['required', 'string', 'max:120'],
+     $data = $request->validate([
+        'category_id' => ['required', 'exists:categories,id'],
         'subtitle' => ['required', 'string', 'max:160'],
         'planted_at' => ['required', 'date'],
+        'image' => ['nullable', 'image', 'max:4096'],
     ]);
 
+    $imagePath = null;
+    if ($request->hasFile('image')) {
+        $imagePath = $request->file('image')->store('plant-images', 'public');
+    }
+
+    $category = Category::select('id', 'name', 'slug')->findOrFail($data['category_id']);
+
     $plant = Plant::create([
-        ...$data,
+        'name' => $data['subtitle'],
+        'category_id' => $category->id,
+        'subtitle' => $data['subtitle'],
+        'planted_at' => $data['planted_at'],
+        'image_url' => $imagePath ? "/storage/{$imagePath}" : null,
         'user_id' => $request->user()->id,
     ]);
 
-    return redirect()->route('plants.show', $plant->id);
+    return redirect()->route('plants.category', ['slug' => $category->slug])
+        ->with('success', 'Taim lisatud!');
 }
 
 public function destroy(Plant $plant)

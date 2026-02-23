@@ -2,6 +2,7 @@
 // FILE: routes/web.php
 
 use App\Http\Controllers\CalendarNoteController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\PlantController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -22,6 +23,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Calendar notes
     Route::get('calendar', [CalendarNoteController::class, 'index'])->name('calendar');
 
+    Route::post('/plants/categories', [CategoryController::class, 'store'])
+        ->name('categories.store');
+
+    Route::patch('/plants/categories/{category}/favorite', [CategoryController::class, 'toggleFavorite'])
+        ->name('plants.categories.favorite');
+
+    Route::delete('/plants/categories/{category}', [CategoryController::class, 'destroy'])
+        ->name('plants.categories.destroy');
+
+    Route::get('/plants/category/{slug}', [PlantController::class, 'category'])
+        ->name('plants.category');
+
     Route::get('calendar/note-form', fn () => Inertia::render('calendarNotes/NoteForm'))
         ->name('calendar.noteForm');
 
@@ -32,11 +45,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('calendar/notes/{note}/toggle-done', [CalendarNoteController::class, 'toggleDone'])
         ->name('calendar.notes.toggleDone');
 
-    // ✅ Koondvaade (juba olemas, jätame alles)
     Route::get('calendar/overview', [CalendarNoteController::class, 'overview'])
         ->name('calendar.overview');
 
-    // ✅ Valikuline: lühike alias /overview
     Route::get('overview', fn () => redirect()->route('calendar.overview'))
         ->name('overview');
 
@@ -44,7 +55,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('plants', PlantController::class);
 
     Route::post('/plants/{plant}/waterings', [PlantController::class, 'water'])->name('plants.water');
-    Route::get('/plants/category/{slug}', [PlantController::class, 'category'])->name('plants.category');
 });
 
 require __DIR__ . '/settings.php';
