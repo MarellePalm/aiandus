@@ -353,13 +353,20 @@ function selectDay(day: number) {
 
             <p v-else class="journal-empty">Sellel päeval pole veel päevikumärkmeid.</p>
           </section>
+
+          <Link
+            href="/calendar/overview"
+            class="mt-2 w-full h-14 px-5 rounded-2xl shadow-soft
+            bg-card text-primary border border-border
+            inline-flex items-center justify-center gap-2
+            hover:bg-card/90 transition"
+          >
+            <span class="material-symbols-outlined text-lg">description</span>
+            <span class="font-semibold text-sm">Vaata kõiki märkmeid</span>
+            <span class="material-symbols-outlined text-lg">chevron_right</span>
+          </Link>
         </section>
       </div>
-
-      <Link href="/calendar/note-form" class="fab" aria-label="Lisa märge">
-        <span class="material-symbols-outlined text-4xl">add</span>
-      </Link>
-
       <BottomNav active="calendar" />
     </div>
   </AppLayout>

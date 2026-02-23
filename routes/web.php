@@ -1,11 +1,11 @@
 <?php
+// FILE: routes/web.php
 
+use App\Http\Controllers\CalendarNoteController;
+use App\Http\Controllers\PlantController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
-use App\Http\Controllers\PlantController;
-use App\Http\Controllers\CalendarNoteController;
-
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -13,66 +13,38 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
-Route::get('dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('dashboard', fn () => Inertia::render('Dashboard'))->name('dashboard');
 
+    Route::get('map', fn () => Inertia::render('MapView'))->name('map');
+    Route::get('seeds', fn () => Inertia::render('Seeds'))->name('seeds');
 
+    // Calendar notes
+    Route::get('calendar', [CalendarNoteController::class, 'index'])->name('calendar');
 
+    Route::get('calendar/note-form', fn () => Inertia::render('calendarNotes/NoteForm'))
+        ->name('calendar.noteForm');
 
-Route::middleware(['auth'])->group(function () {
+    Route::post('calendar/notes', [CalendarNoteController::class, 'store'])->name('calendar.notes.store');
+    Route::get('calendar/notes/{note}/edit', [CalendarNoteController::class, 'edit'])->name('calendar.notes.edit');
+    Route::put('calendar/notes/{note}', [CalendarNoteController::class, 'update'])->name('calendar.notes.update');
+    Route::delete('calendar/notes/{note}', [CalendarNoteController::class, 'destroy'])->name('calendar.notes.destroy');
+    Route::post('calendar/notes/{note}/toggle-done', [CalendarNoteController::class, 'toggleDone'])
+        ->name('calendar.notes.toggleDone');
 
-    Route::get('/plants/create', [PlantController::class, 'create'])->name('plants.create');
-    Route::post('/plants', [PlantController::class, 'store'])->name('plants.store');
+    // ✅ Koondvaade (juba olemas, jätame alles)
+    Route::get('calendar/overview', [CalendarNoteController::class, 'overview'])
+        ->name('calendar.overview');
 
-    Route::get('/plants/{plant}', [PlantController::class, 'show'])->name('plants.show');
-    
+    // ✅ Valikuline: lühike alias /overview
+    Route::get('overview', fn () => redirect()->route('calendar.overview'))
+        ->name('overview');
+
+    // Plants (resource + custom actions)
+    Route::resource('plants', PlantController::class);
+
     Route::post('/plants/{plant}/waterings', [PlantController::class, 'water'])->name('plants.water');
-
-    Route::get('/plants/category/{slug}', [PlantController::class, 'category'])
-    ->name('plants.category');
-
-
+    Route::get('/plants/category/{slug}', [PlantController::class, 'category'])->name('plants.category');
 });
 
-Route::get('map', function () {
-    return Inertia::render('MapView');
-})->middleware(['auth', 'verified'])->name('map');
-
-Route::get('seeds', function () {
-    return Inertia::render('Seeds');
-})->middleware(['auth', 'verified'])->name('seeds');
-
-// Calendar notes
-Route::get('calendar', [CalendarNoteController::class, 'index'])
-    ->middleware(['auth', 'verified'])
-    ->name('calendar');
-
-Route::get('calendar/note-form', function () {
-    return Inertia::render('NoteForm');
-})->middleware(['auth', 'verified'])->name('calendar.noteForm');
-
-Route::post('calendar/notes', [CalendarNoteController::class, 'store'])
-    ->middleware(['auth', 'verified'])
-    ->name('calendar.notes.store');
-
-Route::get('calendar/notes/{note}/edit', [CalendarNoteController::class, 'edit'])
-    ->middleware(['auth', 'verified'])
-    ->name('calendar.notes.edit');
-
-Route::put('calendar/notes/{note}', [CalendarNoteController::class, 'update'])
-    ->middleware(['auth', 'verified'])
-    ->name('calendar.notes.update');
-
-Route::delete('calendar/notes/{note}', [CalendarNoteController::class, 'destroy'])
-    ->middleware(['auth', 'verified'])
-    ->name('calendar.notes.destroy');
-
-Route::post('calendar/notes/{note}/toggle-done', [CalendarNoteController::class, 'toggleDone'])
-    ->middleware(['auth', 'verified'])
-    ->name('calendar.notes.toggleDone');
-
-Route::resource('plants', PlantController::class);
-
-
-require __DIR__.'/settings.php';
+require __DIR__ . '/settings.php';

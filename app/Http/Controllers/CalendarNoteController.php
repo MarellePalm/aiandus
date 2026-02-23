@@ -29,10 +29,25 @@ class CalendarNoteController extends Controller
             ->groupBy(fn ($n) => $n->note_date->format('Y-m-d'))
             ->map(fn ($g) => $g->values());
 
-        return Inertia::render('CalendarView', [
+        return Inertia::render('calendarNotes/CalendarView', [
             'month' => $month,
             'year' => $year,
             'notesByDate' => $notesByDate,
+        ]);
+    }
+
+    public function overview(Request $request)
+    {
+        $user = $request->user();   
+
+        $notes = CalendarNote::query()
+            ->where('user_id', $user->id)
+            ->orderBy('note_date')
+            ->orderBy('id')
+            ->get();
+
+        return Inertia::render('calendarNotes/NotesOverview', [
+            'notes' => $notes,
         ]);
     }
 
@@ -86,7 +101,7 @@ class CalendarNoteController extends Controller
         abort_unless($note->user_id === $request->user()->id, 403);
 
         $dueAt = $note->due_at;
-        return Inertia::render('NoteForm', [
+        return Inertia::render('calendarNotes/NoteForm', [
             'note' => [
                 'id' => $note->id,
                 'note_date' => $note->note_date->format('Y-m-d'),
