@@ -16,8 +16,11 @@ export type MoonInfo = {
   ageDays: number; // 0..29.53
 };
 
-const SYNODIC_MONTH = 29.530588853; // days
-const REF_NEW_MOON_UTC = Date.UTC(2000, 0, 6, 18, 14, 0); // decent reference
+const SYNODIC_MONTH = 29.530588853; // days (mean synodic month)
+// Lunation 0 per moon-time.org: 6 Jan 2000 18:14 UTC
+const REF_NEW_MOON_UTC = Date.UTC(2000, 0, 6, 18, 14, 0);
+// Kui faas on ~2° ees: kasuta nt -0.16 (2/360 * 29.53 ≈ 0.164 päeva)
+const PHASE_CORRECTION_DAYS = 0;
 
 function julianDayUTC(date: Date) {
   const y = date.getUTCFullYear();
@@ -46,7 +49,8 @@ export function getMoonInfo(date = new Date()): MoonInfo {
   const jdRef = julianDayUTC(new Date(REF_NEW_MOON_UTC));
 
   const daysSinceRef = jd - jdRef;
-  const ageDays = ((daysSinceRef % SYNODIC_MONTH) + SYNODIC_MONTH) % SYNODIC_MONTH; // 0..29.53
+  let ageDays = ((daysSinceRef % SYNODIC_MONTH) + SYNODIC_MONTH) % SYNODIC_MONTH;
+  ageDays = (ageDays + PHASE_CORRECTION_DAYS + SYNODIC_MONTH) % SYNODIC_MONTH; // 0..29.53
   const t = ageDays / SYNODIC_MONTH; // 0..1
 
   // illumination approx: 0 new, 1 full

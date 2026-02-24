@@ -4,6 +4,7 @@ import { Head, router, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 import AppLayout from '@/layouts/AppLayout.vue';
+import BottomNav from '@/pages/BottomNav.vue';
 import { calendar } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 
@@ -382,5 +383,7 @@ function cancel() {
         </div>
       </div>
     </div>
+
+    <BottomNav active="calendar" />
   </AppLayout>
 </template>

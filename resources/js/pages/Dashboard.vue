@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { Head, usePage, router } from '@inertiajs/vue3';
 import { useQuery } from '@tanstack/vue-query';
-import { computed } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 
 import { useGeolocation } from '@/composables/useGeolocation';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -13,8 +13,10 @@ import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { moonAdvice as getMoonAdvice } from '@/lib/moonAdvice';
 import { getMoonInfo } from '@/lib/moon';
+import { getZodiacInfo } from '@/lib/zodiac';
 
 const moon = computed(() => getMoonAdvice(getMoonInfo(new Date())));
+const zodiac = computed(() => getZodiacInfo(new Date()));
 
 const page = usePage();
 const user = page.props.auth.user;
@@ -77,6 +79,50 @@ const todayWeatherLabel = computed(() => {
 function onAddNote() {
   router.visit('/calendar/note-form');
 }
+
+// Järjekord: salvestatakse localStorage'i, kasutaja saab plokke üles/alla tõsta
+const STORAGE_KEY = 'dashboardSectionOrder';
+type SectionId = 'weather' | 'addNote' | 'moon' | 'recent';
+const DEFAULT_ORDER: SectionId[] = ['weather', 'addNote', 'moon', 'recent'];
+
+const sectionOrder = ref<SectionId[]>([...DEFAULT_ORDER]);
+
+onMounted(() => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed) && parsed.every((id) => DEFAULT_ORDER.includes(id as SectionId)) && parsed.length === DEFAULT_ORDER.length) {
+        sectionOrder.value = parsed as SectionId[];
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+});
+
+function moveSection(id: SectionId, direction: 'up' | 'down') {
+  const arr = sectionOrder.value;
+  const i = arr.indexOf(id);
+  if (i === -1) return;
+  const j = direction === 'up' ? i - 1 : i + 1;
+  if (j < 0 || j >= arr.length) return;
+  [arr[i], arr[j]] = [arr[j], arr[i]];
+  sectionOrder.value = [...arr];
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+  } catch {
+    /* ignore */
+  }
+}
+
+function canMoveUp(id: SectionId) {
+  return sectionOrder.value.indexOf(id) > 0;
+}
+function canMoveDown(id: SectionId) {
+  const i = sectionOrder.value.indexOf(id);
+  return i >= 0 && i < sectionOrder.value.length - 1;
+}
 </script>
 
 <template>
@@ -101,9 +147,31 @@ function onAddNote() {
           </div>
         </section>
 
-        <!-- Weather (Stitch-style) -->
-        <section>
-          <div class="weather-card">
+        <!-- Järjestatavad plokid -->
+        <template v-for="id in sectionOrder" :key="id">
+          <!-- Weather -->
+          <section v-if="id === 'weather'" class="relative">
+            <div class="flex justify-end gap-1 mb-2">
+              <button
+                type="button"
+                class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                aria-label="Tõsta plokki üles"
+                :disabled="!canMoveUp('weather')"
+                @click="moveSection('weather', 'up')"
+              >
+                <span class="material-symbols-outlined text-lg">expand_less</span>
+              </button>
+              <button
+                type="button"
+                class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                aria-label="Tõsta plokki alla"
+                :disabled="!canMoveDown('weather')"
+                @click="moveSection('weather', 'down')"
+              >
+                <span class="material-symbols-outlined text-lg">expand_more</span>
+              </button>
+            </div>
+            <div class="weather-card">
             <!-- Decorative icon -->
             <span
               class="material-symbols-outlined absolute -top-4 -right-4 text-[120px] opacity-[0.04] pointer-events-none"
@@ -180,18 +248,62 @@ function onAddNote() {
             <div v-if="q.isError.value" class="text-xs text-red-600 dark:text-red-400 mt-4">
               {{ q.error.value?.message }}
             </div>
-          </div>
-        </section>
+            </div>
+          </section>
 
-        <!-- Button outside the card -->
-        <button class="btn-primary w-full cursor-pointer" type="button" @click="onAddNote">
-          <span class="material-symbols-outlined text-[18px]">edit</span>
-          Lisa märkmed
-        </button>
+          <!-- Lisa märkmed -->
+          <section v-if="id === 'addNote'">
+            <div class="flex justify-end gap-1 mb-2">
+              <button
+                type="button"
+                class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                aria-label="Tõsta plokki üles"
+                :disabled="!canMoveUp('addNote')"
+                @click="moveSection('addNote', 'up')"
+              >
+                <span class="material-symbols-outlined text-lg">expand_less</span>
+              </button>
+              <button
+                type="button"
+                class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                aria-label="Tõsta plokki alla"
+                :disabled="!canMoveDown('addNote')"
+                @click="moveSection('addNote', 'down')"
+              >
+                <span class="material-symbols-outlined text-lg">expand_more</span>
+              </button>
+            </div>
+            <button class="btn-primary w-full cursor-pointer" type="button" @click="onAddNote">
+              <span class="material-symbols-outlined text-[18px]">edit</span>
+              Lisa märkmed
+            </button>
+          </section>
 
-        <!-- Moon -->
-        <section>
-          <h3 class="text-lg font-bold mb-3">Kuufaas täna</h3>
+          <!-- Moon -->
+          <section v-if="id === 'moon'">
+            <div class="flex items-center justify-between gap-2 mb-3">
+              <h3 class="text-lg font-bold">Kuufaas täna</h3>
+              <div class="flex gap-1">
+                <button
+                  type="button"
+                  class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                  aria-label="Tõsta plokki üles"
+                  :disabled="!canMoveUp('moon')"
+                  @click="moveSection('moon', 'up')"
+                >
+                  <span class="material-symbols-outlined text-lg">expand_less</span>
+                </button>
+                <button
+                  type="button"
+                  class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                  aria-label="Tõsta plokki alla"
+                  :disabled="!canMoveDown('moon')"
+                  @click="moveSection('moon', 'down')"
+                >
+                  <span class="material-symbols-outlined text-lg">expand_more</span>
+                </button>
+              </div>
+            </div>
 
           <div class="rhythm-card">
             <div class="rhythm-icon">
@@ -204,20 +316,48 @@ function onAddNote() {
                 <span class="rhythm-badge">{{ moon.subtitle }}</span>
               </div>
               <p class="rhythm-body">{{ moon.text }}</p>
+              <p class="mt-1 text-sm text-muted-foreground">{{ moon.textLong }}</p>
+              <div class="mt-3 space-y-2 text-sm">
+                <div class="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground">
+                  <span><strong class="text-foreground">Päike:</strong> {{ zodiac.sunSign }}</span>
+                  <span><strong class="text-foreground">Kuu:</strong> {{ zodiac.moonSign }} ({{ zodiac.biodynamicDayLabel }})</span>
+                </div>
+                <p class="text-muted-foreground">{{ zodiac.biodynamicDescription }}</p>
+              </div>
             </div>
           </div>
-        </section>
+          </section>
 
-
-
-        <!-- Recent activity -->
-        <section>
-          <div class="flex justify-between items-end gap-4 mb-4">
-            <h3 class="text-lg font-bold">Viimased toimetused</h3>
-            <a class="text-primary text-sm font-semibold whitespace-nowrap" href="#">
-              Vaata kõiki
-            </a>
-          </div>
+          <!-- Recent activity -->
+          <section v-if="id === 'recent'">
+            <div class="flex justify-between items-end gap-4 mb-4">
+              <h3 class="text-lg font-bold">Viimased toimetused</h3>
+              <div class="flex items-center gap-2">
+                <div class="flex gap-1">
+                  <button
+                    type="button"
+                    class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                    aria-label="Tõsta plokki üles"
+                    :disabled="!canMoveUp('recent')"
+                    @click="moveSection('recent', 'up')"
+                  >
+                    <span class="material-symbols-outlined text-lg">expand_less</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                    aria-label="Tõsta plokki alla"
+                    :disabled="!canMoveDown('recent')"
+                    @click="moveSection('recent', 'down')"
+                  >
+                    <span class="material-symbols-outlined text-lg">expand_more</span>
+                  </button>
+                </div>
+                <a class="text-primary text-sm font-semibold whitespace-nowrap" href="#">
+                  Vaata kõiki
+                </a>
+              </div>
+            </div>
 
           <div class="flex overflow-x-auto gap-4 pb-2 no-scrollbar">
             <div class="activity-card min-w-[160px]">
@@ -262,7 +402,8 @@ function onAddNote() {
               </div>
             </div>
           </div>
-        </section>
+          </section>
+        </template>
       </div>
 
       <BottomNav active="dashboard" />
