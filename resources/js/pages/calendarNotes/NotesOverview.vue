@@ -1,8 +1,8 @@
-// FILE: resources/js/pages/calendarNotes/Overview.vue
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { Head, Link, router } from '@inertiajs/vue3'
-import BottomNav from '@/pages/BottomNav.vue' // kui sul alias erinev, kohanda
+import BottomNav from '@/pages/BottomNav.vue'
+import UserMenu from '@/pages/UserMenu.vue'
 
 type ChipKey = 'all' | 'week' | 'month' | 'favorites'
 type NoteKind = 'task' | 'reminder' | 'journal'
@@ -141,15 +141,9 @@ watch(query, () => {
         <span class="material-symbols-outlined text-primary text-3xl">potted_plant</span>
       </div>
 
-      <h1 class="text-xl font-bold tracking-tight">Koondvaade</h1>
+      <h1 class="text-xl font-bold tracking-tight">Minu märkmed</h1>
 
-      <Link
-        href="/settings/profile"
-        class="size-10 rounded-full bg-card shadow-sm border border-border flex items-center justify-center"
-        aria-label="Profiil"
-      >
-        <span class="material-symbols-outlined text-muted-foreground">account_circle</span>
-      </Link>
+      <UserMenu settings-href="/settings" />
     </header>
 
     <main class="flex-1 pb-24">

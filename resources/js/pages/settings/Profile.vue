@@ -23,7 +23,7 @@ defineProps<Props>();
 
 const breadcrumbItems: BreadcrumbItem[] = [
     {
-        title: 'Profile settings',
+        title: 'Profiili seaded',
         href: edit().url,
     },
 ];
@@ -34,15 +34,15 @@ const user = page.props.auth.user;
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbItems">
-        <Head title="Profile settings" />
+        <Head title="Profiili seaded" />
 
-        <h1 class="sr-only">Profile Settings</h1>
+        <h1 class="sr-only">Profiili seaded</h1>
 
         <SettingsLayout>
             <div class="flex flex-col space-y-6">
                 <HeadingSmall
-                    title="Profile information"
-                    description="Update your name and email address"
+                    title="Profiili andmed"
+                    description="Uuenda oma nime ja e-posti aadressi"
                 />
 
                 <Form
@@ -51,7 +51,7 @@ const user = page.props.auth.user;
                     v-slot="{ errors, processing, recentlySuccessful }"
                 >
                     <div class="grid gap-2">
-                        <Label for="name">Name</Label>
+                        <Label for="name">Nimi</Label>
                         <Input
                             id="name"
                             class="mt-1 block w-full"
@@ -59,13 +59,13 @@ const user = page.props.auth.user;
                             :default-value="user.name"
                             required
                             autocomplete="name"
-                            placeholder="Full name"
+                            placeholder="Täisnimi"
                         />
                         <InputError class="mt-2" :message="errors.name" />
                     </div>
 
                     <div class="grid gap-2">
-                        <Label for="email">Email address</Label>
+                        <Label for="email">E-posti aadress</Label>
                         <Input
                             id="email"
                             type="email"
@@ -74,20 +74,20 @@ const user = page.props.auth.user;
                             :default-value="user.email"
                             required
                             autocomplete="username"
-                            placeholder="Email address"
+                            placeholder="E-posti aadress"
                         />
                         <InputError class="mt-2" :message="errors.email" />
                     </div>
 
                     <div v-if="mustVerifyEmail && !user.email_verified_at">
                         <p class="-mt-4 text-sm text-muted-foreground">
-                            Your email address is unverified.
+                            Sinu e-posti aadress pole kinnitatud.
                             <Link
                                 :href="send()"
                                 as="button"
                                 class="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
                             >
-                                Click here to resend the verification email.
+                                Klõpsa siin, et saata kinnituse e-kiri uuesti.
                             </Link>
                         </p>
 
@@ -95,8 +95,7 @@ const user = page.props.auth.user;
                             v-if="status === 'verification-link-sent'"
                             class="mt-2 text-sm font-medium text-green-600"
                         >
-                            A new verification link has been sent to your email
-                            address.
+                            Uus kinnitamise link on saadetud sinu e-postile.
                         </div>
                     </div>
 
@@ -104,7 +103,7 @@ const user = page.props.auth.user;
                         <Button
                             :disabled="processing"
                             data-test="update-profile-button"
-                            >Save</Button
+                            >Salvesta</Button
                         >
 
                         <Transition
@@ -117,7 +116,7 @@ const user = page.props.auth.user;
                                 v-show="recentlySuccessful"
                                 class="text-sm text-neutral-600"
                             >
-                                Saved.
+                                Salvestatud.
                             </p>
                         </Transition>
                     </div>
