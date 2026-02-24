@@ -1,89 +1,60 @@
-<!-- resources/js/components/ui/UserMenu.vue -->
+<!-- resources/js/pages/UserMenu.vue -->
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue';
-import { Link, router } from '@inertiajs/vue3';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { Link, router, usePage } from '@inertiajs/vue3';
 
-type Props = {
-  settingsHref?: string;
-};
+const props = withDefaults(
+  defineProps<{ settingsHref?: string; logoutHref?: string; ariaLabel?: string }>(),
+  { settingsHref: '/settings', logoutHref: '/logout', ariaLabel: 'Kasutajamenüü' },
+);
 
-const props = withDefaults(defineProps<Props>(), {
-  settingsHref: '/settings',
-});
+const page = usePage();
+const user = computed(() => page.props.auth?.user);
 
 const open = ref(false);
-const rootRef = ref<HTMLElement | null>(null);
+const rootEl = ref<HTMLElement | null>(null);
 
-function close() {
-  open.value = false;
-}
-
-function toggle() {
-  open.value = !open.value;
-}
+function toggle() { open.value = !open.value; }
+function close() { open.value = false; }
+function logout() { close(); router.post(props.logoutHref); }
 
 function onDocClick(e: MouseEvent) {
   if (!open.value) return;
-  const el = rootRef.value;
-  const target = e.target as Node | null;
-  if (el && target && !el.contains(target)) close();
+  const t = e.target as Node | null;
+  if (t && rootEl.value && !rootEl.value.contains(t)) close();
 }
-
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') close();
-}
-
-function logout() {
-  router.post('/logout', {}, { onFinish: close });
-}
+function onKey(e: KeyboardEvent) { if (open.value && e.key === 'Escape') close(); }
 
 onMounted(() => {
-  document.addEventListener('click', onDocClick);
-  document.addEventListener('keydown', onKeydown);
+  document.addEventListener('click', onDocClick, true);
+  document.addEventListener('keydown', onKey);
 });
-
 onBeforeUnmount(() => {
-  document.removeEventListener('click', onDocClick);
-  document.removeEventListener('keydown', onKeydown);
+  document.removeEventListener('click', onDocClick, true);
+  document.removeEventListener('keydown', onKey);
 });
 </script>
 
 <template>
-  <div ref="rootRef" class="relative z-50">
-    <button
-      type="button"
-      class="icon-btn"
-      aria-label="Profiil"
-      aria-haspopup="menu"
-      :aria-expanded="open"
-      @click="toggle"
-    >
-      <span class="material-symbols-outlined">person</span>
+  <div ref="rootEl" class="relative ml-auto">
+    <button type="button" class="icon-btn size-10 overflow-hidden" :aria-label="props.ariaLabel ?? 'Kasutajamenüü'" @click.stop="toggle">
+      <img v-if="user?.avatar_url" :src="String(user.avatar_url)" alt="" class="h-full w-full object-cover" />
+      <span v-else class="material-symbols-outlined text-xl text-primary/80">person</span>
     </button>
 
-    <div
-      v-if="open"
-      class="menu absolute right-0 mt-2 w-48"
-      role="menu"
-      aria-label="Profiili menüü"
-    >
-      <Link
-        :href="props.settingsHref"
-        role="menuitem"
-        class="menu-item"
-        @click="close"
-      >
+    <div v-if="open" class="dropdown" role="menu">
+      <div class="px-4 py-3 border-b border-border">
+        <p class="text-sm font-semibold truncate">{{ user?.name ?? 'Kasutaja' }}</p>
+        <p class="text-xs text-muted-foreground truncate">{{ user?.email ?? '' }}</p>
+      </div>
+
+      <Link :href="settingsHref" class="menu-item" role="menuitem" @click="close">
+        <span class="material-symbols-outlined text-lg">settings</span>
         Seaded
       </Link>
 
-      <div class="menu-separator" />
-
-      <button
-        type="button"
-        role="menuitem"
-        class="menu-item"
-        @click="logout"
-      >
+      <button type="button" class="menu-item menu-item-danger" role="menuitem" @click="logout">
+        <span class="material-symbols-outlined text-lg">logout</span>
         Logi välja
       </button>
     </div>

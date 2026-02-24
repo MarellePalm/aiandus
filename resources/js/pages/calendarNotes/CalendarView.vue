@@ -35,6 +35,10 @@ const selectedDay = ref(
   today.getFullYear() === year && today.getMonth() === month - 1 ? today.getDate() : 1,
 );
 
+function onAdd() {
+  router.get('/calendar/note-form', { date: selectedISO.value });
+}
+
 const dayLabels = ['E', 'T', 'K', 'N', 'R', 'L', 'P'];
 
 const monthTitle = computed(() => {
@@ -367,6 +371,15 @@ function selectDay(day: number) {
           </Link>
         </section>
       </div>
+
+      <button type="button"
+        class="fixed bottom-24 right-6 size-14 bg-primary cursor-pointer text-primary-foreground rounded-full shadow-lg flex items-center justify-center z-40 active:scale-95 transition-transform"
+        aria-label="Lisa märge"
+        @click="onAdd"
+      >
+      <span class="material-symbols-outlined text-3xl">add</span>
+      </button>
+
       <BottomNav active="calendar" />
     </div>
   </AppLayout>

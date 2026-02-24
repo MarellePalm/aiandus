@@ -26,7 +26,7 @@ withDefaults(defineProps<Props>(), {
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Two-Factor Authentication',
+        title: 'Kaheastmeline autentimine',
         href: show.url(),
     },
 ];
@@ -41,28 +41,25 @@ onUnmounted(() => {
 
 <template>
     <AppLayout :breadcrumbs="breadcrumbs">
-        <Head title="Two-Factor Authentication" />
+        <Head title="Kaheastmeline autentimine" />
 
-        <h1 class="sr-only">Two-Factor Authentication Settings</h1>
+        <h1 class="sr-only">Kaheastmeline autentimine</h1>
 
         <SettingsLayout>
             <div class="space-y-6">
                 <HeadingSmall
-                    title="Two-Factor Authentication"
-                    description="Manage your two-factor authentication settings"
+                    title="Kaheastmeline autentimine"
+                    description="Halda kaheastmelise autentimise seadeid"
                 />
 
                 <div
                     v-if="!twoFactorEnabled"
                     class="flex flex-col items-start justify-start space-y-4"
                 >
-                    <Badge variant="destructive">Disabled</Badge>
+                    <Badge variant="destructive">Välja lülitatud</Badge>
 
                     <p class="text-muted-foreground">
-                        When you enable two-factor authentication, you will be
-                        prompted for a secure pin during login. This pin can be
-                        retrieved from a TOTP-supported application on your
-                        phone.
+                        Kui lülitad kaheastmelise autentimise sisse, küsitakse sisselogimisel turvalist PIN-koodi. Selle saad TOTP-rakendusest telefonis.
                     </p>
 
                     <div>
@@ -70,7 +67,7 @@ onUnmounted(() => {
                             v-if="hasSetupData"
                             @click="showSetupModal = true"
                         >
-                            <ShieldCheck />Continue Setup
+                            <ShieldCheck />Jätka seadistust
                         </Button>
                         <Form
                             v-else
@@ -79,7 +76,7 @@ onUnmounted(() => {
                             #default="{ processing }"
                         >
                             <Button type="submit" :disabled="processing">
-                                <ShieldCheck />Enable 2FA</Button
+                                <ShieldCheck />Lülita 2FA sisse</Button
                             ></Form
                         >
                     </div>
@@ -89,13 +86,10 @@ onUnmounted(() => {
                     v-else
                     class="flex flex-col items-start justify-start space-y-4"
                 >
-                    <Badge variant="default">Enabled</Badge>
+                    <Badge variant="default">Sisse lülitatud</Badge>
 
                     <p class="text-muted-foreground">
-                        With two-factor authentication enabled, you will be
-                        prompted for a secure, random pin during login, which
-                        you can retrieve from the TOTP-supported application on
-                        your phone.
+                        Kaheastmeline autentimine on sisse lülitatud. Sisselogimisel küsitakse turvalist juhuslikku PIN-koodi, mille saad telefoni TOTP-rakendusest.
                     </p>
 
                     <TwoFactorRecoveryCodes />
@@ -108,7 +102,7 @@ onUnmounted(() => {
                                 :disabled="processing"
                             >
                                 <ShieldBan />
-                                Disable 2FA
+                                Lülita 2FA välja
                             </Button>
                         </Form>
                     </div>

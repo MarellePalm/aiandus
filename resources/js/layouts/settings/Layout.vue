@@ -14,19 +14,19 @@ import { type NavItem } from '@/types';
 
 const sidebarNavItems: NavItem[] = [
     {
-        title: 'Profile',
+        title: 'Profiil',
         href: editProfile(),
     },
     {
-        title: 'Password',
+        title: 'Parool',
         href: editPassword(),
     },
     {
-        title: 'Two-Factor Auth',
+        title: 'Kaheastmeline autentimine',
         href: show(),
     },
     {
-        title: 'Appearance',
+        title: 'Välimus',
         href: editAppearance(),
     },
 ];
@@ -37,15 +37,15 @@ const { urlIsActive } = useActiveUrl();
 <template>
     <div class="px-4 py-6">
         <Heading
-            title="Settings"
-            description="Manage your profile and account settings"
+            title="Seaded"
+            description="Halda oma profiili ja konto seadeid"
         />
 
         <div class="flex flex-col lg:flex-row lg:space-x-12">
             <aside class="w-full max-w-xl lg:w-48">
                 <nav
                     class="flex flex-col space-y-1 space-x-0"
-                    aria-label="Settings"
+                    aria-label="Seaded"
                 >
                     <Button
                         v-for="item in sidebarNavItems"
