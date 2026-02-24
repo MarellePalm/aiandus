@@ -70,7 +70,7 @@ const activeChip = ref<ChipKey>(props.filters?.chip ?? 'all')
 function chipClass(key: ChipKey) {
   return key === activeChip.value
     ? 'bg-primary text-primary-foreground'
-    : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
+    : 'bg-secondary text-muted-foreground cursor-pointer hover:bg-secondary/80'
 }
 
 function parseISODate(iso: string) {
@@ -181,7 +181,7 @@ watch(query, () => {
               disabled
             >
               <span>Tüüp</span>
-              <span class="material-symbols-outlined text-sm">expand_more</span>
+              <span class="material-symbols-outlined cursor-pointer text-sm">expand_more</span>
             </button>
             <button
               type="button"
@@ -189,7 +189,7 @@ watch(query, () => {
               disabled
             >
               <span>Kategooria</span>
-              <span class="material-symbols-outlined text-sm">expand_more</span>
+              <span class="material-symbols-outlined cursor-pointer text-sm">expand_more</span>
             </button>
           </div>
         </div>
@@ -320,7 +320,7 @@ watch(query, () => {
 
     <button
       type="button"
-      class="fixed bottom-24 right-6 size-14 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center z-40 active:scale-95 transition-transform"
+      class="fixed bottom-24 right-6 cursor-pointer size-14 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center z-40 active:scale-95 transition-transform"
       aria-label="Lisa"
       @click="onAdd"
     >
