@@ -118,11 +118,34 @@ public function store(Request $request)
         ->with('success', 'Taim lisatud!');
 }
 
-public function destroy(Plant $plant)
+public function update(Request $request, Plant $plant)
 {
-    $plant->delete();
-    return redirect('/dashboard'); // või back()
+    abort_unless($plant->user_id === $request->user()->id, 403);
+
+    $data = $request->validate([
+        'bed_id' => ['nullable', 'exists:beds,id'],
+        'position_in_bed' => ['nullable', 'string', 'max:120'],
+    ]);
+
+    if (isset($data['bed_id']) && $data['bed_id']) {
+        $bed = \App\Models\Bed::find($data['bed_id']);
+        if ($bed && $bed->user_id !== $request->user()->id) {
+            abort(403);
+        }
+    }
+
+    $plant->update([
+        'bed_id' => $data['bed_id'] ?? null,
+        'position_in_bed' => $data['position_in_bed'] ?? null,
+    ]);
+
+    return back();
 }
 
-
+public function destroy(Plant $plant)
+{
+    abort_unless($plant->user_id === $request->user()->id, 403);
+    $plant->delete();
+    return redirect('/dashboard');
+}
 }
