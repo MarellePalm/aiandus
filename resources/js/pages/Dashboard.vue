@@ -11,12 +11,7 @@ import BottomNav from '@/pages/BottomNav.vue';
 import UserMenu from '@/pages/UserMenu.vue';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
-import { moonAdvice as getMoonAdvice } from '@/lib/moonAdvice';
-import { getMoonInfo } from '@/lib/moon';
-import { getZodiacInfo } from '@/lib/zodiac';
-
-const moon = computed(() => getMoonAdvice(getMoonInfo(new Date())));
-const zodiac = computed(() => getZodiacInfo(new Date()));
+import Moon from '@/pages/calendarNotes/moon.vue';
 
 const page = usePage();
 const user = page.props.auth.user;
@@ -304,28 +299,7 @@ function canMoveDown(id: SectionId) {
                 </button>
               </div>
             </div>
-
-          <div class="rhythm-card">
-            <div class="rhythm-icon">
-              <span class="material-symbols-outlined rhythm-icon-symbol">{{ moon.icon }}</span>
-            </div>
-
-            <div class="flex-1">
-              <div class="flex items-center gap-2">
-                <h4 class="rhythm-title">{{ moon.title }}</h4>
-                <span class="rhythm-badge">{{ moon.subtitle }}</span>
-              </div>
-              <p class="rhythm-body">{{ moon.text }}</p>
-              <p class="mt-1 text-sm text-muted-foreground">{{ moon.textLong }}</p>
-              <div class="mt-3 space-y-2 text-sm">
-                <div class="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground">
-                  <span><strong class="text-foreground">Päike:</strong> {{ zodiac.sunSign }}</span>
-                  <span><strong class="text-foreground">Kuu:</strong> {{ zodiac.moonSign }} ({{ zodiac.biodynamicDayLabel }})</span>
-                </div>
-                <p class="text-muted-foreground">{{ zodiac.biodynamicDescription }}</p>
-              </div>
-            </div>
-          </div>
+            <Moon />
           </section>
 
           <!-- Recent activity -->
