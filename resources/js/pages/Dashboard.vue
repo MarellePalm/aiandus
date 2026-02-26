@@ -1,6 +1,6 @@
 <!-- resources/js/Pages/Dashboard.vue -->
 <script setup lang="ts">
-import { Head, usePage, router } from '@inertiajs/vue3';
+import { Head, Link, usePage, router } from '@inertiajs/vue3';
 import { useQuery } from '@tanstack/vue-query';
 import { computed, ref, onMounted } from 'vue';
 
@@ -15,6 +15,26 @@ import Moon from '@/pages/calendarNotes/moon.vue';
 
 const page = usePage();
 const user = page.props.auth.user;
+
+type RecentNote = { id: number; note_date: string; title?: string | null; type?: string; done?: boolean | null; media_urls?: string[] };
+const recentNotes = computed<RecentNote[]>(() => (page.props.recentNotes as RecentNote[] | undefined) ?? []);
+
+type RecentPlant = { id: number; name: string; image_url?: string | null; created_at?: string | null; category?: { name: string; slug: string } | null };
+const recentPlants = computed<RecentPlant[]>(() => (page.props.recentPlants as RecentPlant[] | undefined) ?? []);
+
+function relativeDays(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+  if (diffDays === 0) return 'Täna';
+  if (diffDays === 1) return 'Eile';
+  if (diffDays < 7) return `${diffDays} päeva tagasi`;
+  if (diffDays < 14) return '1 nädal tagasi';
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} nädalat tagasi`;
+  return d.toLocaleDateString('et-EE', { day: 'numeric', month: 'short' });
+}
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Dashboard', href: dashboard().url }];
 
@@ -77,8 +97,8 @@ function onAddNote() {
 
 // Järjekord: salvestatakse localStorage'i, kasutaja saab plokke üles/alla tõsta
 const STORAGE_KEY = 'dashboardSectionOrder';
-type SectionId = 'weather' | 'addNote' | 'moon' | 'recent';
-const DEFAULT_ORDER: SectionId[] = ['weather', 'addNote', 'moon', 'recent'];
+type SectionId = 'weather' | 'addNote' | 'moon' | 'notes' | 'recent';
+const DEFAULT_ORDER: SectionId[] = ['weather', 'addNote', 'moon', 'notes', 'recent'];
 
 const sectionOrder = ref<SectionId[]>([...DEFAULT_ORDER]);
 
@@ -87,8 +107,10 @@ onMounted(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as unknown;
-      if (Array.isArray(parsed) && parsed.every((id) => DEFAULT_ORDER.includes(id as SectionId)) && parsed.length === DEFAULT_ORDER.length) {
-        sectionOrder.value = parsed as SectionId[];
+      if (Array.isArray(parsed) && parsed.every((id) => DEFAULT_ORDER.includes(id as SectionId))) {
+        const order = parsed as SectionId[];
+        const missing = DEFAULT_ORDER.filter((id) => !order.includes(id));
+        sectionOrder.value = [...order, ...missing];
       }
     }
   } catch {
@@ -149,7 +171,7 @@ function canMoveDown(id: SectionId) {
             <div class="flex justify-end gap-1 mb-2">
               <button
                 type="button"
-                class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                class="section-reorder-btn"
                 aria-label="Tõsta plokki üles"
                 :disabled="!canMoveUp('weather')"
                 @click="moveSection('weather', 'up')"
@@ -158,7 +180,7 @@ function canMoveDown(id: SectionId) {
               </button>
               <button
                 type="button"
-                class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                class="section-reorder-btn"
                 aria-label="Tõsta plokki alla"
                 :disabled="!canMoveDown('weather')"
                 @click="moveSection('weather', 'down')"
@@ -199,13 +221,14 @@ function canMoveDown(id: SectionId) {
               <div class="flex flex-col items-end">
                 <span
                   v-if="q.isSuccess.value"
-                  class="material-symbols-outlined text-10xl text-primary drop-shadow-sm"
+                  class="material-symbols-outlined text-primary drop-shadow-sm block leading-none"
+                  style="font-size: 7.5rem; font-variation-settings: 'opsz' 64;"
                   aria-hidden="true"
                 >
                   {{ iconWeatherMaterial(q.data.value?.weatherCode ?? 3) }}
                 </span>
 
-                <p v-if="q.isSuccess.value && todayWeatherLabel" class="text-sm font-medium mt-1 text-muted-foreground">
+                <p v-if="q.isSuccess.value && todayWeatherLabel" class="text-lg font-semibold mt-1 text-muted-foreground">
                   {{ todayWeatherLabel }}
                 </p>
               </div>
@@ -251,7 +274,7 @@ function canMoveDown(id: SectionId) {
             <div class="flex justify-end gap-1 mb-2">
               <button
                 type="button"
-                class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                class="section-reorder-btn"
                 aria-label="Tõsta plokki üles"
                 :disabled="!canMoveUp('addNote')"
                 @click="moveSection('addNote', 'up')"
@@ -260,7 +283,7 @@ function canMoveDown(id: SectionId) {
               </button>
               <button
                 type="button"
-                class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                class="section-reorder-btn"
                 aria-label="Tõsta plokki alla"
                 :disabled="!canMoveDown('addNote')"
                 @click="moveSection('addNote', 'down')"
@@ -281,7 +304,7 @@ function canMoveDown(id: SectionId) {
               <div class="flex gap-1">
                 <button
                   type="button"
-                  class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                  class="section-reorder-btn"
                   aria-label="Tõsta plokki üles"
                   :disabled="!canMoveUp('moon')"
                   @click="moveSection('moon', 'up')"
@@ -290,7 +313,7 @@ function canMoveDown(id: SectionId) {
                 </button>
                 <button
                   type="button"
-                  class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
+                  class="section-reorder-btn"
                   aria-label="Tõsta plokki alla"
                   :disabled="!canMoveDown('moon')"
                   @click="moveSection('moon', 'down')"
@@ -302,80 +325,122 @@ function canMoveDown(id: SectionId) {
             <Moon />
           </section>
 
-          <!-- Recent activity -->
-          <section v-if="id === 'recent'">
-            <div class="flex justify-between items-end gap-4 mb-4">
-              <h3 class="text-lg font-bold">Viimased toimetused</h3>
-              <div class="flex items-center gap-2">
-                <div class="flex gap-1">
-                  <button
-                    type="button"
-                    class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
-                    aria-label="Tõsta plokki üles"
-                    :disabled="!canMoveUp('recent')"
-                    @click="moveSection('recent', 'up')"
+          <!-- Viimased märkmed -->
+          <section v-if="id === 'notes'" class="relative">
+            <div class="flex justify-end gap-1 mb-2">
+              <button
+                type="button"
+                class="section-reorder-btn"
+                aria-label="Tõsta plokki üles"
+                :disabled="!canMoveUp('notes')"
+                @click="moveSection('notes', 'up')"
+              >
+                <span class="material-symbols-outlined text-lg">expand_less</span>
+              </button>
+              <button
+                type="button"
+                class="section-reorder-btn"
+                aria-label="Tõsta plokki alla"
+                :disabled="!canMoveDown('notes')"
+                @click="moveSection('notes', 'down')"
+              >
+                <span class="material-symbols-outlined text-lg">expand_more</span>
+              </button>
+            </div>
+            <div class="dashboard-panel">
+              <h3 class="text-lg font-bold mb-4">Viimased märkmed</h3>
+              <div class="flex overflow-x-auto gap-4 pb-2 no-scrollbar">
+                <Link
+                  v-for="n in recentNotes"
+                  :key="n.id"
+                  :href="`/calendar/notes/${n.id}/edit`"
+                  class="activity-card min-w-[160px] shrink-0"
+                >
+                  <div
+                    class="w-20 h-20 rounded-full mb-3 ring-4 ring-primary/10 bg-secondary flex items-center justify-center bg-cover bg-center"
+                    :style="n.media_urls?.length ? { backgroundImage: `url('${n.media_urls[0]}')` } : {}"
                   >
-                    <span class="material-symbols-outlined text-lg">expand_less</span>
-                  </button>
-                  <button
-                    type="button"
-                    class="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:pointer-events-none"
-                    aria-label="Tõsta plokki alla"
-                    :disabled="!canMoveDown('recent')"
-                    @click="moveSection('recent', 'down')"
-                  >
-                    <span class="material-symbols-outlined text-lg">expand_more</span>
-                  </button>
-                </div>
-                <a class="text-primary text-sm font-semibold whitespace-nowrap" href="#">
-                  Vaata kõiki
-                </a>
+                    <span v-if="!n.media_urls?.length" class="material-symbols-outlined text-3xl text-primary">description</span>
+                  </div>
+                  <p class="font-bold text-sm truncate">{{ n.title || 'Märge' }}</p>
+                  <p class="text-[10px] uppercase tracking-tighter text-primary font-bold mt-1 italic">
+                    {{ relativeDays(n.note_date) }}
+                  </p>
+                  <div class="flex gap-1 mt-2">
+                    <span class="material-symbols-outlined text-xs">edit_note</span>
+                  </div>
+                </Link>
               </div>
-            </div>
-
-          <div class="flex overflow-x-auto gap-4 pb-2 no-scrollbar">
-            <div class="activity-card min-w-[160px]">
-              <div
-                class="w-20 h-20 bg-cover bg-center rounded-full mb-3 ring-4 ring-primary/10"
-                style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCq98xf0LSMWWdH7roCHqqRk4_03xFu-WcAuulswyFfi1uI477LXOcRc0hO5v4GuJHpLPIb8G_ZWzOtoTjGg5SElrBReXT1NevglrMNI7hFyEZuGKBJ83fFDNuMDC9rcQTe0aFtuI-2B0AfKB2QVzty39WmhtzYzXP1ypBv5-IPThhVP6FueJPqZov5KuRvLTfQ7T0Pf8E3fyD1osmkKP85kkXHDnxFPreGAl61dE5x8EkCfqEuXpeSUhfc912AnRhyKQEt0NXwGy8');"
-              />
-              <p class="font-bold text-sm">Basiilik</p>
-              <p class="text-[10px] uppercase tracking-tighter text-primary font-bold mt-1 italic">
-                2 päeva tagasi
+              <p v-if="recentNotes.length === 0" class="text-sm text-muted-foreground py-4">
+                Viimaseid märkmeid pole. Lisa märkmed kalendrist.
               </p>
-              <div class="flex gap-1 mt-2">
-                <span class="material-symbols-outlined text-xs">water_drop</span>
-              </div>
+              <Link
+                href="/calendar/overview"
+                class="btn-panel-link"
+              >
+                <span class="material-symbols-outlined text-lg">description</span>
+                <span class="font-semibold text-sm">Vaata kõiki märkmeid</span>
+                <span class="material-symbols-outlined text-lg ml-auto">chevron_right</span>
+              </Link>
             </div>
+          </section>
 
-            <div class="activity-card min-w-[160px]">
-              <div
-                class="w-20 h-20 bg-cover bg-center rounded-full mb-3 ring-4 ring-primary/10"
-                style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAzk0qvCFs1figJ_8BAfOkxedBEZJ4jNh-4BfNiPj2KeWmHnZDouTumoxClPeUlEwyF7ILR10f9DyHuA9c4fKNrqrYh3LVGrR4ibXCFfS1LpqhoHCsgzitUvsPeCWkAHknlXTO-IwYIN-QgaxT1E7zkdLmT1z3MNUkcJRMe-fLxYr3Agd5UxRdlbDw0dOu6PK_ie3c0iYa8y684XPzqoY-PJpOeVufsBLJMtYDgvWzg-1MEyHMtVg4PhTpzX04ARvd80qaYj0CzAws');"
-              />
-              <p class="font-bold text-sm">Kirsstomat</p>
-              <p class="text-[10px] uppercase tracking-tighter text-primary font-bold mt-1 italic">
-                Täna
-              </p>
-              <div class="flex gap-1 mt-2">
-                <span class="material-symbols-outlined text-xs">nest_eco_leaf</span>
-              </div>
+          <!-- Viimati lisatud taimed -->
+          <section v-if="id === 'recent'" class="relative">
+            <div class="flex justify-end gap-1 mb-2">
+              <button
+                type="button"
+                class="section-reorder-btn"
+                aria-label="Tõsta plokki üles"
+                :disabled="!canMoveUp('recent')"
+                @click="moveSection('recent', 'up')"
+              >
+                <span class="material-symbols-outlined text-lg">expand_less</span>
+              </button>
+              <button
+                type="button"
+                class="section-reorder-btn"
+                aria-label="Tõsta plokki alla"
+                :disabled="!canMoveDown('recent')"
+                @click="moveSection('recent', 'down')"
+              >
+                <span class="material-symbols-outlined text-lg">expand_more</span>
+              </button>
             </div>
-
-            <div class="activity-card min-w-[160px]">
-              <div
-                class="w-20 h-20 bg-cover bg-center rounded-full mb-3 ring-4 ring-primary/10"
-                style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDIVdQDFw7NO9oSEpJsA99zvlAs4iIqLyXgA6XuGJRLjMiIVhnRBZl-eV7O3VfLL7NCJaEVr704eSRojSfFiLT99hp8vlO68atVzfwI1FQR90YDXBwVrKZqrNoQAfOjKRGskdf5SGOgfjkPwwl1U8e6gCsLUeIs6wTy_2xjlroL0Z8yKtq-_QYKFZM-AXvcdtYkcEgMDfLFP_ScP_ht_AgjMBbNOnXLnZ7paxIqJdUGjiNcAdWQ-ljjE5g_LZkYEulbDfu5cCyQ8a0');"
-              />
-              <p class="font-bold text-sm">Lavendel</p>
-              <p class="text-[10px] uppercase tracking-tighter text-primary font-bold mt-1 italic">
-                Eile
-              </p>
-              <div class="flex gap-1 mt-2">
-                <span class="material-symbols-outlined text-xs">content_cut</span>
+            <div class="dashboard-panel">
+              <h3 class="text-lg font-bold mb-4">Viimati lisatud taimed</h3>
+              <div class="flex overflow-x-auto gap-4 pb-2 no-scrollbar">
+                <Link
+                  v-for="p in recentPlants"
+                  :key="p.id"
+                  :href="`/plants/${p.id}`"
+                  class="activity-card min-w-[160px] shrink-0"
+                >
+                  <div
+                    class="w-20 h-20 bg-cover bg-center rounded-full mb-3 ring-4 ring-primary/10 bg-muted"
+                    :style="p.image_url ? { backgroundImage: `url('${p.image_url}')` } : {}"
+                  />
+                  <p class="font-bold text-sm">{{ p.name }}</p>
+                  <p class="text-[10px] uppercase tracking-tighter text-primary font-bold mt-1 italic">
+                    {{ relativeDays(p.created_at) }}
+                  </p>
+                  <div class="flex gap-1 mt-2">
+                    <span class="material-symbols-outlined text-xs">grass</span>
+                  </div>
+                </Link>
               </div>
+              <p v-if="recentPlants.length === 0" class="text-sm text-muted-foreground py-4">
+                Viimati lisatud taimi pole. Lisa taime aia vaatest.
+              </p>
+              <Link
+                href="/plants"
+                class="btn-panel-link"
+              >
+                <span class="material-symbols-outlined text-lg">grass</span>
+                <span class="font-semibold text-sm">Vaata kõiki taimi</span>
+                <span class="material-symbols-outlined text-lg ml-auto">chevron_right</span>
+              </Link>
             </div>
-          </div>
           </section>
         </template>
       </div>

@@ -23,23 +23,25 @@ const theme = computed(() => {
 </script>
 
 <template>
-  <div class="mzSeg h-full" :style="{ '--seg-bg': theme.bg, '--seg-accent': theme.accent }">
-    <div class="left">
-      <!-- ring sobib sinu rhythm-icon stiiliga -->
-      <div class="size-8 rounded-full bg-card shadow-inner flex items-center justify-center">
-        <span class="material-symbols-outlined icon" :style="{ color: 'var(--seg-accent)' }">
+  <div class="mzSeg mzSeg--stacked h-full" :style="{ '--seg-bg': theme.bg, '--seg-accent': theme.accent }">
+    <div class="mzSeg-icon">
+      <div class="size-8 rounded-full bg-card shadow-inner flex items-center justify-center shrink-0">
+        <span
+          class="material-symbols-outlined icon"
+          :style="{ color: 'var(--seg-accent)' }"
+        >
           {{ theme.icon }}
         </span>
       </div>
-      <span class="vline"></span>
     </div>
-
     <div class="content">
       <div class="signRow">
         <span class="symbol">{{ signSymbol }}</span>
-        <span class="name">{{ zodiac.moonSign }}</span>
+        <div class="signText">
+          <span class="name">{{ zodiac.moonSign }}</span>
+          <span class="meta">{{ zodiac.biodynamicDayLabel }}</span>
+        </div>
       </div>
-      <div class="meta">{{ zodiac.biodynamicDayLabel }}</div>
     </div>
   </div>
 </template>

@@ -8,6 +8,8 @@ import BottomNav from '@/pages/BottomNav.vue';
 import { calendar } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import UserMenu from '@/pages/UserMenu.vue';
+import { getMoonInfo } from '@/lib/moon/moon';
+import MoonPhaseIcon from './MoonPhaseIcon.vue';
 
 type Note = {
   id?: number | string;
@@ -98,6 +100,8 @@ const selectedISO = computed(() => {
 const selectedMonthLabel = computed(() =>
   selectedDate.value.toLocaleDateString('et-EE', { month: 'long', year: 'numeric' }),
 );
+
+const moonInfo = computed(() => getMoonInfo(selectedDate.value));
 
 const selectedWeekday = computed(() =>
   selectedDate.value.toLocaleDateString('et-EE', { weekday: 'long' }),
@@ -219,8 +223,12 @@ function selectDay(day: number) {
               <h2 class="journal-title capitalize">{{ selectedWeekday }}</h2>
             </div>
 
-            <div class="text-primary/70">
-              <span class="material-symbols-outlined text-[24px]">brightness_3</span>
+            <div class="text-primary/70 flex items-center justify-center">
+              <MoonPhaseIcon
+                :phase-index="moonInfo.phaseIndex"
+                :illumination="moonInfo.illumination"
+                :size="40"
+              />
             </div>
           </div>
 
@@ -360,14 +368,11 @@ function selectDay(day: number) {
 
           <Link
             href="/calendar/overview"
-            class="mt-2 w-full h-14 px-5 rounded-2xl shadow-soft
-            bg-card text-primary border border-border
-            inline-flex items-center justify-center gap-2
-            hover:bg-card/90 transition"
+            class="btn-panel-link mt-2"
           >
             <span class="material-symbols-outlined text-lg">description</span>
             <span class="font-semibold text-sm">Vaata kõiki märkmeid</span>
-            <span class="material-symbols-outlined text-lg">chevron_right</span>
+            <span class="material-symbols-outlined text-lg ml-auto">chevron_right</span>
           </Link>
         </section>
       </div>
