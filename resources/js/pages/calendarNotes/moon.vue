@@ -34,10 +34,6 @@ const zodiac = computed(() => getZodiacInfo(dateRef.value));
       <p class="mt-1 text-sm text-muted-foreground">{{ moon.textLong }}</p>
 
       <div class="mt-3 space-y-2 text-sm">
-        <div class="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground">
-          <span><strong class="text-foreground">Päike:</strong> {{ zodiac.sunSign }}</span>
-          <span><strong class="text-foreground">Kuu:</strong> {{ zodiac.moonSign }} ({{ zodiac.biodynamicDayLabel }})</span>
-        </div>
         <p class="text-muted-foreground">{{ zodiac.biodynamicDescription }}</p>
       </div>
     </div>
