@@ -10,6 +10,8 @@ class Plant extends Model
     protected $fillable = [
         'user_id',
         'category_id',
+        'bed_id',
+        'position_in_bed',
         'name',
         'subtitle',
         'planted_at',
@@ -18,7 +20,7 @@ class Plant extends Model
         'notes',
         'tags',
         'last_watered_at',
-];
+    ];
 
     protected $casts = [
         'tags' => 'array',
@@ -34,5 +36,10 @@ class Plant extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function bed(): BelongsTo
+    {
+        return $this->belongsTo(Bed::class);
     }
 }

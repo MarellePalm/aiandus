@@ -1,9 +1,11 @@
 <?php
 // FILE: routes/web.php
 
+use App\Http\Controllers\BedController;
 use App\Http\Controllers\CalendarNoteController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\PlantController;
+use App\Models\Bed;
 use App\Models\CalendarNote;
 use App\Models\Plant;
 use Illuminate\Support\Facades\Route;
@@ -44,7 +46,42 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ]);
     })->name('dashboard');
 
-    Route::get('map', fn () => Inertia::render('MapView'))->name('map');
+    Route::get('map', function (\Illuminate\Http\Request $request) {
+        $user = $request->user();
+        $beds = Bed::query()
+            ->where('user_id', $user->id)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->with(['plants' => fn ($q) => $q->select('id', 'name', 'image_url', 'bed_id', 'position_in_bed')])
+            ->get()
+            ->map(fn ($b) => [
+                'id' => $b->id,
+                'name' => $b->name,
+                'location' => $b->location,
+                'rows' => (int) ($b->rows ?? 3),
+                'columns' => (int) ($b->columns ?? 3),
+                'layout' => $b->layout,
+                'plants' => $b->plants->map(fn ($p) => [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'image_url' => $p->image_url,
+                    'position_in_bed' => $p->position_in_bed,
+                ]),
+            ]);
+        $plantsWithoutBed = Plant::query()
+            ->where('user_id', $user->id)
+            ->whereNull('bed_id')
+            ->orderBy('name')
+            ->get(['id', 'name', 'image_url']);
+        return Inertia::render('MapView', [
+            'beds' => $beds,
+            'plantsWithoutBed' => $plantsWithoutBed,
+        ]);
+    })->name('map');
+
+    Route::post('beds', [BedController::class, 'store'])->name('beds.store');
+    Route::put('beds/{bed}', [BedController::class, 'update'])->name('beds.update');
+    Route::delete('beds/{bed}', [BedController::class, 'destroy'])->name('beds.destroy');
     Route::get('seeds', fn () => Inertia::render('Seeds'))->name('seeds');
 
     // Calendar notes
