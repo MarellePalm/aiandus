@@ -82,7 +82,10 @@ function formatHintEt(info: BiodynamicInfoEt): string {
 
 function formatDescriptionEt(info: BiodynamicInfoEt): string {
   const notes = info.notes?.length ? ` Märkus: ${info.notes.join(' ')}` : '';
-  return `${info.label} • ${info.element} • ${info.crops.join(', ')} • ${info.tasks.join(', ')}.${notes}`;
+  // Kirjelduses ei korda label'it (nt "õiepäev"), see on juba pealkirja reas.
+  return `${info.element} • kultuurid: ${info.crops.join(
+    ', ',
+  )} • tööd: ${info.tasks.join(', ')}.${notes}`;
 }
 
 // Tropiline aasta (päevades)

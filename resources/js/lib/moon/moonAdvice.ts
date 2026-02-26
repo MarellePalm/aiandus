@@ -111,51 +111,67 @@ const PHASE_RULES: Record<MoonPhase8, PhaseRule> = {
   },
 } as const;
 
+function uniq(items?: readonly string[]): string[] {
+  const cleaned = (items ?? [])
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return [...new Set(cleaned)];
+}
+
 function sentenceList(items?: readonly string[]): string {
-  return items?.length ? items.join(', ') : '';
+  return uniq(items).join(', ');
 }
 
 function formatShort(rule: PhaseRule): string {
   const a = sentenceList(rule.goodFor);
   const b = sentenceList(rule.avoid);
+
+  // hoia lühike ja “skänniv”
   if (a && b) return `${rule.focus}: sobib ${a}; väldi ${b}.`;
   if (a) return `${rule.focus}: sobib ${a}.`;
   if (b) return `${rule.focus}: väldi ${b}.`;
   return `${rule.focus}.`;
 }
 
-/** Detailid, mis ei dubleeri `text` kokkuvõtet. */
+/** Detailid, mis ei dubleeri `text` kokkuvõtet (väldi-osa on juba short-is + lessSuitable väljas). */
 function formatLong(rule: PhaseRule): string {
   const parts: string[] = [];
   const crops = sentenceList(rule.crops);
   const tasks = sentenceList(rule.tasks);
-  const avoid = sentenceList(rule.avoid);
   const notes = sentenceList(rule.notes);
 
   if (crops) parts.push(`Kultuurid: ${crops}.`);
   if (tasks) parts.push(`Tööd: ${tasks}.`);
-  if (avoid) parts.push(`Väldi: ${avoid}.`);
   if (notes) parts.push(`Märkus: ${notes}.`);
 
-  return parts.join(' ');
+  // kui lisadetaile pole, anna vähemalt definitsioon (et textLong poleks tühi)
+  return parts.length ? parts.join(' ') : rule.definition;
 }
 
 export function moonAdvice(info: MoonInfo): MoonAdviceStructured {
   const pct = Math.round(info.illumination * 100);
-  const rule = PHASE_RULES[info.phase];
+
+  // runtime fallback (juhuks kui phase tuleb valesti)
+  const rule = PHASE_RULES[(info.phase as MoonPhase8)] ?? PHASE_RULES.Uuskuu;
+
+  const suitable = uniq(rule.goodFor);
+  const tasks = uniq(rule.tasks);
+  const lessSuitable = uniq(rule.avoid);
+  const tags = uniq(rule.tags);
+  const keywords = uniq([...tags, ...(rule.crops ?? [])]);
 
   return {
-    title: info.phase,
+    title: info.phase as MoonPhase8,
     icon: rule.icon,
     subtitle: `Valgustatus ${pct}%`,
     text: formatShort(rule),
     textLong: formatLong(rule),
-    tags: [...rule.tags],
+    tags,
 
     focusLine: `${rule.focus}: ${rule.definition}`,
-    suitable: [...(rule.goodFor ?? [])],
-    tasks: [...(rule.tasks ?? [])],
-    keywords: [...rule.tags],
-    lessSuitable: [...(rule.avoid ?? [])],
+    suitable,
+    tasks,
+    keywords,
+    lessSuitable,
   };
 }

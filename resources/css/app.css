@@ -455,6 +455,83 @@
              bg-primary/15 text-primary;
     }
   }
+
+  /* Moon Zodiac Badge */
+  .mzBadge {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .mzBadge.split .mzSeg { flex: 1 1 0; }
+  
+  .mzSeg{
+    background: var(--seg-bg);
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    align-items: center;
+    padding: 12px 14px;
+    border-left: 1px solid var(--app-border, rgba(0,0,0,.12));
+  }
+  
+  .left{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .icon{
+    font-size: 22px;
+    line-height: 1;
+    opacity: .9;
+  }
+  
+  .vline{
+    width: 1px;
+    height: 26px;
+    background: var(--app-border, rgba(0,0,0,.25));
+  }
+  
+  .content{
+    text-align: center;
+    line-height: 1.1;
+  }
+  
+  .signRow{
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    font-weight: 600;
+    color: var(--app-text, rgba(0,0,0,.88));
+  }
+  
+  .symbol{
+    color: var(--seg-accent);
+    font-weight: 700;
+  }
+  
+  .meta{
+    margin-top: 4px;
+    font-size: 12px;
+    opacity: .75;
+  }
+
+  :root{
+    --app-border: rgba(0,0,0,.12);
+    --app-text: rgba(0,0,0,.88);
+  
+    --bio-flower-bg: #f6efb1;
+    --bio-flower-accent: #4f7c2c;
+  
+    --bio-leaf-bg: #bff0b0;
+    --bio-leaf-accent: #2f7d32;
+  
+    --bio-fruit-bg: #ffd6a6;
+    --bio-fruit-accent: #b85a00;
+  
+    --bio-root-bg: #e7d6b8;
+    --bio-root-accent: #6a4b2a;
+  }
   
 
   .activity-card {
