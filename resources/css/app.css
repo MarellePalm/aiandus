@@ -517,20 +517,25 @@
   }
 
   :root{
-    --app-border: rgba(0,0,0,.12);
-    --app-text: rgba(0,0,0,.88);
+    /* võta otse sinu süsteemi tokenitest */
+    --app-border: var(--border);
+    --app-text: var(--foreground);
   
-    --bio-flower-bg: #f6efb1;
-    --bio-flower-accent: #4f7c2c;
+    /* pehmed “tint” taustad (kasutavad sinu palette'i) */
+    --bio-leaf-bg: color-mix(in oklab, var(--primary) 14%, transparent);
+    --bio-leaf-accent: var(--primary);
   
-    --bio-leaf-bg: #bff0b0;
-    --bio-leaf-accent: #2f7d32;
+    /* fruit – natuke soojem (primary + secondary) */
+    --bio-fruit-bg: color-mix(in oklab, var(--primary) 10%, var(--secondary));
+    --bio-fruit-accent: var(--primary);
   
-    --bio-fruit-bg: #ffd6a6;
-    --bio-fruit-accent: #b85a00;
+    /* root – neutraalsem (muted) */
+    --bio-root-bg: color-mix(in oklab, var(--muted) 70%, transparent);
+    --bio-root-accent: var(--muted-foreground);
   
-    --bio-root-bg: #e7d6b8;
-    --bio-root-accent: #6a4b2a;
+    /* flower – väga õrn (secondary/accent) */
+    --bio-flower-bg: color-mix(in oklab, var(--secondary) 85%, transparent);
+    --bio-flower-accent: var(--primary);
   }
   
 
