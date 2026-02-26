@@ -26,6 +26,7 @@ type BiodynamicInfoEt = Readonly<{
   element: 'vesi' | 'tuli' | 'maa' | 'õhk';
   crops: readonly string[];
   tasks: readonly string[];
+  description: string;
   notes?: readonly string[];
 }>;
 
@@ -51,28 +52,36 @@ const BIODYNAMIC_ET: Record<BiodynamicDayType, BiodynamicInfoEt> = {
     element: 'vesi',
     crops: ['salat', 'kapsas', 'spinat', 'seller', 'maitseroheline'],
     tasks: ['külv', 'istutamine', 'kastmine', 'niitmine'],
-    notes: ['Lehtköögivilju korista pigem õie- või viljapäeval.'],
+    description:
+      'Hea aeg lehtköögiviljade külviks ja korjamiseks, muru niitmiseks ning toataimede kastmiseks ja väetamiseks.',
+    notes: ['Lehtköögivilju on parem koristada õie- või viljapäeval.'],
   },
   fruit: {
     label: 'viljapäev',
     element: 'tuli',
     crops: ['tomat', 'paprika', 'oad', 'herned', 'mais', 'kõrvits'],
     tasks: ['külv', 'istutamine', 'võrsete näpistamine', 'võsude eemaldamine'],
-    notes: ['Viljapäeval korjatud saak säilib sageli paremini.'],
+    description:
+      'Hea aeg viljade ja seemnetaimede hoolduseks, muru külviks ning viljapuude lõikamiseks ja väetamiseks.',
+    notes: ['Viljapäeval korjatud saak säilib sageli eriti hästi.'],
   },
   root: {
     label: 'juurepäev',
     element: 'maa',
     crops: ['porgand', 'kartul', 'sibul', 'peet', 'küüslauk'],
     tasks: ['külv', 'istutamine', 'muldamine', 'väetamine'],
-    notes: ['Saaki on hea ladustada juurtepäeval.'],
+    description:
+      'Hea aeg juur- ja köögiviljade külviks, kompostimiseks, rohimiseks ja saagi säilitamiseks.',
+    notes: ['Juurvilju on hea ladustada juurtepäeval.'],
   },
   flower: {
     label: 'õiepäev',
     element: 'õhk',
     crops: ['lilled', 'maitsetaimed'],
     tasks: ['lilleistutused', 'maitsetaimede koristus', 'lõikelillede lõikamine'],
-    notes: ['Lõikelilled püsivad kauem. Lehtköögivilju korista pigem õie- või viljapäeval.'],
+    description:
+      'Hea aeg õistaimede ja ravimtaimede külviks, istutamiseks ja väetamiseks; sobib ka leivaküpsetamiseks.',
+    notes: ['Õiepäeval lõigatud lilled püsivad kauem.'],
   },
 } as const;
 
@@ -81,11 +90,8 @@ function formatHintEt(info: BiodynamicInfoEt): string {
 }
 
 function formatDescriptionEt(info: BiodynamicInfoEt): string {
-  const notes = info.notes?.length ? ` Märkus: ${info.notes.join(' ')}` : '';
-  // Kirjelduses ei korda label'it (nt "õiepäev"), see on juba pealkirja reas.
-  return `${info.element} • kultuurid: ${info.crops.join(
-    ', ',
-  )} • tööd: ${info.tasks.join(', ')}.${notes}`;
+  // Ainult peamine lause; märkused jäävad kuufaasi "Märkused:" plokki, et ei kordaks.
+  return info.description;
 }
 
 // Tropiline aasta (päevades)
@@ -191,5 +197,8 @@ export function getZodiacInfo(date = new Date()) {
     biodynamicDayLabel: info.label,
     biodynamicHint: formatHintEt(info),
     biodynamicDescription: formatDescriptionEt(info),
+    element: info.element,
+    crops: info.crops,
+    tasks: info.tasks,
   };
 }

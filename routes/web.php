@@ -4,6 +4,8 @@
 use App\Http\Controllers\CalendarNoteController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\PlantController;
+use App\Models\CalendarNote;
+use App\Models\Plant;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -15,7 +17,32 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('dashboard', fn () => Inertia::render('Dashboard'))->name('dashboard');
+    Route::get('dashboard', function (\Illuminate\Http\Request $request) {
+        $user = $request->user();
+        $recentNotes = CalendarNote::query()
+            ->where('user_id', $user->id)
+            ->orderBy('note_date', 'desc')
+            ->orderBy('id', 'desc')
+            ->limit(5)
+            ->get(['id', 'note_date', 'title', 'type', 'done', 'media']);
+        $recentPlants = Plant::query()
+            ->where('user_id', $user->id)
+            ->with('category:id,name,slug')
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get()
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'name' => $p->name,
+                'image_url' => $p->image_url,
+                'created_at' => $p->created_at?->toIso8601String(),
+                'category' => $p->category ? ['name' => $p->category->name, 'slug' => $p->category->slug] : null,
+            ]);
+        return Inertia::render('Dashboard', [
+            'recentNotes' => $recentNotes,
+            'recentPlants' => $recentPlants,
+        ]);
+    })->name('dashboard');
 
     Route::get('map', fn () => Inertia::render('MapView'))->name('map');
     Route::get('seeds', fn () => Inertia::render('Seeds'))->name('seeds');
@@ -47,6 +74,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('calendar/overview', [CalendarNoteController::class, 'overview'])
         ->name('calendar.overview');
+
+    Route::get('calendar/moon', fn () => Inertia::render('calendarNotes/MoonCalendar'))
+        ->name('calendar.moon');
 
     Route::get('overview', fn () => redirect()->route('calendar.overview'))
         ->name('overview');

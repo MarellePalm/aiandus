@@ -472,6 +472,33 @@
     align-items: center;
     padding: 12px 14px;
     border-left: 1px solid var(--app-border, rgba(0,0,0,.12));
+    border-radius: 0.75rem;
+  }
+
+  .mzSeg--stacked {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .mzSeg--stacked .mzSeg-icon {
+    display: flex;
+    justify-content: center;
+  }
+
+  .mzSeg--stacked .content {
+    width: 100%;
+    text-align: center;
+  }
+
+  .mzSeg--stacked .signRow {
+    justify-content: center;
+  }
+
+  .mzSeg--stacked .signText {
+    align-items: center;
   }
   
   .left{
@@ -493,27 +520,28 @@
   }
   
   .content{
-    text-align: center;
+    text-align: left;   /* oluline: muidu kõik center */
     line-height: 1.1;
   }
   
   .signRow{
-    display: inline-flex;
-    align-items: baseline;
+    display: flex;
+    align-items: center;  /* mitte baseline */
     gap: 8px;
     font-weight: 600;
-    color: var(--app-text, rgba(0,0,0,.88));
   }
   
-  .symbol{
-    color: var(--seg-accent);
-    font-weight: 700;
+  .signText{
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
   }
   
   .meta{
-    margin-top: 4px;
+    margin-top: 2px;     /* väiksem kui 4px */
     font-size: 12px;
     opacity: .75;
+    font-weight: 500;    /* meta natuke pehmem */
   }
 
   :root{
@@ -541,6 +569,25 @@
 
   .activity-card {
     @apply card p-4 flex flex-col items-center text-center;
+  }
+
+  /* Dashboard: plokitaust (märkmed, taimed – nagu kuufaas) */
+  .dashboard-panel {
+    @apply card bg-secondary/60 p-5;
+  }
+
+  /* Dashboard: ploki üles/alla nupp */
+  .section-reorder-btn {
+    @apply p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground
+           disabled:opacity-30 disabled:pointer-events-none;
+  }
+
+  /* Täislaius “Vaata kõiki” / “Vaata kõiki märkmeid” – nupp kaardi all */
+  .btn-panel-link {
+    @apply mt-3 w-full h-14 px-5 rounded-2xl shadow-soft
+           bg-card text-primary border border-border
+           inline-flex items-center justify-start gap-2
+           hover:bg-card/90 transition;
   }
 
   .tip-card {
@@ -702,12 +749,12 @@
     @apply text-destructive;
   }
 
-  /* Journal (stitch-like) panel for Calendar view */
+  /* Journal panel for Calendar view – vasak ja parem nurk kandilised */
   .journal-panel {
-    @apply leaf-shape soft-shadow
+    @apply soft-shadow
            bg-muted text-foreground
            dark:bg-card/70 dark:backdrop-blur-md
-           p-6;
+           p-6 rounded-[var(--radius)];
   }
 
   .journal-subtitle {

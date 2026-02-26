@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { Link } from '@inertiajs/vue3';
 import { moonAdvice as getMoonAdvice } from '@/lib/moon/moonAdvice';
 import { getMoonInfo } from '@/lib/moon/moon';
 import { getZodiacInfo } from '@/lib/moon/zodiac';
-import MoonZodiacBadge from './MoonZodiacBadge.vue'; // kohanda pathi kui vaja
+import MoonPhaseIcon from './MoonPhaseIcon.vue';
+import MoonZodiacBadge from './MoonZodiacBadge.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -13,35 +15,49 @@ const props = withDefaults(
 );
 
 const dateRef = computed(() => props.date ?? new Date());
-const moon = computed(() => getMoonAdvice(getMoonInfo(dateRef.value)));
+const moonInfo = computed(() => getMoonInfo(dateRef.value));
+const moon = computed(() => getMoonAdvice(moonInfo.value));
 const zodiac = computed(() => getZodiacInfo(dateRef.value));
 </script>
 
 <template>
   <!-- soovitan overflow-hidden, et parempoolne riba “lõikuks” ilusti kaardi raadiusega -->
-  <div class="rhythm-card flex items-stretch gap-4 overflow-hidden">
-    <div class="rhythm-icon">
-      <span class="material-symbols-outlined rhythm-icon-symbol">{{ moon.icon }}</span>
-    </div>
-
-    <div class="flex-1">
-      <div class="flex items-center gap-2">
-        <h4 class="rhythm-title">{{ moon.title }}</h4>
-        <span class="rhythm-badge">{{ moon.subtitle }}</span>
+  <div class="rhythm-card flex flex-col overflow-hidden">
+    <div class="flex items-center gap-4 flex-1 min-h-0">
+      <div class="rhythm-icon shrink-0">
+        <MoonPhaseIcon
+        :phase-index="moonInfo.phaseIndex"
+        :illumination="moonInfo.illumination"
+        :size="56"
+        />
       </div>
-
-      <p class="rhythm-body">{{ moon.text }}</p>
-      <p class="mt-1 text-sm text-muted-foreground">{{ moon.textLong }}</p>
-
-      <div class="mt-3 space-y-2 text-sm">
-        <p class="text-muted-foreground">{{ zodiac.biodynamicDescription }}</p>
+      <h4 class="rhythm-title flex-1 min-w-0">{{ moon.title }}</h4>
+      <div class="shrink-0 w-32 self-stretch">
+        <MoonZodiacBadge :date="dateRef" />
       </div>
     </div>
 
-    <!-- PAREM “pildi moodi” riba -->
-    <!-- stitchi järgi on see pigem kitsas: w-28 (7rem). Kui tahad laiemat, pane w-32 vms -->
-    <div class="shrink-0 w-28 self-stretch">
-      <MoonZodiacBadge :date="dateRef" />
+    <div class="mt-3 space-y-1 text-sm text-muted-foreground text-left">
+        <p>
+          {{ zodiac.biodynamicDescription }}
+        </p>
+        <p v-if="moon.tasks.length">
+          <strong class="font-semibold">Tööd:</strong>
+          {{ moon.tasks.join(', ') }}
+        </p>
+        <p v-if="moon.textLong">
+          <strong class="font-semibold">Märkused:</strong>
+          {{ moon.textLong }}
+        </p>
     </div>
+
+    <Link
+      href="/calendar/moon"
+      class="btn-panel-link"
+    >
+      <span class="material-symbols-outlined text-lg">calendar_month</span>
+      <span class="font-semibold text-sm">Vaata kuukalendrit</span>
+      <span class="material-symbols-outlined text-lg ml-auto">chevron_right</span>
+    </Link>
   </div>
 </template>
