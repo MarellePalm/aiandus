@@ -99,7 +99,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/plants/category/{slug}', [PlantController::class, 'category'])
         ->name('plants.category');
 
-    Route::get('calendar/note-form', fn () => Inertia::render('calendarNotes/NoteForm'))
+    Route::get('calendar/note-form', [CalendarNoteController::class, 'create'])
         ->name('calendar.noteForm');
 
     Route::post('calendar/notes', [CalendarNoteController::class, 'store'])->name('calendar.notes.store');

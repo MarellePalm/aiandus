@@ -4,11 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Bed;
+use App\Models\Plant;
 
 class CalendarNote extends Model
 {
     protected $fillable = [
         'user_id',
+        'bed_id',
+        'plant_id',
         'note_date',
         'title',
         'body',
@@ -31,5 +35,15 @@ class CalendarNote extends Model
     {
         $paths = $this->media ?? [];
         return array_map(fn (string $path) => Storage::url($path), $paths);
+    }
+
+    public function bed()
+    {
+        return $this->belongsTo(Bed::class);
+    }
+
+    public function plant()
+    {
+        return $this->belongsTo(Plant::class);
     }
 }
