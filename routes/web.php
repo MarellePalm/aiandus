@@ -11,6 +11,7 @@ use App\Models\Plant;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
+use App\Http\Controllers\SeedController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -82,7 +83,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('beds', [BedController::class, 'store'])->name('beds.store');
     Route::put('beds/{bed}', [BedController::class, 'update'])->name('beds.update');
     Route::delete('beds/{bed}', [BedController::class, 'destroy'])->name('beds.destroy');
-    Route::get('seeds', fn () => Inertia::render('Seeds'))->name('seeds');
+    Route::get('seeds', fn () => Inertia::render('Seeds/Index', [
+        'items' => [],
+    ]))->name('seeds');
+    Route::get('seeds/create', fn () => Inertia::render('Seeds/Create', [
+        'categories' => [],
+    ]))->name('seeds.create');
+    Route::post('seeds', fn () => redirect()->route('seeds'))->name('seeds.store');
 
     // Calendar notes
     Route::get('calendar', [CalendarNoteController::class, 'index'])->name('calendar');
@@ -122,6 +129,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('plants', PlantController::class);
 
     Route::post('/plants/{plant}/waterings', [PlantController::class, 'water'])->name('plants.water');
+
+    Route::resource('seeds', SeedController::class);
 });
 
 require __DIR__ . '/settings.php';
