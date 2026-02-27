@@ -20,7 +20,11 @@ const props = defineProps<{
     type?: NoteType;
     due_date?: string | null;
     due_time?: string | null;
+    bed_id?: number | null;
+    plant_id?: number | null;
   };
+  beds?: { id: number; name: string; location?: string | null }[];
+  plants?: { id: number; name: string }[];
   editMode?: boolean;
 }>();
 
@@ -51,8 +55,8 @@ const form = useForm<{
   due_date: props.note?.due_date ?? new Date().toISOString().slice(0, 10),
   due_time: props.note?.due_time ?? '09:00',
 
-  bed_id: null,
-  plant_id: null,
+  bed_id: props.note?.bed_id ?? null,
+  plant_id: props.note?.plant_id ?? null,
 
   photos: [],
 });
@@ -331,12 +335,15 @@ function cancel() {
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <label class="form-label note-label" for="bed">Seo peenraga</label>
-                    <!-- TODO: replace options with real props later -->
                     <select id="bed" v-model.number="form.bed_id" class="form-input note-input">
                       <option :value="null">Ei ole seotud</option>
-                      <option :value="1">Peenar A</option>
-                      <option :value="2">Kasvuhoone</option>
-                      <option :value="3">Ürdikast</option>
+                      <option
+                        v-for="bed in (props.beds ?? [])"
+                        :key="bed.id"
+                        :value="bed.id"
+                      >
+                        {{ bed.name }}
+                      </option>
                     </select>
                     <p v-if="form.errors.bed_id" class="text-red-600 dark:text-red-400 text-xs mt-1">
                       {{ form.errors.bed_id }}
@@ -345,12 +352,15 @@ function cancel() {
 
                   <div>
                     <label class="form-label note-label" for="plant">Seo taimega</label>
-                    <!-- TODO: replace options with real props later -->
                     <select id="plant" v-model.number="form.plant_id" class="form-input note-input">
                       <option :value="null">Ei ole seotud</option>
-                      <option :value="1">Tomat 'Moneymaker'</option>
-                      <option :value="2">Basiilik 'Genovese'</option>
-                      <option :value="3">Lavendel</option>
+                      <option
+                        v-for="plant in (props.plants ?? [])"
+                        :key="plant.id"
+                        :value="plant.id"
+                      >
+                        {{ plant.name }}
+                      </option>
                     </select>
                     <p v-if="form.errors.plant_id" class="text-red-600 dark:text-red-400 text-xs mt-1">
                       {{ form.errors.plant_id }}
