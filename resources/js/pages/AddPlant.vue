@@ -17,7 +17,7 @@ function submit() {
     // example:
     // router.post(route('plants.store'), form.value, { onStart: () => (processing.value = true), onFinish: () => (processing.value = false) });
     // For now we just log so the page is usable without backend.
-    // eslint-disable-next-line no-console
+     
     console.log('Add plant form submitted:', form.value);
 }
 </script>

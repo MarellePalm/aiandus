@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
+
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 
@@ -8,7 +9,7 @@ type PlantInBed = { id: number; name: string; image_url: string | null; position
 type Bed = { id: number; name: string; location: string | null; rows: number; columns: number; layout?: number[][] | null; plants: PlantInBed[] };
 type PlantWithoutBed = { id: number; name: string; image_url: string | null };
 
-const props = defineProps<{
+defineProps<{
   beds: Bed[];
   plantsWithoutBed: PlantWithoutBed[];
 }>();
@@ -62,15 +63,6 @@ function getBedLayout(bed: Bed): number[][] {
   const r = bed.rows || 1;
   const c = bed.columns || 1;
   return Array.from({ length: r }, () => Array.from({ length: c }, () => 1));
-}
-
-/** Kas ruut (r,c) on peenra ruut (võib taim), mitte vahekäik */
-function isPlantCell(bed: Bed, row: number, col: number): boolean {
-  const layout = getBedLayout(bed);
-  if (row >= layout.length) return false;
-  const layoutRow = layout[row];
-  if (!layoutRow || col >= layoutRow.length) return false;
-  return layoutRow[col] === 1;
 }
 
 function getBedColumns(bed: Bed): number {

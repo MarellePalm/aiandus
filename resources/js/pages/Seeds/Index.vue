@@ -3,7 +3,9 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
 import AppLayout from '@/layouts/AppLayout.vue';
+
 import BottomNav from '../BottomNav.vue';
+
 import AddSeed from './AddSeed.vue';
 import SearchModal from './SearchModal.vue';
 

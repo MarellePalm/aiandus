@@ -1,7 +1,7 @@
 <!-- resources/js/pages/UserMenu.vue -->
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 const props = withDefaults(
   defineProps<{ settingsHref?: string; logoutHref?: string; ariaLabel?: string }>(),

@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
-import { moonAdvice as getMoonAdvice } from '@/lib/moon/moonAdvice';
+import { computed } from 'vue';
+
 import { getMoonInfo } from '@/lib/moon/moon';
+import { moonAdvice as getMoonAdvice } from '@/lib/moon/moonAdvice';
 import { getZodiacInfo } from '@/lib/moon/zodiac';
+
 import MoonPhaseIcon from './MoonPhaseIcon.vue';
 import MoonZodiacBadge from './MoonZodiacBadge.vue';
 
