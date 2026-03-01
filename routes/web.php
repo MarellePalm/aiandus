@@ -5,13 +5,13 @@ use App\Http\Controllers\BedController;
 use App\Http\Controllers\CalendarNoteController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\PlantController;
+use App\Http\Controllers\SeedController;
 use App\Models\Bed;
 use App\Models\CalendarNote;
 use App\Models\Plant;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
-use App\Http\Controllers\SeedController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -20,14 +20,17 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+
     Route::get('dashboard', function (\Illuminate\Http\Request $request) {
         $user = $request->user();
+
         $recentNotes = CalendarNote::query()
             ->where('user_id', $user->id)
             ->orderBy('note_date', 'desc')
             ->orderBy('id', 'desc')
             ->limit(5)
             ->get(['id', 'note_date', 'title', 'type', 'done', 'media']);
+
         $recentPlants = Plant::query()
             ->where('user_id', $user->id)
             ->with('category:id,name,slug')
@@ -39,8 +42,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'name' => $p->name,
                 'image_url' => $p->image_url,
                 'created_at' => $p->created_at?->toIso8601String(),
-                'category' => $p->category ? ['name' => $p->category->name, 'slug' => $p->category->slug] : null,
+                'category' => $p->category
+                    ? ['name' => $p->category->name, 'slug' => $p->category->slug]
+                    : null,
             ]);
+
         return Inertia::render('Dashboard', [
             'recentNotes' => $recentNotes,
             'recentPlants' => $recentPlants,
@@ -49,11 +55,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('map', function (\Illuminate\Http\Request $request) {
         $user = $request->user();
+
         $beds = Bed::query()
             ->where('user_id', $user->id)
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->with(['plants' => fn ($q) => $q->select('id', 'name', 'image_url', 'bed_id', 'position_in_bed')])
+            ->with(['plants' => fn ($q) =>
+                $q->select('id', 'name', 'image_url', 'bed_id', 'position_in_bed')
+            ])
             ->get()
             ->map(fn ($b) => [
                 'id' => $b->id,
@@ -69,11 +78,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     'position_in_bed' => $p->position_in_bed,
                 ]),
             ]);
+
         $plantsWithoutBed = Plant::query()
             ->where('user_id', $user->id)
             ->whereNull('bed_id')
             ->orderBy('name')
             ->get(['id', 'name', 'image_url']);
+
         return Inertia::render('MapView', [
             'beds' => $beds,
             'plantsWithoutBed' => $plantsWithoutBed,
@@ -83,15 +94,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('beds', [BedController::class, 'store'])->name('beds.store');
     Route::put('beds/{bed}', [BedController::class, 'update'])->name('beds.update');
     Route::delete('beds/{bed}', [BedController::class, 'destroy'])->name('beds.destroy');
-    Route::get('seeds', fn () => Inertia::render('Seeds/Index', [
-        'items' => [],
-    ]))->name('seeds');
-    Route::get('seeds/create', fn () => Inertia::render('Seeds/Create', [
-        'categories' => [],
-    ]))->name('seeds.create');
-    Route::post('seeds', fn () => redirect()->route('seeds'))->name('seeds.store');
 
-    // Calendar notes
+    // ✅ SEEDS — ainult resource
+    Route::resource('seeds', SeedController::class);
+    Route::patch('seeds/{seed}/favorite', [SeedController::class, 'toggleFavorite'])
+        ->name('seeds.favorite');
+
+    // Calendar
     Route::get('calendar', [CalendarNoteController::class, 'index'])->name('calendar');
 
     Route::post('/plants/categories', [CategoryController::class, 'store'])
@@ -109,10 +118,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('calendar/note-form', [CalendarNoteController::class, 'create'])
         ->name('calendar.noteForm');
 
-    Route::post('calendar/notes', [CalendarNoteController::class, 'store'])->name('calendar.notes.store');
-    Route::get('calendar/notes/{note}/edit', [CalendarNoteController::class, 'edit'])->name('calendar.notes.edit');
-    Route::put('calendar/notes/{note}', [CalendarNoteController::class, 'update'])->name('calendar.notes.update');
-    Route::delete('calendar/notes/{note}', [CalendarNoteController::class, 'destroy'])->name('calendar.notes.destroy');
+    Route::post('calendar/notes', [CalendarNoteController::class, 'store'])
+        ->name('calendar.notes.store');
+
+    Route::get('calendar/notes/{note}/edit', [CalendarNoteController::class, 'edit'])
+        ->name('calendar.notes.edit');
+
+    Route::put('calendar/notes/{note}', [CalendarNoteController::class, 'update'])
+        ->name('calendar.notes.update');
+
+    Route::delete('calendar/notes/{note}', [CalendarNoteController::class, 'destroy'])
+        ->name('calendar.notes.destroy');
+
     Route::post('calendar/notes/{note}/toggle-done', [CalendarNoteController::class, 'toggleDone'])
         ->name('calendar.notes.toggleDone');
 
@@ -125,12 +142,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('overview', fn () => redirect()->route('calendar.overview'))
         ->name('overview');
 
-    // Plants (resource + custom actions)
+    // Plants
     Route::resource('plants', PlantController::class);
-
-    Route::post('/plants/{plant}/waterings', [PlantController::class, 'water'])->name('plants.water');
-
-    Route::resource('seeds', SeedController::class);
+    Route::post('/plants/{plant}/waterings', [PlantController::class, 'water'])
+        ->name('plants.water');
 });
 
 require __DIR__ . '/settings.php';
