@@ -1,14 +1,15 @@
 <!-- resources/js/Pages/Calendar.vue -->
 <script setup lang="ts">
-import { computed, ref } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 
 import AppLayout from '@/layouts/AppLayout.vue';
+import { getMoonInfo } from '@/lib/moon/moon';
 import BottomNav from '@/pages/BottomNav.vue';
+import UserMenu from '@/pages/UserMenu.vue';
 import { calendar } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
-import UserMenu from '@/pages/UserMenu.vue';
-import { getMoonInfo } from '@/lib/moon/moon';
+
 import MoonPhaseIcon from './MoonPhaseIcon.vue';
 
 type Note = {

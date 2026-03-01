@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
 import { Head, Link, router } from '@inertiajs/vue3'
+import { computed, ref, watch } from 'vue'
+
 import BottomNav from '@/pages/BottomNav.vue'
 import UserMenu from '@/pages/UserMenu.vue'
 

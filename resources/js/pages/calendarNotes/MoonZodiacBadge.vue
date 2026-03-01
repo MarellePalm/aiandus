@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+
 import { getZodiacInfo } from '@/lib/moon/zodiac'
 
 const props = withDefaults(defineProps<{ date?: Date }>(), { date: undefined })

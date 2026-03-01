@@ -1,170 +1,234 @@
 <script setup lang="ts">
-import { router, useForm } from "@inertiajs/vue3"
+import { useForm } from '@inertiajs/vue3';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
-const form = useForm({
-  name: "",
-  subtitle: "",
-  planted_at: "", 
-  image_url:"",
-})
+const props = defineProps<{
+    open: boolean;
+}>();
 
-function goBack() {
-  router.visit("/dashboard") // või /plants kui sul on list. Saame pärast õigeks.
-}
-function submit() {
-  form.post("/plants")
-}
+const emit = defineEmits<{
+    (e: 'update:open', value: boolean): void;
+    (e: 'created'): void;
+}>();
 
+const close = () => emit('update:open', false);
+
+const form = useForm<{
+    name: string;
+    year: string;
+    expires_at: string;
+    image: File | null;
+}>({
+    name: '',
+    year: '',
+    expires_at: '',
+    image: null,
+});
+
+const nameInputRef = ref<HTMLInputElement | null>(null);
+const fileInputRef = ref<HTMLInputElement | null>(null);
+const previewUrl = ref<string | null>(null);
+
+const hasImage = computed(() => !!form.image);
+
+const revokePreview = () => {
+    if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
+    previewUrl.value = null;
+};
+
+const setFile = (file: File | null) => {
+    revokePreview();
+    form.image = file;
+    if (file) previewUrl.value = URL.createObjectURL(file);
+};
+
+const onFileChange = (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    if (file && !file.type.startsWith('image/')) return;
+    setFile(file);
+    input.value = '';
+};
+
+const openPicker = () => fileInputRef.value?.click();
+
+const reset = () => {
+    form.reset();
+    form.clearErrors();
+    revokePreview();
+};
+
+watch(
+    () => props.open,
+    async (open) => {
+        if (open) {
+            document.body.style.overflow = 'hidden';
+            await nextTick();
+            nameInputRef.value?.focus();
+        } else {
+            document.body.style.overflow = '';
+            reset();
+        }
+    },
+    { immediate: true },
+);
+
+const submit = () => {
+    form.post('/seeds', {
+        forceFormData: true,
+        onSuccess: () => {
+            emit('created');
+            close();
+        },
+    });
+};
+
+onBeforeUnmount(() => {
+    document.body.style.overflow = '';
+    revokePreview();
+});
 </script>
 
 <template>
-  <!-- Phone Form Factor Container -->
-  <div class="bg-background-light dark:bg-background-dark font-display text-charcoal dark:text-gray-100 min-h-screen flex justify-center">
-    <div class="w-full max-w-107.5 min-h-screen flex flex-col relative overflow-hidden">
-
-      <!-- TopAppBar -->
-      <header class="flex items-center px-6 pt-12 pb-6 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md sticky top-0 z-10">
-        <button
-          type="button"
-          class="flex items-center justify-center size-10 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-          @click="goBack"
-        >
-          <span class="material-symbols-outlined text-charcoal dark:text-white">arrow_back_ios_new</span>
-        </button>
-        <h1 class="flex-1 text-center text-lg font-bold tracking-tight text-charcoal dark:text-white pr-10">
-          Lisa Taim
-        </h1>
-      </header>
-
-      <main class="flex-1 px-6 pb-24 flex flex-col gap-8">
-        <!-- EmptyState / Photo Placeholder -->
-        <div class="mt-4">
-          <div class="group relative flex flex-col items-center justify-center aspect-square w-full rounded-[3rem] border-2 border-dashed border-[#dfe2df] dark:border-gray-700 bg-white/50 dark:bg-white/5 transition-all hover:border-primary/50 overflow-hidden ios-shadow"
-          :style="form.image_url
-            ? { backgroundImage: `url(${form.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-    :       {}"
-          >
-            <div class="flex flex-col items-center gap-4 p-8 text-center">
-              <div v-if="!form.image_url" class="size-16 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                <span class="material-symbols-outlined text-3xl!">add_a_photo</span>
-              </div>
-              <div class="flex flex-col gap-1">
-                <p class="text-charcoal dark:text-white text-lg font-bold leading-tight">Lisa foto</p>
-                <p class="text-gray-500 dark:text-gray-400 text-sm font-normal">Sinu taime portree</p>
-              </div>
-              <button type="button" class="mt-2 flex min-w-30 cursor-pointer items-center justify-center rounded-full h-11 px-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-charcoal dark:text-white text-sm font-bold shadow-sm active:scale-95 transition-transform">
-                Vali fail
-              </button>
-            </div>
-          </div>
-        </div>
-         <!-- ✅ Samm 4: Pildi URL input (SIIN) -->
-  <div class="mt-4 flex flex-col gap-2">
-    <label class="text-charcoal dark:text-gray-300 text-sm font-semibold px-1">
-      Pildi URL
-    </label>
-
-    <input
-      v-model="form.image_url"
-      @input="form.clearErrors('image_url')"
-      type="url"
-      placeholder="https://..."
-      class="w-full h-14 px-5 rounded-xl border-none bg-white dark:bg-gray-800 ios-shadow focus:ring-2 focus:ring-primary/20 text-charcoal dark:text-white transition-all"
-    />
-
-    <p v-if="form.errors.image_url" class="text-red-600 dark:text-red-400 text-sm px-1">
-      {{ form.errors.image_url }}
-    </p>
-  </div>
-
-        <!-- Form Fields -->
-        <div class="flex flex-col gap-6">
-          <!-- TextField: Taime nimi -->
-          <div class="flex flex-col gap-2">
-            <label class="text-charcoal dark:text-gray-300 text-sm font-semibold px-1">Taime nimi</label>
-            <div class="relative">
-              <input
-                v-model="form.name"
-                @input="form.clearErrors('name')"
-                class="w-full  h-14 px-5 rounded-xl border-none bg-white dark:bg-gray-800 ios-shadow focus:ring-2 focus:ring-primary/20 placeholder:font-serif-journal placeholder:italic placeholder:text-gray-400 text-charcoal dark:text-white transition-all"
-                placeholder="Taime nimi"
-                type="text"
-              />
-            </div>
-            <p v-if="form.errors.name" class="text-red-600 dark:text-red-400 text-sm px-1">
-              {{ form.errors.name }}
-            </p>
-
-          </div>
-
-          <!-- TextField: Sort -->
-          <div class="flex flex-col gap-2">
-            <label class="text-charcoal dark:text-gray-300 text-sm font-semibold px-1">Sort</label>
-            <div class="relative">
-              <input
-                v-model="form.subtitle"
-                @input="form.clearErrors('subtitle')"
-                class="w-full h-14 px-5 rounded-xl border-none bg-white dark:bg-gray-800 ios-shadow focus:ring-2 focus:ring-primary/20 placeholder:text-gray-400 text-charcoal dark:text-white transition-all"
-                placeholder="nt. Monstera Deliciosa"
-                type="text"
-              />
-            </div>
-            <p v-if="form.errors.subtitle" class="text-red-600 dark:text-red-400 text-sm px-1">
-              {{ form.errors.subtitle }}
-            </p>
-
-          </div>
-
-          <!-- Select: Istutamise kuupäev -->
-          <div class="flex flex-col gap-2">
-            <label class="text-charcoal dark:text-gray-300 text-sm font-semibold px-1">Istutamise kuupäev</label>
-            <div class="relative">
-              <input
-                v-model="form.planted_at"
-                type="date"
-                @change="form.clearErrors('planted_at')"
-                @click="($event.target as HTMLInputElement).showPicker?.()"
-                class="w-full h-14 px-5 rounded-xl border-none bg-white dark:bg-gray-800 ios-shadow focus:ring-2 focus:ring-primary/20 text-charcoal dark:text-white transition-all cursor-pointer"
+    <Teleport to="body">
+        <transition name="fade">
+            <div
+                v-if="props.open"
+                class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                aria-modal="true"
+                role="dialog"
+            >
+                <button
+                    type="button"
+                    class="absolute inset-0 bg-black/30 backdrop-blur-[2px]"
+                    aria-label="Sulge"
+                    @click="close"
                 />
+
+                <div class="relative w-full max-w-lg rounded-3xl bg-[#FAF8F4] shadow-xl ring-1 ring-black/5">
+                    <div class="p-5 sm:p-6">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <h3 class="text-lg font-semibold text-[#2E2E2E]">Lisa seeme</h3>
+                                <p class="mt-1 text-sm text-[#2E2E2E]/70">
+                                    Lisa nimi, pilt, ostmisaasta ja aegumiskuupäev.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                class="rounded-full p-2 text-[#2E2E2E]/60 hover:bg-black/5 hover:text-[#2E2E2E]"
+                                @click="close"
+                                aria-label="Sulge"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div class="mt-5">
+                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                                Seemne nimi
+                            </label>
+                            <input
+                                ref="nameInputRef"
+                                v-model="form.name"
+                                type="text"
+                                placeholder="nt Tomat"
+                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                            />
+                            <p v-if="form.errors.name" class="mt-2 text-sm text-red-600">{{ form.errors.name }}</p>
+                        </div>
+
+                        <div class="mt-5">
+                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                                Pilt
+                            </label>
+                            <input
+                                ref="fileInputRef"
+                                type="file"
+                                accept="image/*"
+                                class="hidden"
+                                @change="onFileChange"
+                            />
+                            <button
+                                type="button"
+                                class="mt-3 w-full rounded-2xl border-2 border-dashed border-black/10 bg-white/60 px-6 py-8 text-center hover:bg-white/80"
+                                @click="openPicker"
+                            >
+                                <template v-if="!hasImage">
+                                    <span class="material-symbols-outlined text-5xl text-[#6B8C68]">add_a_photo</span>
+                                    <p class="mt-2 text-sm text-[#2E2E2E]/70">Lisa seemne pilt</p>
+                                </template>
+                                <template v-else>
+                                    <img
+                                        v-if="previewUrl"
+                                        :src="previewUrl"
+                                        alt="Eelvaade"
+                                        class="mx-auto max-h-40 rounded-xl object-cover"
+                                    />
+                                </template>
+                            </button>
+                            <p v-if="form.errors.image" class="mt-2 text-sm text-red-600">{{ form.errors.image }}</p>
+                        </div>
+
+                        <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div>
+                                <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                                    Ostmise aasta
+                                </label>
+                                <input
+                                    v-model="form.year"
+                                    type="number"
+                                    min="1900"
+                                    max="2100"
+                                    class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                />
+                                <p v-if="form.errors.year" class="mt-2 text-sm text-red-600">{{ form.errors.year }}</p>
+                            </div>
+                            <div>
+                                <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                                    Aegumiskuupäev
+                                </label>
+                                <input
+                                    v-model="form.expires_at"
+                                    type="date"
+                                    class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                />
+                                <p v-if="form.errors.expires_at" class="mt-2 text-sm text-red-600">{{ form.errors.expires_at }}</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 flex flex-col gap-3">
+                            <button
+                                type="button"
+                                class="rounded-2xl bg-[#6B8C68] px-4 py-3 font-medium text-white transition hover:bg-[#4F6A52] disabled:opacity-60"
+                                :disabled="form.processing || !form.name.trim()"
+                                @click="submit"
+                            >
+                                {{ form.processing ? 'Salvestan...' : 'Salvesta seeme' }}
+                            </button>
+                            <button
+                                type="button"
+                                class="text-sm text-[#2E2E2E]/60 hover:text-[#2E2E2E]"
+                                :disabled="form.processing"
+                                @click="close"
+                            >
+                                Tühista
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <p v-if="form.errors.planted_at" class="text-red-600 dark:text-red-400 text-sm px-1">
-              {{ form.errors.planted_at }}
-            </p>
-
-          </div>
-        </div>
-
-        
-      </main>
-
-      <!-- Bottom Primary Button -->
-      <div class="px-6 pb-10">
-        <button
-            type="button"
-            @click="submit"
-            :disabled="form.processing"
-            class="w-full h-16 bg-primary text-white font-bold text-lg rounded-xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-        >
-        <span class="material-symbols-outlined">potted_plant</span>
-        Salvesta taim
-        </button>
-      </div>
-
-
-    </div>
-  </div>
+        </transition>
+    </Teleport>
 </template>
 
 <style scoped>
-.ios-shadow {
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 150ms ease;
 }
-
-.custom-select {
-  appearance: none;
-  background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuCCWcvFg7YxXPT-pfRujK0x1ZwQpRTCr7z74wbHLbRNojRY7kJXqiLM_7dpPHRoiML25gjJKffbNwrqNobfyUwtXSkwGAHamh2r3F7E3_EGbjuyVozRtpsQUPjbmOEPFGLxI49I9s37MaxnHyTLJQxWMCaMZWWrxtLglmUKVp-B8VqNzzKd22ti8u3XcbrpAT-vs6r9IJCI45gA4huH0Rju5FERGW2gKsrK63U05C6Y7cnqNhfyAVkYQ8yXV0XD-b-S6m_TlwpJJ8I);
-  background-position: right 1rem center;
-  background-repeat: no-repeat;
-  background-size: 1.5em 1.5em;
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
 }
 </style>

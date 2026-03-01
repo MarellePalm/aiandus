@@ -9,7 +9,7 @@ const props = defineProps<{
   processing?: boolean;
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   (e: "close"): void;
   (e: "confirm"): void;
 }>();

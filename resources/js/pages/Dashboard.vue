@@ -8,10 +8,10 @@ import { useGeolocation } from '@/composables/useGeolocation';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { fetchWeatherMoon, iconWeatherMaterial, labelWeather } from '@/lib/openMeteo';
 import BottomNav from '@/pages/BottomNav.vue';
+import Moon from '@/pages/calendarNotes/moon.vue';
 import UserMenu from '@/pages/UserMenu.vue';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
-import Moon from '@/pages/calendarNotes/moon.vue';
 
 const page = usePage();
 const user = page.props.auth.user;
