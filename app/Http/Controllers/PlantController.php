@@ -176,15 +176,13 @@ public function update(Request $request, Plant $plant)
 
     // Uuenda ainult need väljad, mis on saadetud (nullable ok)
     $plant->update([
-        'name' => $data['name'] ?? $plant->name,
         'subtitle' => $data['subtitle'] ?? $plant->subtitle,
         'notes' => $data['notes'] ?? $plant->notes,
         'watering_in_days' => $data['watering_in_days'] ?? $plant->watering_in_days,
         'fertilizing_frequency' => $data['fertilizing_frequency'] ?? $plant->fertilizing_frequency,
         'image_url' => $data['image_url'] ?? $plant->image_url,
 
-        'bed_id' => $data['bed_id'] ?? null,
-        'position_in_bed' => $data['position_in_bed'] ?? null,
+        
     ]);
 
     return redirect()->route('plants.show', $plant->id)->with('success', 'Taim uuendatud!');

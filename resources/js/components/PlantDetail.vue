@@ -211,11 +211,8 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
         <!-- Header Text -->
         <div class="mb-8 md:mb-10">
           <h1 class="font-serif italic text-4xl md:text-5xl tracking-tight text-[#2d3a2a] dark:text-primary mb-1">
-            {{ props.plant.name }}
+            {{ props.plant.subtitle }}
           </h1>
-          <p class="text-[#717a71] dark:text-gray-400 text-sm font-body uppercase tracking-widest">
-            {{ props.plant.subtitle || "" }}
-          </p>
         </div>
 
         <!-- Desktop: 2 veergu (vasakul kaardid, paremal märkmed) -->

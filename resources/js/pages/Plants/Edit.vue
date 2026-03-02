@@ -4,36 +4,24 @@ import { computed, onBeforeUnmount, ref } from "vue";
 
 type Plant = {
   id: number;
-  name?: string | null;
   subtitle?: string | null;
   notes?: string | null;
-  tags?: string[] | null;
   image_url?: string | null;
   watering_in_days?: number | null;
   fertilizing_frequency?: string | null;
-
-  bed_id?: number | null;
-  position_in_bed?: string | null;
 };
 
-const props = defineProps<{
-  plant: Plant;
-}>();
+const props = defineProps<{ plant: Plant }>();
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const localPreview = ref<string | null>(null);
 const pickedFile = ref<File | null>(null);
 
 const form = useForm({
-  name: props.plant.name ?? "",
   subtitle: props.plant.subtitle ?? "",
-  notes: props.plant.notes ?? "",
   watering_in_days: props.plant.watering_in_days ?? null,
   fertilizing_frequency: props.plant.fertilizing_frequency ?? "",
-
-  bed_id: props.plant.bed_id ?? null,
-  position_in_bed: props.plant.position_in_bed ?? "",
-
+  notes: props.plant.notes ?? "",
   image: null as File | null,
 });
 
@@ -65,15 +53,12 @@ function clearFile() {
 }
 
 function submit() {
-  form.post(`/plants/${props.plant.id}`, {
-    forceFormData: true,
+  // Update route on PUT /plants/{id}
+  form.put(`/plants/${props.plant.id}`, {
+    forceFormData: true, // vajalik pildi jaoks
     preserveScroll: true,
-    onBefore: () => {
-      (form as any)._method = "put";
-    },
   });
 }
-
 
 onBeforeUnmount(() => {
   if (localPreview.value) URL.revokeObjectURL(localPreview.value);
@@ -85,13 +70,13 @@ onBeforeUnmount(() => {
     <div class="mb-5 flex items-start justify-between gap-3">
       <div>
         <h1 class="text-2xl font-semibold leading-tight">Muuda taime</h1>
-        <p class="text-sm opacity-70">Muuda andmeid ja salvesta.</p>
+        <p class="text-sm opacity-70">Muuda sorti, kastmist, väetamist, märkmeid ja pilti.</p>
       </div>
 
-    <Link
-  :href="`/plants/${plant.id}`"
-  class="rounded-xl border px-3 py-2 text-sm hover:bg-black/5"
->
+      <Link
+        :href="`/plants/${plant.id}`"
+        class="rounded-xl border px-3 py-2 text-sm hover:bg-black/5"
+      >
         Tagasi
       </Link>
     </div>
@@ -150,20 +135,9 @@ onBeforeUnmount(() => {
         <h2 class="text-base font-semibold">Andmed</h2>
 
         <form class="mt-4 space-y-4" @submit.prevent="submit">
+          <!-- 1) Sort -->
           <div>
-            <label class="mb-1 block text-sm font-medium">Nimi</label>
-            <input
-              v-model="form.name"
-              class="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black/10"
-              placeholder="Nt. Kurgid"
-            />
-            <div v-if="form.errors.name" class="mt-1 text-sm text-red-600">
-              {{ form.errors.name }}
-            </div>
-          </div>
-
-          <div>
-            <label class="mb-1 block text-sm font-medium">Sort / alampealkiri</label>
+            <label class="mb-1 block text-sm font-medium">Sort</label>
             <input
               v-model="form.subtitle"
               class="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black/10"
@@ -174,82 +148,46 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div>
-              <label class="mb-1 block text-sm font-medium">Kastmine (päeva)</label>
-              <input
-                type="number"
-                v-model="form.watering_in_days"
-                class="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black/10"
-                placeholder="Nt. 3"
-                min="0"
-              />
-              <div v-if="form.errors.watering_in_days" class="mt-1 text-sm text-red-600">
-                {{ form.errors.watering_in_days }}
-              </div>
-            </div>
-
-            <div>
-              <label class="mb-1 block text-sm font-medium">Väetamine</label>
-              <input
-                v-model="form.fertilizing_frequency"
-                class="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black/10"
-                placeholder="Nt. iga 2 nädala tagant"
-              />
-              <div v-if="form.errors.fertilizing_frequency" class="mt-1 text-sm text-red-600">
-                {{ form.errors.fertilizing_frequency }}
-              </div>
+          <!-- 2) Kastmine -->
+          <div>
+            <label class="mb-1 block text-sm font-medium">Kastmine (päeva pärast)</label>
+            <input
+              type="number"
+              v-model="form.watering_in_days"
+              class="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black/10"
+              placeholder="Nt. 3"
+              min="0"
+            />
+            <div v-if="form.errors.watering_in_days" class="mt-1 text-sm text-red-600">
+              {{ form.errors.watering_in_days }}
             </div>
           </div>
 
+          <!-- 3) Väetamine -->
+          <div>
+            <label class="mb-1 block text-sm font-medium">Väetamine</label>
+            <input
+              v-model="form.fertilizing_frequency"
+              class="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black/10"
+              placeholder="Nt. iga 2 nädala tagant"
+            />
+            <div v-if="form.errors.fertilizing_frequency" class="mt-1 text-sm text-red-600">
+              {{ form.errors.fertilizing_frequency }}
+            </div>
+          </div>
+
+          <!-- 4) Märkmed -->
           <div>
             <label class="mb-1 block text-sm font-medium">Märkmed</label>
             <textarea
               v-model="form.notes"
-              rows="5"
+              rows="6"
               class="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black/10"
               placeholder="Kirjuta siia..."
             />
             <div v-if="form.errors.notes" class="mt-1 text-sm text-red-600">
               {{ form.errors.notes }}
             </div>
-          </div>
-
-          <!-- Peenar -->
-          <div class="rounded-2xl border p-3">
-            <div class="text-sm font-semibold mb-2">Peenar</div>
-
-            <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div>
-                <label class="mb-1 block text-sm font-medium">Bed ID</label>
-                <input
-                  type="number"
-                  v-model="form.bed_id"
-                  class="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black/10"
-                  placeholder="Nt. 1"
-                  min="1"
-                />
-                <div v-if="form.errors.bed_id" class="mt-1 text-sm text-red-600">
-                  {{ form.errors.bed_id }}
-                </div>
-              </div>
-
-              <div>
-                <label class="mb-1 block text-sm font-medium">Asukoht peenras</label>
-                <input
-                  v-model="form.position_in_bed"
-                  class="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black/10"
-                  placeholder="Nt. vasak äär"
-                />
-                <div v-if="form.errors.position_in_bed" class="mt-1 text-sm text-red-600">
-                  {{ form.errors.position_in_bed }}
-                </div>
-              </div>
-            </div>
-
-            <p class="mt-2 text-xs opacity-70">
-              (Kui tahad, teen selle Bed ID asemel rippmenüüks, kui saadad beds listi propsina.)
-            </p>
           </div>
 
           <div class="flex flex-col-reverse gap-3 md:flex-row md:items-center md:justify-end">
