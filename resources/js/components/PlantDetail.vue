@@ -147,10 +147,10 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
 <template>
   <div class="bg-background-light dark:bg-background-dark font-display text-[#141514] dark:text-gray-100 antialiased min-h-screen">
     <!-- Desktop: laiem container -->
-    <div class="relative min-h-screen mx-auto w-full max-w-md md:max-w-5xl flex flex-col pt-20">
+    <div class="relative w-full flex flex-col pt-20">
       <!-- Top App Bar (laiemal ekraanil hoiab keskel) -->
       <div class="fixed top-0 left-0 right-0 z-50">
-        <div class="mx-auto w-full max-w-md md:max-w-5xl flex items-center justify-between p-6">
+        <div class="w-full flex items-center justify-between px-4 py-3 md:px-6">
           <button
             type="button"
             class="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-full p-2 flex items-center justify-center transition-colors"
@@ -198,7 +198,7 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
       </div>
 
       <!-- Hero Section -->
-      <div class="relative w-full h-[45vh] md:h-[52vh] overflow-hidden rounded-none md:rounded-3xl md:mx-6">
+      <div class="relative w-full h-[45vh] md:h-[52vh] overflow-hidden rounded-none md:rounded-3xl md:max-w-5xl md:mx-auto">
         <div
           class="w-full h-full bg-cover bg-center transition-transform duration-700 hover:scale-105"
           :style="{ backgroundImage: `url('${props.plant.image_url || fallbackImage}')` }"
