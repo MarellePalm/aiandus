@@ -118,31 +118,77 @@ public function store(Request $request)
         ->with('success', 'Taim lisatud!');
 }
 
+public function edit(Request $request, Plant $plant)
+{
+    abort_unless($plant->user_id === $request->user()->id, 403);
+
+    return Inertia::render('Plants/Edit', [
+        'plant' => [
+            'id' => $plant->id,
+            'name' => $plant->name,
+            'subtitle' => $plant->subtitle,
+            'notes' => $plant->notes,
+            'tags' => $plant->tags,
+            'image_url' => $plant->image_url,
+            'watering_in_days' => $plant->watering_in_days,
+            'fertilizing_frequency' => $plant->fertilizing_frequency,
+            'bed_id' => $plant->bed_id,
+            'position_in_bed' => $plant->position_in_bed,
+        ],
+    ]);
+}
+
 public function update(Request $request, Plant $plant)
 {
     abort_unless($plant->user_id === $request->user()->id, 403);
 
     $data = $request->validate([
+        // taime andmed
+        'name' => ['nullable', 'string', 'max:255'],
+        'subtitle' => ['nullable', 'string', 'max:160'],
+        'notes' => ['nullable', 'string'],
+        'watering_in_days' => ['nullable', 'integer', 'min:0'],
+        'fertilizing_frequency' => ['nullable', 'string', 'max:255'],
+
+        // peenra andmed (sul juba olid)
         'bed_id' => ['nullable', 'exists:beds,id'],
         'position_in_bed' => ['nullable', 'string', 'max:120'],
+
+        // pilt (valikuline)
+        'image' => ['nullable', 'image', 'max:4096'],
     ]);
 
-    if (isset($data['bed_id']) && $data['bed_id']) {
+    // bed kuuluvuse kontroll (sul juba oli)
+    if (!empty($data['bed_id'])) {
         $bed = \App\Models\Bed::find($data['bed_id']);
         if ($bed && $bed->user_id !== $request->user()->id) {
             abort(403);
         }
     }
 
+    // pildi upload (kui tuli)
+    if ($request->hasFile('image')) {
+        $imagePath = $request->file('image')->store('plant-images', 'public');
+        $data['image_url'] = "/storage/{$imagePath}";
+    }
+
+    unset($data['image']); // Plant modelisse file objekti ei salvesta
+
+    // Uuenda ainult need väljad, mis on saadetud (nullable ok)
     $plant->update([
-        'bed_id' => $data['bed_id'] ?? null,
-        'position_in_bed' => $data['position_in_bed'] ?? null,
+        'subtitle' => $data['subtitle'] ?? $plant->subtitle,
+        'notes' => $data['notes'] ?? $plant->notes,
+        'watering_in_days' => $data['watering_in_days'] ?? $plant->watering_in_days,
+        'fertilizing_frequency' => $data['fertilizing_frequency'] ?? $plant->fertilizing_frequency,
+        'image_url' => $data['image_url'] ?? $plant->image_url,
+
+        
     ]);
 
-    return back();
+    return redirect()->route('plants.show', $plant->id)->with('success', 'Taim uuendatud!');
 }
 
-public function destroy(Plant $plant)
+public function destroy(Request $request,Plant $plant)
 {
     abort_unless($plant->user_id === $request->user()->id, 403);
     $plant->delete();

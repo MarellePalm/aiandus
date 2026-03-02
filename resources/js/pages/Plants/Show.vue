@@ -34,7 +34,7 @@ function goHome() {
 }
 function editPlant() {
   closeMenu();
-  router.visit(`/plants/${plant.id}/edit`);
+  router.get(`/plants/${plant.id}/edit`);
 }
 function goPlantsView() {
   closeMenu();
