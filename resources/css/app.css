@@ -246,6 +246,17 @@
            inline-flex items-center justify-center gap-2;
   }
 
+  /* Vastupidine btn-primary-le: sama kuju, roheline ääris ja tekst, täitmata taust */
+  .btn-primary-outline {
+    @apply h-14 px-6 rounded-full
+           border-2 border-primary bg-transparent text-primary
+           font-semibold
+           hover:bg-primary/10
+           active:scale-[0.99]
+           transition
+           inline-flex items-center justify-center gap-2;
+  }
+
   .btn-ghost {
     @apply h-12 px-4 rounded-full
            text-muted-foreground

@@ -85,11 +85,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->orderBy('name')
             ->get(['id', 'name', 'image_url']);
 
-        return Inertia::render('MapView', [
+        return Inertia::render('map/MapView', [
             'beds' => $beds,
             'plantsWithoutBed' => $plantsWithoutBed,
         ]);
     })->name('map');
+
+    Route::get('map/beds/new', function () {
+        return Inertia::render('map/AddBedPage');
+    })->name('map.beds.create');
+
+    Route::get('beds/{bed}/edit', function (\Illuminate\Http\Request $request, Bed $bed) {
+        abort_unless($bed->user_id === $request->user()->id, 403);
+
+        return Inertia::render('map/EditBedPage', [
+            'bed' => [
+                'id' => $bed->id,
+                'name' => $bed->name,
+                'location' => $bed->location,
+                'layout' => $bed->layout,
+            ],
+        ]);
+    })->name('beds.edit');
 
     Route::post('beds', [BedController::class, 'store'])->name('beds.store');
     Route::put('beds/{bed}', [BedController::class, 'update'])->name('beds.update');
