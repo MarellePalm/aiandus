@@ -12,6 +12,7 @@ import Moon from '@/pages/calendarNotes/moon.vue';
 import UserMenu from '@/pages/UserMenu.vue';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
+import PrimaryCtaButton from '@/components/PrimaryCtaButton.vue';
 
 const page = usePage();
 const user = page.props.auth.user;
@@ -291,10 +292,13 @@ function canMoveDown(id: SectionId) {
                 <span class="material-symbols-outlined text-lg">expand_more</span>
               </button>
             </div>
-            <button class="btn-primary w-full cursor-pointer" type="button" @click="onAddNote">
-              <span class="material-symbols-outlined text-[18px]">edit</span>
-              Lisa märkmed
-            </button>
+            <PrimaryCtaButton
+              label="Lisa märkmed"
+              icon="edit"
+              :full-width="true"
+              type="button"
+              @click="onAddNote"
+            />
           </section>
 
           <!-- Moon -->
