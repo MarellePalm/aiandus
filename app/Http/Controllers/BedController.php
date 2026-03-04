@@ -15,7 +15,8 @@ class BedController extends Controller
             'location' => ['nullable', 'string', 'max:255'],
             'layout' => ['nullable', 'array'],
             'layout.*' => ['array'],
-            'layout.*.*' => ['integer', 'in:0,1'],
+            // -1 = vahekäik / tee / kivi, 0 = tühi, 1 = peenraruut
+            'layout.*.*' => ['integer', 'in:-1,0,1'],
         ]);
 
         $layout = $data['layout'] ?? null;
@@ -50,7 +51,8 @@ class BedController extends Controller
             'columns' => ['sometimes', 'integer', 'min:1', 'max:12'],
             'layout' => ['nullable', 'array'],
             'layout.*' => ['array'],
-            'layout.*.*' => ['integer', 'in:0,1'],
+            // -1 = vahekäik / tee / kivi, 0 = tühi, 1 = peenraruut
+            'layout.*.*' => ['integer', 'in:-1,0,1'],
         ]);
 
         $payload = array_filter($data, fn ($v) => $v !== null);

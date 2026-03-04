@@ -24,6 +24,7 @@ function initialLayout(): number[][] {
 const showAddBed = ref(true);
 const newBedName = ref(props.mode === 'edit' ? props.bed?.name ?? '' : '');
 const newBedLocation = ref(props.mode === 'edit' ? props.bed?.location ?? '' : '');
+
 //  1  = peenraruut
 //  0  = tühi / määramata
 // -1  = vahekäik / kivi / multš (teadlikult mitte-peenar)
@@ -62,28 +63,16 @@ function addRowBottom() {
 }
 
 // -----------------------------
-// Counts & validation
+// Validation
 // -----------------------------
 function hasAnyPlantCell(): boolean {
   return newBedLayout.value.some((row) => row.some((v) => v === 1));
 }
 
-function plantCount(): number {
-  return newBedLayout.value.flat().filter((v) => v === 1).length;
-}
-
 // -----------------------------
-// 3-state cell logic
+// Tooling
 // -----------------------------
 type Cell = 1 | 0 | -1;
-
-function cycleCell(cell: number): Cell {
-  // 0 -> 1 -> -1 -> 0
-  if (cell === 0) return 1;
-  if (cell === 1) return -1;
-  return 0;
-}
-
 const activeTool = ref<Cell>(1);
 
 function setInternalCell(displayR: number, displayC: number, value: Cell) {
@@ -95,27 +84,15 @@ function setInternalCell(displayR: number, displayC: number, value: Cell) {
   newBedLayout.value[r][c] = value;
 }
 
-function cycleInternal(displayR: number, displayC: number) {
-  const r = displayR - 1;
-  const c = displayC - 1;
-  if (r < 0 || c < 0) return;
-  if (r >= newBedLayout.value.length) return;
-  if (c >= (newBedLayout.value[0]?.length ?? 0)) return;
-  newBedLayout.value[r][c] = cycleCell(newBedLayout.value[r][c]);
-}
-
 // -----------------------------
 // Display matrix: add 1-cell margin around real layout
-// so "+ cells" can exist without floating/overflow.
 // -----------------------------
 const displayLayout = computed<number[][]>(() => {
   normalizeRectLayout();
 
   const cols = newBedLayout.value[0]?.length ?? 1;
-
   const top = Array.from({ length: cols + 2 }, () => 0);
   const bottom = Array.from({ length: cols + 2 }, () => 0);
-
   const mid = newBedLayout.value.map((r) => [0, ...r, 0]);
 
   return [top, ...mid, bottom];
@@ -137,7 +114,7 @@ function isAdjacentToPlant(displayR: number, displayC: number): boolean {
   return dirs.some(([dr, dc]) => {
     const rr = displayR + dr;
     const cc = displayC + dc;
-    // Näitame "+" ruutu iga mitte-tühja (1 või -1) ruudu kõrval
+    // "+" ruut iga mitte-tühja (1 või -1) ruudu kõrval
     return inBounds(mat, rr, cc) && mat[rr][cc] !== 0;
   });
 }
@@ -149,8 +126,6 @@ function isMarginCell(displayR: number, displayC: number): boolean {
   return displayR === 0 || displayC === 0 || displayR === lastR || displayC === lastC;
 }
 
-// When user clicks a "+" in DISPLAY coords,
-// we convert to real layout coords, expanding if click was on the margin.
 function addAtDisplay(displayR: number, displayC: number) {
   normalizeRectLayout();
 
@@ -163,19 +138,16 @@ function addAtDisplay(displayR: number, displayC: number) {
   const onLeft = displayC === 0;
   const onRight = displayC === lastC;
 
-  // Expand first (if clicked on margin)
   if (onTop) addRowTop();
   if (onBottom) addRowBottom();
   if (onLeft) addColumnLeft();
   if (onRight) addColumnRight();
 
-  // Map display -> internal after expansions
   let internalR = displayR - 1;
   let internalC = displayC - 1;
 
   if (onTop) internalR = 0;
   if (onLeft) internalC = 0;
-
   if (onBottom) internalR = newBedLayout.value.length - 1;
   if (onRight) internalC = (newBedLayout.value[0]?.length ?? 1) - 1;
 
@@ -188,29 +160,19 @@ function addAtDisplay(displayR: number, displayC: number) {
     return;
   }
 
-  newBedLayout.value[internalR][internalC] = 1;
+  if (activeTool.value === 0) return;
+  newBedLayout.value[internalR][internalC] = activeTool.value;
+  normalizeRectLayout();
 }
 
 // -----------------------------
 // Form actions
 // -----------------------------
 function resetForm() {
-  if (props.mode !== 'create') {
-    if (window.history.length > 1) window.history.back();
-    else router.get('/map');
-    return;
-  }
-  newBedName.value = '';
-  newBedLocation.value = '';
-  newBedLayout.value = [[1]];
-  showAddBed.value = false;
+  router.get('/map', { preserveScroll: true });
 }
 
 function openForm() {
-  if (props.mode !== 'create') return;
-  newBedName.value = '';
-  newBedLocation.value = '';
-  newBedLayout.value = [[1]];
   showAddBed.value = true;
 }
 
@@ -226,22 +188,25 @@ function submit() {
   if (props.mode === 'edit' && props.bed) {
     router.put(`/beds/${props.bed.id}`, payload, {
       preserveScroll: true,
+      onSuccess: () => resetForm(),
     });
   } else {
-    router.post(
-      '/beds',
-      payload,
-      {
-        preserveScroll: true,
-        onSuccess: () => resetForm(),
-      },
-    );
+    router.post('/beds', payload, {
+      preserveScroll: true,
+      onSuccess: () => resetForm(),
+    });
   }
 }
 
-// Style for "+ tile" (same as your existing add square)
-const addTileClass =
-  'w-12 h-12 rounded-lg border-2 border-dashed border-primary bg-primary/10 text-primary flex items-center justify-center shrink-0 hover:bg-primary/20 transition';
+const addTileClass = computed(() => {
+  if (activeTool.value === -1) {
+    // Vahekäigu lisamine (neutraalsem)
+    return 'w-12 h-12 rounded-lg border-2 border-dashed border-border bg-muted/40 text-muted-foreground flex items-center justify-center hover:bg-muted/60 transition';
+  }
+
+  // Peenra lisamine (default)
+  return 'w-12 h-12 rounded-lg border-2 border-dashed border-primary bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition';
+});
 </script>
 
 <template>
@@ -258,7 +223,7 @@ const addTileClass =
 
     <form
       v-else
-      class="rounded-xl border border-border bg-card p-4 space-y-3"
+      class="rounded-xl border border-border bg-card p-4 space-y-4"
       @submit.prevent="submit"
     >
       <div>
@@ -285,71 +250,113 @@ const addTileClass =
         />
       </div>
 
-      <div>
-        <!-- Grid (real layout + 1-cell margin) -->
-        <div class="space-y-2 mb-3">
-          <div
-            v-for="(row, dri) in displayLayout"
-            :key="dri"
-            class="flex flex-wrap items-center gap-2"
+      <!-- AKTIIVNE LEGEND = tööriistavalik -->
+      <div class="rounded-xl border border-border bg-secondary/40 p-3">
+        <div class="font-semibold text-foreground mb-2">Legend (vajuta, et valida)</div>
+
+        <div class="grid grid-cols-3 gap-2 text-xs">
+          <button
+            type="button"
+            class="flex items-center gap-2 rounded-lg border px-2 py-2"
+            :class="activeTool === 1 ? 'border-primary bg-primary/10 text-primary font-semibold' : 'text-muted-foreground'"
+            @click="activeTool = 1"
           >
-            <template v-for="(cell, dci) in row" :key="dci">
-              <div class="relative w-12 h-12 shrink-0">
-                <!-- 1 = peenraruut -->
-                <button
-                  v-if="cell === 1"
-                  type="button"
-                  class="w-full h-full rounded-lg border-2 border-amber-300/70 dark:border-amber-700/60 bg-amber-100/50 dark:bg-amber-900/20"
-                  title="Peenra ruut"
-                  @click="setInternalCell(dri, dci, activeTool)"
-                />
-
-                <!-- -1 = vahekäik/kivi -->
-                <button
-                  v-else-if="cell === -1"
-                  type="button"
-                  class="w-full h-full rounded-lg border border-border bg-muted/60 relative overflow-hidden"
-                  title="Vahekäik / kivi"
-                  @click="setInternalCell(dri, dci, activeTool)"
-                >
-                  <span
-                    class="absolute inset-0 opacity-40 pointer-events-none text-muted-foreground"
-                    style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 10px 10px;"
-                  />
-                </button>
-
-                <!-- 0 and adjacent to plant => show + tile (always visible) -->
-                <button
-                  v-else-if="cell === 0 && isAdjacentToPlant(dri, dci)"
-                  type="button"
-                  :class="addTileClass"
-                  :title="isMarginCell(dri, dci) ? 'Lisa (laiendab peenart)' : 'Lisa ruut'"
-                  @click="addAtDisplay(dri, dci)"
-                >
-                  <span class="material-symbols-outlined text-2xl">add</span>
-                </button>
-
-                <!-- 0 (tühi) -->
-                <button
-                  v-else
-                  type="button"
-                  class="w-full h-full rounded-lg border border-dashed border-muted-foreground/40 bg-muted/30"
-                  title="Tühi ala"
-                  @click="setInternalCell(dri, dci, activeTool)"
-                />
-              </div>
-            </template>
-          </div>
-        </div>
-
-        <div class="flex gap-2">
-          <button type="submit" class="btn-primary" :disabled="!hasAnyPlantCell()">
-            {{ mode === 'edit' ? 'Salvesta muudatused' : 'Loo peenar' }}
+            <span class="inline-block w-5 h-5 rounded-md border-2 border-amber-300/70 bg-amber-100/50" />
+            Peenar
           </button>
-          <button type="button" class="btn-primary-outline" @click="resetForm">
-            {{ mode === 'edit' ? 'Tagasi' : 'Tühista' }}
+
+          <button
+            type="button"
+            class="flex items-center gap-2 rounded-lg border px-2 py-2"
+            :class="activeTool === -1 ? 'border-primary bg-primary/10 text-primary font-semibold' : 'text-muted-foreground'"
+            @click="activeTool = -1"
+          >
+            <span class="inline-block w-5 h-5 rounded-md border border-border bg-muted/60 relative overflow-hidden">
+              <span
+                class="absolute inset-0 opacity-40 pointer-events-none text-muted-foreground"
+                style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 10px 10px;"
+              />
+            </span>
+            Vahekäik/kivi või tühi ruut
+          </button>
+
+          <button
+            type="button"
+            class="flex items-center gap-2 rounded-lg border px-2 py-2"
+            :class="activeTool === 0 ? 'border-primary bg-primary/10 text-primary font-semibold' : 'text-muted-foreground'"
+            @click="activeTool = 0"
+          >
+            <span class="inline-flex w-5 h-5 rounded-md border border-dashed border-muted-foreground/40 bg-muted/30 items-center justify-center">
+              ⌀
+            </span>
+            Kustuta
           </button>
         </div>
+
+      </div>
+
+      <!-- GRID (CSS grid, mobiilis stabiilne) -->
+      <div
+        class="grid gap-2 justify-start"
+        :style="{ gridTemplateColumns: `repeat(${displayLayout[0]?.length ?? 1}, 3rem)` }"
+      >
+        <template v-for="(row, dri) in displayLayout" :key="dri">
+          <template v-for="(cell, dci) in row" :key="`${dri}-${dci}`">
+            <div class="relative w-12 h-12">
+              <!-- 1 = peenraruut -->
+              <button
+                v-if="cell === 1"
+                type="button"
+                class="w-full h-full rounded-lg border-2 border-amber-300/70 dark:border-amber-700/60 bg-amber-100/50 dark:bg-amber-900/20"
+                title="Peenra ruut"
+                @click="setInternalCell(dri, dci, activeTool)"
+              />
+
+              <!-- -1 = vahekäik/kivi -->
+              <button
+                v-else-if="cell === -1"
+                type="button"
+                class="w-full h-full rounded-lg border border-border bg-muted/60 relative overflow-hidden"
+                title="Vahekäik / kivi"
+                @click="setInternalCell(dri, dci, activeTool)"
+              >
+                <span
+                  class="absolute inset-0 opacity-40 pointer-events-none text-muted-foreground"
+                  style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 10px 10px;"
+                />
+              </button>
+
+              <!-- 0 and adjacent => "+" -->
+              <button
+                v-else-if="cell === 0 && isAdjacentToPlant(dri, dci)"
+                type="button"
+                :class="addTileClass"
+                :title="activeTool === -1 ? (isMarginCell(dri, dci) ? 'Lisa vahekäik (laiendab)' : 'Lisa vahekäik') : (isMarginCell(dri, dci) ? 'Lisa peenar (laiendab)' : 'Lisa peenar')"
+                @click="addAtDisplay(dri, dci)"
+              >
+                <span class="material-symbols-outlined text-2xl">add</span>
+              </button>
+
+              <!-- 0 = tühi -->
+              <button
+                v-else
+                type="button"
+                class="w-full h-full rounded-lg border border-dashed border-muted-foreground/40 bg-muted/30"
+                title="Tühi ala"
+                @click="setInternalCell(dri, dci, activeTool)"
+              />
+            </div>
+          </template>
+        </template>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button type="submit" class="btn-primary" :disabled="!hasAnyPlantCell()">
+          {{ mode === 'edit' ? 'Salvesta muudatused' : 'Loo peenar' }}
+        </button>
+        <button type="button" class="btn-primary-outline" @click="resetForm">
+          {{ mode === 'edit' ? 'Tagasi' : 'Tühista' }}
+        </button>
       </div>
     </form>
   </section>
