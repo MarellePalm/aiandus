@@ -34,6 +34,7 @@ class PlantController extends Controller
         ->get()
         ->map(fn ($p) => [
             'id' => $p->id,
+            'subtitle' => $p->subtitle,
             'name' => $p->name,
             'planted_at' => $p->planted_at ? date('d.m.Y', strtotime($p->planted_at)) : '',
             'status' => $p->status ?? 'ISTIK',
@@ -84,10 +85,7 @@ public function water(Request $request, Plant $plant)
     return redirect()->route('plants.show', $plant->id);
 }
 
-public function create()
-{
-    return Inertia::render('Plants/Create');
-}
+
 
 public function store(Request $request)
 {

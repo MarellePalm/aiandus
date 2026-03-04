@@ -160,7 +160,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('overview');
 
     // Plants
-    Route::resource('plants', PlantController::class);
+    Route::resource('plants', PlantController::class)->except(['create']);
     Route::post('/plants/{plant}/waterings', [PlantController::class, 'water'])
         ->name('plants.water');
 });
