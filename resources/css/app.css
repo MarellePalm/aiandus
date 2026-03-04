@@ -231,7 +231,7 @@
            font-semibold shadow
            hover:bg-primary/90
            active:scale-[0.99]
-           transition
+           transition cursor-pointer
            inline-flex items-center justify-center gap-2;
   }
 
@@ -242,7 +242,7 @@
            font-semibold
            hover:bg-secondary/60
            active:scale-[0.99]
-           transition
+           transition cursor-pointer
            inline-flex items-center justify-center gap-2;
   }
 
@@ -253,7 +253,7 @@
            font-semibold
            hover:bg-primary/10
            active:scale-[0.99]
-           transition
+           transition cursor-pointer
            inline-flex items-center justify-center gap-2;
   }
 
@@ -261,7 +261,7 @@
     @apply h-12 px-4 rounded-full
            text-muted-foreground
            hover:bg-secondary/60
-           transition
+           transition cursor-pointer
            inline-flex items-center justify-center;
   }
 

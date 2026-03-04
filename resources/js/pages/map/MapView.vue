@@ -86,38 +86,12 @@ function deleteBed(bed: Bed) {
   router.delete(`/beds/${bed.id}`, { preserveScroll: true });
 }
 
-function assignPlantToBed(plantId: number) {
-  const bedId = assignPlantBedId.value[plantId];
-  const position = (assignPlantPosition.value[plantId] ?? '').trim() || undefined;
-  if (!bedId) return;
-  router.put(`/plants/${plantId}`, { bed_id: bedId, position_in_bed: position }, { preserveScroll: true });
-}
-
 function assignPlantToCell(plantId: number, bed: Bed, row: number, col: number) {
   const key = `${row},${col}`;
   router.put(`/plants/${plantId}`, { bed_id: bed.id, position_in_bed: key }, {
     preserveScroll: true,
     onSuccess: () => { cellModal.value = null; },
   });
-}
-
-const DRAG_PLANT_KEY = 'application/x-plant-id';
-function onDragStartPlant(e: DragEvent, plantId: number) {
-  if (!e.dataTransfer) return;
-  e.dataTransfer.setData(DRAG_PLANT_KEY, String(plantId));
-  e.dataTransfer.effectAllowed = 'move';
-}
-function onDropPlant(e: DragEvent, bed: Bed, row: number, col: number) {
-  e.preventDefault();
-  const raw = e.dataTransfer?.getData(DRAG_PLANT_KEY);
-  if (!raw) return;
-  const plantId = parseInt(raw, 10);
-  if (Number.isNaN(plantId) || plantAt(bed, row, col)) return;
-  assignPlantToCell(plantId, bed, row, col);
-}
-function onDragOverCell(e: DragEvent) {
-  e.preventDefault();
-  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
 }
 
 function removePlantFromBed(plant: PlantInBed) {
@@ -291,14 +265,12 @@ function removePlantFromBed(plant: PlantInBed) {
                           <span class="material-symbols-outlined text-sm">close</span>
                         </button>
                       </div>
-                      <!-- Tühi peenra ruut – lohista taim siia või kliki -->
+                      <!-- Tühi peenra ruut – kliki ja vali taim -->
                       <button
                         v-else
                         type="button"
                         class="flex flex-col items-center justify-center min-w-[64px] min-h-[64px] w-full aspect-square max-w-[88px] max-h-[88px] rounded-xl border border-dashed border-amber-200/60 dark:border-amber-700/40 bg-amber-50/50 dark:bg-amber-900/15 text-amber-700/80 dark:text-amber-200/70 hover:border-primary hover:bg-primary/10 hover:text-primary transition"
                         @click="cellModal = { bed, row: r, col: c }"
-                        @dragover.prevent="onDragOverCell"
-                        @drop="onDropPlant($event, bed, r, c)"
                       >
                         <span class="material-symbols-outlined text-xl mb-0.5">add_circle</span>
                         <span class="text-[10px] font-medium">Lisa taim</span>
@@ -345,11 +317,11 @@ function removePlantFromBed(plant: PlantInBed) {
             </div>
         </section>
 
-          <!-- Taimed ilma peenrata – lohista need peenra ruutudele -->
+          <!-- Taimed ilma peenrata -->
           <section>
             <h2 class="text-lg font-semibold mb-2">Taimed ilma peenrata</h2>
             <p class="text-xs text-muted-foreground mb-3">
-              Lohista peenrale või määra siit all.
+              Ava peenar ja kliki „Lisa taim“ ruudul, et siduda taim peenraga.
             </p>
             <div
               v-if="!plantsWithoutBed.length"
@@ -361,9 +333,7 @@ function removePlantFromBed(plant: PlantInBed) {
               <li
                 v-for="plant in plantsWithoutBed"
                 :key="plant.id"
-                draggable="true"
-                class="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-4 cursor-grab active:cursor-grabbing"
-                @dragstart="onDragStartPlant($event, plant.id)"
+                class="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-4"
               >
                 <div
                   class="h-10 w-10 rounded-full bg-secondary bg-cover bg-center shrink-0"
@@ -377,31 +347,7 @@ function removePlantFromBed(plant: PlantInBed) {
                   </span>
                 </div>
                 <span class="font-medium">{{ plant.name }}</span>
-                <span class="text-xs text-muted-foreground">— lohista peenraruudule</span>
-                <select
-                  v-model="assignPlantBedId[plant.id]"
-                  class="form-input w-auto min-w-[140px]"
-                >
-                  <option :value="undefined">Vali peenar</option>
-                  <option v-for="b in props.beds" :key="b.id" :value="b.id">
-                    {{ b.name }}
-                  </option>
-                </select>
-                <input
-                  v-model="assignPlantPosition[plant.id]"
-                  type="text"
-                  class="form-input w-36"
-                  placeholder="Asukoht peenral"
-                  maxlength="120"
-                />
-                <button
-                  type="button"
-                  class="btn-primary"
-                  :disabled="!assignPlantBedId[plant.id]"
-                  @click="assignPlantToBed(plant.id)"
-                >
-                  Määra peenrale
-                </button>
+                <span class="text-xs text-muted-foreground">— vali ruut peenra kaardilt</span>
               </li>
             </ul>
           </section>
