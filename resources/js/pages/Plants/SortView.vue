@@ -4,18 +4,14 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
 import CreatePlantModal from "@/components/CreatePlantModal.vue";
 import DeletePlantModal from "@/components/DeletePlantModal.vue";
-import PlantCard from "@/components/PlantCard.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 
 import BottomNav from "../BottomNav.vue";
 
-type PlantStatus = "SAAGIKORISTUS" | "ÕITSEB" | "ISTIK" | "PUHKEPERIOOD";
-
 type PlantItem = {
   id: number;
-  name: string;
-  planted_at: string;
-  status: PlantStatus;
+  subtitle: string; // sort
+  planted_at: string; // kuupäev (string)
   image_url?: string | null;
 };
 
@@ -28,23 +24,44 @@ const props = defineProps<{
 }>();
 
 /** Tabs */
-type TabKey = "all" | "growing" | "harvest";
+type TabKey = "all" | "recent";
 const activeTab = ref<TabKey>("all");
-
-const filteredPlants = computed(() => {
-  let list = props.plants ?? [];
-  if (activeTab.value === "growing") {
-    list = list.filter((p) => p.status !== "SAAGIKORISTUS" && p.status !== "PUHKEPERIOOD");
-  }
-  if (activeTab.value === "harvest") {
-    list = list.filter((p) => p.status === "SAAGIKORISTUS");
-  }
-  return list;
-});
 
 const tabClass = (key: TabKey) => {
   const base = "px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition";
-  return activeTab.value === key ? `${base} bg-primary text-white` : `${base} bg-primary/10 text-primary`;
+  return activeTab.value === key
+    ? `${base} bg-primary text-white`
+    : `${base} bg-primary/10 text-primary`;
+};
+
+/** Sorteeringud */
+const allSorted = computed(() => {
+  return [...props.plants].sort((a, b) =>
+    (a.subtitle ?? "").localeCompare(b.subtitle ?? "", "et", { sensitivity: "base" })
+  );
+});
+
+const recent5 = computed(() => {
+  return [...props.plants]
+    .sort((a, b) => {
+      const da = new Date(a.planted_at).getTime();
+      const db = new Date(b.planted_at).getTime();
+      return db - da;
+    })
+    .slice(0, 5);
+});
+
+const visiblePlants = computed(() => (activeTab.value === "recent" ? recent5.value : allSorted.value));
+
+/** Kuupäeva formaat */
+const formatDateEE = (iso: string) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}.${mm}.${yyyy}`;
 };
 
 /** Add plant modal */
@@ -60,7 +77,7 @@ const deleteOpen = ref(false);
 const deleteTarget = ref<PlantItem | null>(null);
 const deleting = ref(false);
 
-/** Hoia alles “tagasi siia vaatesse” URL (et pärast kustutamist ei viskaks dashboardi) */
+/** Hoia alles “tagasi siia vaatesse” URL */
 const returnUrl = ref<string>("");
 
 const askDelete = (p: PlantItem) => {
@@ -86,13 +103,10 @@ const doDelete = () => {
 
   const backTo = returnUrl.value || `/plants/category/${props.category.slug}`;
 
-  // Kui sinu route on teistsugune, muuda ainult seda:
   router.delete(`/plants/${deleteTarget.value.id}`, {
     preserveScroll: true,
     onSuccess: () => {
       closeDelete();
-
-      // backend võib redirectida /plants (dashboardi) -> viime kohe tagasi siia vaatesse
       router.visit(backTo, {
         preserveScroll: true,
         only: ["plants"],
@@ -120,6 +134,9 @@ onBeforeUnmount(() => {
 });
 
 const goBack = () => router.visit("/plants");
+
+/** fallback image */
+const fallbackImage = "https://picsum.photos/200/200";
 </script>
 
 <template>
@@ -181,27 +198,73 @@ const goBack = () => router.visit("/plants");
             <!-- Tabs -->
             <div class="px-4 py-6">
               <div class="no-scrollbar flex gap-3 overflow-x-auto pb-2">
-                <button type="button" :class="tabClass('all')" @click="activeTab = 'all'">Kõik taimed</button>
-                <button type="button" :class="tabClass('growing')" @click="activeTab = 'growing'">Kasvavad</button>
-                <button type="button" :class="tabClass('harvest')" @click="activeTab = 'harvest'">Saagikoristus</button>
+                <button type="button" :class="tabClass('all')" @click="activeTab = 'all'">Kõik sordid</button>
+                <button type="button" :class="tabClass('recent')" @click="activeTab = 'recent'">Viimati lisatud</button>
               </div>
             </div>
 
-            <!-- Cards -->
-            <div class="space-y-4 px-4">
-              <PlantCard
-                v-for="p in filteredPlants"
-                :key="p.id"
-                :plant="p"
-                :menuOpen="menuOpenForId === p.id"
-                @toggleMenu="toggleMenu"
-                @edit="editPlant"
-                @delete="askDelete"
-              />
+            <!-- List -->
+            <div class="px-4">
+              <div v-if="visiblePlants.length === 0" class="rounded-2xl border border-primary/10 bg-white p-6 text-sm text-text-muted">
+                Sorte veel pole. Vajuta “+”, et lisada esimene.
+              </div>
 
-              <p v-if="filteredPlants.length === 0" class="px-1 text-sm text-[#2E2E2E]/60">
-                Siin kategoorias pole veel taimi.
-              </p>
+              <div v-else class="space-y-4">
+                <div
+                  v-for="p in visiblePlants"
+                  :key="p.id"
+                  @click="router.visit(`/plants/${p.id}`)"
+                  class="rounded-2xl border border-primary/10 bg-white p-4 shadow-sm"
+                >
+                  <div class="flex items-center gap-4">
+                    <img
+                      class="h-16 w-16 rounded-xl object-cover border border-primary/10"
+                      :src="p.image_url || fallbackImage"
+                      alt=""
+                    />
+
+                    <div class="min-w-0 flex-1">
+                      <div class="truncate text-lg font-semibold italic">
+                        {{ p.subtitle }}
+                      </div>
+                      <div class="mt-1 text-sm text-text-muted">
+                        Istutatud: {{ formatDateEE(p.planted_at) }}
+                      </div>
+                    </div>
+
+                    <div class="relative" data-plant-menu>
+                      <button
+                        type="button"
+                        class="flex h-10 w-10 items-center justify-center rounded-full text-text-muted transition hover:bg-primary/10"
+                        aria-label="Menüü"
+                        @click="toggleMenu(p.id)"
+                      >
+                        <span class="material-symbols-outlined text-[22px]">more_horiz</span>
+                      </button>
+
+                      <div
+                        v-if="menuOpenForId === p.id"
+                        class="absolute right-0 top-12 z-20 w-44 overflow-hidden rounded-xl border border-primary/10 bg-white shadow-lg"
+                      >
+                        <button
+                          type="button"
+                          class="w-full px-4 py-3 text-left text-sm hover:bg-primary/5"
+                          @click="editPlant(p)"
+                        >
+                          Muuda
+                        </button>
+                        <button
+                          type="button"
+                          class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50"
+                          @click="askDelete(p)"
+                        >
+                          Kustuta
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </main>
         </div>
@@ -212,7 +275,7 @@ const goBack = () => router.visit("/plants");
 
     <DeletePlantModal
       :open="deleteOpen"
-      :plant="deleteTarget ? { id: deleteTarget.id, name: deleteTarget.name } : null"
+      :plant="deleteTarget ? { id: deleteTarget.id, name: deleteTarget.subtitle } : null"
       :processing="deleting"
       @close="closeDelete"
       @confirm="doDelete"
