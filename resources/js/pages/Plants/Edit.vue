@@ -53,9 +53,8 @@ function clearFile() {
 }
 
 function submit() {
-  // Update route on PUT /plants/{id}
   form.put(`/plants/${props.plant.id}`, {
-    forceFormData: true, // vajalik pildi jaoks
+    forceFormData: true,
     preserveScroll: true,
   });
 }
@@ -66,19 +65,38 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="mx-auto w-full max-w-5xl px-4 py-6">
+  <!-- 2) Ekraan täislaiusega: eemaldas max-w-5xl -->
+  <div class="w-full px-4 py-6 lg:px-8">
+    <!-- Header: tagasi vasakul noolega -->
     <div class="mb-5 flex items-start justify-between gap-3">
-      <div>
-        <h1 class="text-2xl font-semibold leading-tight">Muuda taime</h1>
-        <p class="text-sm opacity-70">Muuda sorti, kastmist, väetamist, märkmeid ja pilti.</p>
-      </div>
+      <div class="flex items-start gap-3">
+        <!-- 1) Tagasi nupp vasakul ja noolega -->
+        <Link
+          :href="`/plants/${props.plant.id}`"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-xl border hover:bg-black/5"
+          aria-label="Tagasi"
+          title="Tagasi"
+        >
+          <!-- simple arrow-left icon -->
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="h-5 w-5"
+          >
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </Link>
 
-      <Link
-        :href="`/plants/${plant.id}`"
-        class="rounded-xl border px-3 py-2 text-sm hover:bg-black/5"
-      >
-        Tagasi
-      </Link>
+        <div>
+          <h1 class="text-2xl font-semibold leading-tight">Muuda taime</h1>
+          <p class="text-sm opacity-70">Muuda sorti, kastmist, väetamist, märkmeid ja pilti.</p>
+        </div>
+      </div>
     </div>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -95,6 +113,7 @@ onBeforeUnmount(() => {
           </button>
         </div>
 
+        <!-- (pilt jääb nagu sul oli; kui tahad, saan hiljem teha "tõe pildi nähtavaks" variandi) -->
         <div class="mt-3 overflow-hidden rounded-2xl border bg-black/5">
           <div v-if="currentImage" class="aspect-[4/3] w-full">
             <img :src="currentImage" alt="Taime pilt" class="h-full w-full object-contain" />
@@ -176,7 +195,7 @@ onBeforeUnmount(() => {
             </div>
           </div>
 
-          <!-- 4) Märkmed -->
+          <!-- 3) Märkmed ära võta -->
           <div>
             <label class="mb-1 block text-sm font-medium">Märkmed</label>
             <textarea
@@ -188,11 +207,14 @@ onBeforeUnmount(() => {
             <div v-if="form.errors.notes" class="mt-1 text-sm text-red-600">
               {{ form.errors.notes }}
             </div>
+
+            <!-- siia saab hiljem lisada kalender-vaate sidumise -->
+            <!-- nt: "Lisa märge kuupäevaga" / "Ava kalender" -->
           </div>
 
           <div class="flex flex-col-reverse gap-3 md:flex-row md:items-center md:justify-end">
             <Link
-              :href="`/plants/${plant.id}`"
+              :href="`/plants/${props.plant.id}`"
               class="rounded-xl border px-4 py-2 text-center text-sm hover:bg-black/5"
             >
               Loobu
