@@ -232,12 +232,12 @@ const fallbackImage = "https://picsum.photos/200/200";
                       </div>
                     </div>
 
-                    <div class="relative" data-plant-menu>
+                    <div class="relative" data-plant-menu @click.stop>
                       <button
                         type="button"
                         class="flex h-10 w-10 items-center justify-center rounded-full text-text-muted transition hover:bg-primary/10"
                         aria-label="Menüü"
-                        @click="toggleMenu(p.id)"
+                        @click.stop.prevent="toggleMenu(p.id)"
                       >
                         <span class="material-symbols-outlined text-[22px]">more_horiz</span>
                       </button>
@@ -245,18 +245,19 @@ const fallbackImage = "https://picsum.photos/200/200";
                       <div
                         v-if="menuOpenForId === p.id"
                         class="absolute right-0 top-12 z-20 w-44 overflow-hidden rounded-xl border border-primary/10 bg-white shadow-lg"
+                        @click.stop
                       >
                         <button
                           type="button"
                           class="w-full px-4 py-3 text-left text-sm hover:bg-primary/5"
-                          @click="editPlant(p)"
+                          @click.stop="editPlant(p)"
                         >
                           Muuda
                         </button>
                         <button
                           type="button"
                           class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50"
-                          @click="askDelete(p)"
+                          @click.stop="askDelete(p)"
                         >
                           Kustuta
                         </button>
