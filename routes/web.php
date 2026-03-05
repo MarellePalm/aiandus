@@ -124,6 +124,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/plants/categories', [CategoryController::class, 'store'])
         ->name('categories.store');
+    Route::patch('/plants/categories/{category}', [CategoryController::class, 'update'])
+        ->name('categories.update');
 
     Route::patch('/plants/categories/{category}/favorite', [CategoryController::class, 'toggleFavorite'])
         ->name('plants.categories.favorite');

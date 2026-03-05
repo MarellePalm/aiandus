@@ -3,14 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
-use Inertia\Inertia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class CategoryController extends Controller
 {
-    
-
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -24,10 +21,8 @@ class CategoryController extends Controller
             $imagePath = $request->file('image')->store('category-images', 'public');
         }
 
-        // slug nime põhjal
-        $slug = str($data['name'])->slug()->toString();
+        $slug = $this->uniqueSlug($data['name']);
 
-        // loo kategooria (vajab Category model + fillable)
         Category::create([
             'name' => $data['name'],
             'slug' => $slug,
@@ -39,27 +34,70 @@ class CategoryController extends Controller
         return back()->with('success', 'Kategooria lisatud!');
     }
 
-   public function toggleFavorite(Request $request, Category $category)
+    public function update(Request $request, Category $category)
     {
-    // Kui hiljem teed user_id põhise, siia 403 kontroll.
+        $data = $request->validate([
+            'name'  => ['required', 'string', 'max:80'],
+            'image' => ['nullable', 'image', 'max:4096'],
+        ]);
 
-    $category->update([
-        'is_favorite' => ! (bool) $category->is_favorite,
-    ]);
+        $imageUrl = $category->image;
+        if ($request->hasFile('image')) {
+            if ($category->image && str_starts_with($category->image, '/storage/')) {
+                $oldPath = str_replace('/storage/', '', $category->image);
+                Storage::disk('public')->delete($oldPath);
+            }
+            $newPath = $request->file('image')->store('category-images', 'public');
+            $imageUrl = "/storage/{$newPath}";
+        }
 
-    return redirect()->back();
+        $category->update([
+            'name' => $data['name'],
+            'slug' => $this->uniqueSlug($data['name'], $category->id),
+            'image' => $imageUrl,
+        ]);
+
+        return back()->with('success', 'Kategooria uuendatud!');
+    }
+
+    public function toggleFavorite(Request $request, Category $category)
+    {
+        $category->update([
+            'is_favorite' => ! (bool) $category->is_favorite,
+        ]);
+
+        return redirect()->back();
     }
 
     public function destroy(Category $category)
     {
-    // Kui pilt on sinu storage'ist, kustuta ka fail
-    if ($category->image && str_starts_with($category->image, '/storage/')) {
-        $path = str_replace('/storage/', '', $category->image);
-        Storage::disk('public')->delete($path);
+        if ($category->image && str_starts_with($category->image, '/storage/')) {
+            $path = str_replace('/storage/', '', $category->image);
+            Storage::disk('public')->delete($path);
+        }
+
+        $category->delete();
+
+        return redirect()->back()->with('success', 'Kategooria kustutatud!');
     }
 
-    $category->delete();
+    private function uniqueSlug(string $name, ?int $ignoreId = null): string
+    {
+        $base = str($name)->slug()->toString();
+        $base = $base !== '' ? $base : 'kategooria';
 
-    return redirect()->back()->with('success', 'Kategooria kustutatud!');
+        $slug = $base;
+        $index = 2;
+        while (
+            Category::query()
+                ->where('slug', $slug)
+                ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+                ->exists()
+        ) {
+            $slug = "{$base}-{$index}";
+            $index++;
+        }
+
+        return $slug;
     }
 }

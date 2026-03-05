@@ -6,6 +6,8 @@ import CreateCategoryModal from '@/components/CreateCategoryModal.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 
+import CategoryCardActions from './CategoryCardActions.vue';
+import EditCategoryModal from './EditCategoryModal.vue';
 import SearchModal from './SearchModal.vue';
 
 const breadcrumbs = [{ title: 'Aed', href: '/seeds' }];
@@ -28,10 +30,12 @@ type TabKey = 'all' | 'favorites' | 'recent';
 
 const activeTab = ref<TabKey>('all');
 const showCreateCategory = ref(false);
+const showEditCategory = ref(false);
 const showSearch = ref(false);
 const searchQuery = ref('');
 const localCategories = ref<Category[]>([...props.categories]);
 const categoryNames = computed(() => localCategories.value.map((c) => c.name));
+const editingCategory = ref<Category | null>(null);
 
 watch(
     () => props.categories,
@@ -98,6 +102,11 @@ const tabClass = (key: TabKey) => {
 const resetToAll = () => {
     activeTab.value = 'all';
     searchQuery.value = '';
+};
+
+const openEditCategory = (category: Category) => {
+    editingCategory.value = category;
+    showEditCategory.value = true;
 };
 </script>
 
@@ -170,21 +179,12 @@ const resetToAll = () => {
                                 </div>
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
 
-                                <button
-                                    type="button"
-                                    class="absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/70 text-[#6B8C68] shadow-sm backdrop-blur-md transition hover:scale-105 hover:bg-white"
-                                    @click.prevent.stop="openDeleteModal(cat.id)"
-                                >
-                                    <span class="material-symbols-outlined text-[18px]">delete</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    class="absolute top-2 left-2 z-10 flex h-8 w-8 items-center justify-center rounded-full shadow-sm backdrop-blur-md transition hover:scale-105"
-                                    :class="cat.is_favorite ? 'bg-rose-50 ring-1 ring-rose-200' : 'bg-white/70 ring-1 ring-black/10 hover:bg-white'"
-                                    @click.prevent.stop="toggleFavorite(cat.id)"
-                                >
-                                    <span class="material-symbols-outlined text-[18px]" :class="cat.is_favorite ? 'text-rose-600' : 'text-[#2E2E2E]/45'">favorite</span>
-                                </button>
+                                <CategoryCardActions
+                                    :is-favorite="cat.is_favorite === true"
+                                    @delete="openDeleteModal(cat.id)"
+                                    @favorite="toggleFavorite(cat.id)"
+                                    @edit="openEditCategory(cat)"
+                                />
 
                                 <div class="absolute bottom-0 left-0 w-full p-4 text-white">
                                     <span class="mb-1 inline-block rounded-md bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase backdrop-blur-md">
@@ -208,6 +208,11 @@ const resetToAll = () => {
                 <CreateCategoryModal
                     v-model:open="showCreateCategory"
                     @created="router.reload({ only: ['categories'] })"
+                />
+                <EditCategoryModal
+                    v-model:open="showEditCategory"
+                    :category="editingCategory"
+                    @updated="router.reload({ only: ['categories'] })"
                 />
                 <BottomNav active="seeds" />
             </div>
