@@ -12,6 +12,7 @@ type Plant = {
   watering_in_days?: number;
   fertilizing_frequency?: string | null;
   next_fertilizing_label?: string | null;
+  category_slug?: string;
 };
 
 const props = withDefaults(
@@ -20,7 +21,7 @@ const props = withDefaults(
     markingWatered?: boolean;
     justWatered?: boolean;
 
-    /** Soovi korral saad serverist ette anda, kuhu “tagasi” minna (nt SortView URL). */
+    /** Pane siia SortView URL (nt /plants/category/kurgid) */
     backUrl?: string | null;
   }>(),
   {
@@ -38,14 +39,13 @@ const emit = defineEmits<{
 
 const fallbackImage = "https://picsum.photos/900/1200";
 
-/** BACK: mitte dashboard, vaid tagasi eelmisele lehele (SortView) */
+/** BACK: alati SortView (backUrl). Kui puudub, fallback loetelusse */
 function goBack() {
-  // kui backend annab backUrl, kasuta seda
-  if (props.backUrl) return router.visit(props.backUrl);
-
-  // muidu kõige kindlam: tagasi browseri ajaloos (enamasti SortView)
-  if (window.history.length > 1) window.history.back();
-  else router.visit("/plants");
+  if (props.plant.category_slug) {
+    router.visit(`/plants/category/${props.plant.category_slug}`);
+  } else {
+    router.visit("/plants");
+  }
 }
 
 /** Watering */
@@ -62,7 +62,7 @@ const wateringDueSoon = computed(() => {
   return typeof d === "number" && d <= 2;
 });
 
-/** MENU (sama stiil mis SortView) + DELETE */
+/** MENU + DELETE */
 const menuOpen = ref(false);
 const deleteOpen = ref(false);
 const deleting = ref(false);
@@ -79,7 +79,13 @@ const closeDelete = () => {
 
 const editPlant = () => {
   menuOpen.value = false;
-  router.visit(`/plants/${props.plant.id}/edit`);
+
+  // jätame "tagasi" info alles ka edit lehele
+  const url = props.backUrl
+    ? `/plants/${props.plant.id}/edit?back=${encodeURIComponent(props.backUrl)}`
+    : `/plants/${props.plant.id}/edit`;
+
+  router.visit(url);
 };
 
 const doDelete = () => {
@@ -90,7 +96,6 @@ const doDelete = () => {
     preserveScroll: true,
     onSuccess: () => {
       closeDelete();
-      // pärast kustutamist tagasi SortView'sse (või eelmine leht)
       goBack();
     },
     onFinish: () => {
@@ -145,10 +150,11 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
 </style>
 
 <template>
-  <div class="bg-background-light dark:bg-background-dark font-display text-[#141514] dark:text-gray-100 antialiased min-h-screen">
-    <!-- Desktop: laiem container -->
+  <div
+    class="bg-background-light dark:bg-background-dark font-display text-[#141514] dark:text-gray-100 antialiased min-h-screen"
+  >
     <div class="relative w-full flex flex-col pt-20">
-      <!-- Top App Bar (laiemal ekraanil hoiab keskel) -->
+      <!-- Top App Bar -->
       <div class="fixed top-0 left-0 right-0 z-50">
         <div class="w-full flex items-center justify-between px-4 py-3 md:px-6">
           <button
@@ -160,7 +166,7 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
             <span class="material-symbols-outlined">arrow_back</span>
           </button>
 
-          <!-- “…” menüü nagu SortView -->
+          <!-- “…” menüü -->
           <div class="relative" data-plant-menu>
             <button
               type="button"
@@ -197,13 +203,19 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
         </div>
       </div>
 
-      <!-- Hero Section -->
-      <div class="relative w-full h-[45vh] md:h-[52vh] overflow-hidden rounded-none md:rounded-3xl md:max-w-5xl md:mx-auto">
-        <div
-          class="w-full h-full bg-cover bg-center transition-transform duration-700 hover:scale-105"
-          :style="{ backgroundImage: `url('${props.plant.image_url || fallbackImage}')` }"
-        />
-        <div class="absolute inset-0 matte-overlay"></div>
+      <!-- HERO (muudetud: tervet pilti näha + desktopis natuke väiksem) -->
+      <div
+        class="relative w-full overflow-hidden rounded-none md:rounded-3xl md:mx-auto md:max-w-4xl"
+      >
+        <div class="relative w-full h-[42vh] md:h-[46vh] lg:h-[420px] bg-black/5 dark:bg-white/5">
+          <img
+            :src="props.plant.image_url || fallbackImage"
+            alt="Taime pilt"
+            class="absolute inset-0 h-full w-full object-contain"
+            loading="lazy"
+          />
+          <div class="absolute inset-0 matte-overlay"></div>
+        </div>
       </div>
 
       <!-- Content -->
@@ -215,18 +227,21 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
           </h1>
         </div>
 
-        <!-- Desktop: 2 veergu (vasakul kaardid, paremal märkmed) -->
         <div class="md:grid md:grid-cols-2 md:gap-8">
           <!-- Status Cards -->
           <div class="grid grid-cols-1 gap-4 mb-10 md:mb-0">
             <!-- Watering Card -->
-            <div class="bg-surface-light dark:bg-surface-dark p-5 rounded-2xl flex items-center justify-between shadow-sm border border-[#e6e2d5] dark:border-white/5">
+            <div
+              class="bg-surface-light dark:bg-surface-dark p-5 rounded-2xl flex items-center justify-between shadow-sm border border-[#e6e2d5] dark:border-white/5"
+            >
               <div class="flex items-center gap-4">
                 <div class="bg-primary/10 dark:bg-primary/20 p-3 rounded-xl text-primary">
                   <span class="material-symbols-outlined">opacity</span>
                 </div>
                 <div class="flex flex-col">
-                  <span class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Kastmine</span>
+                  <span class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5"
+                    >Kastmine</span
+                  >
                   <span class="text-base font-medium font-body leading-tight">
                     {{ wateringText }}
                   </span>
@@ -234,7 +249,9 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
               </div>
 
               <div v-if="wateringDueSoon" class="relative flex h-3 w-3">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-20"></span>
+                <span
+                  class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-20"
+                ></span>
                 <span class="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
               </div>
               <div v-else class="text-[#717a71]">
@@ -243,13 +260,17 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
             </div>
 
             <!-- Fertilizing Card -->
-            <div class="bg-surface-light dark:bg-surface-dark p-5 rounded-2xl flex items-center justify-between shadow-sm border border-[#e6e2d5] dark:border-white/5">
+            <div
+              class="bg-surface-light dark:bg-surface-dark p-5 rounded-2xl flex items-center justify-between shadow-sm border border-[#e6e2d5] dark:border-white/5"
+            >
               <div class="flex items-center gap-4">
                 <div class="bg-primary/10 dark:bg-primary/20 p-3 rounded-xl text-primary">
                   <span class="material-symbols-outlined">potted_plant</span>
                 </div>
                 <div class="flex flex-col">
-                  <span class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Väetamine</span>
+                  <span class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5"
+                    >Väetamine</span
+                  >
                   <span class="text-base font-medium font-body leading-tight">
                     {{ props.plant.fertilizing_frequency || "—" }}
                     <span v-if="props.plant.next_fertilizing_label" class="text-[#717a71] text-sm ml-1">
@@ -274,7 +295,9 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
               </button>
             </div>
 
-            <div class="bg-white/50 dark:bg-surface-dark/40 rounded-2xl p-6 border border-[#e6e2d5]/50 dark:border-white/5">
+            <div
+              class="bg-white/50 dark:bg-surface-dark/40 rounded-2xl p-6 border border-[#e6e2d5]/50 dark:border-white/5"
+            >
               <p class="text-[#4a524a] dark:text-gray-300 font-body leading-relaxed">
                 {{ props.plant.notes || "Märkmeid veel pole." }}
               </p>
@@ -309,10 +332,15 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
       </div>
     </div>
 
-    <!-- DELETE CONFIRM MODAL (sama stiil mis SortView) -->
+    <!-- DELETE CONFIRM MODAL -->
     <Teleport to="body">
       <transition name="fade">
-        <div v-if="deleteOpen" class="fixed inset-0 z-[70] flex items-center justify-center p-4" aria-modal="true" role="dialog">
+        <div
+          v-if="deleteOpen"
+          class="fixed inset-0 z-[70] flex items-center justify-center p-4"
+          aria-modal="true"
+          role="dialog"
+        >
           <button
             type="button"
             class="absolute inset-0 bg-black/30 backdrop-blur-[2px]"

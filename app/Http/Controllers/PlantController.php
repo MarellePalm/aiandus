@@ -69,6 +69,7 @@ class PlantController extends Controller
             'watering_in_days' => $plant->watering_in_days,
             'fertilizing_frequency' => $plant->fertilizing_frequency,
             'next_fertilizing_label' => $plant->next_fertilizing_label,
+            'category_slug' => $plant->category->slug,
         ],
     ]);
 }
