@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
+import PrimaryCtaButton from '@/components/PrimaryCtaButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
-import PrimaryCtaButton from '@/components/PrimaryCtaButton.vue';
 import UserMenu from '@/pages/UserMenu.vue';
 
 type PlantInBed = { id: number; name: string; image_url: string | null; position_in_bed: string | null };
@@ -43,9 +43,6 @@ function editBed(bed: Bed) {
   closeBedMenu();
   router.get(`/beds/${bed.id}/edit`);
 }
-
-const assignPlantBedId = ref<Record<number, number>>({});
-const assignPlantPosition = ref<Record<number, string>>({});
 
 /** Ruudu koordinaatide järgi taim (position_in_bed = "row,col") */
 function plantAt(bed: Bed, row: number, col: number): PlantInBed | undefined {

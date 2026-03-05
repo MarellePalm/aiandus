@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
 
-const props = withDefaults(
-  defineProps<{
-    label: string;
-    icon: string;
-    fullWidth?: boolean;
-    href?: string;
-    type?: 'button' | 'submit';
-  }>(),
-  {
-    fullWidth: false,
-    href: undefined,
-    type: 'button',
-  },
+withDefaults(
+    defineProps<{
+        label: string;
+        icon: string;
+        fullWidth?: boolean;
+        href?: string;
+        type?: 'button' | 'submit';
+    }>(),
+    {
+        fullWidth: false,
+        href: undefined,
+        type: 'button',
+    },
 );
 
 const baseClass = 'btn-primary cursor-pointer inline-flex items-center justify-center gap-2';

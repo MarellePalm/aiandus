@@ -7,8 +7,8 @@ import BottomNav from '@/pages/BottomNav.vue';
 
 import AddSeed from './AddSeed.vue';
 import EditSeedModal from './EditSeedModal.vue';
-import SeedCardActions from './SeedCardActions.vue';
 import SearchModal from './SearchModal.vue';
+import SeedCardActions from './SeedCardActions.vue';
 
 type SeedItem = {
     id: number;
