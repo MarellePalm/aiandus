@@ -74,7 +74,7 @@ class SeedController extends Controller
         $data = $request->validate([
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'name' => ['required', 'string', 'max:160'],
-            'year' => ['nullable', 'integer', 'between:1900,2100'],
+            'year' => ['nullable', 'integer', 'between:2000,2100'],
             'expires_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'image' => ['nullable', 'image', 'max:5120'],
@@ -138,7 +138,7 @@ class SeedController extends Controller
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:160'],
-            'year' => ['nullable', 'integer', 'between:1900,2100'],
+            'year' => ['nullable', 'integer', 'between:2000,2100'],
             'expires_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'image' => ['nullable', 'image', 'max:5120'],

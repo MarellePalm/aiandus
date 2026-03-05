@@ -173,6 +173,7 @@ const openSeedEdit = (seed: SeedItem) => {
 
                 <AddSeed
                     v-model:open="showAddSeed"
+                    :categories="props.categories"
                     :initialCategoryId="props.category.id"
                     @created="router.reload({ only: ['seeds'] })"
                 />
