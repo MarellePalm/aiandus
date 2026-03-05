@@ -11,7 +11,11 @@ class PlantController extends Controller
 {
     public function index()
     {
-       $categories = Category::orderBy('name')->get();
+       $categories = Category::withCount([
+    'plants as count' => function ($query) {
+        $query->where('user_id', request()->user()->id);
+    }
+])->orderBy('name')->get();
 
     return Inertia::render('Plants/Index', [
         'categories' => $categories,
