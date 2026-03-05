@@ -24,4 +24,9 @@ class Category extends Model
     {
         return $this->hasMany(Seed::class);
     }
+
+    public function plants()
+{
+    return $this->hasMany(\App\Models\Plant::class);
+}
 }

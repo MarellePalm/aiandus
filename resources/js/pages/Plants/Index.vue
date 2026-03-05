@@ -1,13 +1,18 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
+
 import AppLayout from '@/layouts/AppLayout.vue';
+import UserMenu from '@/pages/UserMenu.vue';
 
 import CreateCategoryModal from '../../components/CreateCategoryModal.vue';
 import BottomNav from '../BottomNav.vue';
 
 import SearchModal from './SearchModal.vue';
+
+const page = usePage();
+const user = computed(() => (page.props as any).auth?.user ?? null);
 
 const breadcrumbs = [{ title: 'Aed', href: '/plants' }];
 
@@ -193,6 +198,10 @@ const resetToAll = () => {
                                 >
                                     <span class="material-symbols-outlined text-[20px]">add</span>
                                 </button>
+
+                                <div class="flex items-center gap-2 shrink-0">
+            <UserMenu settings-href="/settings" />
+          </div>
                                 
                                 
                                 
