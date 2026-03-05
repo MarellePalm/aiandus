@@ -114,6 +114,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // ✅ SEEDS — ainult resource
     Route::resource('seeds', SeedController::class);
+    Route::get('/seeds/category/{slug}', [SeedController::class, 'category'])
+        ->name('seeds.category');
     Route::patch('seeds/{seed}/favorite', [SeedController::class, 'toggleFavorite'])
         ->name('seeds.favorite');
 

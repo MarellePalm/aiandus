@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Model;
 
 class Category extends Model
@@ -18,4 +19,9 @@ class Category extends Model
         'count' => 'integer',
         'is_favorite' => 'boolean',
     ];
+
+    public function seeds(): HasMany
+    {
+        return $this->hasMany(Seed::class);
+    }
 }

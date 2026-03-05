@@ -14,22 +14,50 @@ class SeedController extends Controller
     {
         $user = $request->user();
 
+        $categories = Category::query()
+            ->withCount([
+                'seeds as count' => fn ($q) => $q->where('user_id', $user->id),
+            ])
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug', 'image', 'is_favorite', 'created_at']);
+
+        return Inertia::render('Seeds/Index', [
+            'categories' => $categories,
+        ]);
+    }
+
+    public function category(Request $request, string $slug)
+    {
+        $user = $request->user();
+        $category = Category::query()->where('slug', $slug)->firstOrFail();
+
         $seeds = Seed::query()
             ->where('user_id', $user->id)
+            ->where('category_id', $category->id)
             ->orderByDesc('created_at')
             ->get(['id', 'name', 'year', 'expires_at', 'image_url', 'is_favorite', 'created_at'])
             ->map(fn ($seed) => [
                 'id' => $seed->id,
                 'name' => $seed->name,
                 'year' => $seed->year,
-                'expires_at' => $seed->expires_at?->toDateString(),
+                'expires_at' => $seed->expires_at ? $seed->expires_at->toDateString() : null,
                 'image_url' => $seed->image_url,
                 'is_favorite' => (bool) $seed->is_favorite,
                 'created_at' => $seed->created_at?->toIso8601String(),
             ]);
 
-        return Inertia::render('Seeds/Index', [
+        $categories = Category::query()
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug']);
+
+        return Inertia::render('Seeds/SortView', [
+            'category' => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'slug' => $category->slug,
+            ],
             'seeds' => $seeds,
+            'categories' => $categories,
         ]);
     }
 
@@ -43,23 +71,22 @@ class SeedController extends Controller
         $user = $request->user();
 
         $data = $request->validate([
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'name' => ['required', 'string', 'max:160'],
             'year' => ['nullable', 'integer', 'between:1900,2100'],
             'expires_at' => ['nullable', 'date'],
             'image' => ['nullable', 'image', 'max:5120'],
         ]);
 
-        // Leia või loo kasutajale vaikimisi kategooria "Seemned"
-        // NB: kui sul on categories.slug globaal-unique, tee slug useri-põhiseks (nt 'seemned-'.$user->id)
-        $defaultCategory = Category::query()->firstOrCreate(
-            [
-                'slug' => 'seemned-' . $user->id,
-            ],
-            [
-                'user_id' => $user->id,
-                'name' => 'Seemned',
-            ]
-        );
+        $category = null;
+        if (!empty($data['category_id'])) {
+            $category = Category::query()->findOrFail($data['category_id']);
+        } else {
+            $category = Category::query()->firstOrCreate(
+                ['slug' => 'seemned'],
+                ['name' => 'Seemned']
+            );
+        }
 
         $imageUrl = null;
         if ($request->hasFile('image')) {
@@ -69,7 +96,7 @@ class SeedController extends Controller
 
         Seed::create([
             'user_id'     => $user->id,
-            'category_id' => $defaultCategory->id,
+            'category_id' => $category->id,
             'name'        => $data['name'],
             'subtitle'    => null,
             'amount'      => 1,
@@ -80,7 +107,7 @@ class SeedController extends Controller
             'notes'       => null,
         ]);
 
-        return redirect()->route('seeds.index')
+        return redirect()->route('seeds.category', ['slug' => $category->slug])
             ->with('success', 'Seeme lisatud!');
     }
 

@@ -4,6 +4,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 const props = defineProps<{
     open: boolean;
+    initialCategoryId?: number | null;
 }>();
 
 const emit = defineEmits<{
@@ -14,11 +15,13 @@ const emit = defineEmits<{
 const close = () => emit('update:open', false);
 
 const form = useForm<{
+    category_id: number | null;
     name: string;
     year: string;
     expires_at: string;
     image: File | null;
 }>({
+    category_id: props.initialCategoryId ?? null,
     name: '',
     year: '',
     expires_at: '',
@@ -71,6 +74,13 @@ watch(
         }
     },
     { immediate: true },
+);
+
+watch(
+    () => props.initialCategoryId,
+    (next) => {
+        form.category_id = next ?? null;
+    },
 );
 
 const submit = () => {
