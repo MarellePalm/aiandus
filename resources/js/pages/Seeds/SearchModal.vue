@@ -8,6 +8,7 @@ const props = defineProps<{
   initialQuery?: string;
   placeholder?: string;
   suggestions?: string[];
+  title?: string;
 }>();
 
 const emit = defineEmits<{
@@ -101,7 +102,7 @@ function clear() {
           <div class="flex items-start justify-between gap-3">
             <div>
               <h3 class="text-lg font-semibold text-[#2E2E2E]">
-                Otsi taimi
+                {{ props.title ?? "Otsi seemneid" }}
               </h3>
               <p class="mt-1 text-sm text-[#2E2E2E]/70">
                 Sisesta nimi, sort või kategooria.

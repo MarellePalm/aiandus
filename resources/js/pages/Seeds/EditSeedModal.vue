@@ -4,33 +4,34 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 import LocalDatePicker from './LocalDatePicker.vue';
 
-type Category = {
+type SeedItem = {
     id: number;
     name: string;
+    year?: number | null;
+    expires_at?: string | null;
+    notes?: string | null;
+    image_url?: string | null;
 };
 
 const props = defineProps<{
     open: boolean;
-    initialCategoryId?: number | null;
-    categories?: Category[];
+    seed: SeedItem | null;
 }>();
 
 const emit = defineEmits<{
     (e: 'update:open', value: boolean): void;
-    (e: 'created'): void;
+    (e: 'updated'): void;
 }>();
 
 const close = () => emit('update:open', false);
 
 const form = useForm<{
-    category_id: number | null;
     name: string;
     year: string;
     expires_at: string;
     notes: string;
     image: File | null;
 }>({
-    category_id: props.initialCategoryId ?? (props.categories?.[0]?.id ?? null),
     name: '',
     year: '',
     expires_at: '',
@@ -39,21 +40,29 @@ const form = useForm<{
 });
 
 const nameInputRef = ref<HTMLInputElement | null>(null);
-const categorySelectRef = ref<HTMLSelectElement | null>(null);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const previewUrl = ref<string | null>(null);
 
-const hasImage = computed(() => !!form.image);
+const hasImage = computed(() => !!form.image || !!previewUrl.value);
 
 const revokePreview = () => {
-    if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
+    if (previewUrl.value?.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl.value);
+    }
     previewUrl.value = null;
 };
 
 const setFile = (file: File | null) => {
-    revokePreview();
+    if (previewUrl.value?.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl.value);
+    }
+
     form.image = file;
-    if (file) previewUrl.value = URL.createObjectURL(file);
+    if (file) {
+        previewUrl.value = URL.createObjectURL(file);
+    } else {
+        previewUrl.value = props.seed?.image_url ?? null;
+    }
 };
 
 const onFileChange = (e: Event) => {
@@ -66,40 +75,48 @@ const onFileChange = (e: Event) => {
 
 const openPicker = () => fileInputRef.value?.click();
 
-const reset = () => {
-    form.reset();
+const resetFromSeed = () => {
     form.clearErrors();
+    form.name = props.seed?.name ?? '';
+    form.year = props.seed?.year ? String(props.seed.year) : '';
+    form.expires_at = props.seed?.expires_at ?? '';
+    form.notes = props.seed?.notes ?? '';
+    form.image = null;
     revokePreview();
-    form.category_id = props.initialCategoryId ?? (props.categories?.[0]?.id ?? null);
+    previewUrl.value = props.seed?.image_url ?? null;
 };
 
 watch(
     () => props.open,
     async (open) => {
         if (open) {
+            resetFromSeed();
             document.body.style.overflow = 'hidden';
             await nextTick();
             nameInputRef.value?.focus();
+            nameInputRef.value?.select();
         } else {
             document.body.style.overflow = '';
-            reset();
         }
     },
     { immediate: true },
 );
 
 watch(
-    () => props.initialCategoryId,
-    (next) => {
-        form.category_id = next ?? (props.categories?.[0]?.id ?? null);
+    () => props.seed,
+    () => {
+        if (props.open) resetFromSeed();
     },
 );
 
 const submit = () => {
-    form.post('/seeds', {
+    if (!props.seed) return;
+
+    form.post(`/seeds/${props.seed.id}`, {
         forceFormData: true,
+        data: { _method: 'patch' },
         onSuccess: () => {
-            emit('created');
+            emit('updated');
             close();
         },
     });
@@ -115,7 +132,7 @@ onBeforeUnmount(() => {
     <Teleport to="body">
         <transition name="fade">
             <div
-                v-if="props.open"
+                v-if="open"
                 class="fixed inset-0 z-50 flex items-start justify-center p-4 pt-6 sm:items-center sm:pt-4"
                 aria-modal="true"
                 role="dialog"
@@ -131,16 +148,16 @@ onBeforeUnmount(() => {
                     <div class="max-h-[92vh] overflow-y-auto p-5 sm:p-6">
                         <div class="flex items-start justify-between gap-3">
                             <div>
-                                <h3 class="text-lg font-semibold text-[#2E2E2E]">Lisa seeme</h3>
+                                <h3 class="text-lg font-semibold text-[#2E2E2E]">Muuda seemet</h3>
                                 <p class="mt-1 text-sm text-[#2E2E2E]/70">
-                                    Lisa nimi, pilt, ostmisaasta ja aegumiskuupäev.
+                                    Muuda nime, ostuaastat, aegumist ja märkuseid.
                                 </p>
                             </div>
                             <button
                                 type="button"
                                 class="rounded-full p-2 text-[#2E2E2E]/60 hover:bg-black/5 hover:text-[#2E2E2E]"
-                                @click="close"
                                 aria-label="Sulge"
+                                @click="close"
                             >
                                 ✕
                             </button>
@@ -154,61 +171,9 @@ onBeforeUnmount(() => {
                                 ref="nameInputRef"
                                 v-model="form.name"
                                 type="text"
-                                placeholder="nt Tomat"
                                 class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
                             />
                             <p v-if="form.errors.name" class="mt-2 text-sm text-red-600">{{ form.errors.name }}</p>
-                        </div>
-
-                        <div class="mt-5">
-                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
-                                Kategooria
-                            </label>
-                            <select
-                                ref="categorySelectRef"
-                                v-model="form.category_id"
-                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
-                            >
-                                <option :value="null" disabled>Vali kategooria...</option>
-                                <option v-for="c in props.categories ?? []" :key="c.id" :value="c.id">
-                                    {{ c.name }}
-                                </option>
-                            </select>
-                            <p v-if="form.errors.category_id" class="mt-2 text-sm text-red-600">
-                                {{ form.errors.category_id }}
-                            </p>
-                        </div>
-
-                        <div class="mt-5">
-                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
-                                Pilt
-                            </label>
-                            <input
-                                ref="fileInputRef"
-                                type="file"
-                                accept="image/*"
-                                class="hidden"
-                                @change="onFileChange"
-                            />
-                            <button
-                                type="button"
-                                class="mt-3 w-full rounded-2xl border-2 border-dashed border-black/10 bg-white/60 px-6 py-8 text-center hover:bg-white/80"
-                                @click="openPicker"
-                            >
-                                <template v-if="!hasImage">
-                                    <span class="material-symbols-outlined text-5xl text-[#6B8C68]">add_a_photo</span>
-                                    <p class="mt-2 text-sm text-[#2E2E2E]/70">Lisa seemne pilt</p>
-                                </template>
-                                <template v-else>
-                                    <img
-                                        v-if="previewUrl"
-                                        :src="previewUrl"
-                                        alt="Eelvaade"
-                                        class="mx-auto max-h-40 rounded-xl object-cover"
-                                    />
-                                </template>
-                            </button>
-                            <p v-if="form.errors.image" class="mt-2 text-sm text-red-600">{{ form.errors.image }}</p>
                         </div>
 
                         <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -244,10 +209,35 @@ onBeforeUnmount(() => {
                             <textarea
                                 v-model="form.notes"
                                 rows="4"
-                                placeholder="Lisa siia seemne kohta täiendav info..."
                                 class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
                             />
                             <p v-if="form.errors.notes" class="mt-2 text-sm text-red-600">{{ form.errors.notes }}</p>
+                        </div>
+
+                        <div class="mt-5">
+                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Pilt</label>
+                            <input
+                                ref="fileInputRef"
+                                type="file"
+                                accept="image/*"
+                                class="hidden"
+                                @change="onFileChange"
+                            />
+                            <button
+                                type="button"
+                                class="mt-3 w-full rounded-2xl border-2 border-dashed border-black/10 bg-white/60 px-6 py-8 text-center hover:bg-white/80"
+                                @click="openPicker"
+                            >
+                                <template v-if="hasImage && previewUrl">
+                                    <img :src="previewUrl" alt="Eelvaade" class="mx-auto max-h-40 rounded-xl object-cover" />
+                                    <p class="mt-2 text-sm text-[#2E2E2E]/60">Vajuta, et pilti vahetada</p>
+                                </template>
+                                <template v-else>
+                                    <span class="material-symbols-outlined text-5xl text-[#6B8C68]">add_a_photo</span>
+                                    <p class="mt-2 text-sm text-[#2E2E2E]/70">Lisa seemne pilt</p>
+                                </template>
+                            </button>
+                            <p v-if="form.errors.image" class="mt-2 text-sm text-red-600">{{ form.errors.image }}</p>
                         </div>
 
                         <div class="sticky bottom-0 mt-6 flex flex-col gap-3 bg-[#FAF8F4] pt-4 pb-1">
@@ -257,7 +247,7 @@ onBeforeUnmount(() => {
                                 :disabled="form.processing || !form.name.trim()"
                                 @click="submit"
                             >
-                                {{ form.processing ? 'Salvestan...' : 'Salvesta seeme' }}
+                                {{ form.processing ? 'Salvestan...' : 'Salvesta muudatused' }}
                             </button>
                             <button
                                 type="button"

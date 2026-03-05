@@ -114,6 +114,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // ✅ SEEDS — ainult resource
     Route::resource('seeds', SeedController::class);
+    Route::get('/seeds/category/{slug}', [SeedController::class, 'category'])
+        ->name('seeds.category');
     Route::patch('seeds/{seed}/favorite', [SeedController::class, 'toggleFavorite'])
         ->name('seeds.favorite');
 
@@ -122,6 +124,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/plants/categories', [CategoryController::class, 'store'])
         ->name('categories.store');
+    Route::patch('/plants/categories/{category}', [CategoryController::class, 'update'])
+        ->name('categories.update');
 
     Route::patch('/plants/categories/{category}/favorite', [CategoryController::class, 'toggleFavorite'])
         ->name('plants.categories.favorite');

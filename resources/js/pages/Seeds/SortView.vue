@@ -1,231 +1,207 @@
 <script setup lang="ts">
-import { Head, router } from "@inertiajs/vue3";
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { Head, Link, router } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 
-import CreatePlantModal from "@/components/CreatePlantModal.vue";
-import DeletePlantModal from "@/components/DeletePlantModal.vue";
-import PlantCard from "@/components/PlantCard.vue";
-import AppLayout from "@/layouts/AppLayout.vue";
+import AppLayout from '@/layouts/AppLayout.vue';
+import BottomNav from '@/pages/BottomNav.vue';
 
-import BottomNav from "../BottomNav.vue";
+import AddSeed from './AddSeed.vue';
+import EditSeedModal from './EditSeedModal.vue';
+import SearchModal from './SearchModal.vue';
+import SeedCardActions from './SeedCardActions.vue';
 
-type PlantStatus = "SAAGIKORISTUS" | "ÕITSEB" | "ISTIK" | "PUHKEPERIOOD";
-
-type PlantItem = {
-  id: number;
-  name: string;
-  planted_at: string;
-  status: PlantStatus;
-  image_url?: string | null;
+type SeedItem = {
+    id: number;
+    name: string;
+    year?: number | null;
+    expires_at?: string | null;
+    image_url?: string | null;
+    notes?: string | null;
+    is_favorite?: boolean;
+    created_at?: string | null;
 };
 
 type CategoryItem = { id: number; name: string; slug: string };
 
 const props = defineProps<{
-  category: { name: string; slug: string };
-  plants: PlantItem[];
-  categories: CategoryItem[];
+    category: { id: number; name: string; slug: string };
+    seeds: SeedItem[];
+    categories: CategoryItem[];
 }>();
 
-/** Tabs */
-type TabKey = "all" | "growing" | "harvest";
-const activeTab = ref<TabKey>("all");
+type TabKey = 'all' | 'favorites' | 'recent';
+const activeTab = ref<TabKey>('all');
+const showAddSeed = ref(false);
+const showSearch = ref(false);
+const showEditSeed = ref(false);
+const searchQuery = ref('');
+const editingSeed = ref<SeedItem | null>(null);
 
-const filteredPlants = computed(() => {
-  let list = props.plants ?? [];
-  if (activeTab.value === "growing") {
-    list = list.filter((p) => p.status !== "SAAGIKORISTUS" && p.status !== "PUHKEPERIOOD");
-  }
-  if (activeTab.value === "harvest") {
-    list = list.filter((p) => p.status === "SAAGIKORISTUS");
-  }
-  return list;
+const localSeeds = ref<SeedItem[]>([...props.seeds]);
+const seedNames = computed(() => localSeeds.value.map((s) => s.name));
+
+const filteredSeeds = computed(() => {
+    let list = [...localSeeds.value];
+    if (activeTab.value === 'favorites') {
+        list = list.filter((s) => s.is_favorite === true);
+    }
+    if (activeTab.value === 'recent') {
+        list = list.slice().sort((a, b) => {
+            const ad = new Date(a.created_at ?? 0).getTime();
+            const bd = new Date(b.created_at ?? 0).getTime();
+            return bd - ad;
+        });
+    }
+    if (searchQuery.value.trim()) {
+        const q = searchQuery.value.toLowerCase();
+        list = list.filter((s) => s.name.toLowerCase().includes(q));
+    }
+    return list;
 });
 
 const tabClass = (key: TabKey) => {
-  const base = "px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition";
-  return activeTab.value === key ? `${base} bg-primary text-white` : `${base} bg-primary/10 text-primary`;
+    const base = 'flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full px-5 border transition-colors';
+    if (activeTab.value === key) return `${base} bg-primary text-white border-primary shadow-sm`;
+    return `${base} bg-beige/60 text-forest border-beige hover:bg-beige`;
 };
 
-/** Add plant modal */
-const isAddPlantOpen = ref(false);
-const openAddPlant = () => (isAddPlantOpen.value = true);
-const onPlantCreated = () => router.reload({ only: ["plants"] });
+const toggleFavorite = (id: number) => {
+    const idx = localSeeds.value.findIndex((seed) => seed.id === id);
+    if (idx === -1) return;
+    const prev = localSeeds.value[idx].is_favorite === true;
+    localSeeds.value[idx] = { ...localSeeds.value[idx], is_favorite: !prev };
 
-/** Menu + delete */
-const menuOpenForId = ref<number | null>(null);
-const toggleMenu = (id: number) => (menuOpenForId.value = menuOpenForId.value === id ? null : id);
-
-const deleteOpen = ref(false);
-const deleteTarget = ref<PlantItem | null>(null);
-const deleting = ref(false);
-
-/** Hoia alles “tagasi siia vaatesse” URL (et pärast kustutamist ei viskaks dashboardi) */
-const returnUrl = ref<string>("");
-
-const askDelete = (p: PlantItem) => {
-  menuOpenForId.value = null;
-  deleteTarget.value = p;
-  deleteOpen.value = true;
-};
-
-const closeDelete = () => {
-  deleteOpen.value = false;
-  deleteTarget.value = null;
-  deleting.value = false;
-};
-
-const editPlant = (p: PlantItem) => {
-  menuOpenForId.value = null;
-  router.visit(`/plants/${p.id}/edit`);
-};
-
-const doDelete = () => {
-  if (!deleteTarget.value || deleting.value) return;
-  deleting.value = true;
-
-  const backTo = returnUrl.value || `/plants/category/${props.category.slug}`;
-
-  // Kui sinu route on teistsugune, muuda ainult seda:
-  router.delete(`/plants/${deleteTarget.value.id}`, {
-    preserveScroll: true,
-    onSuccess: () => {
-      closeDelete();
-
-      // backend võib redirectida /plants (dashboardi) -> viime kohe tagasi siia vaatesse
-      router.visit(backTo, {
+    router.patch(`/seeds/${id}/favorite`, {}, {
         preserveScroll: true,
-        only: ["plants"],
-      });
-    },
-    onFinish: () => (deleting.value = false),
-  });
+        preserveState: true,
+        onError: () => {
+            localSeeds.value[idx] = { ...localSeeds.value[idx], is_favorite: prev };
+        },
+    });
 };
 
-/** click-outside dropdown */
-const onDocClick = (e: MouseEvent) => {
-  if (!menuOpenForId.value) return;
-  const t = e.target as HTMLElement | null;
-  if (t?.closest?.("[data-plant-menu]")) return;
-  menuOpenForId.value = null;
+const deleteSeed = (id: number) => {
+    router.delete(`/seeds/${id}`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            localSeeds.value = localSeeds.value.filter((seed) => seed.id !== id);
+        },
+    });
 };
 
-onMounted(() => {
-  returnUrl.value = window.location.pathname + window.location.search;
-  document.addEventListener("click", onDocClick);
-});
-
-onBeforeUnmount(() => {
-  document.removeEventListener("click", onDocClick);
-});
-
-const goBack = () => router.visit("/plants");
+const goBack = () => router.visit('/seeds');
+const openSeedEdit = (seed: SeedItem) => {
+    editingSeed.value = seed;
+    showEditSeed.value = true;
+};
 </script>
 
 <template>
-  <Head :title="`Minu Taimed - ${props.category.name}`" />
+    <Head :title="`Seemned - ${props.category.name}`" />
 
-  <AppLayout
-    :breadcrumbs="[
-      { title: 'Aed', href: '/plants' },
-      { title: props.category.name, href: `/plants/category/${props.category.slug}` },
-    ]"
-  >
-    <div class="page page-with-bottomnav">
-      <div class="bg-background-light text-text-main font-display min-h-screen">
-        <div
-          class="bg-background-light relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x border-primary/10 shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
-        >
-          <!-- Header -->
-          <header class="bg-background-light/80 sticky top-0 z-30 border-b border-primary/10 px-4 py-3 backdrop-blur-md">
-            <div class="flex items-center justify-between">
-              <button class="flex items-center gap-1 font-medium text-primary" type="button" @click="goBack">
-                <span class="material-symbols-outlined text-[24px]">chevron_left</span>
-                <span class="text-sm">Kategooriad</span>
-              </button>
+    <AppLayout :breadcrumbs="[{ title: 'Aed', href: '/seeds' }, { title: props.category.name, href: `/seeds/category/${props.category.slug}` }]">
+        <div class="page page-with-bottomnav">
+            <div class="bg-background-light text-forest font-display min-h-screen antialiased">
+                <div class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
+                    <header class="bg-background-light/80 sticky top-0 z-20 px-6 pt-6 pb-4 backdrop-blur-md md:px-8">
+                        <div class="mb-6 flex items-center justify-between">
+                            <button class="flex items-center gap-1 font-medium text-primary" type="button" @click="goBack">
+                                <span class="material-symbols-outlined text-[24px]">chevron_left</span>
+                                <span class="text-sm">Kategooriad</span>
+                            </button>
+                            <h1 class="text-xl font-bold tracking-tight">{{ props.category.name }}</h1>
+                            <div class="flex items-center gap-5">
+                                <button class="flex h-10 w-10 items-center justify-center rounded-full text-primary transition hover:bg-primary/10" type="button" @click="showSearch = true">
+                                    <span class="material-symbols-outlined text-[24px]">search</span>
+                                </button>
+                                <button type="button" @click="showAddSeed = true" class="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-sm transition hover:scale-105 active:scale-95">
+                                    <span class="material-symbols-outlined text-[20px]">add</span>
+                                </button>
+                            </div>
+                        </div>
 
-              <h1 class="text-lg font-bold tracking-tight">
-                {{ props.category.name }}
-              </h1>
+                        <div class="no-scrollbar flex gap-3 overflow-x-auto pb-2">
+                            <button type="button" :class="tabClass('all')" @click="activeTab = 'all'">Koik</button>
+                            <button type="button" :class="tabClass('favorites')" @click="activeTab = 'favorites'">Lemmikud</button>
+                            <button type="button" :class="tabClass('recent')" @click="activeTab = 'recent'">Hiljuti lisatud</button>
+                        </div>
+                    </header>
 
-              <div class="flex items-center gap-5">
-                <button
-                  class="flex h-10 w-10 items-center justify-center rounded-full text-primary transition hover:bg-primary/10"
-                  type="button"
-                  aria-label="Otsi"
-                >
-                  <span class="material-symbols-outlined text-[24px]">search</span>
-                </button>
+                    <main class="flex-1 px-6 py-6 md:px-8">
+                        <div v-if="filteredSeeds.length === 0" class="rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-6 py-12 text-center">
+                            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+                                <span class="material-symbols-outlined text-primary">potted_plant</span>
+                            </div>
+                            <h2 class="text-lg font-semibold text-forest">Selles kategoorias seemneid pole</h2>
+                            <p class="mt-2 text-sm text-forest/70">Vajuta uleval paremal <strong>+</strong>, et lisada seeme.</p>
+                        </div>
 
-                <button
-                  type="button"
-                  @click="openAddPlant"
-                  class="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-sm transition hover:scale-105 active:scale-95"
-                  aria-label="Lisa taim"
-                >
-                  <span class="material-symbols-outlined text-[20px]">add</span>
-                </button>
-              </div>
+                        <div v-else class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+                            <Link
+                                v-for="seed in filteredSeeds"
+                                :key="seed.id"
+                                :href="`/seeds/${seed.id}`"
+                                class="group relative aspect-[1/1] overflow-hidden rounded-2xl shadow-lg"
+                            >
+                                <img
+                                    v-if="seed.image_url"
+                                    :src="seed.image_url"
+                                    alt=""
+                                    class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                />
+                                <div v-else class="absolute inset-0 flex h-full w-full items-center justify-center bg-primary/10 text-primary">
+                                    <span class="material-symbols-outlined text-3xl">potted_plant</span>
+                                </div>
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+
+                                <SeedCardActions
+                                    :is-favorite="seed.is_favorite === true"
+                                    @delete="deleteSeed(seed.id)"
+                                    @favorite="toggleFavorite(seed.id)"
+                                    @edit="openSeedEdit(seed)"
+                                />
+
+                                <div class="absolute bottom-0 left-0 w-full p-4 text-white">
+                                    <h3 class="text-lg font-bold">{{ seed.name }}</h3>
+                                    <p class="mt-1 text-xs">Ostetud: {{ seed.year ?? '-' }}</p>
+                                    <p class="text-xs">Aegub: {{ seed.expires_at ?? '-' }}</p>
+                                </div>
+                            </Link>
+                        </div>
+                    </main>
+                </div>
+
+                <AddSeed
+                    v-model:open="showAddSeed"
+                    :categories="props.categories"
+                    :initialCategoryId="props.category.id"
+                    @created="router.reload({ only: ['seeds'] })"
+                />
+                <SearchModal
+                    v-model:open="showSearch"
+                    :initialQuery="searchQuery"
+                    :suggestions="seedNames"
+                    title="Otsi seemneid"
+                    @search="(q) => (searchQuery = q)"
+                    @clear="searchQuery = ''"
+                />
+                <EditSeedModal
+                    v-model:open="showEditSeed"
+                    :seed="editingSeed"
+                    @updated="router.reload({ only: ['seeds'] })"
+                />
+                <BottomNav active="seeds" />
             </div>
-          </header>
-
-          <!-- MODAL -->
-          <CreatePlantModal
-            v-model:open="isAddPlantOpen"
-            :categories="props.categories"
-            :initialCategoryId="props.categories.find((c) => c.slug === props.category.slug)?.id ?? null"
-            @created="onPlantCreated"
-          />
-
-          <main class="pb-24">
-            <!-- Tabs -->
-            <div class="px-4 py-6">
-              <div class="no-scrollbar flex gap-3 overflow-x-auto pb-2">
-                <button type="button" :class="tabClass('all')" @click="activeTab = 'all'">Kõik taimed</button>
-                <button type="button" :class="tabClass('growing')" @click="activeTab = 'growing'">Kasvavad</button>
-                <button type="button" :class="tabClass('harvest')" @click="activeTab = 'harvest'">Saagikoristus</button>
-              </div>
-            </div>
-
-            <!-- Cards -->
-            <div class="space-y-4 px-4">
-              <PlantCard
-                v-for="p in filteredPlants"
-                :key="p.id"
-                :plant="p"
-                :menuOpen="menuOpenForId === p.id"
-                @toggleMenu="toggleMenu"
-                @edit="editPlant"
-                @delete="askDelete"
-              />
-
-              <p v-if="filteredPlants.length === 0" class="px-1 text-sm text-[#2E2E2E]/60">
-                Siin kategoorias pole veel taimi.
-              </p>
-            </div>
-          </main>
         </div>
-
-        <BottomNav active="plants" />
-      </div>
-    </div>
-
-    <DeletePlantModal
-      :open="deleteOpen"
-      :plant="deleteTarget ? { id: deleteTarget.id, name: deleteTarget.name } : null"
-      :processing="deleting"
-      @close="closeDelete"
-      @confirm="doDelete"
-    />
-  </AppLayout>
+    </AppLayout>
 </template>
 
 <style scoped>
 .no-scrollbar::-webkit-scrollbar {
-  display: none;
+    display: none;
 }
 .no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 </style>
