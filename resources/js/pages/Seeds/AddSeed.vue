@@ -19,12 +19,14 @@ const form = useForm<{
     name: string;
     year: string;
     expires_at: string;
+    notes: string;
     image: File | null;
 }>({
     category_id: props.initialCategoryId ?? null,
     name: '',
     year: '',
     expires_at: '',
+    notes: '',
     image: null,
 });
 
@@ -205,6 +207,19 @@ onBeforeUnmount(() => {
                                 />
                                 <p v-if="form.errors.expires_at" class="mt-2 text-sm text-red-600">{{ form.errors.expires_at }}</p>
                             </div>
+                        </div>
+
+                        <div class="mt-5">
+                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                                Märkused
+                            </label>
+                            <textarea
+                                v-model="form.notes"
+                                rows="4"
+                                placeholder="Lisa siia seemne kohta taiendav info..."
+                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                            />
+                            <p v-if="form.errors.notes" class="mt-2 text-sm text-red-600">{{ form.errors.notes }}</p>
                         </div>
 
                         <div class="mt-6 flex flex-col gap-3">

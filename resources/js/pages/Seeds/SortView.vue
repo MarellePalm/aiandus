@@ -6,6 +6,8 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 
 import AddSeed from './AddSeed.vue';
+import EditSeedModal from './EditSeedModal.vue';
+import SeedCardActions from './SeedCardActions.vue';
 import SearchModal from './SearchModal.vue';
 
 type SeedItem = {
@@ -14,6 +16,7 @@ type SeedItem = {
     year?: number | null;
     expires_at?: string | null;
     image_url?: string | null;
+    notes?: string | null;
     is_favorite?: boolean;
     created_at?: string | null;
 };
@@ -30,7 +33,9 @@ type TabKey = 'all' | 'favorites' | 'recent';
 const activeTab = ref<TabKey>('all');
 const showAddSeed = ref(false);
 const showSearch = ref(false);
+const showEditSeed = ref(false);
 const searchQuery = ref('');
+const editingSeed = ref<SeedItem | null>(null);
 
 const localSeeds = ref<SeedItem[]>([...props.seeds]);
 const seedNames = computed(() => localSeeds.value.map((s) => s.name));
@@ -85,6 +90,10 @@ const deleteSeed = (id: number) => {
 };
 
 const goBack = () => router.visit('/seeds');
+const openSeedEdit = (seed: SeedItem) => {
+    editingSeed.value = seed;
+    showEditSeed.value = true;
+};
 </script>
 
 <template>
@@ -145,21 +154,12 @@ const goBack = () => router.visit('/seeds');
                                 </div>
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
 
-                                <button
-                                    type="button"
-                                    class="absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/70 text-[#6B8C68] shadow-sm backdrop-blur-md transition hover:scale-105 hover:bg-white"
-                                    @click.prevent.stop="deleteSeed(seed.id)"
-                                >
-                                    <span class="material-symbols-outlined text-[18px]">delete</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    class="absolute top-2 left-2 z-10 flex h-8 w-8 items-center justify-center rounded-full shadow-sm backdrop-blur-md transition hover:scale-105"
-                                    :class="seed.is_favorite ? 'bg-rose-50 ring-1 ring-rose-200' : 'bg-white/70 ring-1 ring-black/10 hover:bg-white'"
-                                    @click.prevent.stop="toggleFavorite(seed.id)"
-                                >
-                                    <span class="material-symbols-outlined text-[18px]" :class="seed.is_favorite ? 'text-rose-600' : 'text-[#2E2E2E]/45'">favorite</span>
-                                </button>
+                                <SeedCardActions
+                                    :is-favorite="seed.is_favorite === true"
+                                    @delete="deleteSeed(seed.id)"
+                                    @favorite="toggleFavorite(seed.id)"
+                                    @edit="openSeedEdit(seed)"
+                                />
 
                                 <div class="absolute bottom-0 left-0 w-full p-4 text-white">
                                     <h3 class="text-lg font-bold">{{ seed.name }}</h3>
@@ -183,6 +183,11 @@ const goBack = () => router.visit('/seeds');
                     title="Otsi seemneid"
                     @search="(q) => (searchQuery = q)"
                     @clear="searchQuery = ''"
+                />
+                <EditSeedModal
+                    v-model:open="showEditSeed"
+                    :seed="editingSeed"
+                    @updated="router.reload({ only: ['seeds'] })"
                 />
                 <BottomNav active="seeds" />
             </div>

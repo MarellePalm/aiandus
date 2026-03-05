@@ -35,13 +35,14 @@ class SeedController extends Controller
             ->where('user_id', $user->id)
             ->where('category_id', $category->id)
             ->orderByDesc('created_at')
-            ->get(['id', 'name', 'year', 'expires_at', 'image_url', 'is_favorite', 'created_at'])
+            ->get(['id', 'name', 'year', 'expires_at', 'image_url', 'notes', 'is_favorite', 'created_at'])
             ->map(fn ($seed) => [
                 'id' => $seed->id,
                 'name' => $seed->name,
                 'year' => $seed->year,
                 'expires_at' => $seed->expires_at ? $seed->expires_at->toDateString() : null,
                 'image_url' => $seed->image_url,
+                'notes' => $seed->notes,
                 'is_favorite' => (bool) $seed->is_favorite,
                 'created_at' => $seed->created_at?->toIso8601String(),
             ]);
@@ -75,6 +76,7 @@ class SeedController extends Controller
             'name' => ['required', 'string', 'max:160'],
             'year' => ['nullable', 'integer', 'between:1900,2100'],
             'expires_at' => ['nullable', 'date'],
+            'notes' => ['nullable', 'string', 'max:5000'],
             'image' => ['nullable', 'image', 'max:5120'],
         ]);
 
@@ -104,7 +106,7 @@ class SeedController extends Controller
             'expires_at'  => $data['expires_at'] ?? null,
             'image_url'   => $imageUrl,
             'is_favorite' => false,
-            'notes'       => null,
+            'notes'       => $data['notes'] ?? null,
         ]);
 
         return redirect()->route('seeds.category', ['slug' => $category->slug])
@@ -128,6 +130,39 @@ class SeedController extends Controller
                 'is_favorite' => (bool) $seed->is_favorite,
             ],
         ]);
+    }
+
+    public function update(Request $request, Seed $seed)
+    {
+        abort_unless($seed->user_id === $request->user()->id, 403);
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:160'],
+            'year' => ['nullable', 'integer', 'between:1900,2100'],
+            'expires_at' => ['nullable', 'date'],
+            'notes' => ['nullable', 'string', 'max:5000'],
+            'image' => ['nullable', 'image', 'max:5120'],
+        ]);
+
+        $imageUrl = $seed->image_url;
+        if ($request->hasFile('image')) {
+            if ($seed->image_url && str_starts_with($seed->image_url, '/storage/')) {
+                $oldPath = str_replace('/storage/', '', $seed->image_url);
+                Storage::disk('public')->delete($oldPath);
+            }
+            $path = $request->file('image')->store('seeds', 'public');
+            $imageUrl = Storage::url($path);
+        }
+
+        $seed->update([
+            'name' => $data['name'],
+            'year' => $data['year'] ?? null,
+            'expires_at' => $data['expires_at'] ?? null,
+            'notes' => $data['notes'] ?? null,
+            'image_url' => $imageUrl,
+        ]);
+
+        return back()->with('success', 'Seeme uuendatud!');
     }
 
     public function toggleFavorite(Request $request, Seed $seed)
