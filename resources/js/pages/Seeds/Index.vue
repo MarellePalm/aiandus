@@ -5,6 +5,7 @@ import { computed, ref, watch } from 'vue';
 import CreateCategoryModal from '@/components/CreateCategoryModal.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
+import UserMenu from '@/pages/UserMenu.vue';
 
 import CategoryCardActions from './CategoryCardActions.vue';
 import DeleteConfirmModal from './DeleteConfirmModal.vue';
@@ -148,13 +149,16 @@ const openEditCategory = (category: Category) => {
                                 <h1 class="text-forest text-3xl font-bold tracking-tight">Seemnevarud</h1>
                             </div>
 
-                            <div class="flex gap-5">
-                                <button type="button" class="flex h-10 w-10 items-center justify-center rounded-full text-primary transition hover:bg-primary/10" @click="showSearch = true">
+                            <div class="flex shrink-0 items-center gap-2 sm:gap-5">
+                                <button type="button" class="flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10" @click="showSearch = true">
                                     <span class="material-symbols-outlined text-xl">search</span>
                                 </button>
-                                <button type="button" @click="showCreateCategory = true" class="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-sm transition hover:scale-105 active:scale-95">
+                                <button type="button" @click="showCreateCategory = true" class="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white shadow-sm transition hover:scale-105 active:scale-95 sm:h-10 sm:w-10">
                                     <span class="material-symbols-outlined text-[20px]">add</span>
                                 </button>
+                                <div class="shrink-0">
+                                    <UserMenu settings-href="/settings" />
+                                </div>
                             </div>
                         </div>
 

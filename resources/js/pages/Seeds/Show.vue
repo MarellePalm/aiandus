@@ -5,6 +5,7 @@ import { ref } from 'vue';
 import DeleteConfirmModal from './DeleteConfirmModal.vue';
 import EditSeedModal from './EditSeedModal.vue';
 import SeedActionButton from './SeedActionButton.vue';
+import UserMenu from '@/pages/UserMenu.vue';
 
 type Seed = {
     id: number;
@@ -60,11 +61,11 @@ const deleteSeed = () => {
                     <Link href="/seeds" class="flex h-10 w-10 items-center justify-center rounded-full hover:bg-primary/10">
                         <span class="material-symbols-outlined">arrow_back_ios_new</span>
                     </Link>
-                    <h1 class="text-lg font-semibold">Seemne detail</h1>
-                    <div class="flex items-center gap-2">
+                    <h1 class="max-w-[7rem] truncate text-base font-semibold sm:max-w-none sm:text-lg">Seemne detail</h1>
+                    <div class="flex shrink-0 items-center gap-1 sm:gap-2">
                         <SeedActionButton
                             :absolute="false"
-                            position-class="h-10 w-10"
+                            position-class="h-9 w-9 sm:h-10 sm:w-10"
                             aria-label="Muuda"
                             @click="openEditModal"
                         >
@@ -72,12 +73,15 @@ const deleteSeed = () => {
                         </SeedActionButton>
                         <SeedActionButton
                             :absolute="false"
-                            position-class="h-10 w-10"
+                            position-class="h-9 w-9 sm:h-10 sm:w-10"
                             aria-label="Kustuta"
                             @click="openDeleteModal"
                         >
                             <span class="material-symbols-outlined">delete</span>
                         </SeedActionButton>
+                        <div class="shrink-0">
+                            <UserMenu settings-href="/settings" />
+                        </div>
                     </div>
                 </div>
             </header>
