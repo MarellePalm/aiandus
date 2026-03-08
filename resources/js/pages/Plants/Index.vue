@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
 
@@ -10,9 +10,6 @@ import CreateCategoryModal from '../../components/CreateCategoryModal.vue';
 import BottomNav from '../BottomNav.vue';
 
 import SearchModal from './SearchModal.vue';
-
-const page = usePage();
-const user = computed(() => (page.props as any).auth?.user ?? null);
 
 const breadcrumbs = [{ title: 'Aed', href: '/plants' }];
 

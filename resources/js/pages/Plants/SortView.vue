@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router,usePage } from "@inertiajs/vue3";
+import { Head, router } from "@inertiajs/vue3";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
 import CreatePlantModal from "@/components/CreatePlantModal.vue";
@@ -8,9 +8,6 @@ import AppLayout from "@/layouts/AppLayout.vue";
 import UserMenu from '@/pages/UserMenu.vue';
 
 import BottomNav from "../BottomNav.vue";
-
-const page = usePage();
-const user = page.props.auth.user;
 
 type PlantItem = {
   id: number;
