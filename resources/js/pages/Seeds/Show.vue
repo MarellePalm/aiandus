@@ -1,5 +1,10 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
+import { ref } from 'vue';
+
+import DeleteConfirmModal from './DeleteConfirmModal.vue';
+import EditSeedModal from './EditSeedModal.vue';
+import SeedActionButton from './SeedActionButton.vue';
 
 type Seed = {
     id: number;
@@ -14,10 +19,31 @@ type Seed = {
 };
 
 const props = defineProps<{ seed: Seed }>();
+const showDeleteSeed = ref(false);
+const deleteProcessing = ref(false);
+const showEditSeed = ref(false);
+
+const openDeleteModal = () => {
+    showDeleteSeed.value = true;
+};
+
+const closeDeleteModal = () => {
+    showDeleteSeed.value = false;
+    deleteProcessing.value = false;
+};
+
+const openEditModal = () => {
+    showEditSeed.value = true;
+};
 
 const deleteSeed = () => {
+    if (deleteProcessing.value) return;
+    deleteProcessing.value = true;
     router.delete(`/seeds/${props.seed.id}`, {
         onSuccess: () => router.visit('/seeds'),
+        onFinish: () => {
+            deleteProcessing.value = false;
+        },
     });
 };
 </script>
@@ -35,14 +61,24 @@ const deleteSeed = () => {
                         <span class="material-symbols-outlined">arrow_back_ios_new</span>
                     </Link>
                     <h1 class="text-lg font-semibold">Seemne detail</h1>
-                    <button
-                        type="button"
-                        class="flex h-10 w-10 items-center justify-center rounded-full text-red-600 hover:bg-red-50"
-                        @click="deleteSeed"
-                        aria-label="Kustuta seeme"
-                    >
-                        <span class="material-symbols-outlined">delete</span>
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <SeedActionButton
+                            :absolute="false"
+                            position-class="h-10 w-10"
+                            aria-label="Muuda"
+                            @click="openEditModal"
+                        >
+                            <span class="material-symbols-outlined">edit</span>
+                        </SeedActionButton>
+                        <SeedActionButton
+                            :absolute="false"
+                            position-class="h-10 w-10"
+                            aria-label="Kustuta"
+                            @click="openDeleteModal"
+                        >
+                            <span class="material-symbols-outlined">delete</span>
+                        </SeedActionButton>
+                    </div>
                 </div>
             </header>
 
@@ -72,5 +108,18 @@ const deleteSeed = () => {
                 </p>
             </main>
         </div>
+        <DeleteConfirmModal
+            :open="showDeleteSeed"
+            :title="'Kustuta seeme?'"
+            :message="`${props.seed.name} eemaldatakse jäädavalt.`"
+            :processing="deleteProcessing"
+            @close="closeDeleteModal"
+            @confirm="deleteSeed"
+        />
+        <EditSeedModal
+            v-model:open="showEditSeed"
+            :seed="props.seed"
+            @updated="router.reload({ only: ['seed'] })"
+        />
     </div>
 </template>

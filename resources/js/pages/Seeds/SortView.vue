@@ -6,6 +6,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 
 import AddSeed from './AddSeed.vue';
+import DeleteConfirmModal from './DeleteConfirmModal.vue';
 import EditSeedModal from './EditSeedModal.vue';
 import SearchModal from './SearchModal.vue';
 import SeedCardActions from './SeedCardActions.vue';
@@ -34,8 +35,11 @@ const activeTab = ref<TabKey>('all');
 const showAddSeed = ref(false);
 const showSearch = ref(false);
 const showEditSeed = ref(false);
+const showDeleteSeed = ref(false);
 const searchQuery = ref('');
 const editingSeed = ref<SeedItem | null>(null);
+const deletingSeed = ref<SeedItem | null>(null);
+const deleteProcessing = ref(false);
 
 const localSeeds = ref<SeedItem[]>([...props.seeds]);
 const seedNames = computed(() => localSeeds.value.map((s) => s.name));
@@ -80,11 +84,28 @@ const toggleFavorite = (id: number) => {
     });
 };
 
-const deleteSeed = (id: number) => {
-    router.delete(`/seeds/${id}`, {
+const openDeleteSeed = (seed: SeedItem) => {
+    deletingSeed.value = seed;
+    showDeleteSeed.value = true;
+};
+
+const closeDeleteSeed = () => {
+    showDeleteSeed.value = false;
+    deletingSeed.value = null;
+    deleteProcessing.value = false;
+};
+
+const confirmDeleteSeed = () => {
+    if (!deletingSeed.value || deleteProcessing.value) return;
+    deleteProcessing.value = true;
+    router.delete(`/seeds/${deletingSeed.value.id}`, {
         preserveScroll: true,
         onSuccess: () => {
-            localSeeds.value = localSeeds.value.filter((seed) => seed.id !== id);
+            localSeeds.value = localSeeds.value.filter((seed) => seed.id !== deletingSeed.value?.id);
+            closeDeleteSeed();
+        },
+        onFinish: () => {
+            deleteProcessing.value = false;
         },
     });
 };
@@ -156,7 +177,7 @@ const openSeedEdit = (seed: SeedItem) => {
 
                                 <SeedCardActions
                                     :is-favorite="seed.is_favorite === true"
-                                    @delete="deleteSeed(seed.id)"
+                                    @delete="openDeleteSeed(seed)"
                                     @favorite="toggleFavorite(seed.id)"
                                     @edit="openSeedEdit(seed)"
                                 />
@@ -189,6 +210,14 @@ const openSeedEdit = (seed: SeedItem) => {
                     v-model:open="showEditSeed"
                     :seed="editingSeed"
                     @updated="router.reload({ only: ['seeds'] })"
+                />
+                <DeleteConfirmModal
+                    :open="showDeleteSeed"
+                    :title="'Kustuta seeme?'"
+                    :message="`${deletingSeed?.name ?? 'See seeme'} eemaldatakse jäädavalt.`"
+                    :processing="deleteProcessing"
+                    @close="closeDeleteSeed"
+                    @confirm="confirmDeleteSeed"
                 />
                 <BottomNav active="seeds" />
             </div>
