@@ -19,7 +19,16 @@ class SeedController extends Controller
                 'seeds as count' => fn ($q) => $q->where('user_id', $user->id),
             ])
             ->orderBy('name')
-            ->get(['id', 'name', 'slug', 'image', 'is_favorite', 'created_at']);
+            ->get(['id', 'name', 'slug', 'image', 'is_favorite', 'created_at'])
+            ->map(fn ($category) => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'slug' => $category->slug,
+                'image' => $category->image ?: $this->fallbackCategoryImageUrl($category->id),
+                'count' => (int) ($category->count ?? 0),
+                'is_favorite' => (bool) $category->is_favorite,
+                'created_at' => $category->created_at?->toIso8601String(),
+            ]);
 
         return Inertia::render('Seeds/Index', [
             'categories' => $categories,
@@ -41,7 +50,7 @@ class SeedController extends Controller
                 'name' => $seed->name,
                 'year' => $seed->year,
                 'expires_at' => $seed->expires_at ? $seed->expires_at->toDateString() : null,
-                'image_url' => $seed->image_url,
+                'image_url' => $seed->image_url ?: $this->fallbackImageUrl($seed->id),
                 'notes' => $seed->notes,
                 'is_favorite' => (bool) $seed->is_favorite,
                 'created_at' => $seed->created_at?->toIso8601String(),
@@ -125,7 +134,7 @@ class SeedController extends Controller
                 'amount' => $seed->amount,
                 'year' => $seed->year,
                 'expires_at' => $seed->expires_at?->toDateString(),
-                'image_url' => $seed->image_url,
+                'image_url' => $seed->image_url ?: $this->fallbackImageUrl($seed->id),
                 'notes' => $seed->notes ?? null,
                 'is_favorite' => (bool) $seed->is_favorite,
             ],
@@ -182,5 +191,15 @@ class SeedController extends Controller
         $seed->delete();
 
         return redirect()->route('seeds.index');
+    }
+
+    private function fallbackImageUrl(int $seedId): string
+    {
+        return "https://picsum.photos/seed/seeme-{$seedId}/640/480";
+    }
+
+    private function fallbackCategoryImageUrl(int $categoryId): string
+    {
+        return "https://picsum.photos/seed/seemnekategooria-{$categoryId}/800/800";
     }
 }

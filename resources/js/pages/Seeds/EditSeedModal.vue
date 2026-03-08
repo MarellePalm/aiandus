@@ -112,12 +112,17 @@ watch(
 const submit = () => {
     if (!props.seed) return;
 
-    form.post(`/seeds/${props.seed.id}`, {
+    form.transform((data) => ({
+        ...data,
+        _method: 'patch',
+    })).post(`/seeds/${props.seed.id}`, {
         forceFormData: true,
-        data: { _method: 'patch' },
         onSuccess: () => {
             emit('updated');
             close();
+        },
+        onFinish: () => {
+            form.transform((data) => data);
         },
     });
 };

@@ -14,7 +14,7 @@ const emit = defineEmits<{
 
 <template>
     <SeedActionButton
-        aria-label="Kustuta kategooria"
+        aria-label="Kustuta"
         position-class="top-2 right-2"
         @click.prevent.stop="emit('delete')"
     >

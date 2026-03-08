@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
+import UserMenu from '@/pages/UserMenu.vue';
 
 import AddSeed from './AddSeed.vue';
+import DeleteConfirmModal from './DeleteConfirmModal.vue';
 import EditSeedModal from './EditSeedModal.vue';
 import SearchModal from './SearchModal.vue';
-import SeedCardActions from './SeedCardActions.vue';
 
 type SeedItem = {
     id: number;
@@ -34,11 +35,22 @@ const activeTab = ref<TabKey>('all');
 const showAddSeed = ref(false);
 const showSearch = ref(false);
 const showEditSeed = ref(false);
+const showDeleteSeed = ref(false);
 const searchQuery = ref('');
 const editingSeed = ref<SeedItem | null>(null);
+const deletingSeed = ref<SeedItem | null>(null);
+const deleteProcessing = ref(false);
+const menuOpenForId = ref<number | null>(null);
 
 const localSeeds = ref<SeedItem[]>([...props.seeds]);
 const seedNames = computed(() => localSeeds.value.map((s) => s.name));
+
+watch(
+    () => props.seeds,
+    (next) => {
+        localSeeds.value = [...next];
+    },
+);
 
 const filteredSeeds = computed(() => {
     let list = [...localSeeds.value];
@@ -80,11 +92,28 @@ const toggleFavorite = (id: number) => {
     });
 };
 
-const deleteSeed = (id: number) => {
-    router.delete(`/seeds/${id}`, {
+const openDeleteSeed = (seed: SeedItem) => {
+    deletingSeed.value = seed;
+    showDeleteSeed.value = true;
+};
+
+const closeDeleteSeed = () => {
+    showDeleteSeed.value = false;
+    deletingSeed.value = null;
+    deleteProcessing.value = false;
+};
+
+const confirmDeleteSeed = () => {
+    if (!deletingSeed.value || deleteProcessing.value) return;
+    deleteProcessing.value = true;
+    router.delete(`/seeds/${deletingSeed.value.id}`, {
         preserveScroll: true,
         onSuccess: () => {
-            localSeeds.value = localSeeds.value.filter((seed) => seed.id !== id);
+            localSeeds.value = localSeeds.value.filter((seed) => seed.id !== deletingSeed.value?.id);
+            closeDeleteSeed();
+        },
+        onFinish: () => {
+            deleteProcessing.value = false;
         },
     });
 };
@@ -93,7 +122,31 @@ const goBack = () => router.visit('/seeds');
 const openSeedEdit = (seed: SeedItem) => {
     editingSeed.value = seed;
     showEditSeed.value = true;
+    menuOpenForId.value = null;
 };
+
+const openSeed = (id: number) => {
+    router.visit(`/seeds/${id}`);
+};
+
+const toggleMenu = (id: number) => {
+    menuOpenForId.value = menuOpenForId.value === id ? null : id;
+};
+
+const onDocClick = (e: MouseEvent) => {
+    if (!menuOpenForId.value) return;
+    const t = e.target as HTMLElement | null;
+    if (t?.closest?.('[data-seed-menu]')) return;
+    menuOpenForId.value = null;
+};
+
+onMounted(() => {
+    document.addEventListener('click', onDocClick);
+});
+
+onBeforeUnmount(() => {
+    document.removeEventListener('click', onDocClick);
+});
 </script>
 
 <template>
@@ -107,16 +160,19 @@ const openSeedEdit = (seed: SeedItem) => {
                         <div class="mb-6 flex items-center justify-between">
                             <button class="flex items-center gap-1 font-medium text-primary" type="button" @click="goBack">
                                 <span class="material-symbols-outlined text-[24px]">chevron_left</span>
-                                <span class="text-sm">Kategooriad</span>
+                                <span class="hidden text-sm sm:inline">Kategooriad</span>
                             </button>
-                            <h1 class="text-xl font-bold tracking-tight">{{ props.category.name }}</h1>
-                            <div class="flex items-center gap-5">
-                                <button class="flex h-10 w-10 items-center justify-center rounded-full text-primary transition hover:bg-primary/10" type="button" @click="showSearch = true">
+                            <h1 class="max-w-[7.5rem] truncate text-base font-bold tracking-tight sm:max-w-none sm:text-xl">{{ props.category.name }}</h1>
+                            <div class="flex shrink-0 items-center gap-2 sm:gap-5">
+                                <button class="flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10" type="button" @click="showSearch = true">
                                     <span class="material-symbols-outlined text-[24px]">search</span>
                                 </button>
-                                <button type="button" @click="showAddSeed = true" class="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-sm transition hover:scale-105 active:scale-95">
+                                <button type="button" @click="showAddSeed = true" class="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white shadow-sm transition hover:scale-105 active:scale-95 sm:h-10 sm:w-10">
                                     <span class="material-symbols-outlined text-[20px]">add</span>
                                 </button>
+                                <div class="shrink-0">
+                                    <UserMenu settings-href="/settings" />
+                                </div>
                             </div>
                         </div>
 
@@ -136,37 +192,75 @@ const openSeedEdit = (seed: SeedItem) => {
                             <p class="mt-2 text-sm text-forest/70">Vajuta uleval paremal <strong>+</strong>, et lisada seeme.</p>
                         </div>
 
-                        <div v-else class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-                            <Link
+                        <div v-else class="space-y-4">
+                            <div
                                 v-for="seed in filteredSeeds"
                                 :key="seed.id"
-                                :href="`/seeds/${seed.id}`"
-                                class="group relative aspect-[1/1] overflow-hidden rounded-2xl shadow-lg"
+                                class="rounded-2xl border border-primary/10 bg-white p-4 shadow-sm transition hover:shadow-md"
+                                role="button"
+                                tabindex="0"
+                                @click="openSeed(seed.id)"
+                                @keydown.enter.prevent="openSeed(seed.id)"
                             >
-                                <img
-                                    v-if="seed.image_url"
-                                    :src="seed.image_url"
-                                    alt=""
-                                    class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                />
-                                <div v-else class="absolute inset-0 flex h-full w-full items-center justify-center bg-primary/10 text-primary">
-                                    <span class="material-symbols-outlined text-3xl">potted_plant</span>
-                                </div>
-                                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                                <div class="flex items-center gap-4">
+                                    <div class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-primary/10 bg-gray-100">
+                                        <img
+                                            v-if="seed.image_url"
+                                            :src="seed.image_url"
+                                            alt=""
+                                            class="h-full w-full object-cover"
+                                        />
+                                        <div v-else class="flex h-full w-full items-center justify-center text-primary/70">
+                                            <span class="material-symbols-outlined text-2xl">potted_plant</span>
+                                        </div>
+                                    </div>
 
-                                <SeedCardActions
-                                    :is-favorite="seed.is_favorite === true"
-                                    @delete="deleteSeed(seed.id)"
-                                    @favorite="toggleFavorite(seed.id)"
-                                    @edit="openSeedEdit(seed)"
-                                />
+                                    <div class="min-w-0 flex-1">
+                                        <h3 class="truncate text-lg font-semibold italic">{{ seed.name }}</h3>
+                                        <p class="mt-1 text-sm text-text-muted">Ostetud: {{ seed.year ?? '-' }}</p>
+                                        <p class="text-sm text-text-muted">Aegub: {{ seed.expires_at ?? '-' }}</p>
+                                    </div>
 
-                                <div class="absolute bottom-0 left-0 w-full p-4 text-white">
-                                    <h3 class="text-lg font-bold">{{ seed.name }}</h3>
-                                    <p class="mt-1 text-xs">Ostetud: {{ seed.year ?? '-' }}</p>
-                                    <p class="text-xs">Aegub: {{ seed.expires_at ?? '-' }}</p>
+                                    <div class="relative shrink-0" data-seed-menu @click.stop>
+                                        <button
+                                            type="button"
+                                            class="flex h-10 w-10 items-center justify-center rounded-full text-text-muted transition hover:bg-primary/10"
+                                            aria-label="Menüü"
+                                            @click.stop.prevent="toggleMenu(seed.id)"
+                                        >
+                                            <span class="material-symbols-outlined text-[22px]">more_horiz</span>
+                                        </button>
+
+                                        <div
+                                            v-if="menuOpenForId === seed.id"
+                                            class="absolute right-0 top-12 z-20 w-48 overflow-hidden rounded-xl border border-primary/10 bg-white shadow-lg"
+                                            @click.stop
+                                        >
+                                            <button
+                                                type="button"
+                                                class="w-full px-4 py-3 text-left text-sm hover:bg-primary/5"
+                                                @click.stop="openSeedEdit(seed)"
+                                            >
+                                                Muuda
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="w-full px-4 py-3 text-left text-sm hover:bg-primary/5"
+                                                @click.stop="toggleFavorite(seed.id); menuOpenForId = null"
+                                            >
+                                                {{ seed.is_favorite ? 'Eemalda lemmikutest' : 'Lisa lemmikuks' }}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50"
+                                                @click.stop="openDeleteSeed(seed); menuOpenForId = null"
+                                            >
+                                                Kustuta
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                            </Link>
+                            </div>
                         </div>
                     </main>
                 </div>
@@ -189,6 +283,14 @@ const openSeedEdit = (seed: SeedItem) => {
                     v-model:open="showEditSeed"
                     :seed="editingSeed"
                     @updated="router.reload({ only: ['seeds'] })"
+                />
+                <DeleteConfirmModal
+                    :open="showDeleteSeed"
+                    :title="'Kustuta seeme?'"
+                    :message="`${deletingSeed?.name ?? 'See seeme'} eemaldatakse jäädavalt.`"
+                    :processing="deleteProcessing"
+                    @close="closeDeleteSeed"
+                    @confirm="confirmDeleteSeed"
                 />
                 <BottomNav active="seeds" />
             </div>
