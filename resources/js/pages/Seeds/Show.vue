@@ -107,9 +107,17 @@ const deleteSeed = () => {
                     <p>Aegumiskuupäev: <strong>{{ props.seed.expires_at ?? '—' }}</strong></p>
                 </div>
 
-                <p v-if="props.seed.notes" class="mt-6 text-sm text-forest/80">
-                    {{ props.seed.notes }}
-                </p>
+                <div class="mt-8">
+                    <div class="mb-4 flex items-center justify-between">
+                        <h3 class="text-lg font-bold tracking-tight">Märkmed</h3>
+                    </div>
+
+                    <div class="rounded-2xl border border-[#e6e2d5]/50 bg-white/50 p-6">
+                        <p class="font-body text-sm leading-relaxed text-[#4a524a]">
+                            {{ props.seed.notes || 'Märkmeid veel pole.' }}
+                        </p>
+                    </div>
+                </div>
             </main>
         </div>
         <DeleteConfirmModal

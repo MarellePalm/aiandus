@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
@@ -44,6 +44,13 @@ const menuOpenForId = ref<number | null>(null);
 
 const localSeeds = ref<SeedItem[]>([...props.seeds]);
 const seedNames = computed(() => localSeeds.value.map((s) => s.name));
+
+watch(
+    () => props.seeds,
+    (next) => {
+        localSeeds.value = [...next];
+    },
+);
 
 const filteredSeeds = computed(() => {
     let list = [...localSeeds.value];
