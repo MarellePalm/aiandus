@@ -24,6 +24,8 @@ type WeatherSnapshotFromServer = {
   updatedAt: string;
   openWeatherIcon: string | null;
   openWeatherLabel: string | null;
+  sunrise: string | null;
+  sunset: string | null;
 };
 
 const { coords, loading: geoLoading, error: geoError } = useGeolocation();
@@ -60,6 +62,8 @@ const q = useQuery<WeatherSnapshotFromServer>({
         updatedAt?: string;
         openWeatherIcon?: string | null;
         openWeatherLabel?: string | null;
+        sunrise?: string | null;
+        sunset?: string | null;
       };
       if (!res.ok) {
         throw new Error(data.message ?? `Ilmapäring ebaõnnestus (${res.status})`);
@@ -75,6 +79,8 @@ const q = useQuery<WeatherSnapshotFromServer>({
         updatedAt: data.updatedAt ?? new Date().toLocaleString('et-EE'),
         openWeatherIcon: data.openWeatherIcon ?? null,
         openWeatherLabel: data.openWeatherLabel ?? null,
+        sunrise: data.sunrise ?? null,
+        sunset: data.sunset ?? null,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Ilmapäring ebaõnnestus';
@@ -97,6 +103,8 @@ const daily = computed<WeatherDailyItem[]>(() => q.data.value?.daily ?? []);
 const forecastDays = computed(() => daily.value.slice(1, 5));
 
 const todayWeatherLabel = computed(() => q.data.value?.openWeatherLabel ?? null);
+const sunrise = computed(() => q.data.value?.sunrise ?? null);
+const sunset = computed(() => q.data.value?.sunset ?? null);
 
 const todayWeatherIconUrl = computed(() => {
   const icon = q.data.value?.openWeatherIcon;
@@ -147,7 +155,7 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
         <p v-if="q.isSuccess.value" class="text-muted-foreground font-medium">
           Max {{ Math.round(tMax ?? 0) }}° / Min {{ Math.round(tMin ?? 0) }}°
         </p>
-        <div v-if="q.isSuccess.value" class="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
+        <div v-if="q.isSuccess.value" class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-sm text-muted-foreground">
           <span class="inline-flex items-center gap-1.5">
             <span class="material-symbols-outlined text-base" aria-hidden="true">air</span>
             <span>{{ windSpeed != null ? `${windSpeed.toFixed(1)} m/s` : '—' }}</span>
@@ -156,6 +164,16 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
             <span class="material-symbols-outlined text-base" aria-hidden="true">water_drop</span>
             <span>{{ humidity != null ? `${humidity}%` : '—' }}</span>
           </span>
+          <template v-if="sunrise || sunset">
+            <span class="inline-flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-base" aria-hidden="true">wb_twilight</span>
+              <span>{{ sunrise ? `Tõuseb ${sunrise}` : '—' }}</span>
+            </span>
+            <span class="inline-flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-base" aria-hidden="true">nightlight_round</span>
+              <span>{{ sunset ? `Loojub ${sunset}` : '—' }}</span>
+            </span>
+          </template>
         </div>
       </div>
 

@@ -13,10 +13,11 @@ class WeatherController extends Controller
 {
     private const CACHE_TTL_SECONDS = 3600; // 1 tund – piisav, et limiiti ei täitu (vaba plaan ~1000 päringut/päevas)
 
-    /** OpenWeather condition id → eesti keelne lühikirjeldus (ikoonid ja tekst otse OpenWeatherist). */
-    private static function openWeatherLabel(int $id): string
+    /** OpenWeather condition id + ikoon (01d/01n) või päikese tõus/loojumine → eesti keelne lühikirjeldus. */
+    private static function openWeatherLabel(int $id, string $icon = '01d', ?bool $isNightFromSun = null): string
     {
-        if ($id === 800) return 'Päikeseline';
+        $isNight = $isNightFromSun ?? str_ends_with($icon, 'n');
+        if ($id === 800) return $isNight ? 'Selge öö' : 'Päikeseline';
         if ($id >= 801 && $id <= 804) return match ($id) { 801 => 'Vähe pilvi', 802 => 'Hajusad pilved', default => 'Pilvine' };
         if ($id >= 200 && $id < 300) return 'Äike';
         if ($id >= 300 && $id < 400) return 'Kerge vihm';
@@ -45,7 +46,7 @@ class WeatherController extends Controller
 
         $lat = (float) $lat;
         $lon = (float) $lon;
-        $cacheKey = 'weather:v2:'.round($lat, 2).':'.round($lon, 2);
+        $cacheKey = 'weather:v3:'.round($lat, 2).':'.round($lon, 2);
 
         $data = Cache::remember($cacheKey, self::CACHE_TTL_SECONDS, function () use ($key, $lat, $lon) {
             // Current weather
@@ -71,7 +72,12 @@ class WeatherController extends Controller
             $weather = $weatherJson['weather'][0] ?? [];
             $weatherId = isset($weather['id']) ? (int) $weather['id'] : 800;
             $openWeatherIcon = isset($weather['icon']) ? (string) $weather['icon'] : '01d';
-            $openWeatherLabel = self::openWeatherLabel($weatherId);
+
+            $timezone = isset($weatherJson['timezone']) ? (int) $weatherJson['timezone'] : 0;
+            $sunrise = isset($weatherJson['sys']['sunrise']) ? (int) $weatherJson['sys']['sunrise'] : null;
+            $sunset = isset($weatherJson['sys']['sunset']) ? (int) $weatherJson['sys']['sunset'] : null;
+            $sunriseStr = $sunrise !== null ? gmdate('H:i', $sunrise + $timezone) : null;
+            $sunsetStr = $sunset !== null ? gmdate('H:i', $sunset + $timezone) : null;
 
             // Reverse geocoding
             $geoUrl = 'https://api.openweathermap.org/geo/1.0/reverse'
@@ -150,7 +156,11 @@ class WeatherController extends Controller
                 'daily' => $daily,
                 'updatedAt' => now()->locale('et')->format('d.m.Y H:i'),
                 'openWeatherIcon' => $openWeatherIcon,
-                'openWeatherLabel' => $openWeatherLabel,
+                'weatherId' => $weatherId,
+                'sunrise' => $sunriseStr,
+                'sunset' => $sunsetStr,
+                'sunriseUnix' => $sunrise,
+                'sunsetUnix' => $sunset,
             ];
         });
 
@@ -160,6 +170,19 @@ class WeatherController extends Controller
         if (isset($data['_error'])) {
             return response()->json(['message' => $data['_error']], 502);
         }
+
+        // Öö/päev ja silt arvutatakse iga päringu ajal (mitte vahemällu), et öösel näidataks "Selge öö"
+        $sunriseUnix = $data['sunriseUnix'] ?? null;
+        $sunsetUnix = $data['sunsetUnix'] ?? null;
+        $isNight = ($sunriseUnix !== null && $sunsetUnix !== null)
+            ? (time() < $sunriseUnix || time() > $sunsetUnix)
+            : null;
+        $data['openWeatherLabel'] = self::openWeatherLabel(
+            (int) ($data['weatherId'] ?? 800),
+            (string) ($data['openWeatherIcon'] ?? '01d'),
+            $isNight
+        );
+        unset($data['sunriseUnix'], $data['sunsetUnix'], $data['weatherId']);
 
         return response()->json([
             'useOpenWeather' => true,

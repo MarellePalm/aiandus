@@ -80,7 +80,15 @@ class SeedController extends Controller
 
     public function create(Request $request)
     {
-        return Inertia::render('Seeds/AddSeed');
+        $categories = Category::query()
+            ->where('scope', Category::SCOPE_SEED)
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug']);
+
+        return Inertia::render('Seeds/AddSeed', [
+            'categories' => $categories,
+            'standalone' => true,
+        ]);
     }
 
     public function store(Request $request)
