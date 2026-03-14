@@ -11,6 +11,8 @@ import BottomNav from '../BottomNav.vue';
 
 import SearchModal from './SearchModal.vue';
 
+import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
+
 const breadcrumbs = [{ title: 'Aed', href: '/plants' }];
 
 type Category = {
@@ -169,13 +171,7 @@ const resetToAll = () => {
                             >
                                 <span class="material-symbols-outlined text-xl">search</span>
                             </button>
-                            <button
-                                type="button"
-                                @click="showCreateCategory = true"
-                                class="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-sm transition hover:scale-105 active:scale-95"
-                            >
-                                <span class="material-symbols-outlined text-[20px]">add</span>
-                            </button>
+                            
                         </template>
 
                         <!-- Horizontal Quick Categories -->
@@ -355,6 +351,15 @@ const resetToAll = () => {
                         </div>
                     </transition>
                 </div>
+
+                <FloatingPlusButton
+    aria-label="Lisa kategooria"
+    :size-px="52"
+    :icon-size-px="30"
+    @click="showCreateCategory = true"
+/>
+
+<BottomNav active="plants" /> 
 
                 <BottomNav active="plants" />
             </div>
