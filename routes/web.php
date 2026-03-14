@@ -11,6 +11,7 @@ use App\Http\Controllers\WeatherController;
 use App\Models\Bed;
 use App\Models\CalendarNote;
 use App\Models\Plant;
+use App\Models\Seed;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -51,9 +52,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     : null,
             ]);
 
+        $recentSeeds = Seed::query()
+            ->where('user_id', $user->id)
+            ->with('category:id,name,slug')
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get()
+            ->map(fn ($s) => [
+                'id' => $s->id,
+                'name' => $s->name,
+                'image_url' => $s->image_url,
+                'created_at' => $s->created_at?->toIso8601String(),
+                'category' => $s->category
+                    ? ['name' => $s->category->name, 'slug' => $s->category->slug]
+                    : null,
+            ]);
+
         return Inertia::render('Dashboard', [
             'recentNotes' => $recentNotes,
             'recentPlants' => $recentPlants,
+            'recentSeeds' => $recentSeeds,
         ]);
     })->name('dashboard');
 
@@ -176,6 +194,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('overview');
 
     // Plants
+    Route::get('plants/create', fn () => Inertia::render('AddPlant'))->name('plants.create');
     Route::resource('plants', PlantController::class)->except(['create']);
     Route::post('/plants/{plant}/waterings', [PlantController::class, 'water'])
         ->name('plants.water');

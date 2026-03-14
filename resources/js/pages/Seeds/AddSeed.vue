@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 type Category = {
@@ -7,11 +7,15 @@ type Category = {
     name: string;
 };
 
-const props = defineProps<{
-    open: boolean;
-    initialCategoryId?: number | null;
-    categories?: Category[];
-}>();
+const props = withDefaults(
+    defineProps<{
+        open?: boolean;
+        initialCategoryId?: number | null;
+        categories?: Category[];
+        standalone?: boolean;
+    }>(),
+    { open: false, standalone: false },
+);
 
 const emit = defineEmits<{
     (e: 'update:open', value: boolean): void;
@@ -19,6 +23,9 @@ const emit = defineEmits<{
 }>();
 
 const close = () => emit('update:open', false);
+
+const isStandalone = computed(() => props.standalone === true);
+const showForm = computed(() => isStandalone.value || props.open);
 
 const form = useForm<{
     category_id: number | null;
@@ -154,7 +161,11 @@ const submit = () => {
         forceFormData: true,
         onSuccess: () => {
             emit('created');
-            close();
+            if (isStandalone.value) {
+                router.visit('/seeds');
+            } else {
+                close();
+            }
         },
         onFinish: () => {
             form.transform((data) => data);
@@ -169,7 +180,153 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <Teleport to="body">
+    <!-- Lehe režiim: /seeds/create -->
+    <template v-if="isStandalone">
+        <Head title="Lisa varu" />
+        <div class="min-h-screen bg-[#FAF8F4] p-4 pb-8">
+            <Link
+                href="/seeds"
+                class="inline-flex items-center gap-1 text-[#2E2E2E]/70 hover:text-[#2E2E2E] mb-4"
+            >
+                <span class="material-symbols-outlined text-xl">arrow_back</span>
+                Tagasi
+            </Link>
+            <div class="max-w-lg mx-auto">
+                <h1 class="text-lg font-semibold text-[#2E2E2E]">Lisa varu</h1>
+                <p class="mt-1 text-sm text-[#2E2E2E]/70 mb-5">
+                    Lisa nimi, kogus, pilt, ostmisaasta ja aegumisaasta.
+                </p>
+
+                <div class="mt-5">
+                    <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Nimi</label>
+                    <input
+                        ref="nameInputRef"
+                        v-model="form.name"
+                        type="text"
+                        placeholder="nt Tomat"
+                        class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                    />
+                    <p v-if="form.errors.name" class="mt-2 text-sm text-red-600">{{ form.errors.name }}</p>
+                </div>
+
+                <div class="mt-5">
+                    <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Kategooria</label>
+                    <select
+                        ref="categorySelectRef"
+                        v-model="form.category_id"
+                        class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                    >
+                        <option :value="null" disabled>Vali kategooria...</option>
+                        <option v-for="c in (props.categories ?? [])" :key="c.id" :value="c.id">{{ c.name }}</option>
+                    </select>
+                    <p v-if="form.errors.category_id" class="mt-2 text-sm text-red-600">{{ form.errors.category_id }}</p>
+                </div>
+
+                <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Ostmise aasta</label>
+                        <input
+                            v-model="form.year"
+                            type="number"
+                            max="2100"
+                            class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                            @focus="markEmptyOnFocus('year')"
+                            @input="normalizeSpinnerStart('year')"
+                            @keydown.up="startYearFrom2020('year')"
+                            @keydown.down="startYearFrom2020('year')"
+                        />
+                        <p v-if="form.errors.year" class="mt-2 text-sm text-red-600">{{ form.errors.year }}</p>
+                    </div>
+                    <div>
+                        <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Aegumisaasta</label>
+                        <input
+                            v-model="form.expires_at"
+                            type="number"
+                            max="2100"
+                            class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                            @focus="markEmptyOnFocus('expires_at')"
+                            @input="normalizeSpinnerStart('expires_at')"
+                            @keydown.up="startYearFrom2020('expires_at')"
+                            @keydown.down="startYearFrom2020('expires_at')"
+                        />
+                        <p v-if="form.errors.expires_at" class="mt-2 text-sm text-red-600">{{ form.errors.expires_at }}</p>
+                    </div>
+                </div>
+
+                <div class="mt-5">
+                    <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Kogus</label>
+                    <input
+                        v-model="form.amount_text"
+                        type="text"
+                        placeholder="nt 1 tk või 2 liitrit"
+                        class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                    />
+                    <p v-if="form.errors.amount_text" class="mt-2 text-sm text-red-600">{{ form.errors.amount_text }}</p>
+                </div>
+
+                <div class="mt-5">
+                    <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Pilt</label>
+                    <input
+                        ref="fileInputRef"
+                        type="file"
+                        accept="image/*"
+                        class="hidden"
+                        @change="onFileChange"
+                    />
+                    <button
+                        type="button"
+                        class="mt-3 w-full rounded-2xl border-2 border-dashed border-black/10 bg-white/60 px-6 py-8 text-center hover:bg-white/80"
+                        @click="openPicker"
+                    >
+                        <template v-if="!hasImage">
+                            <span class="material-symbols-outlined text-5xl text-[#6B8C68]">add_a_photo</span>
+                            <p class="mt-2 text-sm text-[#2E2E2E]/70">Lisa varu pilt</p>
+                        </template>
+                        <template v-else>
+                            <img
+                                v-if="previewUrl"
+                                :src="previewUrl"
+                                alt="Eelvaade"
+                                class="mx-auto max-h-40 rounded-xl object-cover"
+                            />
+                        </template>
+                    </button>
+                    <p v-if="form.errors.image" class="mt-2 text-sm text-red-600">{{ form.errors.image }}</p>
+                </div>
+
+                <div class="mt-5">
+                    <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Märkused</label>
+                    <textarea
+                        v-model="form.notes"
+                        rows="4"
+                        placeholder="Lisa siia varu kohta täiendav info..."
+                        class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                    />
+                    <p v-if="form.errors.notes" class="mt-2 text-sm text-red-600">{{ form.errors.notes }}</p>
+                </div>
+
+                <div class="mt-6 flex flex-col gap-3">
+                    <button
+                        type="button"
+                        class="rounded-2xl bg-[#6B8C68] px-4 py-3 font-medium text-white transition hover:bg-[#4F6A52] disabled:opacity-60"
+                        :disabled="form.processing || !form.name.trim()"
+                        @click="submit"
+                    >
+                        {{ form.processing ? 'Salvestan...' : 'Salvesta varu' }}
+                    </button>
+                    <Link
+                        href="/seeds"
+                        class="text-center text-sm text-[#2E2E2E]/60 hover:text-[#2E2E2E]"
+                    >
+                        Tühista
+                    </Link>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Modaal -->
+    <Teleport v-else to="body">
         <transition name="fade">
             <div
                 v-if="props.open"
