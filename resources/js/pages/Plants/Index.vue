@@ -2,14 +2,20 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
-
+import CardActionsMenu from '@/components/CardActionsMenu.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
+import EditCategoryModal from '@/components/EditCategoryModal.vue';
+import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
+
 
 import CreateCategoryModal from '../../components/CreateCategoryModal.vue';
 import BottomNav from '../BottomNav.vue';
 
 import SearchModal from './SearchModal.vue';
+
+
+
 
 const breadcrumbs = [{ title: 'Aed', href: '/plants' }];
 
@@ -70,7 +76,13 @@ watch(
 
 const showDeleteModal = ref(false);
 const categoryToDelete = ref<number | null>(null);
+const showEditCategory = ref(false);
+const editingCategory = ref<Category | null>(null);
 
+const openEditCategory = (category: Category) => {
+    editingCategory.value = category;
+    showEditCategory.value = true;
+};
 const openDeleteModal = (id: number) => {
     categoryToDelete.value = id;
     showDeleteModal.value = true;
@@ -169,13 +181,7 @@ const resetToAll = () => {
                             >
                                 <span class="material-symbols-outlined text-xl">search</span>
                             </button>
-                            <button
-                                type="button"
-                                @click="showCreateCategory = true"
-                                class="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-sm transition hover:scale-105 active:scale-95"
-                            >
-                                <span class="material-symbols-outlined text-[20px]">add</span>
-                            </button>
+                            
                         </template>
 
                         <!-- Horizontal Quick Categories -->
@@ -242,19 +248,10 @@ const resetToAll = () => {
                                         {{ cat.name }}
                                     </h3>
                                 </div>
-                                <button
-                                    type="button"
-                                    class="absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/70 text-[#6B8C68] shadow-sm backdrop-blur-md transition hover:scale-105 hover:bg-white"
-                                    @click.prevent.stop="
-                                        openDeleteModal(cat.id)
-                                    "
-                                >
-                                    <span
-                                        class="material-symbols-outlined text-[18px]"
-                                    >
-                                        delete
-                                    </span>
-                                </button>
+                                <CardActionsMenu
+  @edit="openEditCategory(cat)"
+  @delete="openDeleteModal(cat.id)"
+/>
                                 <button
                                     type="button"
                                     class="absolute top-2 left-2 z-10 flex h-8 w-8 items-center justify-center rounded-full shadow-sm backdrop-blur-md transition hover:scale-105"
@@ -301,6 +298,14 @@ const resetToAll = () => {
                         v-model:open="showCreateCategory"
                         @created="router.reload({ only: ['categories'] })"
                     />
+
+                    <EditCategoryModal
+    v-model:open="showEditCategory"
+    :category="editingCategory"
+    submit-url-base="/plants/categories"
+    @updated="router.reload({ only: ['categories'] })"
+/>
+
                     <transition name="fade">
                         <div
                             v-if="showDeleteModal"
@@ -355,6 +360,15 @@ const resetToAll = () => {
                         </div>
                     </transition>
                 </div>
+
+                <FloatingPlusButton
+    aria-label="Lisa kategooria"
+    :size-px="52"
+    :icon-size-px="30"
+    @click="showCreateCategory = true"
+/>
+
+<BottomNav active="plants" /> 
 
                 <BottomNav active="plants" />
             </div>

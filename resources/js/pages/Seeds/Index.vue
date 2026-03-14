@@ -8,9 +8,10 @@ import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 
+import EditCategoryModal from '../../components/EditCategoryModal.vue';
+
 import CategoryCardActions from './CategoryCardActions.vue';
 import DeleteConfirmModal from './DeleteConfirmModal.vue';
-import EditCategoryModal from './EditCategoryModal.vue';
 import SearchModal from './SearchModal.vue';
 
 const breadcrumbs = [{ title: 'Aed', href: '/seeds' }];
@@ -234,6 +235,7 @@ const openEditCategory = (category: Category) => {
                 <EditCategoryModal
                     v-model:open="showEditCategory"
                     :category="editingCategory"
+                    submit-url-base="/seeds/categories"
                     @updated="router.reload({ only: ['categories'] })"
                 />
                 <DeleteConfirmModal

@@ -11,6 +11,7 @@ type CategoryItem = {
 const props = defineProps<{
     open: boolean;
     category: CategoryItem | null;
+    submitUrlBase: string;
 }>();
 
 const emit = defineEmits<{
@@ -102,7 +103,7 @@ const submit = () => {
     form.transform((data) => ({
         ...data,
         _method: 'patch',
-    })).post(`/seeds/categories/${props.category.id}`, {
+    })).post(`${props.submitUrlBase}/${props.category.id}`, {
         forceFormData: true,
         onSuccess: () => {
             emit('updated');
