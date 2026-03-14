@@ -6,6 +6,7 @@ use App\Http\Controllers\CalendarNoteController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\PlantController;
 use App\Http\Controllers\SeedController;
+use App\Http\Controllers\WeatherController;
 use App\Models\Bed;
 use App\Models\CalendarNote;
 use App\Models\Plant;
@@ -20,6 +21,8 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+
+    Route::get('api/weather', WeatherController::class)->name('api.weather');
 
     Route::get('dashboard', function (\Illuminate\Http\Request $request) {
         $user = $request->user();
