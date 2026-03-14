@@ -2,11 +2,10 @@
 import { useForm } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
-import LocalDatePicker from './LocalDatePicker.vue';
-
 type SeedItem = {
     id: number;
     name: string;
+    amount_text?: string | null;
     year?: number | null;
     expires_at?: string | null;
     notes?: string | null;
@@ -27,12 +26,14 @@ const close = () => emit('update:open', false);
 
 const form = useForm<{
     name: string;
+    amount_text: string;
     year: string;
     expires_at: string;
     notes: string;
     image: File | null;
 }>({
     name: '',
+    amount_text: '',
     year: '',
     expires_at: '',
     notes: '',
@@ -75,11 +76,44 @@ const onFileChange = (e: Event) => {
 
 const openPicker = () => fileInputRef.value?.click();
 
+const emptyOnFocus = ref<Record<'year' | 'expires_at', boolean>>({
+    year: false,
+    expires_at: false,
+});
+
+const markEmptyOnFocus = (field: 'year' | 'expires_at') => {
+    emptyOnFocus.value[field] = !form[field]?.trim();
+};
+
+const normalizeSpinnerStart = (field: 'year' | 'expires_at') => {
+    if (!emptyOnFocus.value[field]) return;
+
+    if (form[field] === '1' || form[field] === '-1' || form[field] === '0') {
+        form[field] = '2020';
+    }
+
+    emptyOnFocus.value[field] = false;
+};
+
+const startYearFrom2020 = (field: 'year' | 'expires_at') => {
+    const current = form[field]?.trim();
+    if (!current) {
+        form[field] = '2020';
+        return;
+    }
+
+    const parsed = Number(current);
+    if (Number.isNaN(parsed)) {
+        form[field] = '2020';
+    }
+};
+
 const resetFromSeed = () => {
     form.clearErrors();
     form.name = props.seed?.name ?? '';
+    form.amount_text = props.seed?.amount_text ?? '';
     form.year = props.seed?.year ? String(props.seed.year) : '';
-    form.expires_at = props.seed?.expires_at ?? '';
+    form.expires_at = props.seed?.expires_at ? props.seed.expires_at.slice(0, 4) : '';
     form.notes = props.seed?.notes ?? '';
     form.image = null;
     revokePreview();
@@ -109,11 +143,31 @@ watch(
     },
 );
 
+const isEmptyValue = (v: unknown) => v === '' || v === null || v === undefined;
+
+const shouldNormalizeTo2020 = (v: unknown) => {
+    const n = Number(v);
+    return Number.isFinite(n) && (n === 1 || n === 0 || n === -1);
+};
+
+watch(() => form.year, (value, previous) => {
+    if (isEmptyValue(previous) && shouldNormalizeTo2020(value)) {
+        form.year = '2020';
+    }
+});
+
+watch(() => form.expires_at, (value, previous) => {
+    if (isEmptyValue(previous) && shouldNormalizeTo2020(value)) {
+        form.expires_at = '2020';
+    }
+});
+
 const submit = () => {
     if (!props.seed) return;
 
     form.transform((data) => ({
         ...data,
+        expires_at: data.expires_at ? `${data.expires_at}-12-31` : '',
         _method: 'patch',
     })).post(`/seeds/${props.seed.id}`, {
         forceFormData: true,
@@ -170,7 +224,7 @@ onBeforeUnmount(() => {
 
                         <div class="mt-5">
                             <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
-                                Seemne nimi
+                                    Nimi
                             </label>
                             <input
                                 ref="nameInputRef"
@@ -181,6 +235,19 @@ onBeforeUnmount(() => {
                             <p v-if="form.errors.name" class="mt-2 text-sm text-red-600">{{ form.errors.name }}</p>
                         </div>
 
+                        <div class="mt-5">
+                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                                Kogus
+                            </label>
+                            <input
+                                v-model="form.amount_text"
+                                type="text"
+                                placeholder="nt 1 tk või 2 liitrit"
+                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                            />
+                            <p v-if="form.errors.amount_text" class="mt-2 text-sm text-red-600">{{ form.errors.amount_text }}</p>
+                        </div>
+
                         <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
                                 <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
@@ -189,20 +256,29 @@ onBeforeUnmount(() => {
                                 <input
                                     v-model="form.year"
                                     type="number"
-                                    min="2000"
                                     max="2100"
                                     class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                    @focus="markEmptyOnFocus('year')"
+                                    @input="normalizeSpinnerStart('year')"
+                                    @keydown.up="startYearFrom2020('year')"
+                                    @keydown.down="startYearFrom2020('year')"
                                 />
                                 <p v-if="form.errors.year" class="mt-2 text-sm text-red-600">{{ form.errors.year }}</p>
                             </div>
                             <div>
                                 <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
-                                    Aegumiskuupäev
+                                    Aegumisaasta
                                 </label>
-                                <div class="mt-3">
-                                    <LocalDatePicker v-model="form.expires_at" placeholder="pp.kk.aaaa" />
-                                </div>
-                                <p class="mt-1 text-xs text-[#2E2E2E]/60">pp.kk.aaaa</p>
+                                <input
+                                    v-model="form.expires_at"
+                                    type="number"
+                                    max="2100"
+                                    class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                    @focus="markEmptyOnFocus('expires_at')"
+                                    @input="normalizeSpinnerStart('expires_at')"
+                                    @keydown.up="startYearFrom2020('expires_at')"
+                                    @keydown.down="startYearFrom2020('expires_at')"
+                                />
                                 <p v-if="form.errors.expires_at" class="mt-2 text-sm text-red-600">{{ form.errors.expires_at }}</p>
                             </div>
                         </div>

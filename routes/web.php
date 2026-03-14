@@ -6,6 +6,7 @@ use App\Http\Controllers\CalendarNoteController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\PlantController;
 use App\Http\Controllers\SeedController;
+use App\Http\Controllers\SeedCategoryController;
 use App\Http\Controllers\WeatherController;
 use App\Models\Bed;
 use App\Models\CalendarNote;
@@ -121,6 +122,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('seeds.category');
     Route::patch('seeds/{seed}/favorite', [SeedController::class, 'toggleFavorite'])
         ->name('seeds.favorite');
+    Route::post('/seeds/categories', [SeedCategoryController::class, 'store'])
+        ->name('seeds.categories.store');
+    Route::patch('/seeds/categories/{category}', [SeedCategoryController::class, 'update'])
+        ->name('seeds.categories.update');
+    Route::patch('/seeds/categories/{category}/favorite', [SeedCategoryController::class, 'toggleFavorite'])
+        ->name('seeds.categories.favorite');
+    Route::delete('/seeds/categories/{category}', [SeedCategoryController::class, 'destroy'])
+        ->name('seeds.categories.destroy');
 
     // Calendar
     Route::get('calendar', [CalendarNoteController::class, 'index'])->name('calendar');

@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Seed;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class SeedController extends Controller
@@ -15,6 +16,7 @@ class SeedController extends Controller
         $user = $request->user();
 
         $categories = Category::query()
+            ->where('scope', Category::SCOPE_SEED)
             ->withCount([
                 'seeds as count' => fn ($q) => $q->where('user_id', $user->id),
             ])
@@ -38,18 +40,22 @@ class SeedController extends Controller
     public function category(Request $request, string $slug)
     {
         $user = $request->user();
-        $category = Category::query()->where('slug', $slug)->firstOrFail();
+        $category = Category::query()
+            ->where('scope', Category::SCOPE_SEED)
+            ->where('slug', $slug)
+            ->firstOrFail();
 
         $seeds = Seed::query()
             ->where('user_id', $user->id)
             ->where('category_id', $category->id)
             ->orderByDesc('created_at')
-            ->get(['id', 'name', 'year', 'expires_at', 'image_url', 'notes', 'is_favorite', 'created_at'])
+            ->get(['id', 'name', 'amount_text', 'year', 'expires_at', 'image_url', 'notes', 'is_favorite', 'created_at'])
             ->map(fn ($seed) => [
                 'id' => $seed->id,
                 'name' => $seed->name,
+                'amount_text' => $seed->amount_text,
                 'year' => $seed->year,
-                'expires_at' => $seed->expires_at ? $seed->expires_at->toDateString() : null,
+                'expires_at' => $seed->expires_at ? $seed->expires_at->format('Y') : null,
                 'image_url' => $seed->image_url ?: $this->fallbackImageUrl($seed->id),
                 'notes' => $seed->notes,
                 'is_favorite' => (bool) $seed->is_favorite,
@@ -57,6 +63,7 @@ class SeedController extends Controller
             ]);
 
         $categories = Category::query()
+            ->where('scope', Category::SCOPE_SEED)
             ->orderBy('name')
             ->get(['id', 'name', 'slug']);
 
@@ -81,8 +88,9 @@ class SeedController extends Controller
         $user = $request->user();
 
         $data = $request->validate([
-            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('scope', Category::SCOPE_SEED)],
             'name' => ['required', 'string', 'max:160'],
+            'amount_text' => ['nullable', 'string', 'max:120'],
             'year' => ['nullable', 'integer', 'between:2000,2100'],
             'expires_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:5000'],
@@ -94,7 +102,7 @@ class SeedController extends Controller
             $category = Category::query()->findOrFail($data['category_id']);
         } else {
             $category = Category::query()->firstOrCreate(
-                ['slug' => 'seemned'],
+                ['scope' => Category::SCOPE_SEED, 'slug' => 'seemned-seed-default'],
                 ['name' => 'Seemned']
             );
         }
@@ -111,6 +119,7 @@ class SeedController extends Controller
             'name'        => $data['name'],
             'subtitle'    => null,
             'amount'      => 1,
+            'amount_text' => $data['amount_text'] ?? null,
             'year'        => $data['year'] ?? null,
             'expires_at'  => $data['expires_at'] ?? null,
             'image_url'   => $imageUrl,
@@ -132,8 +141,9 @@ class SeedController extends Controller
                 'name' => $seed->name,
                 'subtitle' => $seed->subtitle,
                 'amount' => $seed->amount,
+                'amount_text' => $seed->amount_text,
                 'year' => $seed->year,
-                'expires_at' => $seed->expires_at?->toDateString(),
+                'expires_at' => $seed->expires_at?->format('Y'),
                 'image_url' => $seed->image_url ?: $this->fallbackImageUrl($seed->id),
                 'notes' => $seed->notes ?? null,
                 'is_favorite' => (bool) $seed->is_favorite,
@@ -147,6 +157,7 @@ class SeedController extends Controller
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:160'],
+            'amount_text' => ['nullable', 'string', 'max:120'],
             'year' => ['nullable', 'integer', 'between:2000,2100'],
             'expires_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:5000'],
@@ -165,6 +176,7 @@ class SeedController extends Controller
 
         $seed->update([
             'name' => $data['name'],
+            'amount_text' => $data['amount_text'] ?? null,
             'year' => $data['year'] ?? null,
             'expires_at' => $data['expires_at'] ?? null,
             'notes' => $data['notes'] ?? null,

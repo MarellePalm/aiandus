@@ -7,9 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class Category extends Model
 {
+    public const SCOPE_PLANT = 'plant';
+    public const SCOPE_SEED = 'seed';
+
     protected $fillable = [
         'name',
         'slug',
+        'scope',
         'image',
         'count',
         'is_favorite',

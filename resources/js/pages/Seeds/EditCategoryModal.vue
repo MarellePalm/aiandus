@@ -102,7 +102,7 @@ const submit = () => {
     form.transform((data) => ({
         ...data,
         _method: 'patch',
-    })).post(`/plants/categories/${props.category.id}`, {
+    })).post(`/seeds/categories/${props.category.id}`, {
         forceFormData: true,
         onSuccess: () => {
             emit('updated');

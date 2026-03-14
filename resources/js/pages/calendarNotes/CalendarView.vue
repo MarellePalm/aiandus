@@ -163,15 +163,10 @@ function selectDay(day: number) {
       <div class="page-container-wide pb-8 space-y-8">
         <DiaryHeader
           title="Minu Aia Päevik"
-          title-class="text-xl font-bold tracking-tight truncate"
           header-class="pt-6"
-          top-row-class="mb-2"
-          bottom-row-class="mb-0"
-        >
-          <template #leading>
-            <span class="material-symbols-outlined text-3xl text-primary">potted_plant</span>
-          </template>
-        </DiaryHeader>
+          top-row-class="mb-3"
+          bottom-row-class="mb-4"
+        />
 
         <!-- Calendar card -->
         <section class="card p-4">
