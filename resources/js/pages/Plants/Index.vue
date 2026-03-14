@@ -3,8 +3,8 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
 
+import DiaryHeader from '@/components/DiaryHeader.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
-import UserMenu from '@/pages/UserMenu.vue';
 
 import CreateCategoryModal from '../../components/CreateCategoryModal.vue';
 import BottomNav from '../BottomNav.vue';
@@ -160,50 +160,23 @@ const resetToAll = () => {
                 <div
                     class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
                 >
-                    <!-- Header -->
-                    <header
-                        class="bg-background-light/80 sticky top-0 z-20 px-6 pt-12 pb-4 backdrop-blur-md md:px-8"
-                    >
-                        <div class="mb-6 flex items-center justify-between">
-                            <div class="flex flex-col">
-                                <span
-                                    class="mb-1 text-xs font-semibold tracking-widest text-primary uppercase"
-                                >
-                                    Minu Aia Päevik
-                                </span>
-                                <h1
-                                    class="text-forest text-3xl font-bold tracking-tight"
-                                >
-                                    Minu Taimed
-                                </h1>
-                            </div>
-                            <div class="flex gap-5">
-                              <button
-                                    class="flex h-10 w-10 items-center justify-center rounded-full text-primary transition hover:bg-primary/10"
-                                    type="button"
-                                    @click="showSearch = true"
-                                >
-                                    <span
-                                        class="material-symbols-outlined text-xl"
-                                        >search</span
-                                    >
-                                </button>
-                                <button
-                                    type="button"
-                                    @click="showCreateCategory = true"
-                                    class="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-sm transition hover:scale-105 active:scale-95"
-                                >
-                                    <span class="material-symbols-outlined text-[20px]">add</span>
-                                </button>
-
-                                <div class="flex items-center gap-2 shrink-0">
-            <UserMenu settings-href="/settings" />
-          </div>
-                                
-                                
-                                
-                            </div>
-                        </div>
+                    <DiaryHeader title="Minu Taimed">
+                        <template #actions>
+                            <button
+                                class="flex h-10 w-10 items-center justify-center rounded-full text-primary transition hover:bg-primary/10"
+                                type="button"
+                                @click="showSearch = true"
+                            >
+                                <span class="material-symbols-outlined text-xl">search</span>
+                            </button>
+                            <button
+                                type="button"
+                                @click="showCreateCategory = true"
+                                class="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-sm transition hover:scale-105 active:scale-95"
+                            >
+                                <span class="material-symbols-outlined text-[20px]">add</span>
+                            </button>
+                        </template>
 
                         <!-- Horizontal Quick Categories -->
                         <div
@@ -235,7 +208,7 @@ const resetToAll = () => {
                                 </p>
                             </button>
                         </div>
-                    </header>
+                    </DiaryHeader>
 
                     <!-- Category Grid -->
                     <main class="flex-1 px-6 py-4 md:px-8">

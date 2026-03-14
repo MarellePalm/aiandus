@@ -4,8 +4,8 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
 import CreatePlantModal from "@/components/CreatePlantModal.vue";
 import DeletePlantModal from "@/components/DeletePlantModal.vue";
+import DiaryHeader from "@/components/DiaryHeader.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
-import UserMenu from '@/pages/UserMenu.vue';
 
 import BottomNav from "../BottomNav.vue";
 
@@ -154,43 +154,38 @@ const fallbackImage = "https://picsum.photos/200/200";
         <div
           class="bg-background-light relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x border-primary/10 shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
         >
-          <!-- Header -->
-          <header class="bg-background-light/80 sticky top-0 z-30 border-b border-primary/10 px-4 py-3 backdrop-blur-md">
-            <div class="flex items-center justify-between">
+          <DiaryHeader
+            :title="props.category.name"
+            title-class="text-lg font-bold tracking-tight"
+            header-class="pt-6 border-b border-primary/10"
+            top-row-class="mb-2"
+            bottom-row-class="mb-0"
+          >
+            <template #leading>
               <button class="flex items-center gap-1 font-medium text-primary" type="button" @click="goBack">
                 <span class="material-symbols-outlined text-[24px]">chevron_left</span>
                 <span class="text-sm">Kategooriad</span>
               </button>
+            </template>
+            <template #actions>
+              <button
+                class="flex h-10 w-10 items-center justify-center rounded-full text-primary transition hover:bg-primary/10"
+                type="button"
+                aria-label="Otsi"
+              >
+                <span class="material-symbols-outlined text-[24px]">search</span>
+              </button>
 
-              <h1 class="text-lg font-bold tracking-tight">
-                {{ props.category.name }}
-              </h1>
-
-              <div class="flex items-center gap-5">
-                <button
-                  class="flex h-10 w-10 items-center justify-center rounded-full text-primary transition hover:bg-primary/10"
-                  type="button"
-                  aria-label="Otsi"
-                >
-                  <span class="material-symbols-outlined text-[24px]">search</span>
-                </button>
-
-                <button
-                  type="button"
-                  @click="openAddPlant"
-                  class="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-sm transition hover:scale-105 active:scale-95"
-                  aria-label="Lisa taim"
-                >
-                  <span class="material-symbols-outlined text-[20px]">add</span>
-                </button>
-                <div class="flex items-center gap-2 shrink-0">
-            <UserMenu settings-href="/settings" />
-          </div>
-
-
-              </div>
-            </div>
-          </header>
+              <button
+                type="button"
+                @click="openAddPlant"
+                class="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-sm transition hover:scale-105 active:scale-95"
+                aria-label="Lisa taim"
+              >
+                <span class="material-symbols-outlined text-[20px]">add</span>
+              </button>
+            </template>
+          </DiaryHeader>
 
           <!-- MODAL -->
           <CreatePlantModal

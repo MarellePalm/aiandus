@@ -3,9 +3,10 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
 import CreateCategoryModal from '@/components/CreateCategoryModal.vue';
+import DiaryHeader from '@/components/DiaryHeader.vue';
+import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
-import UserMenu from '@/pages/UserMenu.vue';
 
 import CategoryCardActions from './CategoryCardActions.vue';
 import DeleteConfirmModal from './DeleteConfirmModal.vue';
@@ -88,7 +89,7 @@ const closeDeleteCategory = () => {
 const confirmDeleteCategory = () => {
     if (!deletingCategory.value || deleteProcessing.value) return;
     deleteProcessing.value = true;
-    router.delete(`/plants/categories/${deletingCategory.value.id}`, {
+    router.delete(`/seeds/categories/${deletingCategory.value.id}`, {
         preserveScroll: true,
         onSuccess: () => {
             closeDeleteCategory();
@@ -107,7 +108,7 @@ const toggleFavorite = (id: number) => {
     const prev = localCategories.value[idx].is_favorite === true;
     localCategories.value[idx] = { ...localCategories.value[idx], is_favorite: !prev };
 
-    router.patch(`/plants/categories/${id}/favorite`, {}, {
+    router.patch(`/seeds/categories/${id}/favorite`, {}, {
         preserveScroll: true,
         preserveState: true,
         onError: () => {
@@ -136,35 +137,27 @@ const openEditCategory = (category: Category) => {
 </script>
 
 <template>
-    <Head title="Seemnevarud" />
+    <Head title="Varud" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="page page-with-bottomnav">
             <div class="bg-background-light text-forest font-display min-h-screen antialiased">
                 <div class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
-                    <header class="bg-background-light/80 sticky top-0 z-20 px-6 pt-12 pb-4 backdrop-blur-md md:px-8">
-                        <div class="mb-6 flex items-center justify-between">
-                            <div class="flex flex-col">
-                                <span class="mb-1 text-xs font-semibold tracking-widest text-primary uppercase">Minu Aia Paevik</span>
-                                <h1 class="text-forest text-3xl font-bold tracking-tight">Seemnevarud</h1>
-                            </div>
-
-                            <div class="flex shrink-0 items-center gap-2 sm:gap-5">
+                    <DiaryHeader
+                        title="Varud"
+                        header-class="pt-6"
+                        top-row-class="mb-3"
+                        bottom-row-class="mb-4"
+                    >
+                        <template #actions>
                                 <button type="button" class="flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10" @click="showSearch = true">
                                     <span class="material-symbols-outlined text-xl">search</span>
                                 </button>
-                                <button type="button" @click="showCreateCategory = true" class="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white shadow-sm transition hover:scale-105 active:scale-95 sm:h-10 sm:w-10">
-                                    <span class="material-symbols-outlined text-[20px]">add</span>
-                                </button>
-                                <div class="shrink-0">
-                                    <UserMenu settings-href="/settings" />
-                                </div>
-                            </div>
-                        </div>
+                        </template>
 
                         <div class="no-scrollbar flex gap-3 overflow-x-auto pb-2">
                             <button :class="tabClass('all')" type="button" @click="resetToAll">
-                                <p class="text-sm font-semibold">Koik kategooriad</p>
+                                <p class="text-sm font-semibold">Kõik kategooriad</p>
                             </button>
                             <button :class="tabClass('favorites')" type="button" @click="activeTab = 'favorites'">
                                 <p class="text-sm font-medium">Lemmikud</p>
@@ -173,7 +166,7 @@ const openEditCategory = (category: Category) => {
                                 <p class="text-sm font-medium">Hiljuti lisatud</p>
                             </button>
                         </div>
-                    </header>
+                    </DiaryHeader>
 
                     <main class="flex-1 px-6 py-4 md:px-8">
                         <div v-if="filteredCategories.length === 0" class="rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-6 py-12 text-center">
@@ -182,7 +175,7 @@ const openEditCategory = (category: Category) => {
                             </div>
                             <h2 class="text-lg font-semibold text-forest">Seemnekategooriad puuduvad</h2>
                             <p class="mt-2 text-sm text-forest/70">
-                                Vajuta uleval paremal <strong>+</strong>, et lisada esimene kategooria.
+                                Vajuta üleval paremal <strong>+</strong>, et lisada esimene kategooria.
                             </p>
                         </div>
 
@@ -235,6 +228,7 @@ const openEditCategory = (category: Category) => {
                 />
                 <CreateCategoryModal
                     v-model:open="showCreateCategory"
+                    post-url="/seeds/categories"
                     @created="router.reload({ only: ['categories'] })"
                 />
                 <EditCategoryModal
@@ -250,6 +244,7 @@ const openEditCategory = (category: Category) => {
                     @close="closeDeleteCategory"
                     @confirm="confirmDeleteCategory"
                 />
+                <FloatingPlusButton aria-label="Lisa varu" :size-px="52" :icon-size-px="30" @click="showCreateCategory = true" />
                 <BottomNav active="seeds" />
             </div>
         </div>

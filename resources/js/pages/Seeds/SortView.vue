@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
+import DiaryHeader from '@/components/DiaryHeader.vue';
+import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
-import UserMenu from '@/pages/UserMenu.vue';
 
 import AddSeed from './AddSeed.vue';
 import DeleteConfirmModal from './DeleteConfirmModal.vue';
@@ -156,32 +157,29 @@ onBeforeUnmount(() => {
         <div class="page page-with-bottomnav">
             <div class="bg-background-light text-forest font-display min-h-screen antialiased">
                 <div class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
-                    <header class="bg-background-light/80 sticky top-0 z-20 px-6 pt-6 pb-4 backdrop-blur-md md:px-8">
-                        <div class="mb-6 flex items-center justify-between">
+                    <DiaryHeader
+                        :title="props.category.name"
+                        title-class="max-w-[7.5rem] truncate text-base font-bold tracking-tight sm:max-w-none sm:text-xl"
+                        header-class="pt-6"
+                    >
+                        <template #leading>
                             <button class="flex items-center gap-1 font-medium text-primary" type="button" @click="goBack">
                                 <span class="material-symbols-outlined text-[24px]">chevron_left</span>
                                 <span class="hidden text-sm sm:inline">Kategooriad</span>
                             </button>
-                            <h1 class="max-w-[7.5rem] truncate text-base font-bold tracking-tight sm:max-w-none sm:text-xl">{{ props.category.name }}</h1>
-                            <div class="flex shrink-0 items-center gap-2 sm:gap-5">
+                        </template>
+                        <template #actions>
                                 <button class="flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10" type="button" @click="showSearch = true">
                                     <span class="material-symbols-outlined text-[24px]">search</span>
                                 </button>
-                                <button type="button" @click="showAddSeed = true" class="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white shadow-sm transition hover:scale-105 active:scale-95 sm:h-10 sm:w-10">
-                                    <span class="material-symbols-outlined text-[20px]">add</span>
-                                </button>
-                                <div class="shrink-0">
-                                    <UserMenu settings-href="/settings" />
-                                </div>
-                            </div>
-                        </div>
+                        </template>
 
                         <div class="no-scrollbar flex gap-3 overflow-x-auto pb-2">
-                            <button type="button" :class="tabClass('all')" @click="activeTab = 'all'">Koik</button>
+                            <button type="button" :class="tabClass('all')" @click="activeTab = 'all'">Kõik</button>
                             <button type="button" :class="tabClass('favorites')" @click="activeTab = 'favorites'">Lemmikud</button>
                             <button type="button" :class="tabClass('recent')" @click="activeTab = 'recent'">Hiljuti lisatud</button>
                         </div>
-                    </header>
+                    </DiaryHeader>
 
                     <main class="flex-1 px-6 py-6 md:px-8">
                         <div v-if="filteredSeeds.length === 0" class="rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-6 py-12 text-center">
@@ -189,7 +187,7 @@ onBeforeUnmount(() => {
                                 <span class="material-symbols-outlined text-primary">potted_plant</span>
                             </div>
                             <h2 class="text-lg font-semibold text-forest">Selles kategoorias seemneid pole</h2>
-                            <p class="mt-2 text-sm text-forest/70">Vajuta uleval paremal <strong>+</strong>, et lisada seeme.</p>
+                            <p class="mt-2 text-sm text-forest/70">Vajuta üleval paremal <strong>+</strong>, et lisada seeme.</p>
                         </div>
 
                         <div v-else class="space-y-4">
@@ -292,6 +290,7 @@ onBeforeUnmount(() => {
                     @close="closeDeleteSeed"
                     @confirm="confirmDeleteSeed"
                 />
+                <FloatingPlusButton aria-label="Lisa varu" :size-px="52" :icon-size-px="30" @click="showAddSeed = true" />
                 <BottomNav active="seeds" />
             </div>
         </div>

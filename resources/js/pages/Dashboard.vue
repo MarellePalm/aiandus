@@ -3,14 +3,14 @@
 import { Head, Link, usePage, router } from '@inertiajs/vue3';
 import { computed, ref, onMounted } from 'vue';
 
-import AppLayout from '@/layouts/AppLayout.vue';
 import DashboardWeather from '@/components/DashboardWeather.vue';
+import PrimaryCtaButton from '@/components/PrimaryCtaButton.vue';
+import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 import Moon from '@/pages/calendarNotes/moon.vue';
 import UserMenu from '@/pages/UserMenu.vue';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
-import PrimaryCtaButton from '@/components/PrimaryCtaButton.vue';
 
 const page = usePage();
 const user = page.props.auth.user;

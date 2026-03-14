@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
+
+import DiaryHeader from '@/components/DiaryHeader.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 import AddBed from '@/pages/map/AddBed.vue';
@@ -25,13 +27,19 @@ const breadcrumbs = [
   <Head title="Muuda peenart" />
   <AppLayout :breadcrumbs="breadcrumbs">
     <div class="page page-with-bottomnav">
-      <main class="py-6 space-y-4">
-        <header class="mb-2 page-container-wide">
-          <h1 class="text-2xl font-bold tracking-tight text-primary">Muuda peenart</h1>
-          <p class="mt-1 text-muted-foreground">
+      <main class="pb-6 space-y-4">
+        <section class="page-container-wide">
+          <DiaryHeader
+            title="Muuda peenart"
+            title-class="text-2xl font-bold tracking-tight text-primary"
+            header-class="pt-6 px-0 md:px-0"
+            top-row-class="mb-2"
+            bottom-row-class="mb-0"
+          />
+          <p class="-mt-2 text-muted-foreground">
             Kohanda peenra nime, asukohta ja kuju.
           </p>
-        </header>
+        </section>
 
         <section class="page-container-wide">
           <AddBed mode="edit" :bed="bed" />
