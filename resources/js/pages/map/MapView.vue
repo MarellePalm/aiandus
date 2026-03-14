@@ -2,10 +2,10 @@
 import { Head, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
+import DiaryHeader from '@/components/DiaryHeader.vue';
 import PrimaryCtaButton from '@/components/PrimaryCtaButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
-import UserMenu from '@/pages/UserMenu.vue';
 
 type PlantInBed = { id: number; name: string; image_url: string | null; position_in_bed: string | null };
 type Bed = { id: number; name: string; location: string | null; rows: number; columns: number; layout?: number[][] | null; plants: PlantInBed[] };
@@ -101,13 +101,12 @@ function removePlantFromBed(plant: PlantInBed) {
   <AppLayout :breadcrumbs="breadcrumbs">
     <div class="page page-with-bottomnav">
       <div class="page-container-wide py-8 space-y-8">
-        <header class="flex items-center justify-between gap-4">
-          <div class="flex items-center gap-3 min-w-0">
-            <span class="material-symbols-outlined text-3xl text-primary">potted_plant</span>
-            <h1 class="text-xl font-bold tracking-tight truncate">Minu peenrad</h1>
-          </div>
-          <UserMenu settings-href="/settings" />
-        </header>
+        <DiaryHeader
+          title="Minu peenrad"
+          header-class="pt-6"
+          top-row-class="mb-3"
+          bottom-row-class="mb-4"
+        />
 
         <PrimaryCtaButton
           label="Lisa peenar"

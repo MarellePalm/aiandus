@@ -3,9 +3,15 @@
 import { useForm } from "@inertiajs/vue3";
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 
-const props = defineProps<{
-  open: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    open: boolean;
+    postUrl?: string;
+  }>(),
+  {
+    postUrl: "/plants/categories",
+  }
+);
 
 const emit = defineEmits<{
   (e: "update:open", v: boolean): void;
@@ -85,7 +91,7 @@ watch(
 );
 
 const submit = () => {
-  form.post("/plants/categories", {
+  form.post(props.postUrl, {
     forceFormData: true,
     onSuccess: () => {
       emit("created");

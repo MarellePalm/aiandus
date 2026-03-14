@@ -3,10 +3,11 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
+import DiaryHeader from '@/components/DiaryHeader.vue';
+import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { getMoonInfo } from '@/lib/moon/moon';
 import BottomNav from '@/pages/BottomNav.vue';
-import UserMenu from '@/pages/UserMenu.vue';
 import { calendar } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 
@@ -159,16 +160,13 @@ function selectDay(day: number) {
 
   <AppLayout :breadcrumbs="breadcrumbs">
     <div class="page page-with-bottomnav">
-      <div class="page-container-wide py-8 space-y-8">
-        <!-- Header -->
-        <header class="flex items-center justify-between gap-4">
-          <div class="flex items-center gap-3 min-w-0">
-            <span class="material-symbols-outlined text-3xl text-primary">potted_plant</span>
-            <h1 class="text-xl font-bold tracking-tight truncate">Minu Aia Päevik</h1>
-          </div>
-
-          <UserMenu settings-href="/settings" />
-        </header>
+      <div class="page-container-wide pb-8 space-y-8">
+        <DiaryHeader
+          title="Minu Aia Päevik"
+          header-class="pt-6"
+          top-row-class="mb-3"
+          bottom-row-class="mb-4"
+        />
 
         <!-- Calendar card -->
         <section class="card p-4">
@@ -378,13 +376,7 @@ function selectDay(day: number) {
         </section>
       </div>
 
-      <button type="button"
-        class="fixed bottom-24 right-6 size-14 bg-primary cursor-pointer text-primary-foreground rounded-full shadow-lg flex items-center justify-center z-40 active:scale-95 transition-transform"
-        aria-label="Lisa märge"
-        @click="onAdd"
-      >
-      <span class="material-symbols-outlined text-3xl">add</span>
-      </button>
+      <FloatingPlusButton aria-label="Lisa märge" :size-px="52" :icon-size-px="30" @click="onAdd" />
 
       <BottomNav active="calendar" />
     </div>

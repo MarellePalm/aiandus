@@ -2,8 +2,9 @@
 import { Head, Link, router } from '@inertiajs/vue3'
 import { computed, ref, watch } from 'vue'
 
+import DiaryHeader from '@/components/DiaryHeader.vue'
+import FloatingPlusButton from '@/components/FloatingPlusButton.vue'
 import BottomNav from '@/pages/BottomNav.vue'
-import UserMenu from '@/pages/UserMenu.vue'
 
 type ChipKey = 'all' | 'week' | 'month' | 'favorites'
 type NoteKind = 'task' | 'reminder' | 'journal'
@@ -137,15 +138,17 @@ watch(query, () => {
       />
     </Head>
 
-    <header class="topappbar border-b border-border bg-background/80">
-      <div class="flex items-center gap-2">
+    <DiaryHeader
+      title="Minu märkmed"
+      title-class="text-xl font-bold tracking-tight"
+      header-class="pt-6"
+      top-row-class="mb-2"
+      bottom-row-class="mb-3"
+    >
+      <template #leading>
         <span class="material-symbols-outlined text-primary text-3xl">potted_plant</span>
-      </div>
-
-      <h1 class="text-xl font-bold tracking-tight">Minu märkmed</h1>
-
-      <UserMenu settings-href="/settings" />
-    </header>
+      </template>
+    </DiaryHeader>
 
     <main class="flex-1 pb-24">
       <div class="p-4">
@@ -319,14 +322,7 @@ watch(query, () => {
       </div>
     </main>
 
-    <button
-      type="button"
-      class="fixed bottom-24 right-6 cursor-pointer size-14 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center z-40 active:scale-95 transition-transform"
-      aria-label="Lisa"
-      @click="onAdd"
-    >
-      <span class="material-symbols-outlined text-3xl">add</span>
-    </button>
+    <FloatingPlusButton aria-label="Lisa märge" :size-px="52" :icon-size-px="30" @click="onAdd" />
 
     <BottomNav active="calendar" />
   </div>

@@ -65,14 +65,14 @@ function labelClass(key: NavKey) {
           <span :class="labelClass('plants')">Taimed</span>
         </Link>
 
-        <!-- SEEMNEVARUD -->
+        <!-- VARUD -->
         <Link
           href="/seeds"
           :class="itemClass('seeds')"
           :aria-current="activeKey === 'seeds' ? 'page' : undefined"
         >
           <span class="material-symbols-outlined text-2xl">inventory_2</span>
-          <span :class="labelClass('seeds')">Seemnevarud</span>
+          <span :class="labelClass('seeds')">Varud</span>
         </Link>
 
 

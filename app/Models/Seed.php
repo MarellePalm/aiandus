@@ -13,6 +13,7 @@ class Seed extends Model
         'name',
         'subtitle',
         'amount',
+        'amount_text',
         'year',
         'expires_at',
         'image_url',

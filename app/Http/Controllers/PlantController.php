@@ -5,17 +5,22 @@ namespace App\Http\Controllers;
 use App\Models\Plant;
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Carbon\Carbon;
 class PlantController extends Controller
 {
     public function index()
     {
-       $categories = Category::withCount([
-    'plants as count' => function ($query) {
-        $query->where('user_id', request()->user()->id);
-    }
-])->orderBy('name')->get();
+       $categories = Category::query()
+    ->where('scope', Category::SCOPE_PLANT)
+    ->withCount([
+        'plants as count' => function ($query) {
+            $query->where('user_id', request()->user()->id);
+        }
+    ])
+    ->orderBy('name')
+    ->get();
 
     return Inertia::render('Plants/Index', [
         'categories' => $categories,
@@ -24,9 +29,13 @@ class PlantController extends Controller
 
     public function category(string $slug)
 {
-    $category = Category::where('slug', $slug)->firstOrFail();
+    $category = Category::query()
+        ->where('scope', Category::SCOPE_PLANT)
+        ->where('slug', $slug)
+        ->firstOrFail();
 
     $categories = Category::query()
+        ->where('scope', Category::SCOPE_PLANT)
         ->select('id', 'name', 'slug')
         ->orderBy('name')
         ->get();
@@ -95,7 +104,7 @@ public function water(Request $request, Plant $plant)
 public function store(Request $request)
 {
      $data = $request->validate([
-        'category_id' => ['required', 'exists:categories,id'],
+        'category_id' => ['required', Rule::exists('categories', 'id')->where('scope', Category::SCOPE_PLANT)],
         'subtitle' => ['required', 'string', 'max:160'],
         'planted_at' => ['required', 'date'],
         'image' => ['nullable', 'image', 'max:4096'],

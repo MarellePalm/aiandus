@@ -2,8 +2,6 @@
 import { useForm } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
-import LocalDatePicker from './LocalDatePicker.vue';
-
 type Category = {
     id: number;
     name: string;
@@ -25,6 +23,7 @@ const close = () => emit('update:open', false);
 const form = useForm<{
     category_id: number | null;
     name: string;
+    amount_text: string;
     year: string;
     expires_at: string;
     notes: string;
@@ -32,6 +31,7 @@ const form = useForm<{
 }>({
     category_id: props.initialCategoryId ?? (props.categories?.[0]?.id ?? null),
     name: '',
+    amount_text: '',
     year: '',
     expires_at: '',
     notes: '',
@@ -66,6 +66,38 @@ const onFileChange = (e: Event) => {
 
 const openPicker = () => fileInputRef.value?.click();
 
+const emptyOnFocus = ref<Record<'year' | 'expires_at', boolean>>({
+    year: false,
+    expires_at: false,
+});
+
+const markEmptyOnFocus = (field: 'year' | 'expires_at') => {
+    emptyOnFocus.value[field] = !form[field]?.trim();
+};
+
+const normalizeSpinnerStart = (field: 'year' | 'expires_at') => {
+    if (!emptyOnFocus.value[field]) return;
+
+    if (form[field] === '1' || form[field] === '-1' || form[field] === '0') {
+        form[field] = '2020';
+    }
+
+    emptyOnFocus.value[field] = false;
+};
+
+const startYearFrom2020 = (field: 'year' | 'expires_at') => {
+    const current = form[field]?.trim();
+    if (!current) {
+        form[field] = '2020';
+        return;
+    }
+
+    const parsed = Number(current);
+    if (Number.isNaN(parsed)) {
+        form[field] = '2020';
+    }
+};
+
 const reset = () => {
     form.reset();
     form.clearErrors();
@@ -95,12 +127,37 @@ watch(
     },
 );
 
+const isEmptyValue = (v: unknown) => v === '' || v === null || v === undefined;
+
+const shouldNormalizeTo2020 = (v: unknown) => {
+    const n = Number(v);
+    return Number.isFinite(n) && (n === 1 || n === 0 || n === -1);
+};
+
+watch(() => form.year, (value, previous) => {
+    if (isEmptyValue(previous) && shouldNormalizeTo2020(value)) {
+        form.year = '2020';
+    }
+});
+
+watch(() => form.expires_at, (value, previous) => {
+    if (isEmptyValue(previous) && shouldNormalizeTo2020(value)) {
+        form.expires_at = '2020';
+    }
+});
+
 const submit = () => {
-    form.post('/seeds', {
+    form.transform((data) => ({
+        ...data,
+        expires_at: data.expires_at ? `${data.expires_at}-12-31` : '',
+    })).post('/seeds', {
         forceFormData: true,
         onSuccess: () => {
             emit('created');
             close();
+        },
+        onFinish: () => {
+            form.transform((data) => data);
         },
     });
 };
@@ -131,9 +188,9 @@ onBeforeUnmount(() => {
                     <div class="max-h-[92vh] overflow-y-auto p-5 sm:p-6">
                         <div class="flex items-start justify-between gap-3">
                             <div>
-                                <h3 class="text-lg font-semibold text-[#2E2E2E]">Lisa seeme</h3>
+                                <h3 class="text-lg font-semibold text-[#2E2E2E]">Lisa varu</h3>
                                 <p class="mt-1 text-sm text-[#2E2E2E]/70">
-                                    Lisa nimi, pilt, ostmisaasta ja aegumiskuupäev.
+                                    Lisa nimi, kogus, pilt, ostmisaasta ja aegumisaasta.
                                 </p>
                             </div>
                             <button
@@ -148,7 +205,7 @@ onBeforeUnmount(() => {
 
                         <div class="mt-5">
                             <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
-                                Seemne nimi
+                                Nimi
                             </label>
                             <input
                                 ref="nameInputRef"
@@ -177,6 +234,54 @@ onBeforeUnmount(() => {
                             <p v-if="form.errors.category_id" class="mt-2 text-sm text-red-600">
                                 {{ form.errors.category_id }}
                             </p>
+                        </div>
+
+                        <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div>
+                                <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                                    Ostmise aasta
+                                </label>
+                                <input
+                                    v-model="form.year"
+                                    type="number"
+                                    max="2100"
+                                    class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                    @focus="markEmptyOnFocus('year')"
+                                    @input="normalizeSpinnerStart('year')"
+                                    @keydown.up="startYearFrom2020('year')"
+                                    @keydown.down="startYearFrom2020('year')"
+                                />
+                                <p v-if="form.errors.year" class="mt-2 text-sm text-red-600">{{ form.errors.year }}</p>
+                            </div>
+                            <div>
+                                <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                                    Aegumisaasta
+                                </label>
+                                <input
+                                    v-model="form.expires_at"
+                                    type="number"
+                                    max="2100"
+                                    class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                    @focus="markEmptyOnFocus('expires_at')"
+                                    @input="normalizeSpinnerStart('expires_at')"
+                                    @keydown.up="startYearFrom2020('expires_at')"
+                                    @keydown.down="startYearFrom2020('expires_at')"
+                                />
+                                <p v-if="form.errors.expires_at" class="mt-2 text-sm text-red-600">{{ form.errors.expires_at }}</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-5">
+                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                                Kogus
+                            </label>
+                            <input
+                                v-model="form.amount_text"
+                                type="text"
+                                placeholder="nt 1 tk või 2 liitrit"
+                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                            />
+                            <p v-if="form.errors.amount_text" class="mt-2 text-sm text-red-600">{{ form.errors.amount_text }}</p>
                         </div>
 
                         <div class="mt-5">
@@ -211,32 +316,6 @@ onBeforeUnmount(() => {
                             <p v-if="form.errors.image" class="mt-2 text-sm text-red-600">{{ form.errors.image }}</p>
                         </div>
 
-                        <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            <div>
-                                <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
-                                    Ostmise aasta
-                                </label>
-                                <input
-                                    v-model="form.year"
-                                    type="number"
-                                    min="2000"
-                                    max="2100"
-                                    class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
-                                />
-                                <p v-if="form.errors.year" class="mt-2 text-sm text-red-600">{{ form.errors.year }}</p>
-                            </div>
-                            <div>
-                                <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
-                                    Aegumiskuupäev
-                                </label>
-                                <div class="mt-3">
-                                    <LocalDatePicker v-model="form.expires_at" placeholder="pp.kk.aaaa" />
-                                </div>
-                                <p class="mt-1 text-xs text-[#2E2E2E]/60">pp.kk.aaaa</p>
-                                <p v-if="form.errors.expires_at" class="mt-2 text-sm text-red-600">{{ form.errors.expires_at }}</p>
-                            </div>
-                        </div>
-
                         <div class="mt-5">
                             <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
                                 Märkused
@@ -257,7 +336,7 @@ onBeforeUnmount(() => {
                                 :disabled="form.processing || !form.name.trim()"
                                 @click="submit"
                             >
-                                {{ form.processing ? 'Salvestan...' : 'Salvesta seeme' }}
+                                {{ form.processing ? 'Salvestan...' : 'Salvesta varu' }}
                             </button>
                             <button
                                 type="button"

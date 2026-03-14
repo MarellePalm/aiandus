@@ -2,16 +2,18 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
+import DiaryHeader from '@/components/DiaryHeader.vue';
+
 import DeleteConfirmModal from './DeleteConfirmModal.vue';
 import EditSeedModal from './EditSeedModal.vue';
 import SeedActionButton from './SeedActionButton.vue';
-import UserMenu from '@/pages/UserMenu.vue';
 
 type Seed = {
     id: number;
     name: string;
     subtitle?: string | null;
     amount?: number | null;
+    amount_text?: string | null;
     year?: number | null;
     expires_at?: string | null;
     image_url?: string | null;
@@ -56,13 +58,16 @@ const deleteSeed = () => {
         <div
             class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
         >
-            <header class="bg-background-light/80 sticky top-0 z-20 px-6 pt-12 pb-4 backdrop-blur-md md:px-8">
-                <div class="flex items-center justify-between">
+            <DiaryHeader
+                title="Seemne detail"
+                title-class="max-w-[7rem] truncate text-base font-semibold sm:max-w-none sm:text-lg"
+            >
+                <template #leading>
                     <Link href="/seeds" class="flex h-10 w-10 items-center justify-center rounded-full hover:bg-primary/10">
                         <span class="material-symbols-outlined">arrow_back_ios_new</span>
                     </Link>
-                    <h1 class="max-w-[7rem] truncate text-base font-semibold sm:max-w-none sm:text-lg">Seemne detail</h1>
-                    <div class="flex shrink-0 items-center gap-1 sm:gap-2">
+                </template>
+                <template #actions>
                         <SeedActionButton
                             :absolute="false"
                             position-class="h-9 w-9 sm:h-10 sm:w-10"
@@ -79,12 +84,8 @@ const deleteSeed = () => {
                         >
                             <span class="material-symbols-outlined">delete</span>
                         </SeedActionButton>
-                        <div class="shrink-0">
-                            <UserMenu settings-href="/settings" />
-                        </div>
-                    </div>
-                </div>
-            </header>
+                </template>
+            </DiaryHeader>
 
             <main class="px-6 py-6 md:px-8">
                 <img
@@ -103,8 +104,9 @@ const deleteSeed = () => {
                 <h2 class="text-2xl font-bold">{{ props.seed.name }}</h2>
 
                 <div class="mt-4 space-y-2 text-sm text-forest/80">
+                    <p>Kogus: <strong>{{ props.seed.amount_text ?? '—' }}</strong></p>
                     <p>Ostmise aasta: <strong>{{ props.seed.year ?? '—' }}</strong></p>
-                    <p>Aegumiskuupäev: <strong>{{ props.seed.expires_at ?? '—' }}</strong></p>
+                    <p>Aegumisaasta: <strong>{{ props.seed.expires_at ?? '—' }}</strong></p>
                 </div>
 
                 <div class="mt-8">
