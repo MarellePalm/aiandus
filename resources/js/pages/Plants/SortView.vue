@@ -5,9 +5,13 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import CreatePlantModal from "@/components/CreatePlantModal.vue";
 import DeletePlantModal from "@/components/DeletePlantModal.vue";
 import DiaryHeader from "@/components/DiaryHeader.vue";
+import FloatingPlusButton from "@/components/FloatingPlusButton.vue";
 import AppLayout from "@/layouts/AppLayout.vue";
 
 import BottomNav from "../BottomNav.vue";
+
+
+import SearchModal from "./SearchModal.vue";
 
 type PlantItem = {
   id: number;
@@ -24,6 +28,10 @@ const props = defineProps<{
   categories: CategoryItem[];
 }>();
 
+const showSearch = ref(false);
+const searchQuery = ref("");
+const plantNames = computed(() => props.plants.map((p) => p.subtitle));
+
 /** Tabs */
 type TabKey = "all" | "recent";
 const activeTab = ref<TabKey>("all");
@@ -33,6 +41,11 @@ const tabClass = (key: TabKey) => {
   return activeTab.value === key
     ? `${base} bg-primary text-white`
     : `${base} bg-primary/10 text-primary`;
+};
+
+const resetToAll = () => {
+  activeTab.value = "all";
+  searchQuery.value = "";
 };
 
 /** Sorteeringud */
@@ -52,8 +65,20 @@ const recent5 = computed(() => {
     .slice(0, 5);
 });
 
-const visiblePlants = computed(() => (activeTab.value === "recent" ? recent5.value : allSorted.value));
+const basePlants = computed(() =>
+  activeTab.value === "recent" ? recent5.value : allSorted.value
+);
 
+const visiblePlants = computed(() => {
+  let list = basePlants.value;
+
+  if (searchQuery.value.trim() !== "") {
+    const q = searchQuery.value.toLowerCase();
+    list = list.filter((p) => (p.subtitle ?? "").toLowerCase().includes(q));
+  }
+
+  return list;
+});
 /** Kuupäeva formaat */
 const formatDateEE = (iso: string) => {
   if (!iso) return "";
@@ -156,7 +181,7 @@ const fallbackImage = "https://picsum.photos/200/200";
         >
           <DiaryHeader
             :title="props.category.name"
-            title-class="text-lg font-bold tracking-tight"
+            title-class="text-lg font-bold tracking-tight absolute left-1/2 -translate-x-1/2"
             header-class="pt-6 border-b border-primary/10"
             top-row-class="mb-2"
             bottom-row-class="mb-0"
@@ -172,18 +197,12 @@ const fallbackImage = "https://picsum.photos/200/200";
                 class="flex h-10 w-10 items-center justify-center rounded-full text-primary transition hover:bg-primary/10"
                 type="button"
                 aria-label="Otsi"
+                @click="showSearch = true"
               >
                 <span class="material-symbols-outlined text-[24px]">search</span>
               </button>
 
-              <button
-                type="button"
-                @click="openAddPlant"
-                class="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white shadow-sm transition hover:scale-105 active:scale-95"
-                aria-label="Lisa taim"
-              >
-                <span class="material-symbols-outlined text-[20px]">add</span>
-              </button>
+              
             </template>
           </DiaryHeader>
 
@@ -194,12 +213,20 @@ const fallbackImage = "https://picsum.photos/200/200";
             :initialCategoryId="props.categories.find((c) => c.slug === props.category.slug)?.id ?? null"
             @created="onPlantCreated"
           />
+          <SearchModal
+  v-model:open="showSearch"
+  :initialQuery="searchQuery"
+  :suggestions="plantNames"
+  title="Otsi sorti"
+  @search="(q) => (searchQuery = q)"
+  @clear="searchQuery = ''"
+/>
 
           <main class="pb-24">
             <!-- Tabs -->
             <div class="px-4 py-6">
               <div class="no-scrollbar flex gap-3 overflow-x-auto pb-2">
-                <button type="button" :class="tabClass('all')" @click="activeTab = 'all'">Kõik sordid</button>
+                <button type="button" :class="tabClass('all')" @click="resetToAll">Kõik sordid</button>
                 <button type="button" :class="tabClass('recent')" @click="activeTab = 'recent'">Viimati lisatud</button>
               </div>
             </div>
@@ -225,7 +252,7 @@ const fallbackImage = "https://picsum.photos/200/200";
                     />
 
                     <div class="min-w-0 flex-1">
-                      <div class="truncate text-lg font-semibold italic">
+                      <div class="truncate text-lg font-bold text-text-main">
                         {{ p.subtitle }}
                       </div>
                       <div class="mt-1 text-sm text-text-muted">
@@ -270,6 +297,13 @@ const fallbackImage = "https://picsum.photos/200/200";
             </div>
           </main>
         </div>
+
+        <FloatingPlusButton
+  aria-label="Lisa taim"
+  :size-px="52"
+  :icon-size-px="30"
+  @click="openAddPlant"
+/>
 
         <BottomNav active="plants" />
       </div>
