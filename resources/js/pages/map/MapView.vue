@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 
 import DiaryHeader from '@/components/DiaryHeader.vue';
-import PrimaryCtaButton from '@/components/PrimaryCtaButton.vue';
+import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 
 type PlantInBed = { id: number; name: string; image_url: string | null; position_in_bed: string | null };
 type Bed = { id: number; name: string; location: string | null; rows: number; columns: number; layout?: number[][] | null; plants: PlantInBed[] };
-type PlantWithoutBed = { id: number; name: string; image_url: string | null };
+type PlantWithoutBed = { id: number; name: string; image_url: string | null; category?: { name: string; slug: string } | null };
 
 const props = defineProps<{
   beds: Bed[];
@@ -78,6 +78,21 @@ function getBedColumns(bed: Bed): number {
 
 const cellModal = ref<{ bed: Bed; row: number; col: number } | null>(null);
 
+/** Taimed ilma peenrata, rühmitatud kategooria järgi (modali jaoks) */
+const plantsWithoutBedByCategory = computed(() => {
+  const map = new Map<string, PlantWithoutBed[]>();
+  for (const p of props.plantsWithoutBed) {
+    const key = p.category?.name ?? 'Kategooriata';
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(p);
+  }
+  return Array.from(map.entries()).sort((a, b) => {
+    if (a[0] === 'Kategooriata') return 1;
+    if (b[0] === 'Kategooriata') return -1;
+    return a[0].localeCompare(b[0], 'et');
+  });
+});
+
 function deleteBed(bed: Bed) {
   if (!confirm(`Eemaldada peenar "${bed.name}"? Taimed jäävad peenrata.`)) return;
   router.delete(`/beds/${bed.id}`, { preserveScroll: true });
@@ -100,42 +115,35 @@ function removePlantFromBed(plant: PlantInBed) {
   <Head title="Aiaplaan" />
   <AppLayout :breadcrumbs="breadcrumbs">
     <div class="page page-with-bottomnav">
-      <div class="page-container-wide py-8 space-y-8">
+      <div class="page-container-wide py-6 sm:py-8 space-y-6 sm:space-y-8">
         <DiaryHeader
           title="Minu peenrad"
-          header-class="pt-6"
+          header-class="pt-4 sm:pt-6"
           top-row-class="mb-3"
           bottom-row-class="mb-4"
         />
 
-        <PrimaryCtaButton
-          label="Lisa peenar"
-          icon="add_circle"
-          :full-width="true"
-          href="/map/beds/new"
-        />
-
-        <div class="w-full space-y-8">
+        <div class="w-full space-y-6 sm:space-y-8">
         <!-- Peenrad: pildiline vaade -->
         <section class="space-y-6">
           <p class="text-sm text-muted-foreground">
-            Ava peenar ja lohista taimed sobivatesse ruutudele.
+            Ava peenar ja kliki tühjal ruudul <strong>+</strong>, et lisada taim. Allpool on taimed, kes ootavad peenrale määramist.
           </p>
-          <div
-            v-if="!props.beds.length"
-            class="rounded-2xl border-2 border-dashed border-border bg-muted/20 p-8 text-center text-muted-foreground"
-          >
-            Peenraid pole. Lisa esimene peenar ülal paremal – siis näed teda siin pildiliselt.
+            <div
+              v-if="!props.beds.length"
+              class="rounded-2xl border-2 border-dashed border-primary/30 bg-gradient-to-br from-muted/30 to-primary/5 p-8 text-center text-muted-foreground"
+            >
+            Peenraid pole. Lisa esimene peenar paremal alanurgas oleva + nupuga – siis näed teda siin pildiliselt.
           </div>
           <div
             v-for="bed in props.beds"
             v-else
             :key="bed.id"
-            class="rounded-2xl border border-border bg-card/90 shadow-sm"
+            class="rounded-2xl border border-border bg-card shadow-soft overflow-hidden"
           >
               <!-- Peenra nimi ja asukoht – klõpsuga sulge/ava -->
               <div
-                class="flex items-center gap-2 px-5 py-4 bg-muted/40 border-b border-border cursor-pointer"
+                class="flex items-center gap-2 px-4 sm:px-5 py-3.5 sm:py-4 min-h-[48px] bg-gradient-to-r from-muted/50 to-muted/30 dark:from-muted/30 dark:to-muted/20 border-b border-border cursor-pointer hover:from-muted/60 hover:to-muted/40 transition-colors touch-manipulation"
                 @click="toggleBed(bed.id)"
               >
                 <div
@@ -163,10 +171,10 @@ function removePlantFromBed(plant: PlantInBed) {
                     expand_more
                   </span>
                   </div>
-                <div class="relative shrink-0">
+                <div class="relative shrink-0 flex items-center">
                   <button
                     type="button"
-                    class="icon-btn size-9 rounded-full"
+                    class="icon-btn size-10 sm:size-9 min-w-[44px] min-h-[44px] rounded-full touch-manipulation"
                     aria-label="Valikud"
                     aria-haspopup="true"
                     :aria-expanded="openBedMenuId === bed.id"
@@ -207,30 +215,38 @@ function removePlantFromBed(plant: PlantInBed) {
                   </div>
                 </div>
               </div>
-              <!-- Pildiline peenar: ruudustik (nähtav ainult lahtisel peenral) -->
-              <div v-show="isBedExpanded(bed.id)" class="p-5">
-                <div
-                  class="inline-grid gap-2 p-3 rounded-2xl border border-amber-100/80 bg-amber-50/40 dark:bg-amber-950/15 dark:border-amber-800/30"
-                  :style="{
-                    gridTemplateColumns: `repeat(${getBedColumns(bed)}, minmax(0, 1fr))`,
-                    gridTemplateRows: `repeat(${getBedLayout(bed).length}, minmax(0, 1fr))`,
-                  }"
-                >
+              <!-- Pildiline peenar: ruudustik (nähtav ainult lahtisel peenral); mobiilil horisontaalselt keritav -->
+              <div v-show="isBedExpanded(bed.id)" class="p-3 sm:p-5">
+                <div class="overflow-x-auto overflow-y-visible pb-1 -mx-1 px-1 custom-scrollbar">
+                  <div
+                    class="inline-grid gap-2 sm:gap-2.5 p-3 sm:p-4 rounded-2xl border border-amber-200/70 bg-gradient-to-br from-amber-50/60 to-amber-100/30 dark:from-amber-950/20 dark:to-amber-900/10 dark:border-amber-800/40 shadow-soft ring-1 ring-amber-200/30 dark:ring-amber-800/20 w-max min-w-0"
+                    :style="{
+                      gridTemplateColumns: `repeat(${getBedColumns(bed)}, minmax(64px, 1fr))`,
+                      gridTemplateRows: `repeat(${getBedLayout(bed).length}, minmax(64px, 1fr))`,
+                    }"
+                  >
                   <template v-for="r in range(getBedLayout(bed).length)" :key="r">
                     <template v-for="c in range(getBedColumns(bed))" :key="`${r}-${c}`">
-                      <!-- Vahekäik (tee) – ei ole taimeruut -->
+                      <!-- Vahekäik / kivi / tee (väärtus -1) -->
                       <div
-                        v-if="(getBedLayout(bed)[r]?.[c] ?? 0) === 0"
-                        class="min-w-[64px] min-h-[64px] w-full aspect-square max-w-[88px] max-h-[88px] rounded-xl border border-dashed border-muted-foreground/30 bg-muted/30 flex items-center justify-center"
+                        v-if="(getBedLayout(bed)[r]?.[c] ?? 0) === -1"
+                        class="min-w-[64px] min-h-[64px] w-full aspect-square max-w-[88px] max-h-[88px] rounded-xl border border-border bg-muted/50 relative overflow-hidden shadow-sm"
+                        title="Vahekäik / kivi"
                       >
-                        <span class="material-symbols-outlined text-2xl text-muted-foreground">
-                          directions_walk
-                        </span>
+                        <span
+                          class="absolute inset-0 opacity-40 pointer-events-none text-muted-foreground"
+                          style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 10px 10px;"
+                        />
                       </div>
+                      <!-- Tühi ruut (väärtus 0) – mitte peenra osa -->
+                      <div
+                        v-else-if="(getBedLayout(bed)[r]?.[c] ?? 1) === 0"
+                        class="min-w-[64px] min-h-[64px] w-full aspect-square max-w-[88px] max-h-[88px] rounded-xl border border-dashed border-muted-foreground/25 bg-muted/25 flex items-center justify-center"
+                      />
                       <!-- Ruut taimega -->
                       <div
                         v-else-if="plantAt(bed, r, c)"
-                        class="relative flex flex-col items-center justify-center min-w-[64px] min-h-[64px] w-full aspect-square max-w-[88px] max-h-[88px] rounded-xl bg-card border border-amber-300/60 dark:border-amber-700/50 shadow-md overflow-hidden group"
+                        class="relative flex flex-col items-center justify-center min-w-[64px] min-h-[64px] w-full aspect-square max-w-[88px] max-h-[88px] rounded-xl bg-card border-2 border-amber-300/70 dark:border-amber-600/50 shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.99] transition-all duration-200 overflow-hidden group"
                       >
                         <div
                           class="absolute inset-0 bg-cover bg-center"
@@ -265,14 +281,15 @@ function removePlantFromBed(plant: PlantInBed) {
                       <button
                         v-else
                         type="button"
-                        class="flex flex-col items-center justify-center min-w-[64px] min-h-[64px] w-full aspect-square max-w-[88px] max-h-[88px] rounded-xl border border-dashed border-amber-200/60 dark:border-amber-700/40 bg-amber-50/50 dark:bg-amber-900/15 text-amber-700/80 dark:text-amber-200/70 hover:border-primary hover:bg-primary/10 hover:text-primary transition"
+                        class="flex flex-col items-center justify-center min-w-[64px] min-h-[64px] w-full aspect-square max-w-[88px] max-h-[88px] rounded-xl border-2 border-dashed border-amber-300/50 dark:border-amber-600/40 bg-amber-50/70 dark:bg-amber-900/20 text-amber-800/90 dark:text-amber-200/80 hover:border-primary hover:bg-primary/15 hover:text-primary hover:shadow-md hover:scale-[1.03] active:scale-[0.98] transition-all duration-200"
                         @click="cellModal = { bed, row: r, col: c }"
                       >
-                        <span class="material-symbols-outlined text-xl mb-0.5">add_circle</span>
-                        <span class="text-[10px] font-medium">Lisa taim</span>
+                        <span class="material-symbols-outlined text-2xl mb-0.5">add_circle</span>
+                        <span class="text-[10px] font-semibold">Lisa taim</span>
                       </button>
                     </template>
                   </template>
+                  </div>
                 </div>
                 <!-- Taimed, kellel vabatekstiline asukoht (ei ole ruudul) -->
                 <div v-if="plantsWithoutCell(bed).length" class="mt-4 pt-4 border-t border-border">
@@ -281,7 +298,7 @@ function removePlantFromBed(plant: PlantInBed) {
                     <li
                       v-for="p in plantsWithoutCell(bed)"
                       :key="p.id"
-                      class="flex items-center gap-3 rounded-lg bg-muted/50 p-2"
+                      class="flex items-center gap-3 rounded-xl bg-muted/40 border border-border/50 p-2.5 hover:bg-muted/60 transition-colors"
                     >
                       <div
                         class="h-8 w-8 rounded-full bg-secondary bg-cover bg-center shrink-0"
@@ -314,10 +331,13 @@ function removePlantFromBed(plant: PlantInBed) {
         </section>
 
           <!-- Taimed ilma peenrata -->
-          <section>
-            <h2 class="text-lg font-semibold mb-2">Taimed ilma peenrata</h2>
+          <section class="rounded-2xl border border-border/60 bg-muted/20 dark:bg-muted/10 p-4 sm:p-5">
+            <h2 class="text-lg font-semibold mb-1 flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-[1.25rem]" aria-hidden="true">eco</span>
+              Taimed ilma peenrata
+            </h2>
             <p class="text-xs text-muted-foreground mb-3">
-              Ava peenar ja kliki „Lisa taim“ ruudul, et siduda taim peenraga.
+              Vali üleval peenral tühi ruut ja lisa taim.
             </p>
             <div
               v-if="!plantsWithoutBed.length"
@@ -329,7 +349,7 @@ function removePlantFromBed(plant: PlantInBed) {
               <li
                 v-for="plant in plantsWithoutBed"
                 :key="plant.id"
-                class="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-4"
+                class="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-4 shadow-soft hover:shadow-md hover:border-primary/20 transition-all duration-200"
               >
                 <div
                   class="h-10 w-10 rounded-full bg-secondary bg-cover bg-center shrink-0"
@@ -353,10 +373,10 @@ function removePlantFromBed(plant: PlantInBed) {
       <Teleport to="body">
         <div
           v-if="cellModal"
-          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           @click.self="cellModal = null"
         >
-          <div class="bg-card rounded-xl shadow-xl max-w-sm w-full max-h-[70vh] overflow-hidden flex flex-col" @click.stop>
+          <div class="bg-card rounded-2xl shadow-xl ring-1 ring-black/5 max-w-sm w-full max-h-[70vh] overflow-hidden flex flex-col" @click.stop>
             <div class="p-4 border-b border-border flex items-center justify-between">
               <h3 class="font-semibold">Vali taim ruudule</h3>
               <button type="button" class="p-2 rounded-lg hover:bg-muted" @click="cellModal = null">
@@ -364,31 +384,61 @@ function removePlantFromBed(plant: PlantInBed) {
               </button>
             </div>
             <div class="overflow-y-auto p-2">
-              <p v-if="!plantsWithoutBed.length" class="text-sm text-muted-foreground py-4 text-center">
-                Kõik taimed on juba peenrale määratud.
-              </p>
-              <button
-                v-for="plant in plantsWithoutBed"
-                :key="plant.id"
-                type="button"
-                class="w-full flex items-center gap-3 rounded-lg p-3 text-left hover:bg-muted transition"
-                @click="cellModal && assignPlantToCell(plant.id, cellModal.bed, cellModal.row, cellModal.col)"
-              >
-                <div
-                  class="h-10 w-10 rounded-full bg-secondary bg-cover bg-center shrink-0"
-                  :style="plant.image_url ? { backgroundImage: `url('${plant.image_url}')` } : {}"
+              <template v-if="!plantsWithoutBed.length">
+                <p class="text-sm text-muted-foreground py-3 text-center">
+                  Kõik taimed on juba peenrale määratud. Lisa uus taim ja tule tagasi.
+                </p>
+                <Link
+                  href="/plants/create"
+                  class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border-2 border-primary/40 bg-primary/10 text-primary font-semibold hover:bg-primary/20 hover:border-primary/60 hover:shadow-soft transition-all duration-200"
+                  @click="cellModal = null"
                 >
-                  <span v-if="!plant.image_url" class="flex h-full w-full items-center justify-center text-primary">
-                    <span class="material-symbols-outlined">eco</span>
-                  </span>
+                  <span class="material-symbols-outlined">add_circle</span>
+                  Lisa uus taim
+                </Link>
+              </template>
+              <template v-else>
+                <div
+                  v-for="[categoryName, plants] in plantsWithoutBedByCategory"
+                  :key="categoryName"
+                  class="mb-4 last:mb-0"
+                >
+                  <p class="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-1.5">
+                    {{ categoryName }}
+                  </p>
+                  <ul class="space-y-1">
+                    <li v-for="plant in plants" :key="plant.id">
+                      <button
+                        type="button"
+                        class="w-full flex items-center gap-3 rounded-xl p-3 text-left hover:bg-primary/10 hover:border-primary/30 border border-transparent transition-all duration-200"
+                        @click="cellModal && assignPlantToCell(plant.id, cellModal.bed, cellModal.row, cellModal.col)"
+                      >
+                        <div
+                          class="h-10 w-10 rounded-full bg-secondary bg-cover bg-center shrink-0"
+                          :style="plant.image_url ? { backgroundImage: `url('${plant.image_url}')` } : {}"
+                        >
+                          <span v-if="!plant.image_url" class="flex h-full w-full items-center justify-center text-primary">
+                            <span class="material-symbols-outlined">eco</span>
+                          </span>
+                        </div>
+                        <span class="font-medium">{{ plant.name }}</span>
+                      </button>
+                    </li>
+                  </ul>
                 </div>
-                <span class="font-medium">{{ plant.name }}</span>
-              </button>
+              </template>
             </div>
           </div>
         </div>
       </Teleport>
       </div>
+
+      <FloatingPlusButton
+        aria-label="Lisa peenar"
+        :size-px="52"
+        :icon-size-px="30"
+        @click="router.visit('/map/beds/new')"
+      />
 
       <BottomNav active="map" />
     </div>

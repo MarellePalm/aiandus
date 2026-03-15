@@ -6,12 +6,9 @@ import { computed, ref } from 'vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { getMoonInfo } from '@/lib/moon/moon';
 import BottomNav from '@/pages/BottomNav.vue';
 import { calendar } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
-
-import MoonPhaseIcon from './MoonPhaseIcon.vue';
 
 type Note = {
   id?: number | string;
@@ -69,9 +66,11 @@ const daysInMonth = computed(() => {
   return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
 });
 
-const startWeekday = computed(() => {
-  const d = viewDate.value;
-  return new Date(d.getFullYear(), d.getMonth(), 1).getDay(); // 0=Sun
+// Tühjad lahtrid enne kuu 1. päeva: Eesti nädal algab esmaspäevast (0=esmaspäev, 6=pühapäev)
+const startOffset = computed(() => {
+  const d = new Date(viewDate.value.getFullYear(), viewDate.value.getMonth(), 1);
+  const day = d.getDay(); // JS: 0=pühapäev, 1=esmaspäev, ...
+  return (day + 6) % 7; // esmaspäev=0 tühikuid, pühapäev=6 tühikuid
 });
 
 const markedDays = computed(() => {
@@ -102,8 +101,6 @@ const selectedISO = computed(() => {
 const selectedMonthLabel = computed(() =>
   selectedDate.value.toLocaleDateString('et-EE', { month: 'long', year: 'numeric' }),
 );
-
-const moonInfo = computed(() => getMoonInfo(selectedDate.value));
 
 const selectedWeekday = computed(() =>
   selectedDate.value.toLocaleDateString('et-EE', { weekday: 'long' }),
@@ -193,14 +190,22 @@ function selectDay(day: number) {
               {{ lbl }}
             </div>
 
-            <div v-for="n in startWeekday" :key="'sp-' + n" class="h-10" />
+            <div v-for="n in startOffset" :key="'sp-' + n" class="h-10" />
 
             <button
               v-for="day in daysInMonth"
               :key="day"
               type="button"
-              class="h-10 flex flex-col items-center justify-center rounded-lg text-sm font-medium relative"
-              :class="day === selectedDay ? 'leaf-shape bg-primary text-primary-foreground font-bold shadow-md shadow-primary/30' : ''"
+              class="h-10 flex flex-col items-center justify-center rounded-lg text-sm font-medium relative transition-colors"
+              :class="[
+                day === selectedDay ? 'leaf-shape bg-primary text-primary-foreground font-bold shadow-md shadow-primary/30' : '',
+                day !== selectedDay &&
+                viewDate.getMonth() === today.getMonth() &&
+                viewDate.getFullYear() === today.getFullYear() &&
+                day === today.getDate()
+                  ? 'ring-2 ring-primary/40 ring-offset-2 ring-offset-background bg-primary/5'
+                  : 'hover:bg-muted/50',
+              ]"
               @click="selectDay(day)"
               :aria-label="`Vali päev ${day}`"
             >
@@ -214,21 +219,11 @@ function selectDay(day: number) {
           </div>
         </section>
 
-        <!-- ✅ Stitch-like Day + Month + Alerts -->
+        <!-- Valitud päev: ülesanded ja märkmed -->
         <section class="journal-panel">
-          <div class="flex justify-between items-start mb-6">
-            <div>
-              <p class="journal-subtitle capitalize">{{ selectedMonthLabel }}</p>
-              <h2 class="journal-title capitalize">{{ selectedWeekday }}</h2>
-            </div>
-
-            <div class="text-primary/70 flex items-center justify-center">
-              <MoonPhaseIcon
-                :phase-index="moonInfo.phaseIndex"
-                :illumination="moonInfo.illumination"
-                :size="40"
-              />
-            </div>
+          <div class="mb-6">
+            <p class="journal-subtitle capitalize">{{ selectedMonthLabel }}</p>
+            <h2 class="journal-title capitalize">{{ selectedWeekday }}</h2>
           </div>
 
           <!-- Tänased tööd -->
@@ -365,14 +360,23 @@ function selectDay(day: number) {
             <p v-else class="journal-empty">Sellel päeval pole veel päevikumärkmeid.</p>
           </section>
 
-          <Link
-            href="/calendar/overview"
-            class="btn-panel-link mt-2"
-          >
-            <span class="material-symbols-outlined text-lg">description</span>
-            <span class="font-semibold text-sm">Vaata kõiki märkmeid</span>
-            <span class="material-symbols-outlined text-lg ml-auto">chevron_right</span>
-          </Link>
+          <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <Link
+              href="/calendar/overview"
+              class="btn-panel-link"
+            >
+              <span class="material-symbols-outlined text-lg">description</span>
+              <span class="font-semibold text-sm">Vaata kõiki märkmeid</span>
+              <span class="material-symbols-outlined text-lg ml-auto">chevron_right</span>
+            </Link>
+            <Link
+              href="/calendar/moon"
+              class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition"
+            >
+              <span class="material-symbols-outlined text-[1.1rem]">dark_mode</span>
+              Kuukalender
+            </Link>
+          </div>
         </section>
       </div>
 

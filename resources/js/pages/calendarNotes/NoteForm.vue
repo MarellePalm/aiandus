@@ -1,6 +1,6 @@
 <!-- resources/js/Pages/Calendar/NoteForm.vue -->
 <script setup lang="ts">
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -28,8 +28,9 @@ const props = defineProps<{
   editMode?: boolean;
 }>();
 
+const calendarUrl = calendar().url;
 const breadcrumbs: BreadcrumbItem[] = [
-  { title: 'Kalender', href: calendar().url },
+  { title: 'Kalender', href: calendarUrl },
   { title: props.editMode ? 'Muuda märget' : 'Lisa märge', href: props.editMode ? '#' : '/calendar/note-form' },
 ];
 
@@ -159,9 +160,9 @@ function cancel() {
               <!-- Top bar -->
               <div class="sticky top-0 z-10 bg-card/80 backdrop-blur border-b border-border px-5 sm:px-6 py-4">
                 <div class="flex items-center justify-between gap-3">
-                  <button type="button" class="icon-btn" @click="cancel" aria-label="Tagasi kalendrisse">
-                    <span class="material-symbols-outlined">close</span>
-                  </button>
+                  <Link :href="calendarUrl" class="icon-btn flex items-center justify-center rounded-full text-foreground hover:bg-muted" aria-label="Tagasi">
+                    <span class="material-symbols-outlined">arrow_back</span>
+                  </Link>
 
                   <div class="min-w-0 text-center">
                     <h1 class="text-base sm:text-lg font-bold tracking-tight truncate">

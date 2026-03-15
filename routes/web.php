@@ -107,7 +107,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->where('user_id', $user->id)
             ->whereNull('bed_id')
             ->orderBy('name')
-            ->get(['id', 'name', 'image_url']);
+            ->with('category:id,name,slug')
+            ->get(['id', 'name', 'image_url', 'category_id'])
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'name' => $p->name,
+                'image_url' => $p->image_url,
+                'category' => $p->category ? ['name' => $p->category->name, 'slug' => $p->category->slug] : null,
+            ]);
 
         return Inertia::render('map/MapView', [
             'beds' => $beds,

@@ -107,6 +107,11 @@ function refresh() {
   )
 }
 
+function clearQuery() {
+  query.value = ''
+  refresh()
+}
+
 function toggleDone(noteId: string) {
   router.post(`/calendar/notes/${noteId}/toggle-done`, {}, { preserveScroll: true, onSuccess: () => refresh() })
 }
@@ -165,13 +170,16 @@ watch(query, () => {
             />
           </div>
 
-          <div class="flex gap-2 overflow-x-auto no-scrollbar mb-4">
+          <div class="flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-1">
             <button
               v-for="chip in chips"
               :key="chip.key"
               type="button"
-              class="px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition"
-              :class="chipClass(chip.key)"
+              class="px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all"
+              :class="[
+                chipClass(chip.key),
+                activeChip === chip.key ? 'shadow-sm ring-1 ring-primary/30' : '',
+              ]"
               @click="activeChip = chip.key; refresh()"
             >
               {{ chip.label }}
@@ -200,6 +208,36 @@ watch(query, () => {
       </div>
 
       <div class="px-4 space-y-6">
+        <!-- Tühi olek -->
+        <div
+          v-if="filteredGroups.length === 0"
+          class="rounded-2xl border-2 border-dashed border-border bg-muted/20 p-8 text-center"
+        >
+          <span class="material-symbols-outlined text-4xl text-muted-foreground mb-3 block">edit_note</span>
+          <p class="text-sm font-medium text-foreground mb-1">
+            {{ query ? 'Otsingutulemusi ei leitud' : 'Märkmeid pole' }}
+          </p>
+          <p class="text-xs text-muted-foreground mb-4">
+            {{ query ? 'Proovi teistsugust otsisõna või filtri.' : 'Lisa märge kalendrist või paremal alanurgas oleva + nupuga.' }}
+          </p>
+          <Link
+            v-if="!query"
+            href="/calendar/note-form"
+            class="inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-sm font-semibold hover:bg-primary/90 transition"
+          >
+            <span class="material-symbols-outlined text-lg">add</span>
+            Lisa märge
+          </Link>
+          <button
+            v-else
+            type="button"
+            class="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold hover:bg-muted transition"
+            @click="clearQuery()"
+          >
+            Tühjenda otsing
+          </button>
+        </div>
+
         <section v-for="group in filteredGroups" :key="group.label">
           <h3 class="text-sm font-bold text-muted-foreground mb-3 uppercase tracking-wider">
             {{ group.label }}
@@ -209,10 +247,14 @@ watch(query, () => {
             <article
               v-for="note in group.items"
               :key="note.id"
-              class="card p-4"
+              class="card p-4 rounded-xl border border-border shadow-soft hover:shadow-md hover:border-primary/20 transition-all cursor-pointer"
               :class="note.kind === 'reminder' ? 'border-l-4 border-l-primary' : ''"
+              role="button"
+              tabindex="0"
+              @click="router.visit(`/calendar/notes/${note.id}/edit`)"
+              @keydown.enter="router.visit(`/calendar/notes/${note.id}/edit`)"
             >
-              <div v-if="note.kind === 'task'" class="flex items-start gap-3">
+              <div v-if="note.kind === 'task'" class="flex items-start gap-3" @click.stop>
                 <div class="mt-0.5">
                   <input
                     class="size-5 rounded border-input text-primary focus:ring-ring"
@@ -244,6 +286,7 @@ watch(query, () => {
                     <Link
                       class="px-3 py-2 rounded-lg text-xs font-semibold bg-secondary text-muted-foreground"
                       :href="`/calendar/notes/${note.id}/edit`"
+                      @click.stop
                     >
                       Muuda
                     </Link>
@@ -263,7 +306,7 @@ watch(query, () => {
                 </div>
                 <p class="text-sm text-muted-foreground">{{ note.body }}</p>
 
-                <div class="mt-3 flex gap-2">
+                <div class="mt-3 flex gap-2" @click.stop>
                   <button
                     type="button"
                     class="px-3 py-2 rounded-lg text-xs font-semibold bg-primary text-primary-foreground"
@@ -303,7 +346,7 @@ watch(query, () => {
                   />
                 </div>
 
-                <div class="flex gap-2">
+                <div class="flex gap-2" @click.stop>
                   <Link
                     class="px-3 py-2 rounded-lg text-xs font-semibold bg-secondary text-muted-foreground"
                     :href="`/calendar/notes/${note.id}/edit`"
