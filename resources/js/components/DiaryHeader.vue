@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 import UserMenu from '@/pages/UserMenu.vue';
@@ -12,6 +13,8 @@ const props = withDefaults(
         headerClass?: string;
         topRowClass?: string;
         bottomRowClass?: string;
+        /** Kui antud, kuvatakse pealkirjast vasakul tagasi-nupp. */
+        backHref?: string | null;
     }>(),
     {
         diaryLabel: 'Minu Aia Päevik',
@@ -20,6 +23,7 @@ const props = withDefaults(
         headerClass: 'pt-6',
         topRowClass: 'mb-4',
         bottomRowClass: 'mb-6',
+        backHref: null,
     },
 );
 
@@ -46,6 +50,14 @@ const wrapperClass = computed(
 
         <div :class="`flex items-center justify-between gap-3 ${bottomRowClass}`">
             <div class="flex min-w-0 items-center gap-3">
+                <Link
+                    v-if="backHref"
+                    :href="backHref"
+                    class="icon-btn size-9 shrink-0 rounded-full flex items-center justify-center text-foreground hover:bg-muted"
+                    aria-label="Tagasi"
+                >
+                    <span class="material-symbols-outlined text-xl">arrow_back</span>
+                </Link>
                 <slot name="leading" />
                 <h1 :class="titleClass">{{ title }}</h1>
             </div>

@@ -186,16 +186,26 @@ public function update(Request $request, Plant $plant)
 
     unset($data['image']); // Plant modelisse file objekti ei salvesta
 
-    // Uuenda ainult need väljad, mis on saadetud (nullable ok)
-    $plant->update([
+    $payload = [
         'subtitle' => $data['subtitle'] ?? $plant->subtitle,
         'notes' => $data['notes'] ?? $plant->notes,
         'watering_in_days' => $data['watering_in_days'] ?? $plant->watering_in_days,
         'fertilizing_frequency' => $data['fertilizing_frequency'] ?? $plant->fertilizing_frequency,
         'image_url' => $data['image_url'] ?? $plant->image_url,
+    ];
+    if (array_key_exists('bed_id', $data)) {
+        $payload['bed_id'] = $data['bed_id'];
+    }
+    if (array_key_exists('position_in_bed', $data)) {
+        $payload['position_in_bed'] = $data['position_in_bed'];
+    }
 
-        
-    ]);
+    $plant->update($payload);
+
+    // Peenrale määramisel (kaardilt) jääme kaardile; muul juhul taime vaatesse
+    if ($request->has('bed_id') || $request->has('position_in_bed')) {
+        return back()->with('success', 'Taim peenrale määratud.');
+    }
 
     return redirect()->route('plants.show', $plant->id)->with('success', 'Taim uuendatud!');
 }

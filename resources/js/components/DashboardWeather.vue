@@ -26,6 +26,7 @@ type WeatherSnapshotFromServer = {
   openWeatherLabel: string | null;
   sunrise: string | null;
   sunset: string | null;
+  weatherapiIcon?: string | null;
 };
 
 const { coords, loading: geoLoading, error: geoError } = useGeolocation();
@@ -64,6 +65,7 @@ const q = useQuery<WeatherSnapshotFromServer>({
         openWeatherLabel?: string | null;
         sunrise?: string | null;
         sunset?: string | null;
+        weatherapiIcon?: string | null;
       };
       if (!res.ok) {
         throw new Error(data.message ?? `Ilmapäring ebaõnnestus (${res.status})`);
@@ -81,6 +83,7 @@ const q = useQuery<WeatherSnapshotFromServer>({
         openWeatherLabel: data.openWeatherLabel ?? null,
         sunrise: data.sunrise ?? null,
         sunset: data.sunset ?? null,
+        weatherapiIcon: data.weatherapiIcon ?? null,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Ilmapäring ebaõnnestus';
@@ -106,7 +109,10 @@ const todayWeatherLabel = computed(() => q.data.value?.openWeatherLabel ?? null)
 const sunrise = computed(() => q.data.value?.sunrise ?? null);
 const sunset = computed(() => q.data.value?.sunset ?? null);
 
+// Eelistame WeatherAPI ikooni (ühtne, täpne), kui võti on seatud
 const todayWeatherIconUrl = computed(() => {
+  const weatherapi = q.data.value?.weatherapiIcon;
+  if (weatherapi) return weatherapi;
   const icon = q.data.value?.openWeatherIcon;
   if (!icon) return null;
   return `https://openweathermap.org/img/wn/${icon}@2x.png`;

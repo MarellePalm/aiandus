@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Bed;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Session;
 use Inertia\Inertia;
 
 class BedController extends Controller
@@ -27,7 +28,7 @@ class BedController extends Controller
             $columns = $rows > 0 ? max(array_map('count', $layout)) : 1;
         }
 
-        $bed = Bed::create([
+        Bed::create([
             'user_id' => $request->user()->id,
             'name' => $data['name'],
             'location' => $data['location'] ?? null,
@@ -37,7 +38,10 @@ class BedController extends Controller
             'sort_order' => Bed::where('user_id', $request->user()->id)->max('sort_order') + 1,
         ]);
 
-        return back()->with('success', 'Peenar lisatud.');
+        Session::flash('success', 'Peenar lisatud.');
+
+        // Täislehe ümbersuunamine, et kaardivaade laeb värsked andmed (ei jää Inertia vahemällu)
+        return Inertia::location('/map');
     }
 
     public function update(Request $request, Bed $bed)

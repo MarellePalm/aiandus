@@ -146,6 +146,53 @@ class WeatherController extends Controller
                 }
             }
 
+            // WeatherAPI – astronoomia + ilmaikonid (üks päring: forecast days=1)
+            $astronomy = null;
+            $weatherapiIcon = null;
+            $weatherapiKey = config('services.weatherapi.api_key');
+            if (! empty($weatherapiKey) && is_string($weatherapiKey)) {
+                $forecastUrl = 'https://api.weatherapi.com/v1/forecast.json'
+                    .'?key='.urlencode($weatherapiKey)
+                    .'&q='.urlencode((string) $lat).','.urlencode((string) $lon)
+                    .'&days=1'
+                    .'&lang=et';
+                /** @var \Illuminate\Http\Client\Response $forecastRes */
+                $forecastRes = Http::timeout(8)->get($forecastUrl);
+                if ($forecastRes->successful()) {
+                    $body = $forecastRes->json();
+                    // Tänase päeva ikoon (day condition) – täpne ja ühtne disain
+                    $dayCondition = $body['forecast']['forecastday'][0]['day']['condition'] ?? [];
+                    $iconUrl = $dayCondition['icon'] ?? null;
+                    if (! empty($iconUrl) && is_string($iconUrl)) {
+                        $weatherapiIcon = str_starts_with($iconUrl, '//') ? 'https:'.$iconUrl : $iconUrl;
+                    }
+                    // Astronoomia esimesest forecastday
+                    $astro = $body['forecast']['forecastday'][0]['astro'] ?? [];
+                    if (! empty($astro)) {
+                        $moonPhase = $astro['moon_phase'] ?? '';
+                        $moonIllum = isset($astro['moon_illumination']) ? (int) $astro['moon_illumination'] : null;
+                        $phaseMap = [
+                            'New Moon' => ['phase' => 'Uuskuu', 'index' => 0],
+                            'Waxing Crescent' => ['phase' => 'Kasvav sirp', 'index' => 1],
+                            'First Quarter' => ['phase' => 'Esimene veerand', 'index' => 2],
+                            'Waxing Gibbous' => ['phase' => 'Kasvav kumer kuu', 'index' => 3],
+                            'Full Moon' => ['phase' => 'Täiskuu', 'index' => 4],
+                            'Waning Gibbous' => ['phase' => 'Kahanev kumer kuu', 'index' => 5],
+                            'Last Quarter' => ['phase' => 'Viimane veerand', 'index' => 6],
+                            'Waning Crescent' => ['phase' => 'Kahanev sirp', 'index' => 7],
+                        ];
+                        $mapped = $phaseMap[$moonPhase] ?? null;
+                        $astronomy = [
+                            'sunrise' => ! empty($astro['sunrise']) ? (string) $astro['sunrise'] : $sunriseStr,
+                            'sunset' => ! empty($astro['sunset']) ? (string) $astro['sunset'] : $sunsetStr,
+                            'moon_phase' => $mapped ? $mapped['phase'] : $moonPhase,
+                            'moon_phase_index' => $mapped ? $mapped['index'] : null,
+                            'moon_illumination' => $moonIllum !== null ? $moonIllum / 100.0 : null,
+                        ];
+                    }
+                }
+            }
+
             return [
                 'temp' => $temp,
                 'humidity' => $humidity,
@@ -157,10 +204,12 @@ class WeatherController extends Controller
                 'updatedAt' => now()->locale('et')->format('d.m.Y H:i'),
                 'openWeatherIcon' => $openWeatherIcon,
                 'weatherId' => $weatherId,
-                'sunrise' => $sunriseStr,
-                'sunset' => $sunsetStr,
+                'sunrise' => $astronomy !== null ? ($astronomy['sunrise'] ?? $sunriseStr) : $sunriseStr,
+                'sunset' => $astronomy !== null ? ($astronomy['sunset'] ?? $sunsetStr) : $sunsetStr,
                 'sunriseUnix' => $sunrise,
                 'sunsetUnix' => $sunset,
+                'astronomy' => $astronomy,
+                'weatherapiIcon' => $weatherapiIcon,
             ];
         });
 
@@ -177,6 +226,10 @@ class WeatherController extends Controller
         $isNight = ($sunriseUnix !== null && $sunsetUnix !== null)
             ? (time() < $sunriseUnix || time() > $sunsetUnix)
             : null;
+        // Öösel kasuta WeatherAPI öö-ikooni (URL: .../day/123.png → .../night/123.png)
+        if ($isNight && ! empty($data['weatherapiIcon']) && str_contains((string) $data['weatherapiIcon'], '/day/')) {
+            $data['weatherapiIcon'] = str_replace('/day/', '/night/', (string) $data['weatherapiIcon']);
+        }
         $data['openWeatherLabel'] = self::openWeatherLabel(
             (int) ($data['weatherId'] ?? 800),
             (string) ($data['openWeatherIcon'] ?? '01d'),
