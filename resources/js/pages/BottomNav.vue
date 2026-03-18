@@ -8,9 +8,14 @@ import { calendar, dashboard, map } from '@/routes';
 
 type NavKey = 'dashboard' | 'calendar' | 'map' | 'plants' | 'seeds';
 
-const props = defineProps<{
-  active: NavKey;
-}>();
+const props = withDefaults(
+  defineProps<{
+    active: NavKey;
+    /** Kui false, renderdab sticky nav (nt dashboardi lõpus). */
+    fixed?: boolean;
+  }>(),
+  { fixed: true },
+);
 
 const activeKey = computed(() => props.active);
 
@@ -28,7 +33,10 @@ function labelClass(key: NavKey) {
 
 <template>
   <nav
-    class="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur border-t border-border"
+    :class="[
+      props.fixed ? 'fixed bottom-0 left-0 right-0' : 'sticky bottom-0',
+      'z-40 bg-card/95 backdrop-blur border-t border-border',
+    ]"
     aria-label="Põhinavigatsioon"
   >
     <div class="page-container-wide">

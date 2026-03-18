@@ -39,7 +39,7 @@ const zodiac = computed(() => getZodiacInfo(dateRef.value));
       </div>
     </div>
 
-    <div class="mt-3 space-y-1 text-sm text-muted-foreground text-left">
+    <div class="mt-3 space-y-1 text-sm text-foreground/80 text-left">
         <p>
           {{ zodiac.biodynamicDescription }}
         </p>
@@ -55,7 +55,7 @@ const zodiac = computed(() => getZodiacInfo(dateRef.value));
 
     <Link
       href="/calendar/moon"
-      class="btn-panel-link"
+      class="btn-panel-link moon-link"
     >
       <span class="material-symbols-outlined text-lg">calendar_month</span>
       <span class="font-semibold text-sm">Vaata kuukalendrit</span>

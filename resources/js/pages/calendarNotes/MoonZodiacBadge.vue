@@ -24,9 +24,9 @@ const theme = computed(() => {
 </script>
 
 <template>
-  <div class="mzSeg mzSeg--stacked h-full" :style="{ '--seg-bg': theme.bg, '--seg-accent': theme.accent }">
+  <div class="mzSeg mzSeg--stacked mzSeg--dashboard h-full" :style="{ '--seg-bg': theme.bg, '--seg-accent': theme.accent }">
     <div class="mzSeg-icon">
-      <div class="size-8 rounded-full bg-card shadow-inner flex items-center justify-center shrink-0">
+      <div class="size-8 rounded-full bg-muted/40 ring-1 ring-border flex items-center justify-center shrink-0">
         <span
           class="material-symbols-outlined icon"
           :style="{ color: 'var(--seg-accent)' }"

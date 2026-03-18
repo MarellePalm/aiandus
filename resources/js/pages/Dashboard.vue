@@ -60,6 +60,86 @@ const DEFAULT_ORDER: SectionId[] = ['weather', 'moon', 'notes', 'recent', 'recen
 
 const sectionOrder = ref<SectionId[]>([...DEFAULT_ORDER]);
 const collapsedSectionIds = ref<Set<SectionId>>(new Set());
+const editLayout = ref(false);
+const draggingId = ref<SectionId | null>(null);
+
+function persistCollapsed(next: Iterable<SectionId>) {
+  const arr = [...next];
+  collapsedSectionIds.value = new Set(arr);
+  try {
+    localStorage.setItem(COLLAPSED_KEY, JSON.stringify(arr));
+  } catch {
+    /* ignore */
+  }
+}
+
+function applyDefaultCollapsed() {
+  // Lahti: esimesed 2 plokki (kasutaja järjekorra järgi). Kinni: ülejäänud.
+  const open = new Set(sectionOrder.value.slice(0, 2));
+  const collapsed = DEFAULT_ORDER.filter((id) => !open.has(id));
+  persistCollapsed(collapsed);
+}
+
+function ensureFirstTwoExpanded() {
+  const mustBeOpen = new Set(sectionOrder.value.slice(0, 2));
+  if (mustBeOpen.size === 0) return;
+
+  const nextCollapsed = new Set(collapsedSectionIds.value);
+  let changed = false;
+  for (const id of mustBeOpen) {
+    if (nextCollapsed.delete(id)) changed = true;
+  }
+  if (!changed) return;
+  persistCollapsed(nextCollapsed);
+}
+
+function persistOrder(nextOrder: SectionId[]) {
+  sectionOrder.value = [...nextOrder];
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextOrder));
+  } catch {
+    /* ignore */
+  }
+}
+
+function arrayMove<T>(arr: T[], from: number, to: number) {
+  if (from === to) return arr;
+  const copy = [...arr];
+  const [item] = copy.splice(from, 1);
+  copy.splice(to, 0, item);
+  return copy;
+}
+
+function onDragStart(id: SectionId, e: DragEvent) {
+  draggingId.value = id;
+  try {
+    e.dataTransfer?.setData('text/plain', id);
+    e.dataTransfer?.setDragImage(new Image(), 0, 0);
+    e.dataTransfer!.effectAllowed = 'move';
+  } catch {
+    /* ignore */
+  }
+}
+
+function onDragEnd() {
+  draggingId.value = null;
+}
+
+function onDrop(targetId: SectionId, e: DragEvent) {
+  e.preventDefault();
+  const sourceId = (e.dataTransfer?.getData('text/plain') as SectionId) || draggingId.value;
+  if (!sourceId || sourceId === targetId) return;
+  const from = sectionOrder.value.indexOf(sourceId);
+  const to = sectionOrder.value.indexOf(targetId);
+  if (from === -1 || to === -1) return;
+  persistOrder(arrayMove(sectionOrder.value, from, to));
+  draggingId.value = null;
+}
+
+function onDragOver(e: DragEvent) {
+  e.preventDefault();
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+}
 
 function isSectionExpanded(id: SectionId): boolean {
   return !collapsedSectionIds.value.has(id);
@@ -88,6 +168,13 @@ function sectionTitle(id: SectionId): string {
 
 onMounted(() => {
   try {
+    const params = new URLSearchParams(window.location.search);
+    editLayout.value = params.get('layout') === 'edit';
+  } catch {
+    /* ignore */
+  }
+
+  try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as unknown;
@@ -103,34 +190,24 @@ onMounted(() => {
       if (Array.isArray(arr) && arr.every((id) => DEFAULT_ORDER.includes(id as SectionId))) {
         collapsedSectionIds.value = new Set(arr as SectionId[]);
       }
+    } else {
+      // Esimesel avamisel jätame lahti 2 esimest plokki (järjekorra järgi).
+      const open = new Set(sectionOrder.value.slice(0, 2));
+      const defaultCollapsed: SectionId[] = DEFAULT_ORDER.filter((id) => !open.has(id));
+      collapsedSectionIds.value = new Set(defaultCollapsed);
+      try {
+        localStorage.setItem(COLLAPSED_KEY, JSON.stringify(defaultCollapsed));
+      } catch {
+        /* ignore */
+      }
     }
+
+    // Igal avamisel hoiame 2 esimest plokki lahti (isegi kui localStorage ütleb teisiti).
+    ensureFirstTwoExpanded();
   } catch {
     /* ignore */
   }
 });
-
-function moveSection(id: SectionId, direction: 'up' | 'down') {
-  const arr = sectionOrder.value;
-  const i = arr.indexOf(id);
-  if (i === -1) return;
-  const j = direction === 'up' ? i - 1 : i + 1;
-  if (j < 0 || j >= arr.length) return;
-  [arr[i], arr[j]] = [arr[j], arr[i]];
-  sectionOrder.value = [...arr];
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
-  } catch {
-    /* ignore */
-  }
-}
-
-function canMoveUp(id: SectionId) {
-  return sectionOrder.value.indexOf(id) > 0;
-}
-function canMoveDown(id: SectionId) {
-  const i = sectionOrder.value.indexOf(id);
-  return i >= 0 && i < sectionOrder.value.length - 1;
-}
 
 // Lumememma-stiilis + nupp: väikesed ümarad kiirtegevused selle kohal
 const showFabMenu = ref(false);
@@ -153,8 +230,8 @@ function goToFabAction(href: string) {
   <Head title="Dashboard" />
 
   <AppLayout :breadcrumbs="breadcrumbs">
-    <div class="page page-with-bottomnav">
-      <div class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
+    <div class="page bg-background-light min-h-0 flex flex-col">
+      <div class="bg-background-light border-beige/50 relative mx-auto w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
         <DiaryHeader
           title="Minu Aia Päevik"
           :diary-label="todayLabel"
@@ -168,44 +245,75 @@ function goToFabAction(href: string) {
           </p>
         </DiaryHeader>
 
-        <div class="px-6 pt-4 pb-8 space-y-8 md:px-8">
+        <div v-if="editLayout" class="px-6 pt-3 md:px-8">
+          <div class="rounded-2xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+            <p class="min-w-0">
+              <span class="font-semibold text-foreground/90">Muuda avalehte:</span>
+              võta ploki ees olevatest täppidest kinni ja lohista järjekorda.
+            </p>
+
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                class="inline-flex items-center gap-2 rounded-full bg-card px-3 py-1.5 text-xs font-semibold text-foreground ring-1 ring-border hover:bg-muted transition"
+                aria-label="Taasta vaikimisi (2 esimest plokki lahti)"
+                @click="applyDefaultCollapsed"
+              >
+                <span class="material-symbols-outlined text-base">restart_alt</span>
+                Taasta
+              </button>
+              <button
+                type="button"
+                class="ml-auto inline-flex items-center gap-2 rounded-full bg-card px-3 py-1.5 text-xs font-semibold text-foreground ring-1 ring-border hover:bg-muted transition"
+                aria-label="Valmis (välju muutmisrežiimist)"
+                @click="router.visit('/dashboard')"
+              >
+                <span class="material-symbols-outlined text-base">check</span>
+                Valmis
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-6 pt-4 pb-0 space-y-8 md:px-8">
           <!-- Järjestatavad plokid -->
         <template v-for="id in sectionOrder" :key="id">
           <!-- Weather -->
-          <section v-if="id === 'weather'" class="rounded-2xl border border-border bg-card/90 shadow-sm overflow-hidden">
+          <section
+            v-if="id === 'weather'"
+            class="rounded-2xl border border-border bg-card/90 shadow-sm overflow-hidden"
+            :class="editLayout ? 'ring-1 ring-primary/25' : ''"
+            @dragover="editLayout ? onDragOver($event) : undefined"
+            @drop="editLayout ? onDrop('weather', $event) : undefined"
+          >
             <div
-              class="flex items-center gap-2 px-4 py-3 bg-muted/40 border-b border-border cursor-pointer"
+              class="group flex items-center gap-2 px-3 py-2 bg-muted/40 border-b border-border cursor-pointer"
               @click="toggleSectionCollapsed('weather')"
             >
               <div class="flex flex-1 min-w-0 items-center gap-2">
-                <h3 class="font-semibold text-foreground text-sm">{{ sectionTitle('weather') }}</h3>
+                <button
+                  v-if="editLayout"
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground active:scale-95 transition cursor-grab"
+                  draggable="true"
+                  aria-label="Lohista plokki"
+                  @dragstart="onDragStart('weather', $event)"
+                  @dragend="onDragEnd"
+                  @click.stop
+                >
+                  <span class="material-symbols-outlined text-lg">drag_indicator</span>
+                </button>
+                <h3 class="font-semibold text-foreground text-xs">{{ sectionTitle('weather') }}</h3>
                 <span
-                  class="material-symbols-outlined text-xl text-muted-foreground shrink-0 transition-transform"
-                  :class="{ 'rotate-180': isSectionExpanded('weather') }"
+                  class="material-symbols-outlined text-lg text-muted-foreground shrink-0 transition"
+                  :class="[
+                    'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
+                    { 'rotate-180': isSectionExpanded('weather') },
+                  ]"
                   aria-hidden="true"
                 >
                   expand_more
                 </span>
-              </div>
-              <div class="flex gap-0.5 shrink-0" @click.stop>
-                <button
-                  type="button"
-                  class="section-reorder-btn p-1.5"
-                  aria-label="Tõsta plokki üles"
-                  :disabled="!canMoveUp('weather')"
-                  @click="moveSection('weather', 'up')"
-                >
-                  <span class="material-symbols-outlined text-lg">expand_less</span>
-                </button>
-                <button
-                  type="button"
-                  class="section-reorder-btn p-1.5"
-                  aria-label="Tõsta plokki alla"
-                  :disabled="!canMoveDown('weather')"
-                  @click="moveSection('weather', 'down')"
-                >
-                  <span class="material-symbols-outlined text-lg">expand_more</span>
-                </button>
               </div>
             </div>
             <div v-show="isSectionExpanded('weather')" class="p-4">
@@ -214,28 +322,41 @@ function goToFabAction(href: string) {
           </section>
 
           <!-- Moon -->
-          <section v-if="id === 'moon'" class="rounded-2xl border border-border bg-card/90 shadow-sm overflow-hidden">
+          <section
+            v-if="id === 'moon'"
+            class="rounded-2xl border border-border bg-card/90 shadow-sm overflow-hidden"
+            :class="editLayout ? 'ring-1 ring-primary/25' : ''"
+            @dragover="editLayout ? onDragOver($event) : undefined"
+            @drop="editLayout ? onDrop('moon', $event) : undefined"
+          >
             <div
-              class="flex items-center gap-2 px-4 py-3 bg-muted/40 border-b border-border cursor-pointer"
+              class="group flex items-center gap-2 px-3 py-2 bg-muted/40 border-b border-border cursor-pointer"
               @click="toggleSectionCollapsed('moon')"
             >
               <div class="flex flex-1 min-w-0 items-center gap-2">
-                <h3 class="font-semibold text-foreground text-sm">{{ sectionTitle('moon') }}</h3>
+                <button
+                  v-if="editLayout"
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground active:scale-95 transition cursor-grab"
+                  draggable="true"
+                  aria-label="Lohista plokki"
+                  @dragstart="onDragStart('moon', $event)"
+                  @dragend="onDragEnd"
+                  @click.stop
+                >
+                  <span class="material-symbols-outlined text-lg">drag_indicator</span>
+                </button>
+                <h3 class="font-semibold text-foreground text-xs">{{ sectionTitle('moon') }}</h3>
                 <span
-                  class="material-symbols-outlined text-xl text-muted-foreground shrink-0 transition-transform"
-                  :class="{ 'rotate-180': isSectionExpanded('moon') }"
+                  class="material-symbols-outlined text-lg text-muted-foreground shrink-0 transition"
+                  :class="[
+                    'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
+                    { 'rotate-180': isSectionExpanded('moon') },
+                  ]"
                   aria-hidden="true"
                 >
                   expand_more
                 </span>
-              </div>
-              <div class="flex gap-0.5 shrink-0" @click.stop>
-                <button type="button" class="section-reorder-btn p-1.5" aria-label="Tõsta plokki üles" :disabled="!canMoveUp('moon')" @click="moveSection('moon', 'up')">
-                  <span class="material-symbols-outlined text-lg">expand_less</span>
-                </button>
-                <button type="button" class="section-reorder-btn p-1.5" aria-label="Tõsta plokki alla" :disabled="!canMoveDown('moon')" @click="moveSection('moon', 'down')">
-                  <span class="material-symbols-outlined text-lg">expand_more</span>
-                </button>
               </div>
             </div>
             <div v-show="isSectionExpanded('moon')" class="p-4">
@@ -244,28 +365,41 @@ function goToFabAction(href: string) {
           </section>
 
           <!-- Viimased märkmed -->
-          <section v-if="id === 'notes'" class="rounded-2xl border border-border bg-card/90 shadow-sm overflow-hidden">
+          <section
+            v-if="id === 'notes'"
+            class="rounded-2xl border border-border bg-card/90 shadow-sm overflow-hidden"
+            :class="editLayout ? 'ring-1 ring-primary/25' : ''"
+            @dragover="editLayout ? onDragOver($event) : undefined"
+            @drop="editLayout ? onDrop('notes', $event) : undefined"
+          >
             <div
-              class="flex items-center gap-2 px-4 py-3 bg-muted/40 border-b border-border cursor-pointer"
+              class="group flex items-center gap-2 px-3 py-2 bg-muted/40 border-b border-border cursor-pointer"
               @click="toggleSectionCollapsed('notes')"
             >
               <div class="flex flex-1 min-w-0 items-center gap-2">
-                <h3 class="font-semibold text-foreground text-sm">{{ sectionTitle('notes') }}</h3>
+                <button
+                  v-if="editLayout"
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground active:scale-95 transition cursor-grab"
+                  draggable="true"
+                  aria-label="Lohista plokki"
+                  @dragstart="onDragStart('notes', $event)"
+                  @dragend="onDragEnd"
+                  @click.stop
+                >
+                  <span class="material-symbols-outlined text-lg">drag_indicator</span>
+                </button>
+                <h3 class="font-semibold text-foreground text-xs">{{ sectionTitle('notes') }}</h3>
                 <span
-                  class="material-symbols-outlined text-xl text-muted-foreground shrink-0 transition-transform"
-                  :class="{ 'rotate-180': isSectionExpanded('notes') }"
+                  class="material-symbols-outlined text-lg text-muted-foreground shrink-0 transition"
+                  :class="[
+                    'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
+                    { 'rotate-180': isSectionExpanded('notes') },
+                  ]"
                   aria-hidden="true"
                 >
                   expand_more
                 </span>
-              </div>
-              <div class="flex gap-0.5 shrink-0" @click.stop>
-                <button type="button" class="section-reorder-btn p-1.5" aria-label="Tõsta plokki üles" :disabled="!canMoveUp('notes')" @click="moveSection('notes', 'up')">
-                  <span class="material-symbols-outlined text-lg">expand_less</span>
-                </button>
-                <button type="button" class="section-reorder-btn p-1.5" aria-label="Tõsta plokki alla" :disabled="!canMoveDown('notes')" @click="moveSection('notes', 'down')">
-                  <span class="material-symbols-outlined text-lg">expand_more</span>
-                </button>
               </div>
             </div>
             <div v-show="isSectionExpanded('notes')" class="p-4">
@@ -308,28 +442,41 @@ function goToFabAction(href: string) {
           </section>
 
           <!-- Viimati lisatud taimed -->
-          <section v-if="id === 'recent'" class="rounded-2xl border border-border bg-card/90 shadow-sm overflow-hidden">
+          <section
+            v-if="id === 'recent'"
+            class="rounded-2xl border border-border bg-card/90 shadow-sm overflow-hidden"
+            :class="editLayout ? 'ring-1 ring-primary/25' : ''"
+            @dragover="editLayout ? onDragOver($event) : undefined"
+            @drop="editLayout ? onDrop('recent', $event) : undefined"
+          >
             <div
-              class="flex items-center gap-2 px-4 py-3 bg-muted/40 border-b border-border cursor-pointer"
+              class="group flex items-center gap-2 px-3 py-2 bg-muted/40 border-b border-border cursor-pointer"
               @click="toggleSectionCollapsed('recent')"
             >
               <div class="flex flex-1 min-w-0 items-center gap-2">
-                <h3 class="font-semibold text-foreground text-sm">{{ sectionTitle('recent') }}</h3>
+                <button
+                  v-if="editLayout"
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground active:scale-95 transition cursor-grab"
+                  draggable="true"
+                  aria-label="Lohista plokki"
+                  @dragstart="onDragStart('recent', $event)"
+                  @dragend="onDragEnd"
+                  @click.stop
+                >
+                  <span class="material-symbols-outlined text-lg">drag_indicator</span>
+                </button>
+                <h3 class="font-semibold text-foreground text-xs">{{ sectionTitle('recent') }}</h3>
                 <span
-                  class="material-symbols-outlined text-xl text-muted-foreground shrink-0 transition-transform"
-                  :class="{ 'rotate-180': isSectionExpanded('recent') }"
+                  class="material-symbols-outlined text-lg text-muted-foreground shrink-0 transition"
+                  :class="[
+                    'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
+                    { 'rotate-180': isSectionExpanded('recent') },
+                  ]"
                   aria-hidden="true"
                 >
                   expand_more
                 </span>
-              </div>
-              <div class="flex gap-0.5 shrink-0" @click.stop>
-                <button type="button" class="section-reorder-btn p-1.5" aria-label="Tõsta plokki üles" :disabled="!canMoveUp('recent')" @click="moveSection('recent', 'up')">
-                  <span class="material-symbols-outlined text-lg">expand_less</span>
-                </button>
-                <button type="button" class="section-reorder-btn p-1.5" aria-label="Tõsta plokki alla" :disabled="!canMoveDown('recent')" @click="moveSection('recent', 'down')">
-                  <span class="material-symbols-outlined text-lg">expand_more</span>
-                </button>
               </div>
             </div>
             <div v-show="isSectionExpanded('recent')" class="p-4">
@@ -350,7 +497,7 @@ function goToFabAction(href: string) {
                     {{ relativeDays(p.created_at) }}
                   </p>
                   <div class="flex gap-1 mt-2">
-                    <span class="material-symbols-outlined text-xs">grass</span>
+                    <span class="material-symbols-outlined text-xs">local_florist</span>
                   </div>
                 </Link>
               </div>
@@ -361,7 +508,7 @@ function goToFabAction(href: string) {
                 href="/plants"
                 class="btn-panel-link"
               >
-                <span class="material-symbols-outlined text-lg">grass</span>
+                <span class="material-symbols-outlined text-lg">local_florist</span>
                 <span class="font-semibold text-sm">Vaata kõiki taimi</span>
                 <span class="material-symbols-outlined text-lg ml-auto">chevron_right</span>
               </Link>
@@ -370,28 +517,41 @@ function goToFabAction(href: string) {
           </section>
 
           <!-- Viimati lisatud varud -->
-          <section v-if="id === 'recentSeeds'" class="rounded-2xl border border-border bg-card/90 shadow-sm overflow-hidden">
+          <section
+            v-if="id === 'recentSeeds'"
+            class="rounded-2xl border border-border bg-card/90 shadow-sm overflow-hidden last:mb-0"
+            :class="editLayout ? 'ring-1 ring-primary/25' : ''"
+            @dragover="editLayout ? onDragOver($event) : undefined"
+            @drop="editLayout ? onDrop('recentSeeds', $event) : undefined"
+          >
             <div
-              class="flex items-center gap-2 px-4 py-3 bg-muted/40 border-b border-border cursor-pointer"
+              class="group flex items-center gap-2 px-3 py-2 bg-muted/40 border-b border-border cursor-pointer"
               @click="toggleSectionCollapsed('recentSeeds')"
             >
               <div class="flex flex-1 min-w-0 items-center gap-2">
-                <h3 class="font-semibold text-foreground text-sm">{{ sectionTitle('recentSeeds') }}</h3>
+                <button
+                  v-if="editLayout"
+                  type="button"
+                  class="inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground active:scale-95 transition cursor-grab"
+                  draggable="true"
+                  aria-label="Lohista plokki"
+                  @dragstart="onDragStart('recentSeeds', $event)"
+                  @dragend="onDragEnd"
+                  @click.stop
+                >
+                  <span class="material-symbols-outlined text-lg">drag_indicator</span>
+                </button>
+                <h3 class="font-semibold text-foreground text-xs">{{ sectionTitle('recentSeeds') }}</h3>
                 <span
-                  class="material-symbols-outlined text-xl text-muted-foreground shrink-0 transition-transform"
-                  :class="{ 'rotate-180': isSectionExpanded('recentSeeds') }"
+                  class="material-symbols-outlined text-lg text-muted-foreground shrink-0 transition"
+                  :class="[
+                    'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
+                    { 'rotate-180': isSectionExpanded('recentSeeds') },
+                  ]"
                   aria-hidden="true"
                 >
                   expand_more
                 </span>
-              </div>
-              <div class="flex gap-0.5 shrink-0" @click.stop>
-                <button type="button" class="section-reorder-btn p-1.5" aria-label="Tõsta plokki üles" :disabled="!canMoveUp('recentSeeds')" @click="moveSection('recentSeeds', 'up')">
-                  <span class="material-symbols-outlined text-lg">expand_less</span>
-                </button>
-                <button type="button" class="section-reorder-btn p-1.5" aria-label="Tõsta plokki alla" :disabled="!canMoveDown('recentSeeds')" @click="moveSection('recentSeeds', 'down')">
-                  <span class="material-symbols-outlined text-lg">expand_more</span>
-                </button>
               </div>
             </div>
             <div v-show="isSectionExpanded('recentSeeds')" class="p-4">
@@ -412,7 +572,7 @@ function goToFabAction(href: string) {
                       {{ relativeDays(s.created_at) }}
                     </p>
                     <div class="flex gap-1 mt-2">
-                      <span class="material-symbols-outlined text-xs">eco</span>
+                      <span class="material-symbols-outlined text-xs">inventory_2</span>
                     </div>
                   </Link>
                 </div>
@@ -423,7 +583,7 @@ function goToFabAction(href: string) {
                   href="/seeds"
                   class="btn-panel-link"
                 >
-                  <span class="material-symbols-outlined text-lg">eco</span>
+                  <span class="material-symbols-outlined text-lg">inventory_2</span>
                   <span class="font-semibold text-sm">Vaata kõiki varusid</span>
                   <span class="material-symbols-outlined text-lg ml-auto">chevron_right</span>
                 </Link>
@@ -472,7 +632,7 @@ function goToFabAction(href: string) {
         @click="closeFabMenu"
       />
 
-      <BottomNav active="dashboard" />
+      <BottomNav active="dashboard" :fixed="false" />
     </div>
   </AppLayout>
 </template>
