@@ -205,6 +205,18 @@ public function update(Request $request, Plant $plant)
         'fertilizing_frequency' => $data['fertilizing_frequency'] ?? $plant->fertilizing_frequency,
         'image_url' => $data['image_url'] ?? $plant->image_url,
     ];
+
+    if (array_key_exists('notes', $data)) {
+        $payload['notes'] = $data['notes'] === '' ? null : $data['notes'];
+    }
+
+    if (array_key_exists('watering_in_days', $data)) {
+        $payload['watering_in_days'] = $data['watering_in_days'] === '' ? null : $data['watering_in_days'];
+    }
+
+    if (array_key_exists('fertilizing_frequency', $data)) {
+        $payload['fertilizing_frequency'] = $data['fertilizing_frequency'] === '' ? null : $data['fertilizing_frequency'];
+    }
     if (array_key_exists('bed_id', $data)) {
         $payload['bed_id'] = $data['bed_id'];
     }
