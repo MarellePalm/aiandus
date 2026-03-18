@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Head, Link } from '@inertiajs/vue3';
 
 import DiaryHeader from '@/components/DiaryHeader.vue';
@@ -8,6 +8,7 @@ import { getMoonInfo } from '@/lib/moon/moon';
 import { moonAdvice } from '@/lib/moon/moonAdvice';
 import { getZodiacInfo } from '@/lib/moon/zodiac';
 import BottomNav from '@/pages/BottomNav.vue';
+import CalendarSwitchTabs from '@/components/calendar/CalendarSwitchTabs.vue';
 
 import MoonPhaseIcon from './MoonPhaseIcon.vue';
 
@@ -64,45 +65,66 @@ function dayInfo(day: number) {
     biodynamicLabel: zodiac.biodynamicDayLabel,
     moonSign: zodiac.moonSign,
     tasks: advice.tasks,
+    textLong: advice.textLong,
     tasksShort: advice.tasks.slice(0, 2).join(', '),
   };
 }
+
+function formatSelectedDate(day: number) {
+  const d = dateForDay(day);
+  return d.toLocaleDateString('et-EE', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+const selectedDay = ref<number | null>(null);
+const selectedInfo = computed(() => (selectedDay.value == null ? null : dayInfo(selectedDay.value)));
+
+function syncSelectedDayWithMonth() {
+  const d = new Date();
+  const isSameMonth = d.getFullYear() === viewDate.value.getFullYear() && d.getMonth() === viewDate.value.getMonth();
+  if (!isSameMonth) {
+    selectedDay.value = null;
+    return;
+  }
+
+  const todayDay = d.getDate();
+  // Kui täna on vaadatava kuu sees, vali see automaatselt.
+  selectedDay.value = todayDay >= 1 && todayDay <= daysInMonth.value ? todayDay : null;
+}
+
+watch(viewDate, () => syncSelectedDayWithMonth(), { immediate: true });
 </script>
 
 <template>
   <Head title="Kuufaaside kalender" />
   <AppLayout>
-    <div class="page-container py-6 pb-24">
-      <DiaryHeader
-        title="Kuufaaside kalender"
-        title-class="text-lg font-semibold"
-        header-class="pt-6"
-        top-row-class="mb-3"
-        bottom-row-class="mb-4"
-      />
+    <div class="page page-with-bottomnav">
+      <div class="page-container-wide pb-8 space-y-8">
+        <DiaryHeader
+          title="Kuufaaside kalender"
+          title-class="text-lg font-semibold"
+          header-class="pt-6"
+          top-row-class="mb-3"
+          bottom-row-class="mb-4"
+        />
 
-      <Link
-        href="/calendar"
-        class="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground text-sm mb-4"
-      >
-        <span class="material-symbols-outlined text-lg">arrow_back</span>
-        Tagasi kalendrisse
-      </Link>
-
-      <p class="text-sm text-muted-foreground mb-4">
-        Kuufaas ja biodünaamiline päevatüüp (lehepäev, viljapäev, juurepäev, õiepäev) aitavad planeerida aiandustöid.
-      </p>
-
-      <section class="card p-4 md:p-6">
-        <div class="flex items-center justify-between mb-4">
-          <button type="button" class="icon-btn" @click="prevMonth" aria-label="Eelmine kuu">
-            <span class="material-symbols-outlined">chevron_left</span>
-          </button>
-          <h2 class="text-lg font-bold capitalize">{{ monthTitle }}</h2>
-          <button type="button" class="icon-btn" @click="nextMonth" aria-label="Järgmine kuu">
-            <span class="material-symbols-outlined">chevron_right</span>
-          </button>
+        <div class="flex items-center justify-center">
+          <CalendarSwitchTabs active="moon" />
         </div>
+
+        <p class="text-sm text-muted-foreground">
+          Kuufaas ja biodünaamiline päevatüüp (lehepäev, viljapäev, juurepäev, õiepäev) aitavad planeerida aiandustöid.
+        </p>
+
+        <section class="card p-4 md:p-6">
+          <div class="flex items-center justify-between mb-4">
+            <button type="button" class="icon-btn" @click="prevMonth" aria-label="Eelmine kuu">
+              <span class="material-symbols-outlined">chevron_left</span>
+            </button>
+            <h2 class="text-lg font-bold capitalize">{{ monthTitle }}</h2>
+            <button type="button" class="icon-btn" @click="nextMonth" aria-label="Järgmine kuu">
+              <span class="material-symbols-outlined">chevron_right</span>
+            </button>
+          </div>
 
         <div class="grid grid-cols-7 gap-x-2 gap-y-4">
           <div
@@ -118,7 +140,14 @@ function dayInfo(day: number) {
           <div
             v-for="day in daysInMonth"
             :key="day"
-            class="min-h-24 md:min-h-28 flex flex-col items-center justify-start gap-0.5 rounded-xl py-2 px-1.5 border border-border/60 bg-card text-left"
+            class="min-h-24 md:min-h-28 flex flex-col items-center justify-start gap-0.5 rounded-xl py-2 px-1.5 border border-border/60 bg-card text-left cursor-pointer
+                   transition hover:bg-muted/45"
+            :class="selectedDay === day ? 'ring-2 ring-primary/40 bg-primary/5 border-primary/30' : ''"
+            role="button"
+            tabindex="0"
+            :aria-pressed="selectedDay === day"
+            @click="selectedDay = day"
+            @keydown.enter="selectedDay = day"
           >
             <span class="text-sm font-semibold text-foreground shrink-0">{{ day }}</span>
             <MoonPhaseIcon
@@ -142,9 +171,67 @@ function dayInfo(day: number) {
             </span>
           </div>
         </div>
-      </section>
-    </div>
 
-    <BottomNav active="calendar" />
+        <section
+          v-if="selectedDay != null"
+          class="mt-5 rounded-2xl border border-border bg-card/60 backdrop-blur-md p-4 shadow-soft"
+          aria-live="polite"
+        >
+          <div class="flex items-start gap-4">
+            <div class="shrink-0">
+              <MoonPhaseIcon
+                :phase-index="selectedInfo!.phaseIndex"
+                :illumination="selectedInfo!.illumination"
+                :size="56"
+                class="text-primary"
+              />
+            </div>
+
+            <div class="min-w-0 flex-1">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <h3 class="font-bold text-foreground">
+                    {{ formatSelectedDate(selectedDay) }}
+                  </h3>
+                  <p class="text-sm text-foreground/80 mt-1">
+                    {{ selectedInfo!.phase }} • {{ selectedInfo!.biodynamicLabel }}
+                  </p>
+                  <p v-if="selectedInfo!.textLong" class="text-xs text-foreground/70 mt-2 leading-relaxed">
+                    {{ selectedInfo!.textLong }}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  class="icon-btn size-9"
+                  aria-label="Sulge info"
+                  @click="selectedDay = null"
+                >
+                  <span class="material-symbols-outlined text-lg">close</span>
+                </button>
+              </div>
+
+              <div class="mt-3">
+                <p class="text-[11px] uppercase tracking-widest text-muted-foreground font-bold mb-2">
+                  Tööd sel päeval
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span
+                    v-for="task in selectedInfo!.tasks"
+                    :key="task"
+                    class="rounded-full border border-border bg-muted/25 px-3 py-1 text-xs text-foreground/80"
+                  >
+                    {{ task }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        </section>
+      </div>
+
+      <BottomNav active="calendar" />
+    </div>
   </AppLayout>
 </template>
