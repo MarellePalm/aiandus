@@ -24,7 +24,7 @@ type PlantForm = {
   category_id: number | null;
   subtitle: string;
   planted_at: string;
-  watering_in_days: number | null;
+  watering_in_days: string;
   fertilizing_frequency: string;
   notes: string;
   image: File | null;
@@ -34,7 +34,7 @@ const form = useForm<PlantForm>({
   category_id: props.initialCategoryId ?? (props.categories?.[0]?.id ?? null),
   subtitle: "",
   planted_at: "",
-  watering_in_days: null,
+  watering_in_days: "",
   fertilizing_frequency: "",
   notes: "",
   image: null,
@@ -91,7 +91,7 @@ const reset = () => {
   form.category_id = props.initialCategoryId ?? (props.categories?.[0]?.id ?? null);
   form.subtitle = "";
   form.planted_at = "";
-  form.watering_in_days = null;
+  form.watering_in_days = "";
   form.fertilizing_frequency = "";
   form.notes = "";
   form.image = null;
@@ -316,15 +316,14 @@ onBeforeUnmount(() => {
 
                 <input
                   v-model="form.watering_in_days"
-                  type="number"
-                  min="0"
+                  type="text"
                   @input="form.clearErrors('watering_in_days')"
                   class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20 placeholder:text-[#2E2E2E]/40"
-                  placeholder="nt. 3 päeva pärast"
+                  placeholder="nt. iga nädal"
                 />
 
                 <p class="mt-2 text-xs text-[#2E2E2E]/50">
-                  Valikuline. Määra mitme päeva pärast taim uuesti kastmist vajab.
+                  Näide: iga nädal, 2x nädalas, kui muld on kuiv
                 </p>
 
                 <p v-if="form.errors.watering_in_days" class="mt-2 text-sm text-red-600">

@@ -111,7 +111,7 @@ public function store(Request $request)
         ],
         'subtitle' => ['required', 'string', 'max:160'],
         'planted_at' => ['required', 'date'],
-        'watering_in_days' => ['nullable', 'integer', 'min:0'],
+        'watering_in_days' => ['nullable', 'string', 'max:255'],
         'fertilizing_frequency' => ['nullable', 'string', 'max:255'],
         'notes' => ['nullable', 'string'],
         'image' => ['nullable', 'image', 'max:4096'],
@@ -171,7 +171,7 @@ public function update(Request $request, Plant $plant)
         'name' => ['nullable', 'string', 'max:255'],
         'subtitle' => ['nullable', 'string', 'max:160'],
         'notes' => ['nullable', 'string'],
-        'watering_in_days' => ['nullable', 'integer', 'min:0'],
+        'watering_in_days' => ['nullable', 'string', 'max:255'],
         'fertilizing_frequency' => ['nullable', 'string', 'max:255'],
 
         // peenra andmed (sul juba olid)

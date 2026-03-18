@@ -9,7 +9,7 @@ type Plant = {
   image_url?: string;
   notes?: string;
   tags?: string[];
-  watering_in_days?: number;
+  watering_in_days?: string | null;
   fertilizing_frequency?: string | null;
   next_fertilizing_label?: string | null;
   category_slug?: string;
@@ -45,20 +45,14 @@ function goBack() {
   }
 }
 
-const hasWateringInfo = computed(() => typeof props.plant.watering_in_days === "number");
+const hasWateringInfo = computed(() => !!props.plant.watering_in_days?.trim());
 
 const hasFertilizingInfo = computed(() => {
   return !!props.plant.fertilizing_frequency || !!props.plant.next_fertilizing_label;
 });
 
 const wateringText = computed(() => {
-  const d = props.plant.watering_in_days;
-
-  if (d === 0) return "Vajab kastmist täna";
-  if (d === 1) return "Vajab kastmist 1 päeva pärast";
-  if (typeof d === "number") return `Vajab kastmist ${d} päeva pärast`;
-
-  return "";
+  return props.plant.watering_in_days || "";
 });
 
 const wateringDueSoon = computed(() => {
