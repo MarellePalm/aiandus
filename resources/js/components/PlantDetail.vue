@@ -9,7 +9,7 @@ type Plant = {
   image_url?: string;
   notes?: string;
   tags?: string[];
-  watering_in_days?: number;
+  watering_in_days?: string | null;
   fertilizing_frequency?: string | null;
   next_fertilizing_label?: string | null;
   category_slug?: string;
@@ -20,8 +20,6 @@ const props = withDefaults(
     plant: Plant;
     markingWatered?: boolean;
     justWatered?: boolean;
-
-    /** Pane siia SortView URL (nt /plants/category/kurgid) */
     backUrl?: string | null;
   }>(),
   {
@@ -39,7 +37,6 @@ const emit = defineEmits<{
 
 const fallbackImage = "https://picsum.photos/900/1200";
 
-/** BACK: alati SortView (backUrl). Kui puudub, fallback loetelusse */
 function goBack() {
   if (props.plant.category_slug) {
     router.visit(`/plants/category/${props.plant.category_slug}`);
@@ -48,13 +45,14 @@ function goBack() {
   }
 }
 
-/** Watering */
+const hasWateringInfo = computed(() => !!props.plant.watering_in_days?.trim());
+
+const hasFertilizingInfo = computed(() => {
+  return !!props.plant.fertilizing_frequency || !!props.plant.next_fertilizing_label;
+});
+
 const wateringText = computed(() => {
-  const d = props.plant.watering_in_days;
-  if (d === 0) return "Vajab kastmist täna";
-  if (d === 1) return "Vajab kastmist 1 päeva pärast";
-  if (typeof d === "number") return `Vajab kastmist ${d} päeva pärast`;
-  return "Kastmise info puudub";
+  return props.plant.watering_in_days || "";
 });
 
 const wateringDueSoon = computed(() => {
@@ -62,7 +60,6 @@ const wateringDueSoon = computed(() => {
   return typeof d === "number" && d <= 2;
 });
 
-/** MENU + DELETE */
 const menuOpen = ref(false);
 const deleteOpen = ref(false);
 const deleting = ref(false);
@@ -80,7 +77,6 @@ const closeDelete = () => {
 const editPlant = () => {
   menuOpen.value = false;
 
-  // jätame "tagasi" info alles ka edit lehele
   const url = props.backUrl
     ? `/plants/${props.plant.id}/edit?back=${encodeURIComponent(props.backUrl)}`
     : `/plants/${props.plant.id}/edit`;
@@ -104,7 +100,6 @@ const doDelete = () => {
   });
 };
 
-/** click-outside menüü sulgemiseks */
 const onDocClick = (e: MouseEvent) => {
   if (!menuOpen.value) return;
   const t = e.target as HTMLElement | null;
@@ -166,7 +161,6 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
             <span class="material-symbols-outlined">arrow_back</span>
           </button>
 
-          <!-- “…” menüü -->
           <div class="relative" data-plant-menu>
             <button
               type="button"
@@ -203,123 +197,148 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
         </div>
       </div>
 
-      <!-- HERO (muudetud: tervet pilti näha + desktopis natuke väiksem) -->
-      <div
-        class="relative w-full overflow-hidden rounded-none md:rounded-3xl md:mx-auto md:max-w-4xl"
-      >
-        <div class="relative w-full h-[42vh] md:h-[46vh] lg:h-[420px] bg-black/5 dark:bg-white/5">
-          <img
-            :src="props.plant.image_url || fallbackImage"
-            alt="Taime pilt"
-            class="absolute inset-0 h-full w-full object-contain"
-            loading="lazy"
-          />
-          <div class="absolute inset-0 matte-overlay"></div>
+      <!-- HERO -->
+      <div class="w-full px-4 md:px-0">
+        <div class="overflow-hidden rounded-3xl md:mx-auto md:max-w-4xl">
+          <div class="relative h-[42vh] w-full md:h-[46vh] lg:h-[420px]">
+            <img
+              :src="props.plant.image_url || fallbackImage"
+              alt="Taime pilt"
+              class="absolute inset-0 h-full w-full object-contain"
+              loading="lazy"
+            />
+            <div class="absolute inset-0 matte-overlay"></div>
+          </div>
         </div>
       </div>
 
       <!-- Content -->
-      <div class="px-6 -mt-12 relative z-10 md:px-12 md:-mt-16">
-        <!-- Header Text -->
+      <div class="relative z-10 -mt-12 px-6 md:-mt-16 md:px-12">
         <div class="mb-8 md:mb-10">
-          <h1 class="font-serif italic text-4xl md:text-5xl tracking-tight text-[#2d3a2a] dark:text-primary mb-1">
+          <h1
+            class="mb-1 font-serif text-4xl italic tracking-tight text-[#2d3a2a] dark:text-primary md:text-5xl"
+          >
             {{ props.plant.subtitle }}
           </h1>
         </div>
 
-        <div class="md:grid md:grid-cols-2 md:gap-8">
-          <!-- Status Cards -->
-          <div class="grid grid-cols-1 gap-4 mb-10 md:mb-0">
-            <!-- Watering Card -->
-            <div
-              class="bg-surface-light dark:bg-surface-dark p-5 rounded-2xl flex items-center justify-between shadow-sm border border-[#e6e2d5] dark:border-white/5"
-            >
-              <div class="flex items-center gap-4">
-                <div class="bg-primary/10 dark:bg-primary/20 p-3 rounded-xl text-primary">
-                  <span class="material-symbols-outlined">opacity</span>
-                </div>
-                <div class="flex flex-col">
-                  <span class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5"
-                    >Kastmine</span
-                  >
-                  <span class="text-base font-medium font-body leading-tight">
-                    {{ wateringText }}
-                  </span>
-                </div>
-              </div>
-
-              <div v-if="wateringDueSoon" class="relative flex h-3 w-3">
-                <span
-                  class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-20"
-                ></span>
-                <span class="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
-              </div>
-              <div v-else class="text-[#717a71]">
-                <span class="material-symbols-outlined text-[20px]">check_circle</span>
-              </div>
-            </div>
-
-            <!-- Fertilizing Card -->
-            <div
-              class="bg-surface-light dark:bg-surface-dark p-5 rounded-2xl flex items-center justify-between shadow-sm border border-[#e6e2d5] dark:border-white/5"
-            >
-              <div class="flex items-center gap-4">
-                <div class="bg-primary/10 dark:bg-primary/20 p-3 rounded-xl text-primary">
-                  <span class="material-symbols-outlined">potted_plant</span>
-                </div>
-                <div class="flex flex-col">
-                  <span class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5"
-                    >Väetamine</span
-                  >
-                  <span class="text-base font-medium font-body leading-tight">
-                    {{ props.plant.fertilizing_frequency || "—" }}
-                    <span v-if="props.plant.next_fertilizing_label" class="text-[#717a71] text-sm ml-1">
-                      (Järgmine: {{ props.plant.next_fertilizing_label }})
-                    </span>
-                  </span>
-                </div>
-              </div>
-
-              <div class="text-[#717a71]">
-                <span class="material-symbols-outlined text-[20px]">calendar_today</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Notes -->
-          <div class="mb-10 md:mb-0">
-            <div class="flex items-center justify-between mb-4">
+        <div class="flex flex-col gap-8 md:grid md:grid-cols-2 md:items-start md:gap-10">
+          <!-- LEFT = MÄRKMED -->
+          <div class="md:col-start-1">
+            <div class="mb-4 flex items-center justify-between">
               <h3 class="text-lg font-bold tracking-tight">Märkmed</h3>
-              <button type="button" class="text-primary text-sm font-semibold" @click="emit('edit-notes')">
+              <button
+                type="button"
+                class="text-sm font-semibold text-primary"
+                @click="emit('edit-notes')"
+              >
                 Muuda
               </button>
             </div>
 
             <div
-              class="bg-white/50 dark:bg-surface-dark/40 rounded-2xl p-6 border border-[#e6e2d5]/50 dark:border-white/5"
+              class="rounded-2xl border border-[#e6e2d5]/50 bg-white/50 p-6 dark:border-white/5 dark:bg-surface-dark/40"
             >
-              <p class="text-[#4a524a] dark:text-gray-300 font-body leading-relaxed">
+              <p class="font-body leading-relaxed text-[#4a524a] dark:text-gray-300">
                 {{ props.plant.notes || "Märkmeid veel pole." }}
               </p>
 
-              <div v-if="props.plant.tags?.length" class="mt-4 flex gap-2 flex-wrap">
+              <div v-if="props.plant.tags?.length" class="mt-4 flex flex-wrap gap-2">
                 <span
                   v-for="tag in props.plant.tags"
                   :key="tag"
-                  class="px-3 py-1 bg-primary/5 dark:bg-primary/10 text-primary text-[11px] font-bold rounded-full uppercase tracking-tighter"
+                  class="rounded-full bg-primary/5 px-3 py-1 text-[11px] font-bold uppercase tracking-tighter text-primary dark:bg-primary/10"
                 >
                   {{ tag }}
                 </span>
               </div>
             </div>
           </div>
+
+          <!-- RIGHT = KASTMINE + VÄETAMINE -->
+          <div class="flex flex-col gap-4 md:col-start-2">
+            <!-- Watering Card -->
+            <div
+              v-if="hasWateringInfo"
+              class="rounded-2xl border border-[#e6e2d5] bg-surface-light p-5 shadow-sm dark:border-white/5 dark:bg-surface-dark"
+            >
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                  <div class="rounded-xl bg-primary/10 p-3 text-primary dark:bg-primary/20">
+                    <span class="material-symbols-outlined">opacity</span>
+                  </div>
+
+                  <div class="flex flex-col">
+                    <span
+                      class="mb-0.5 text-xs font-bold uppercase tracking-wider text-gray-400"
+                    >
+                      Kastmine
+                    </span>
+                    <span class="font-body text-base font-medium leading-tight">
+                      {{ wateringText }}
+                    </span>
+                  </div>
+                </div>
+
+                <div v-if="wateringDueSoon" class="relative flex h-3 w-3 shrink-0">
+                  <span
+                    class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-20"
+                  ></span>
+                  <span class="relative inline-flex h-3 w-3 rounded-full bg-primary"></span>
+                </div>
+
+                <div v-else class="shrink-0 text-[#717a71]">
+                  <span class="material-symbols-outlined text-[20px]">check_circle</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fertilizing Card -->
+            <div
+              v-if="hasFertilizingInfo"
+              class="rounded-2xl border border-[#e6e2d5] bg-surface-light p-5 shadow-sm dark:border-white/5 dark:bg-surface-dark"
+            >
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                  <div class="rounded-xl bg-primary/10 p-3 text-primary dark:bg-primary/20">
+                    <span class="material-symbols-outlined">potted_plant</span>
+                  </div>
+
+                  <div class="flex flex-col">
+                    <span
+                      class="mb-0.5 text-xs font-bold uppercase tracking-wider text-gray-400"
+                    >
+                      Väetamine
+                    </span>
+
+                    <span class="font-body text-base font-medium leading-tight">
+                      <template v-if="props.plant.fertilizing_frequency">
+                        {{ props.plant.fertilizing_frequency }}
+                      </template>
+
+                      <span
+                        v-if="props.plant.next_fertilizing_label"
+                        class="ml-1 text-sm text-[#717a71]"
+                      >
+                        (Järgmine: {{ props.plant.next_fertilizing_label }})
+                      </span>
+                    </span>
+                  </div>
+                </div>
+
+                <div class="shrink-0 text-[#717a71]">
+                  <span class="material-symbols-outlined text-[20px]">calendar_today</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- CTA -->
-        <div class="pb-10 mt-10">
+        <div class="mt-10 pb-10">
           <button
             type="button"
-            class="w-full bg-primary hover:bg-[#5a8056] text-white py-5 rounded-2xl font-bold text-lg shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
+            class="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-5 text-lg font-bold text-white shadow-lg shadow-primary/20 transition-all active:scale-[0.98] hover:bg-[#5a8056] disabled:opacity-50"
             :disabled="props.markingWatered"
             @click="emit('mark-watered')"
           >
@@ -375,7 +394,7 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
               <div class="mt-6 flex flex-col gap-3">
                 <button
                   type="button"
-                  class="rounded-2xl px-4 py-3 font-medium shadow-sm transition disabled:opacity-50 bg-red-600 text-white hover:bg-red-700"
+                  class="rounded-2xl bg-red-600 px-4 py-3 font-medium text-white shadow-sm transition hover:bg-red-700 disabled:opacity-50"
                   :disabled="deleting"
                   @click="doDelete"
                 >

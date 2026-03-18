@@ -79,10 +79,11 @@ class PlantController extends Controller
             'image_url' => $plant->image_url,
             'notes' => $plant->notes,
             'tags' => $plant->tags,
+            'planted_at' => $plant->planted_at,
             'watering_in_days' => $plant->watering_in_days,
             'fertilizing_frequency' => $plant->fertilizing_frequency,
             'next_fertilizing_label' => $plant->next_fertilizing_label,
-            'category_slug' => $plant->category->slug,
+            'category_slug' => $plant->category?->slug,
         ],
     ]);
 }
@@ -103,10 +104,16 @@ public function water(Request $request, Plant $plant)
 
 public function store(Request $request)
 {
-     $data = $request->validate([
-        'category_id' => ['required', Rule::exists('categories', 'id')->where('scope', Category::SCOPE_PLANT)],
+    $data = $request->validate([
+        'category_id' => [
+            'required',
+            Rule::exists('categories', 'id')->where('scope', Category::SCOPE_PLANT),
+        ],
         'subtitle' => ['required', 'string', 'max:160'],
         'planted_at' => ['required', 'date'],
+        'watering_in_days' => ['nullable', 'string', 'max:255'],
+        'fertilizing_frequency' => ['nullable', 'string', 'max:255'],
+        'notes' => ['nullable', 'string'],
         'image' => ['nullable', 'image', 'max:4096'],
     ]);
 
@@ -117,16 +124,20 @@ public function store(Request $request)
 
     $category = Category::select('id', 'name', 'slug')->findOrFail($data['category_id']);
 
-    $plant = Plant::create([
+    Plant::create([
         'name' => $data['subtitle'],
         'category_id' => $category->id,
         'subtitle' => $data['subtitle'],
         'planted_at' => $data['planted_at'],
+        'watering_in_days' => $data['watering_in_days'] ?? null,
+        'fertilizing_frequency' => $data['fertilizing_frequency'] ?? null,
+        'notes' => $data['notes'] ?? null,
         'image_url' => $imagePath ? "/storage/{$imagePath}" : null,
         'user_id' => $request->user()->id,
     ]);
 
-    return redirect()->route('plants.category', ['slug' => $category->slug])
+    return redirect()
+        ->route('plants.category', ['slug' => $category->slug])
         ->with('success', 'Taim lisatud!');
 }
 
@@ -142,6 +153,7 @@ public function edit(Request $request, Plant $plant)
             'notes' => $plant->notes,
             'tags' => $plant->tags,
             'image_url' => $plant->image_url,
+            'planted_at' => $plant->planted_at,
             'watering_in_days' => $plant->watering_in_days,
             'fertilizing_frequency' => $plant->fertilizing_frequency,
             'bed_id' => $plant->bed_id,
@@ -159,7 +171,7 @@ public function update(Request $request, Plant $plant)
         'name' => ['nullable', 'string', 'max:255'],
         'subtitle' => ['nullable', 'string', 'max:160'],
         'notes' => ['nullable', 'string'],
-        'watering_in_days' => ['nullable', 'integer', 'min:0'],
+        'watering_in_days' => ['nullable', 'string', 'max:255'],
         'fertilizing_frequency' => ['nullable', 'string', 'max:255'],
 
         // peenra andmed (sul juba olid)
@@ -193,6 +205,18 @@ public function update(Request $request, Plant $plant)
         'fertilizing_frequency' => $data['fertilizing_frequency'] ?? $plant->fertilizing_frequency,
         'image_url' => $data['image_url'] ?? $plant->image_url,
     ];
+
+    if (array_key_exists('notes', $data)) {
+        $payload['notes'] = $data['notes'] === '' ? null : $data['notes'];
+    }
+
+    if (array_key_exists('watering_in_days', $data)) {
+        $payload['watering_in_days'] = $data['watering_in_days'] === '' ? null : $data['watering_in_days'];
+    }
+
+    if (array_key_exists('fertilizing_frequency', $data)) {
+        $payload['fertilizing_frequency'] = $data['fertilizing_frequency'] === '' ? null : $data['fertilizing_frequency'];
+    }
     if (array_key_exists('bed_id', $data)) {
         $payload['bed_id'] = $data['bed_id'];
     }

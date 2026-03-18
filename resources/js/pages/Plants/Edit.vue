@@ -7,7 +7,7 @@ type Plant = {
   subtitle?: string | null;
   notes?: string | null;
   image_url?: string | null;
-  watering_in_days?: number | null;
+  watering_in_days?: string | null;
   fertilizing_frequency?: string | null;
 };
 
@@ -19,7 +19,7 @@ const pickedFile = ref<File | null>(null);
 
 const form = useForm({
   subtitle: props.plant.subtitle ?? "",
-  watering_in_days: props.plant.watering_in_days ?? null,
+  watering_in_days: props.plant.watering_in_days ?? "",
   fertilizing_frequency: props.plant.fertilizing_frequency ?? "",
   notes: props.plant.notes ?? "",
   image: null as File | null,
@@ -171,12 +171,13 @@ onBeforeUnmount(() => {
           <div>
             <label class="mb-1 block text-sm font-medium">Kastmine (päeva pärast)</label>
             <input
-              type="number"
               v-model="form.watering_in_days"
               class="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black/10"
-              placeholder="Nt. 3"
-              min="0"
+              placeholder="Nt. iga nädal"
             />
+            <p class="mt-1 text-xs opacity-60">
+              Näide: iga nädal, 2x nädalas, kui muld on kuiv
+            </p>
             <div v-if="form.errors.watering_in_days" class="mt-1 text-sm text-red-600">
               {{ form.errors.watering_in_days }}
             </div>
