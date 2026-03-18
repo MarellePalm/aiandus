@@ -58,7 +58,7 @@ const zodiac = computed(() => getZodiacInfo(dateRef.value));
       class="btn-panel-link moon-link"
     >
       <span class="material-symbols-outlined text-lg">calendar_month</span>
-      <span class="font-semibold text-sm">Vaata kuukalendrit</span>
+      <span class="font-semibold text-sm">Kuufaaside kalender</span>
       <span class="material-symbols-outlined text-lg ml-auto">chevron_right</span>
     </Link>
   </div>

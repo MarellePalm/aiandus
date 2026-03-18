@@ -7,6 +7,7 @@ import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
+import CalendarSwitchTabs from '@/components/calendar/CalendarSwitchTabs.vue';
 import { calendar } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 
@@ -159,11 +160,16 @@ function selectDay(day: number) {
     <div class="page page-with-bottomnav">
       <div class="page-container-wide pb-8 space-y-8">
         <DiaryHeader
-          title="Minu Aia Päevik"
+          title="Kalender"
+          title-class="text-lg font-semibold"
           header-class="pt-6"
           top-row-class="mb-3"
           bottom-row-class="mb-4"
         />
+
+        <div class="flex items-center justify-center">
+          <CalendarSwitchTabs active="day" />
+        </div>
 
         <!-- Calendar card -->
         <section class="card p-4">
@@ -229,7 +235,10 @@ function selectDay(day: number) {
           <!-- Tänased tööd -->
           <section class="mb-8">
             <div class="flex items-center justify-between mb-4">
-              <h3 class="journal-section-title">Tänased tööd</h3>
+              <h3 class="journal-section-title inline-flex items-center gap-2">
+                <span class="material-symbols-outlined text-[14px]">checklist</span>
+                Tänased tööd
+              </h3>
             </div>
 
             <div v-if="selectedTasks.length" class="space-y-3">
@@ -264,13 +273,16 @@ function selectDay(day: number) {
 
           <!-- Meeldetuletused -->
           <section class="mb-8">
-            <h3 class="journal-section-title">Meeldetuletused</h3>
+            <h3 class="journal-section-title inline-flex items-center gap-2">
+              <span class="material-symbols-outlined text-[14px]">notifications_active</span>
+              Meeldetuletused
+            </h3>
 
             <div v-if="selectedReminders.length" class="space-y-3 mt-4">
               <div v-for="n in selectedReminders" :key="String(n.id ?? n.title)" class="journal-reminder">
                 <p class="journal-row-text">
                   {{ n.title || 'Meeldetuletus' }}
-                  <span v-if="n.reminder_time" class="journal-time">— {{ n.reminder_time }}</span>
+                  <span v-if="n.reminder_time" class="journal-time block mt-0.5">— {{ n.reminder_time }}</span>
                 </p>
               </div>
             </div>
@@ -281,15 +293,18 @@ function selectDay(day: number) {
           <!-- Päevikumärkmed -->
           <section>
             <div class="flex justify-between items-baseline mb-3">
-              <h3 class="journal-section-title mb-0">Päevikumärkmed</h3>
-              <span class="journal-time"></span>
+              <h3 class="journal-section-title mb-0 inline-flex items-center gap-2">
+                <span class="material-symbols-outlined text-[14px]">description</span>
+                Päevikumärkmed
+              </h3>
+              <span class="journal-time journal-time--placeholder" aria-hidden="true" />
             </div>
 
             <div v-if="selectedDiaryNotes.length" class="space-y-3">
               <div
                 v-for="n in selectedDiaryNotes"
                 :key="String(n.id ?? n.title)"
-                class="journal-note relative flex gap-2"
+                class="journal-note relative flex gap-2 group"
               >
                 <div class="min-w-0 flex-1">
                   <p class="journal-note-title">{{ n.title || 'Märge' }}</p>
@@ -314,7 +329,12 @@ function selectDay(day: number) {
                 <div class="relative shrink-0">
                   <button
                     type="button"
-                    class="icon-btn size-9 rounded-full"
+                    class="icon-btn size-9 rounded-full
+                           opacity-0 pointer-events-none
+                           group-hover:opacity-100 group-hover:pointer-events-auto
+                           group-focus-within:opacity-100 group-focus-within:pointer-events-auto
+                           transition-opacity"
+                    :class="openMenuId === n.id ? 'opacity-100 pointer-events-auto' : ''"
                     aria-label="Valikud"
                     aria-haspopup="true"
                     :aria-expanded="openMenuId === n.id"
@@ -325,7 +345,7 @@ function selectDay(day: number) {
                   <!-- Click-outside overlay to close menu -->
                   <div
                     v-if="openMenuId === n.id"
-                    class="fixed inset-0 z-[5]"
+                    class="fixed inset-0 z-5"
                     aria-hidden="true"
                     @click="closeNoteMenu"
                   />
@@ -360,21 +380,14 @@ function selectDay(day: number) {
             <p v-else class="journal-empty">Sellel päeval pole veel päevikumärkmeid.</p>
           </section>
 
-          <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-between">
             <Link
               href="/calendar/overview"
-              class="btn-panel-link"
+              class="btn-panel-link mt-0!"
             >
               <span class="material-symbols-outlined text-lg">description</span>
               <span class="font-semibold text-sm">Vaata kõiki märkmeid</span>
               <span class="material-symbols-outlined text-lg ml-auto">chevron_right</span>
-            </Link>
-            <Link
-              href="/calendar/moon"
-              class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition"
-            >
-              <span class="material-symbols-outlined text-[1.1rem]">dark_mode</span>
-              Kuukalender
             </Link>
           </div>
         </section>
