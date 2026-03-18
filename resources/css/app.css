@@ -369,7 +369,8 @@
 
   /* Dashboard cards */
   .weather-card {
-    @apply card relative overflow-hidden p-6;
+    /* Dashboardi "kast" stiil tuleb wrapper-sectionist; ilmablokk ise on vaid layout */
+    @apply relative overflow-hidden;
   }
 
   /* Weather V2 (Dashboard) – lisaklassid olemasoleva .weather-card kõrvale */
@@ -438,12 +439,14 @@
 
     /* Moon / rhythms panel (shared) */
     .rhythm-card {
-      @apply card bg-secondary/60 p-5 flex items-center gap-4;
+      /* Dashboardi "kast" stiil tuleb wrapper-sectionist; kuukomponent on vaid layout */
+      @apply flex flex-col overflow-hidden;
     }
   
     .rhythm-icon {
+      /* Ühtne "chip" välimus dashboardi sees (mitte eraldi valge kaart) */
       @apply size-16 rounded-full flex items-center justify-center
-             bg-card shadow-inner;
+             bg-muted/40 ring-1 ring-border;
     }
   
     .rhythm-icon-symbol {
@@ -482,8 +485,14 @@
     grid-template-columns: 44px 1fr;
     align-items: center;
     padding: 12px 14px;
-    border-left: 1px solid var(--app-border, rgba(0,0,0,.12));
-    border-radius: 0.75rem;
+    border: 1px solid var(--app-border, rgba(0,0,0,.12));
+    border-radius: 1rem;
+  }
+  
+  /* Dashboardis tahame vähem "kastikat" badge'i */
+  .mzSeg--dashboard{
+    background: color-mix(in oklab, var(--seg-bg) 55%, transparent);
+    border-color: color-mix(in oklab, var(--app-border) 70%, transparent);
   }
 
   .mzSeg--stacked {
@@ -579,7 +588,10 @@
   
 
   .activity-card {
-    @apply card p-4 flex flex-col items-center text-center;
+    @apply rounded-2xl border border-border bg-card/90 backdrop-blur-md p-4
+           flex flex-col items-center text-center shadow-sm
+           hover:bg-card/95 hover:shadow-md hover:-translate-y-0.5
+           active:translate-y-0 transition;
   }
 
   /* Dashboard: plokitaust (märkmed, taimed – nagu kuufaas) */
@@ -599,6 +611,11 @@
            bg-card text-primary border border-border
            inline-flex items-center justify-start gap-2
            hover:bg-card/90 transition;
+  }
+  
+  /* Kuubloki "Vaata kuukalendrit" – vähem button, rohkem pill */
+  .moon-link{
+    @apply shadow-none bg-muted/30 hover:bg-muted/40;
   }
 
   .tip-card {

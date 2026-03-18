@@ -134,7 +134,7 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
       light_mode
     </span>
 
-    <div class="flex justify-between items-start mb-6">
+    <div class="flex justify-between items-start mb-4">
       <div class="space-y-1">
         <div class="inline-flex items-center gap-2 mb-2">
           <div class="inline-flex items-center bg-primary/15 text-primary px-3 py-1 rounded-full text-xs font-semibold">
@@ -150,7 +150,7 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
         </div>
 
         <div class="flex items-baseline gap-1">
-          <span class="text-[44px] font-bold leading-none">
+          <span class="text-[40px] sm:text-[44px] font-bold leading-none tracking-tight">
             <template v-if="q.isSuccess.value && temp !== null">
               {{ Math.round(temp) }}°C
             </template>
@@ -158,26 +158,32 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
           </span>
         </div>
 
-        <p v-if="q.isSuccess.value" class="text-muted-foreground font-medium">
-          Max {{ Math.round(tMax ?? 0) }}° / Min {{ Math.round(tMin ?? 0) }}°
-        </p>
-        <div v-if="q.isSuccess.value" class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-sm text-muted-foreground">
-          <span class="inline-flex items-center gap-1.5">
-            <span class="material-symbols-outlined text-base" aria-hidden="true">air</span>
-            <span>{{ windSpeed != null ? `${windSpeed.toFixed(1)} m/s` : '—' }}</span>
+        <div v-if="q.isSuccess.value" class="mt-1 flex items-baseline justify-between gap-3 text-sm text-muted-foreground">
+          <span class="font-medium">
+            Max {{ Math.round(tMax ?? 0) }}° / Min {{ Math.round(tMin ?? 0) }}°
           </span>
-          <span class="inline-flex items-center gap-1.5">
-            <span class="material-symbols-outlined text-base" aria-hidden="true">water_drop</span>
-            <span>{{ humidity != null ? `${humidity}%` : '—' }}</span>
+          <span v-if="todayWeatherLabel" class="font-semibold text-right max-w-40">
+            {{ todayWeatherLabel }}
+          </span>
+        </div>
+
+        <div v-if="q.isSuccess.value" class="flex flex-wrap items-center gap-2 mt-3 text-sm text-muted-foreground">
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-secondary/60 px-2.5 py-1 ring-1 ring-border/70">
+            <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">air</span>
+            <span class="text-foreground/80">{{ windSpeed != null ? `${windSpeed.toFixed(1)} m/s` : '—' }}</span>
+          </span>
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-secondary/60 px-2.5 py-1 ring-1 ring-border/70">
+            <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">water_drop</span>
+            <span class="text-foreground/80">{{ humidity != null ? `${humidity}%` : '—' }}</span>
           </span>
           <template v-if="sunrise || sunset">
-            <span class="inline-flex items-center gap-1.5">
-              <span class="material-symbols-outlined text-base" aria-hidden="true">wb_twilight</span>
-              <span>{{ sunrise ? `Tõuseb ${sunrise}` : '—' }}</span>
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-secondary/60 px-2.5 py-1 ring-1 ring-border/70">
+              <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">wb_twilight</span>
+              <span class="text-foreground/80">{{ sunrise ? `Tõuseb ${sunrise}` : '—' }}</span>
             </span>
-            <span class="inline-flex items-center gap-1.5">
-              <span class="material-symbols-outlined text-base" aria-hidden="true">nightlight_round</span>
-              <span>{{ sunset ? `Loojub ${sunset}` : '—' }}</span>
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-secondary/60 px-2.5 py-1 ring-1 ring-border/70">
+              <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">nightlight_round</span>
+              <span class="text-foreground/80">{{ sunset ? `Loojub ${sunset}` : '—' }}</span>
             </span>
           </template>
         </div>
@@ -188,7 +194,7 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
           v-if="q.isSuccess.value && todayWeatherIconUrl"
           :src="todayWeatherIconUrl"
           alt=""
-          class="w-30 h-30 object-contain drop-shadow-sm block"
+          class="w-28 h-28 sm:w-30 sm:h-30 object-contain drop-shadow-sm block"
           width="120"
           height="120"
         />
@@ -201,20 +207,19 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
           cloud
         </span>
 
-        <p v-if="q.isSuccess.value && todayWeatherLabel" class="text-lg font-semibold mt-1 text-muted-foreground">
-          {{ todayWeatherLabel }}
-        </p>
+        <!-- Label kuvatakse vasakus veerus Max/Min rea paremas servas -->
       </div>
     </div>
 
     <div class="h-px bg-border w-full mb-5"></div>
 
-    <div v-if="q.isSuccess.value && forecastDays.length" class="overflow-x-auto pb-1">
+    <div v-if="q.isSuccess.value && forecastDays.length" class="relative overflow-x-auto pb-2">
+      <div class="pointer-events-none absolute right-0 top-0 h-full w-10 bg-linear-to-l from-background to-transparent"></div>
       <div class="flex gap-3 min-w-0" style="width: max-content;">
         <div
           v-for="d in forecastDays"
           :key="d.date"
-          class="flex flex-col items-center p-3 rounded-2xl bg-secondary/40 dark:bg-black/10 backdrop-blur-sm shrink-0 w-28"
+          class="flex flex-col items-center p-3 rounded-2xl bg-secondary/50 dark:bg-black/10 backdrop-blur-sm shrink-0 w-28 ring-1 ring-border/70 shadow-sm"
         >
           <span class="text-[24px] font-bold uppercase tracking-wide text-muted-foreground">
             {{ new Intl.DateTimeFormat('et-EE', { weekday: 'short' }).format(new Date(d.date)) }}

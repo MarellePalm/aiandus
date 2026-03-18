@@ -53,6 +53,11 @@ onBeforeUnmount(() => {
         Seaded
       </Link>
 
+      <Link href="/dashboard?layout=edit" class="menu-item" role="menuitem" @click="close">
+        <span class="material-symbols-outlined text-lg">dashboard_customize</span>
+        Muuda avalehte
+      </Link>
+
       <button type="button" class="menu-item menu-item-danger" role="menuitem" @click="logout">
         <span class="material-symbols-outlined text-lg">logout</span>
         Logi välja
