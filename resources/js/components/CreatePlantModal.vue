@@ -24,6 +24,9 @@ type PlantForm = {
   category_id: number | null;
   subtitle: string;
   planted_at: string;
+  watering_in_days: number | null;
+  fertilizing_frequency: string;
+  notes: string;
   image: File | null;
 };
 
@@ -31,10 +34,13 @@ const form = useForm<PlantForm>({
   category_id: props.initialCategoryId ?? (props.categories?.[0]?.id ?? null),
   subtitle: "",
   planted_at: "",
+  watering_in_days: null,
+  fertilizing_frequency: "",
+  notes: "",
   image: null,
 });
 
-/** --- PILT (nagu CreateCategoryModal.vue) --- */
+/** --- PILT --- */
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const categorySelectRef = ref<HTMLSelectElement | null>(null);
 
@@ -83,6 +89,12 @@ const reset = () => {
   isDragging.value = false;
 
   form.category_id = props.initialCategoryId ?? (props.categories?.[0]?.id ?? null);
+  form.subtitle = "";
+  form.planted_at = "";
+  form.watering_in_days = null;
+  form.fertilizing_frequency = "";
+  form.notes = "";
+  form.image = null;
 };
 
 watch(
@@ -125,7 +137,6 @@ onBeforeUnmount(() => {
         aria-modal="true"
         role="dialog"
       >
-        <!-- overlay (SAMA MIS ILUS MODAL) -->
         <button
           type="button"
           class="absolute inset-0 bg-black/30 backdrop-blur-[2px]"
@@ -133,20 +144,17 @@ onBeforeUnmount(() => {
           @click="close"
         />
 
-        <!-- MODAL CARD (SAMA MIS ILUS MODAL) -->
         <div class="relative w-full max-w-lg rounded-3xl bg-[#FAF8F4] shadow-xl ring-1 ring-black/5">
-          <!-- ornament -->
           <div class="pointer-events-none absolute -top-3 -left-3 opacity-20">
             <div class="h-10 w-10 rounded-full bg-[#E6E2D5]" />
           </div>
 
-          <div class="p-5 sm:p-6">
-            <!-- header -->
+          <div class="max-h-[90vh] overflow-y-auto p-5 sm:p-6">
             <div class="flex items-start justify-between gap-3">
               <div>
                 <h3 class="text-lg font-semibold text-[#2E2E2E]">Lisa taim</h3>
                 <p class="mt-1 text-sm text-[#2E2E2E]/70">
-                  Vali kategooria, lisa sort, kuupäev ja soovi korral foto.
+                  Vali kategooria, lisa sort, kuupäev ja soovi korral hooldusinfo ning foto.
                 </p>
               </div>
 
@@ -161,7 +169,7 @@ onBeforeUnmount(() => {
             </div>
 
             <main class="mt-5 flex flex-col gap-6">
-              <!-- FOTO: sama disain nagu ilusas -->
+              <!-- FOTO -->
               <div>
                 <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
                   Foto
@@ -175,7 +183,6 @@ onBeforeUnmount(() => {
                   @change="onFileChange"
                 />
 
-                <!-- Dropzone -->
                 <button
                   type="button"
                   class="mt-3 w-full overflow-hidden rounded-2xl border-2 border-dashed px-6 py-8 text-center transition"
@@ -196,7 +203,7 @@ onBeforeUnmount(() => {
 
                   <template v-else>
                     <div class="flex flex-col items-center gap-4">
-                      <div class="w-full aspect-[16/10] overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
+                      <div class="aspect-[16/10] w-full overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
                         <img
                           v-if="previewUrl"
                           :src="previewUrl"
@@ -230,7 +237,6 @@ onBeforeUnmount(() => {
                   </template>
                 </button>
 
-                <!-- progress -->
                 <div v-if="form.progress" class="mt-5">
                   <div class="h-2 w-full overflow-hidden rounded-full bg-black/10">
                     <div class="h-2 rounded-full bg-[#6B8C68]" :style="{ width: `${form.progress.percentage}%` }" />
@@ -299,6 +305,72 @@ onBeforeUnmount(() => {
 
                 <p v-if="form.errors.planted_at" class="mt-2 text-sm text-red-600">
                   {{ form.errors.planted_at }}
+                </p>
+              </div>
+
+              <!-- KASTMINE -->
+              <div>
+                <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                  Kastmine
+                </label>
+
+                <input
+                  v-model="form.watering_in_days"
+                  type="number"
+                  min="0"
+                  @input="form.clearErrors('watering_in_days')"
+                  class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20 placeholder:text-[#2E2E2E]/40"
+                  placeholder="nt. 3 päeva pärast"
+                />
+
+                <p class="mt-2 text-xs text-[#2E2E2E]/50">
+                  Valikuline. Määra mitme päeva pärast taim uuesti kastmist vajab.
+                </p>
+
+                <p v-if="form.errors.watering_in_days" class="mt-2 text-sm text-red-600">
+                  {{ form.errors.watering_in_days }}
+                </p>
+              </div>
+
+              <!-- VÄETAMINE -->
+              <div>
+                <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                  Väetamine
+                </label>
+
+                <input
+                  v-model="form.fertilizing_frequency"
+                  @input="form.clearErrors('fertilizing_frequency')"
+                  class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20 placeholder:text-[#2E2E2E]/40"
+                  placeholder="nt. iga 2 nädala tagant"
+                  type="text"
+                />
+
+                <p class="mt-2 text-xs text-[#2E2E2E]/50">
+                  Valikuline. Kirjuta siia väetamise sagedus või juhis.
+                </p>
+
+                <p v-if="form.errors.fertilizing_frequency" class="mt-2 text-sm text-red-600">
+                  {{ form.errors.fertilizing_frequency }}
+                </p>
+              </div>
+
+              <!-- MÄRKMED -->
+              <div>
+                <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                  Märkmed
+                </label>
+
+                <textarea
+                  v-model="form.notes"
+                  rows="4"
+                  @input="form.clearErrors('notes')"
+                  class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20 placeholder:text-[#2E2E2E]/40"
+                  placeholder="Soovi korral lisa meelespea või lisainfo..."
+                />
+
+                <p v-if="form.errors.notes" class="mt-2 text-sm text-red-600">
+                  {{ form.errors.notes }}
                 </p>
               </div>
 
