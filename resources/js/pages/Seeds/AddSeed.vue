@@ -25,7 +25,6 @@ const emit = defineEmits<{
 const close = () => emit('update:open', false);
 
 const isStandalone = computed(() => props.standalone === true);
-const showForm = computed(() => isStandalone.value || props.open);
 
 const form = useForm<{
     category_id: number | null;
