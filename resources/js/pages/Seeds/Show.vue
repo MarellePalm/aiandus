@@ -2,11 +2,11 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
+import CardActionsMenu from '@/components/CardActionsMenu.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 
 import DeleteConfirmModal from './DeleteConfirmModal.vue';
 import EditSeedModal from './EditSeedModal.vue';
-import SeedActionButton from './SeedActionButton.vue';
 
 type Seed = {
     id: number;
@@ -68,22 +68,11 @@ const deleteSeed = () => {
                     </Link>
                 </template>
                 <template #actions>
-                        <SeedActionButton
-                            :absolute="false"
-                            position-class="h-9 w-9 sm:h-10 sm:w-10"
-                            aria-label="Muuda"
-                            @click="openEditModal"
-                        >
-                            <span class="material-symbols-outlined">edit</span>
-                        </SeedActionButton>
-                        <SeedActionButton
-                            :absolute="false"
-                            position-class="h-9 w-9 sm:h-10 sm:w-10"
-                            aria-label="Kustuta"
-                            @click="openDeleteModal"
-                        >
-                            <span class="material-symbols-outlined">delete</span>
-                        </SeedActionButton>
+                    <CardActionsMenu
+                        placement="inline"
+                        @edit="openEditModal"
+                        @delete="openDeleteModal"
+                    />
                 </template>
             </DiaryHeader>
 
