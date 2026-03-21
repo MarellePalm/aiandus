@@ -109,13 +109,35 @@ const todayWeatherLabel = computed(() => q.data.value?.openWeatherLabel ?? null)
 const sunrise = computed(() => q.data.value?.sunrise ?? null);
 const sunset = computed(() => q.data.value?.sunset ?? null);
 
-// Eelistame WeatherAPI ikooni (ühtne, täpne), kui võti on seatud
+// Eelistame päris ilmaikooni API-st (värviline, ilmale vastav)
 const todayWeatherIconUrl = computed(() => {
   const weatherapi = q.data.value?.weatherapiIcon;
   if (weatherapi) return weatherapi;
   const icon = q.data.value?.openWeatherIcon;
   if (!icon) return null;
   return `https://openweathermap.org/img/wn/${icon}@2x.png`;
+});
+
+const weatherLabelNormalized = computed(() => (todayWeatherLabel.value ?? '').toLowerCase());
+
+const fallbackWeatherSymbol = computed(() => {
+  const label = weatherLabelNormalized.value;
+  if (label.includes('päike') || label.includes('selge')) return 'light_mode';
+  if (label.includes('äike')) return 'thunderstorm';
+  if (label.includes('vihm')) return 'rainy';
+  if (label.includes('lumi')) return 'weather_snowy';
+  if (label.includes('udu') || label.includes('häg')) return 'foggy';
+  return 'cloud';
+});
+
+const fallbackWeatherColorClass = computed(() => {
+  const label = weatherLabelNormalized.value;
+  if (label.includes('päike') || label.includes('selge')) return 'text-amber-400';
+  if (label.includes('äike')) return 'text-violet-400';
+  if (label.includes('vihm')) return 'text-sky-400';
+  if (label.includes('lumi')) return 'text-cyan-200';
+  if (label.includes('udu') || label.includes('häg')) return 'text-slate-300';
+  return 'text-slate-200';
 });
 
 function dailyIconUrl(icon: string | null | undefined, retina = false) {
@@ -158,12 +180,18 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
           </span>
         </div>
 
-        <div v-if="q.isSuccess.value" class="mt-1 flex items-baseline justify-between gap-3 text-sm text-muted-foreground">
-          <span class="font-medium">
-            Max {{ Math.round(tMax ?? 0) }}° / Min {{ Math.round(tMin ?? 0) }}°
+        <div v-if="q.isSuccess.value" class="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-secondary/60 px-2.5 py-1 ring-1 ring-border/70">
+            <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">device_thermostat</span>
+            <span class="text-foreground/85 font-medium">
+              Max {{ Math.round(tMax ?? 0) }}° / Min {{ Math.round(tMin ?? 0) }}°
+            </span>
           </span>
-          <span v-if="todayWeatherLabel" class="font-semibold text-right max-w-40">
-            {{ todayWeatherLabel }}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-secondary/60 px-2.5 py-1 ring-1 ring-border/70">
+            <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">partly_cloudy_day</span>
+            <span class="text-foreground/85 font-semibold truncate max-w-40">
+              {{ todayWeatherLabel ?? '—' }}
+            </span>
           </span>
         </div>
 
@@ -176,36 +204,39 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
             <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">water_drop</span>
             <span class="text-foreground/80">{{ humidity != null ? `${humidity}%` : '—' }}</span>
           </span>
-          <template v-if="sunrise || sunset">
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-secondary/60 px-2.5 py-1 ring-1 ring-border/70">
-              <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">wb_twilight</span>
-              <span class="text-foreground/80">{{ sunrise ? `Tõuseb ${sunrise}` : '—' }}</span>
-            </span>
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-secondary/60 px-2.5 py-1 ring-1 ring-border/70">
-              <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">nightlight_round</span>
-              <span class="text-foreground/80">{{ sunset ? `Loojub ${sunset}` : '—' }}</span>
-            </span>
-          </template>
+        </div>
+        <div v-if="q.isSuccess.value && (sunrise || sunset)" class="mt-2 grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-secondary/60 px-2.5 py-1 ring-1 ring-border/70">
+            <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">wb_twilight</span>
+            <span class="text-foreground/80">{{ sunrise ? `Tõuseb ${sunrise}` : '—' }}</span>
+          </span>
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-secondary/60 px-2.5 py-1 ring-1 ring-border/70">
+            <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">nightlight_round</span>
+            <span class="text-foreground/80">{{ sunset ? `Loojub ${sunset}` : '—' }}</span>
+          </span>
         </div>
       </div>
 
       <div class="flex flex-col items-end">
-        <img
-          v-if="q.isSuccess.value && todayWeatherIconUrl"
-          :src="todayWeatherIconUrl"
-          alt=""
-          class="w-28 h-28 sm:w-30 sm:h-30 object-contain drop-shadow-sm block"
-          width="120"
-          height="120"
-        />
-        <span
-          v-else-if="q.isSuccess.value"
-          class="material-symbols-outlined text-primary drop-shadow-sm block leading-none"
-          style="font-size: 7.5rem; font-variation-settings: 'opsz' 64;"
-          aria-hidden="true"
-        >
-          cloud
-        </span>
+        <div class="rounded-full bg-secondary/60 ring-1 ring-border/70 p-1.5 sm:p-2">
+          <img
+            v-if="q.isSuccess.value && todayWeatherIconUrl"
+            :src="todayWeatherIconUrl"
+            alt=""
+            class="w-24 h-24 sm:w-28 sm:h-28 object-contain drop-shadow-sm block"
+            width="112"
+            height="112"
+          />
+          <span
+            v-else-if="q.isSuccess.value"
+            class="material-symbols-outlined drop-shadow-sm block leading-none"
+            :class="fallbackWeatherColorClass"
+            style="font-size: 6.75rem; font-variation-settings: 'opsz' 64;"
+            aria-hidden="true"
+          >
+            {{ fallbackWeatherSymbol }}
+          </span>
+        </div>
 
         <!-- Label kuvatakse vasakus veerus Max/Min rea paremas servas -->
       </div>

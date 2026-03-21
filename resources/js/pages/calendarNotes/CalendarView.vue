@@ -158,18 +158,15 @@ function selectDay(day: number) {
 
   <AppLayout :breadcrumbs="breadcrumbs">
     <div class="page page-with-bottomnav">
-      <div class="page-container-wide pb-8 space-y-8">
+      <div class="page-container-wide pb-8 space-y-4">
         <DiaryHeader
           title="Kalender"
-          title-class="text-lg font-semibold"
           header-class="pt-6"
-          top-row-class="mb-3"
-          bottom-row-class="mb-4"
-        />
-
-        <div class="flex items-center justify-center">
-          <CalendarSwitchTabs active="day" />
-        </div>
+        >
+          <div class="flex items-center justify-center">
+            <CalendarSwitchTabs active="day" />
+          </div>
+        </DiaryHeader>
 
         <!-- Calendar card -->
         <section class="card p-4">
