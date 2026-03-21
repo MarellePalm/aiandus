@@ -23,7 +23,18 @@ class WeatherController extends Controller
         if ($id >= 300 && $id < 400) return 'Kerge vihm';
         if ($id >= 500 && $id < 600) return 'Vihm';
         if ($id >= 600 && $id < 700) return 'Lumi';
-        if ($id >= 700 && $id < 800) return 'Udu';
+        if ($id >= 700 && $id < 800) {
+            return match ($id) {
+                701, 741 => 'Udu',
+                711 => 'Suits',
+                721 => 'Hägusus',
+                731, 751, 761 => 'Tolmune',
+                762 => 'Tuhk õhus',
+                771 => 'Tuuleiilid',
+                781 => 'Tornaado',
+                default => 'Hägune',
+            };
+        }
         return 'Muutlik';
     }
 

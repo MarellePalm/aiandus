@@ -18,6 +18,22 @@ const ZODIAC_NAMES_ET = [
 
 export type ZodiacSignName = (typeof ZODIAC_NAMES_ET)[number];
 
+/** „Kuu on …“ — kohakääne (Jääras, Sõnnis, …). */
+export const MOON_SIGN_INESSIVE_ET: Record<ZodiacSignName, string> = {
+  Jäär: 'Jääras',
+  Sõnn: 'Sõnnis',
+  Kaksikud: 'Kaksikutes',
+  Vähk: 'Vähikus',
+  Lõvi: 'Lõvis',
+  Neitsi: 'Neitsis',
+  Kaalud: 'Kaaludes',
+  Skorpion: 'Skorpionis',
+  Ambur: 'Amburis',
+  Kaljukits: 'Kaljukitses',
+  Veevalaja: 'Veevalajas',
+  Kalad: 'Kalades',
+};
+
 /** Biodünaamika päevatüüp kuu tähtkuju järgi (Maria Thun / aiapäevik). */
 export type BiodynamicDayType = 'leaf' | 'fruit' | 'root' | 'flower';
 
@@ -148,6 +164,23 @@ function longitudeToSignIndex(longitudeDeg: number): number {
   return i >= 0 ? i : i + 12;
 }
 
+/**
+ * Hetk, mille järgi arvutada Kuu tähtkuju ja biodünaamika päeva tüüpi kalendripäeva kohta.
+ * - Sama päeva jaoks mis “täna”: praegune kellaaeg (ühtib dashboardi “praegu” plokiga).
+ * - Muul päeval: kell 12:00 kohalikku aega — väldib 00:00 probleemi (UTC päeva nihkumist)
+ *   ja on üks stabiilne punkt ööpäeva sees (erinevalt “öö algusest”).
+ */
+export function calendarMomentForZodiac(d: Date): Date {
+  const now = new Date();
+  const y = d.getFullYear();
+  const m = d.getMonth();
+  const day = d.getDate();
+  if (y === now.getFullYear() && m === now.getMonth() && day === now.getDate()) {
+    return now;
+  }
+  return new Date(y, m, day, 12, 0, 0, 0);
+}
+
 /** Päikese tähtkuju antud kuupäeva järgi (eesti keeles). */
 export function getSunSign(date = new Date()): ZodiacSignName {
   return ZODIAC_NAMES_ET[longitudeToSignIndex(sunLongitudeDeg(date))];
@@ -184,6 +217,34 @@ export function getBiodynamicKeywords(dayType: BiodynamicDayType): BiodynamicInf
   return BIODYNAMIC_ET[dayType];
 }
 
+/** „Kui Kuu on selles märgis“ — soe lühitekst (traditsioon, mitte tehniline). */
+export const ZODIAC_NARRATIVE_UI_ET: Record<ZodiacSignName, string> = {
+  Jäär:
+    'Aktiivne ja kiire aeg. Sobib alustamiseks, külvamiseks ja viljataimedele tähelepanu andmiseks. Hea päev, kui tahad midagi käima lükata. Biodünaamilises käsitluses kuulub Jäär vilja- ja seemnepäevade hulka.',
+  Sõnn:
+    'Rahulik, viljakas ja maandatud aeg. Sobib juurdumiseks, istutamiseks ja kõigele, mis vajab stabiilsust. Biodünaamikas juurepäev — kui kuu on Sõnnis, tasakaalustab see kasvava kuu „hoogu“ pigem juurte ja mullaga kui ainult ülespoole kasvuga.',
+  Kaksikud:
+    'Kerge ja liikuv aeg. Sobib lilledele, kergematele töödele ja mitme asja vahel toimetamiseks. Õiepäev.',
+  Vähk:
+    'Pehme ja kasvule suunatud aeg. Sobib lehtköögiviljadele, ürtidele ja rohelisele kasvule. Lehepäev.',
+  Lõvi:
+    'Tugev ja nähtav aeg. Sobib vilja, seemnete ja küpsemise teemaga seotud töödeks. Viljapäev.',
+  Neitsi:
+    'Korralik ja praktiline aeg. Sobib juurviljadele, ümberistutamiseks ja mulla eest hoolitsemiseks. Juurepäev.',
+  Kaalud:
+    'Tasakaalu ja ilu aeg. Sobib lilledele, ilutaimedele ja harmooniat loovatele aiatöödele. Õiepäev.',
+  Skorpion:
+    'Sügav ja jõuline kasvuaeg. Sobib lehtedele, mahlasele rohelusele ja elujõulistele taimedele. Lehepäev.',
+  Ambur:
+    'Edasi liikuva energiaga aeg. Sobib viljataimedele, seemnetele ja kasvamist toetavatele töödele. Viljapäev.',
+  Kaljukits:
+    'Töökas ja vastupidav aeg. Sobib juurtele, tugevdamisele ja pika tulemusega töödele. Juurepäev.',
+  Veevalaja:
+    'Õhuline ja veidi katsetuslik aeg. Sobib lilledele ja loovamatele aiatöödele. Õiepäev.',
+  Kalad:
+    'Pehme, voolav ja hoolitsev aeg. Sobib lehtköögiviljadele, ürtidele ja rohelisele kasvule. Lehepäev.',
+};
+
 /** Tähtkujud + biodünaamika info (UI jaoks). */
 export function getZodiacInfo(date = new Date()) {
   const moonSign = getMoonSign(date);
@@ -193,10 +254,12 @@ export function getZodiacInfo(date = new Date()) {
   return {
     sunSign: getSunSign(date),
     moonSign,
+    moonSignInessive: MOON_SIGN_INESSIVE_ET[moonSign],
     biodynamicDayType: biodynamicDay,
     biodynamicDayLabel: info.label,
     biodynamicHint: formatHintEt(info),
     biodynamicDescription: formatDescriptionEt(info),
+    signNarrative: ZODIAC_NARRATIVE_UI_ET[moonSign],
     element: info.element,
     crops: info.crops,
     tasks: info.tasks,

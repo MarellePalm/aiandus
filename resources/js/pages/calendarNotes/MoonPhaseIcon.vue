@@ -1,36 +1,49 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+/** `moon.ts` faasi indeksid */
+const PHASE_NEW_MOON = 0;
+const PHASE_FULL_MOON = 4;
+
 /**
- * Kuu ikoon vastavalt kuuseisule: valgustatus (illumination) määrab täpselt,
- * kui suur osa kuust on valge; faas määrab vari vasakule (kasvav) või paremale (kahanev).
+ * Viitekalendri loogika: varjukülg roheline (primary), valgustatud osa valge.
+ * Ring (stroke) koguaeg ümber; sisu samm-sammult lunationT + mask.
  */
 const props = withDefaults(
   defineProps<{
-    /** Faasi indeks 0..7 – kasvav 0–4 (vari vasakul), kahanev 5–7 (vari paremal) */
-    phaseIndex?: number;
-    /** Valgustatus 0..1 – täpne osa kuust, mis on valgustatud */
-    illumination?: number;
+    lunationT: number;
+    phaseIndex: number;
     size?: number;
   }>(),
-  { phaseIndex: 0, illumination: 0, size: 64 }
+  { size: 64 },
 );
 
-const r = props.size / 2 - 2;
 const cx = props.size / 2;
 const cy = props.size / 2;
-const phase = Math.max(0, Math.min(7, props.phaseIndex ?? 0));
-const illum = Math.max(0, Math.min(1, props.illumination ?? 0));
 
-// Vari asukoht: kasvaval (0–4) vari vasakul, kahaneval (5–7) vari paremal.
-// Kasutame illuminationit, et valgustatud osa oleks täpselt õige (nt 73%).
-const shadowOffset = computed(() => {
-  if (phase <= 4) {
-    return -2 * r * illum;
-  }
-  return 2 * r * (1 - illum);
+const outerR = props.size / 2 - 2;
+const ringStroke = Math.max(1.5, props.size * 0.055);
+const innerR = Math.max(2, outerR - ringStroke / 2 - 0.5);
+
+const t = computed(() => {
+  const x = props.lunationT;
+  if (Number.isNaN(x)) return 0;
+  return Math.max(0, Math.min(1, x));
 });
-const maskId = computed(() => `moon-phase-mask-${phase}-${illum.toFixed(2)}-${props.size}`);
+
+const isNewMoonPhase = computed(() => props.phaseIndex === PHASE_NEW_MOON);
+const isFullMoonPhase = computed(() => props.phaseIndex === PHASE_FULL_MOON);
+
+const shadowOffset = computed(() => {
+  if (isFullMoonPhase.value) {
+    return 4 * innerR;
+  }
+  return -2 * innerR * Math.cos(2 * Math.PI * t.value);
+});
+
+const maskId = computed(
+  () => `moon-mask-${t.value.toFixed(4)}-p${props.phaseIndex}-${props.size}`,
+);
 </script>
 
 <template>
@@ -47,17 +60,55 @@ const maskId = computed(() => `moon-phase-mask-${phase}-${illum.toFixed(2)}-${pr
         <circle
           :cx="cx + shadowOffset"
           :cy="cy"
-          :r="r"
+          :r="innerR"
           fill="black"
         />
       </mask>
     </defs>
+
+    <!-- Uuskuu: ainult varjukülg (kogu ketas roheline) -->
+    <circle
+      v-if="isNewMoonPhase"
+      :cx="cx"
+      :cy="cy"
+      :r="innerR"
+      fill="currentColor"
+    />
+
+    <!-- Täiskuu: ainult valgus (kogu ketas valge) -->
+    <circle
+      v-else-if="isFullMoonPhase"
+      :cx="cx"
+      :cy="cy"
+      :r="innerR"
+      fill="#ffffff"
+    />
+
+    <!-- Vahefaasid: roheline taust + valge valgustatud osa (mask) — kasvav/kahanev ei ole „üleni roheline“ -->
+    <g v-else>
+      <circle
+        :cx="cx"
+        :cy="cy"
+        :r="innerR"
+        fill="currentColor"
+      />
+      <circle
+        :cx="cx"
+        :cy="cy"
+        :r="innerR"
+        fill="#ffffff"
+        :mask="`url(#${maskId})`"
+      />
+    </g>
+
+    <!-- Välisring alati -->
     <circle
       :cx="cx"
       :cy="cy"
-      :r="r"
-      fill="currentColor"
-      :mask="`url(#${maskId})`"
+      :r="outerR"
+      fill="none"
+      stroke="currentColor"
+      :stroke-width="ringStroke"
     />
   </svg>
 </template>

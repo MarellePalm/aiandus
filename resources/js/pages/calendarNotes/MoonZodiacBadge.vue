@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { getZodiacInfo } from '@/lib/moon/zodiac'
+import { calendarMomentForZodiac, getZodiacInfo } from '@/lib/moon/zodiac'
 
 const props = withDefaults(defineProps<{ date?: Date }>(), { date: undefined })
 const dateRef = computed(() => props.date ?? new Date())
-const zodiac = computed(() => getZodiacInfo(dateRef.value))
+const zodiac = computed(() => getZodiacInfo(calendarMomentForZodiac(dateRef.value)))
 
 const SIGN_SYMBOL: Record<string, string> = {
   Jäär:'♈', Sõnn:'♉', Kaksikud:'♊', Vähk:'♋', Lõvi:'♌', Neitsi:'♍',
