@@ -2,11 +2,11 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
+import CardActionsMenu from '@/components/CardActionsMenu.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 
 import DeleteConfirmModal from './DeleteConfirmModal.vue';
 import EditSeedModal from './EditSeedModal.vue';
-import SeedActionButton from './SeedActionButton.vue';
 
 type Seed = {
     id: number;
@@ -60,7 +60,7 @@ const deleteSeed = () => {
         >
             <DiaryHeader
                 title="Seemne detail"
-                title-class="max-w-[7rem] truncate text-base font-semibold sm:max-w-none sm:text-lg"
+                title-class="text-forest text-3xl font-bold tracking-tight max-w-[12rem] truncate sm:max-w-none"
             >
                 <template #leading>
                     <Link href="/seeds" class="flex h-10 w-10 items-center justify-center rounded-full hover:bg-primary/10">
@@ -68,22 +68,11 @@ const deleteSeed = () => {
                     </Link>
                 </template>
                 <template #actions>
-                        <SeedActionButton
-                            :absolute="false"
-                            position-class="h-9 w-9 sm:h-10 sm:w-10"
-                            aria-label="Muuda"
-                            @click="openEditModal"
-                        >
-                            <span class="material-symbols-outlined">edit</span>
-                        </SeedActionButton>
-                        <SeedActionButton
-                            :absolute="false"
-                            position-class="h-9 w-9 sm:h-10 sm:w-10"
-                            aria-label="Kustuta"
-                            @click="openDeleteModal"
-                        >
-                            <span class="material-symbols-outlined">delete</span>
-                        </SeedActionButton>
+                    <CardActionsMenu
+                        placement="inline"
+                        @edit="openEditModal"
+                        @delete="openDeleteModal"
+                    />
                 </template>
             </DiaryHeader>
 

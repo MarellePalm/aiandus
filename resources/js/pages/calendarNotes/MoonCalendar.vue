@@ -254,18 +254,25 @@ onMounted(() => scrollDescriptionToCenter('auto'));
   <Head title="Kuufaaside kalender" />
   <AppLayout>
     <div class="page page-with-bottomnav">
-      <div class="page-container-wide pb-8 space-y-4">
-        <DiaryHeader title="Kuufaaside kalender" header-class="pt-6">
-          <div class="flex items-center justify-center">
-            <CalendarSwitchTabs active="moon" />
-          </div>
-        </DiaryHeader>
+      <div class="bg-background-light text-forest font-display min-h-screen antialiased">
+        <div class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
+          <DiaryHeader
+            title="Kuufaaside kalender"
+            header-class="pt-6"
+            top-row-class="mb-3"
+            bottom-row-class="mb-4"
+          >
+            <div class="flex items-center justify-center pb-2">
+              <CalendarSwitchTabs active="moon" />
+            </div>
+          </DiaryHeader>
 
-        <p
-          class="max-w-lg mx-auto w-full text-sm leading-relaxed text-foreground/85 px-1 sm:px-0"
-        >
-          {{ MOON_INTRO_HOME_ET }}
-        </p>
+          <main class="flex-1 px-6 py-4 md:px-8 space-y-6">
+            <p
+              class="max-w-lg mx-auto w-full text-sm leading-relaxed text-foreground/85 px-1 sm:px-0"
+            >
+              {{ MOON_INTRO_HOME_ET }}
+            </p>
 
         <section class="card p-3 sm:p-4 md:p-5 max-w-lg mx-auto w-full">
           <div class="flex items-center justify-between mb-3">
@@ -567,13 +574,16 @@ onMounted(() => scrollDescriptionToCenter('auto'));
         >
           {{ MOON_FOOTER_INFO_ET }}
         </p>
-        <p class="max-w-lg mx-auto w-full text-[11px] text-foreground/55 leading-relaxed px-1 sm:px-0"
+        <p
+          class="max-w-lg mx-auto w-full text-[11px] text-foreground/55 leading-relaxed px-1 sm:px-0"
         >
           {{ MOON_TRADITION_SCIENCE_NOTE_ET }}
         </p>
-      </div>
+          </main>
+        </div>
 
-      <BottomNav active="calendar" />
+        <BottomNav active="calendar" />
+      </div>
     </div>
   </AppLayout>
 </template>

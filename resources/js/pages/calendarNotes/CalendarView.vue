@@ -158,16 +158,20 @@ function selectDay(day: number) {
 
   <AppLayout :breadcrumbs="breadcrumbs">
     <div class="page page-with-bottomnav">
-      <div class="page-container-wide pb-8 space-y-4">
-        <DiaryHeader
-          title="Kalender"
-          header-class="pt-6"
-        >
-          <div class="flex items-center justify-center">
-            <CalendarSwitchTabs active="day" />
-          </div>
-        </DiaryHeader>
+      <div class="bg-background-light text-forest font-display min-h-screen antialiased">
+        <div class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
+          <DiaryHeader
+            title="Kalender"
+            header-class="pt-6"
+            top-row-class="mb-3"
+            bottom-row-class="mb-4"
+          >
+            <div class="flex items-center justify-center pb-2">
+              <CalendarSwitchTabs active="day" />
+            </div>
+          </DiaryHeader>
 
+          <main class="flex-1 px-6 py-4 md:px-8 space-y-6">
         <!-- Calendar card -->
         <section class="card p-4">
           <div class="flex items-center justify-between mb-4">
@@ -388,11 +392,13 @@ function selectDay(day: number) {
             </Link>
           </div>
         </section>
+          </main>
+        </div>
+
+        <FloatingPlusButton aria-label="Lisa märge" :size-px="52" :icon-size-px="30" @click="onAdd" />
+
+        <BottomNav active="calendar" />
       </div>
-
-      <FloatingPlusButton aria-label="Lisa märge" :size-px="52" :icon-size-px="30" @click="onAdd" />
-
-      <BottomNav active="calendar" />
     </div>
   </AppLayout>
 </template>

@@ -181,7 +181,7 @@ const fallbackImage = "https://picsum.photos/200/200";
         >
           <DiaryHeader
             :title="props.category.name"
-            title-class="text-lg font-bold tracking-tight absolute left-1/2 -translate-x-1/2"
+            title-class="text-forest text-3xl font-bold tracking-tight absolute left-1/2 -translate-x-1/2"
             header-class="pt-6 border-b border-primary/10"
             top-row-class="mb-2"
             bottom-row-class="mb-0"

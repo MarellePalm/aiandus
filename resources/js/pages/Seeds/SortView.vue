@@ -159,7 +159,7 @@ onBeforeUnmount(() => {
                 <div class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
                     <DiaryHeader
                         :title="props.category.name"
-                        title-class="max-w-[7.5rem] truncate text-base font-bold tracking-tight sm:max-w-none sm:text-xl"
+                        title-class="text-forest text-3xl font-bold tracking-tight max-w-[12rem] truncate sm:max-w-none"
                         header-class="pt-6"
                     >
                         <template #leading>
@@ -214,7 +214,7 @@ onBeforeUnmount(() => {
                                     </div>
 
                                     <div class="min-w-0 flex-1">
-                                        <h3 class="truncate text-lg font-semibold italic">{{ seed.name }}</h3>
+                                        <h3 class="truncate text-lg font-semibold">{{ seed.name }}</h3>
                                         <p class="mt-1 text-sm text-text-muted">Ostetud: {{ seed.year ?? '-' }}</p>
                                         <p class="text-sm text-text-muted">Aegub: {{ seed.expires_at ?? '-' }}</p>
                                     </div>
