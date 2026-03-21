@@ -60,7 +60,7 @@ const deleteSeed = () => {
         >
             <DiaryHeader
                 title="Seemne detail"
-                title-class="max-w-[7rem] truncate text-base font-semibold sm:max-w-none sm:text-lg"
+                title-class="text-forest text-3xl font-bold tracking-tight max-w-[12rem] truncate sm:max-w-none"
             >
                 <template #leading>
                     <Link href="/seeds" class="flex h-10 w-10 items-center justify-center rounded-full hover:bg-primary/10">
