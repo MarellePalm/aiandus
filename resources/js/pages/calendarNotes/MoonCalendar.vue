@@ -98,19 +98,20 @@ watch(viewDate, () => syncSelectedDayWithMonth(), { immediate: true });
   <Head title="Kuufaaside kalender" />
   <AppLayout>
     <div class="page page-with-bottomnav">
-      <div class="page-container-wide pb-8 space-y-8">
-        <DiaryHeader
-          title="Kuufaaside kalender"
-          title-class="text-lg font-semibold"
-          header-class="pt-6"
-          top-row-class="mb-3"
-          bottom-row-class="mb-4"
-        />
+      <div class="bg-background-light text-forest font-display min-h-screen antialiased">
+        <div class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
+          <DiaryHeader
+            title="Kuufaaside kalender"
+            header-class="pt-6"
+            top-row-class="mb-3"
+            bottom-row-class="mb-4"
+          >
+            <div class="flex items-center justify-center pb-2">
+              <CalendarSwitchTabs active="moon" />
+            </div>
+          </DiaryHeader>
 
-        <div class="flex items-center justify-center">
-          <CalendarSwitchTabs active="moon" />
-        </div>
-
+          <main class="flex-1 px-6 py-4 md:px-8 space-y-6">
         <p class="text-sm text-muted-foreground">
           Kuufaas ja biodünaamiline päevatüüp (lehepäev, viljapäev, juurepäev, õiepäev) aitavad planeerida aiandustöid.
         </p>
@@ -229,9 +230,11 @@ watch(viewDate, () => syncSelectedDayWithMonth(), { immediate: true });
           </div>
         </section>
         </section>
-      </div>
+          </main>
+        </div>
 
-      <BottomNav active="calendar" />
+        <BottomNav active="calendar" />
+      </div>
     </div>
   </AppLayout>
 </template>

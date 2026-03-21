@@ -115,15 +115,17 @@ function removePlantFromBed(plant: PlantInBed) {
   <Head title="Aiaplaan" />
   <AppLayout :breadcrumbs="breadcrumbs">
     <div class="page page-with-bottomnav">
-      <div class="page-container-wide py-6 sm:py-8 space-y-6 sm:space-y-8">
-        <DiaryHeader
-          title="Minu peenrad"
-          header-class="pt-4 sm:pt-6"
-          top-row-class="mb-3"
-          bottom-row-class="mb-4"
-        />
+      <div class="bg-background-light text-forest font-display min-h-screen antialiased">
+        <div class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
+          <DiaryHeader
+            title="Minu peenrad"
+            header-class="pt-6"
+            top-row-class="mb-3"
+            bottom-row-class="mb-4"
+          />
 
-        <div class="w-full space-y-6 sm:space-y-8">
+          <main class="flex-1 px-6 py-4 md:px-8">
+        <div class="space-y-6 sm:space-y-8">
         <!-- Peenrad: pildiline vaade -->
         <section class="space-y-6">
           <p class="text-sm text-muted-foreground">
@@ -431,16 +433,18 @@ function removePlantFromBed(plant: PlantInBed) {
           </div>
         </div>
       </Teleport>
+          </main>
+        </div>
+
+        <FloatingPlusButton
+          aria-label="Lisa peenar"
+          :size-px="52"
+          :icon-size-px="30"
+          @click="router.visit('/map/beds/new')"
+        />
+
+        <BottomNav active="map" />
       </div>
-
-      <FloatingPlusButton
-        aria-label="Lisa peenar"
-        :size-px="52"
-        :icon-size-px="30"
-        @click="router.visit('/map/beds/new')"
-      />
-
-      <BottomNav active="map" />
     </div>
   </AppLayout>
 </template>

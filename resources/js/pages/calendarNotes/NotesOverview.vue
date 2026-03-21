@@ -145,7 +145,7 @@ watch(query, () => {
 
     <DiaryHeader
       title="Minu märkmed"
-      title-class="text-xl font-bold tracking-tight"
+      title-class="text-forest text-3xl font-bold tracking-tight"
       header-class="pt-6"
       top-row-class="mb-2"
       bottom-row-class="mb-3"
