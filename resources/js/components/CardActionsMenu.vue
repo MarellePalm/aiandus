@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
+
+const props = withDefaults(
+  defineProps<{ placement?: 'overlay' | 'inline' }>(),
+  { placement: 'overlay' }
+);
 
 const emit = defineEmits<{
   (e: 'edit'): void
@@ -8,6 +13,18 @@ const emit = defineEmits<{
 
 const open = ref(false);
 const root = ref<HTMLElement | null>(null);
+
+const rootClass = computed(() =>
+  props.placement === 'inline'
+    ? 'relative'
+    : 'absolute top-2 right-2 z-20'
+);
+
+const buttonClass = computed(() =>
+  props.placement === 'inline'
+    ? 'flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10'
+    : 'flex h-8 w-8 items-center justify-center rounded-full bg-white/75 text-primary shadow-sm backdrop-blur-md transition hover:scale-105 hover:bg-white'
+);
 
 const toggle = () => {
   open.value = !open.value;
@@ -25,11 +42,11 @@ const onClickOutside = (e: MouseEvent) => {
 };
 
 onMounted(() => {
-  document.addEventListener('click', onClickOutside);
+  document.addEventListener('click', onClickOutside, true);
 });
 
 onBeforeUnmount(() => {
-  document.removeEventListener('click', onClickOutside);
+  document.removeEventListener('click', onClickOutside, true);
 });
 
 const onEdit = () => {
@@ -44,13 +61,14 @@ const onDelete = () => {
 </script>
 
 <template>
-  <div ref="root" class="absolute top-2 right-2 z-20">
+  <div ref="root" :class="rootClass">
     <button
       type="button"
-      class="flex h-8 w-8 items-center justify-center rounded-full bg-white/75 text-primary shadow-sm backdrop-blur-md transition hover:scale-105 hover:bg-white"
+      :class="buttonClass"
+      aria-label="Menüü"
       @click.prevent.stop="toggle"
     >
-      <span class="material-symbols-outlined text-[18px]">more_horiz</span>
+      <span class="material-symbols-outlined" :class="placement === 'inline' ? 'text-xl' : 'text-[18px]'">more_horiz</span>
     </button>
 
     <transition name="menu">
@@ -60,18 +78,16 @@ const onDelete = () => {
         @click.stop
       >
         <button
-          class="flex w-full items-center gap-2 px-4 py-3 text-left text-sm hover:bg-neutral-100"
+          class="w-full px-4 py-3 text-left text-sm hover:bg-primary/5"
           @click.prevent.stop="onEdit"
         >
-          <span class="material-symbols-outlined text-[18px]">edit</span>
           Muuda
         </button>
 
         <button
-          class="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50"
+          class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50"
           @click.prevent.stop="onDelete"
         >
-          <span class="material-symbols-outlined text-[18px]">delete</span>
           Kustuta
         </button>
       </div>

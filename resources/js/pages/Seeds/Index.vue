@@ -8,9 +8,9 @@ import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 
-import EditCategoryModal from '../../components/EditCategoryModal.vue';
+import CardActionsMenu from '@/components/CardActionsMenu.vue';
+import EditCategoryModal from '@/components/EditCategoryModal.vue';
 
-import CategoryCardActions from './CategoryCardActions.vue';
 import DeleteConfirmModal from './DeleteConfirmModal.vue';
 import SearchModal from './SearchModal.vue';
 
@@ -201,12 +201,37 @@ const openEditCategory = (category: Category) => {
                                 </div>
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
 
-                                <CategoryCardActions
-                                    :is-favorite="cat.is_favorite === true"
-                                    @delete="openDeleteModal(cat.id)"
-                                    @favorite="toggleFavorite(cat.id)"
+                                <CardActionsMenu
                                     @edit="openEditCategory(cat)"
+                                    @delete="openDeleteModal(cat.id)"
                                 />
+                                <button
+                                    type="button"
+                                    class="absolute top-2 left-2 z-10 flex h-8 w-8 items-center justify-center rounded-full shadow-sm backdrop-blur-md transition hover:scale-105"
+                                    :class="
+                                        cat.is_favorite === true
+                                            ? 'bg-rose-50 ring-1 ring-rose-200'
+                                            : 'bg-white/70 ring-1 ring-black/10 hover:bg-white'
+                                    "
+                                    @click.prevent.stop="toggleFavorite(cat.id)"
+                                    aria-label="Lisa lemmikuks"
+                                >
+                                    <span
+                                        class="material-symbols-outlined text-[18px] transition"
+                                        :class="
+                                            cat.is_favorite === true
+                                                ? 'text-rose-600 drop-shadow-sm'
+                                                : 'text-[#2E2E2E]/45'
+                                        "
+                                        :style="
+                                            cat.is_favorite === true
+                                                ? { fontVariationSettings: `'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24` }
+                                                : { fontVariationSettings: `'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24` }
+                                        "
+                                    >
+                                        favorite
+                                    </span>
+                                </button>
 
                                 <div class="absolute bottom-0 left-0 w-full p-4 text-white">
                                     <span class="mb-1 inline-block rounded-md bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase backdrop-blur-md">

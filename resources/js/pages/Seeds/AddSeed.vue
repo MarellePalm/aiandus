@@ -183,7 +183,7 @@ onBeforeUnmount(() => {
     <!-- Lehe režiim: /seeds/create -->
     <template v-if="isStandalone">
         <Head title="Lisa varu" />
-        <div class="min-h-screen bg-[#FAF8F4] p-4 pb-8">
+        <div class="min-h-screen bg-background-light text-forest font-display antialiased p-4 pb-8">
             <Link
                 href="/seeds"
                 class="inline-flex items-center gap-1 text-[#2E2E2E]/70 hover:text-[#2E2E2E] mb-4"

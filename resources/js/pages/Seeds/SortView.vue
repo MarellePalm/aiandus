@@ -214,7 +214,7 @@ onBeforeUnmount(() => {
                                     </div>
 
                                     <div class="min-w-0 flex-1">
-                                        <h3 class="truncate text-lg font-semibold italic">{{ seed.name }}</h3>
+                                        <h3 class="truncate text-lg font-semibold">{{ seed.name }}</h3>
                                         <p class="mt-1 text-sm text-text-muted">Ostetud: {{ seed.year ?? '-' }}</p>
                                         <p class="text-sm text-text-muted">Aegub: {{ seed.expires_at ?? '-' }}</p>
                                     </div>
