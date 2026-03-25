@@ -1,0 +1,18 @@
+name: Production deploy
+
+on: workflow_dispatch
+
+concurrency: production_environment
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Deploy
+        uses: deployphp/action@v1
+        with:
+          deployer-version: "7.5.12"
+          dep: deploy
+          private-key: ${{ secrets.PRIVATE_KEY }}
