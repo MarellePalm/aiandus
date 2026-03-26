@@ -12,7 +12,10 @@ class PlantController extends Controller
 {
     public function index()
     {
+       $user = request()->user();
+
        $categories = Category::query()
+    ->where('user_id', $user->id)
     ->where('scope', Category::SCOPE_PLANT)
     ->withCount([
         'plants as count' => function ($query) {
@@ -29,19 +32,23 @@ class PlantController extends Controller
 
     public function category(string $slug)
 {
+    $user = request()->user();
+
     $category = Category::query()
+        ->where('user_id', $user->id)
         ->where('scope', Category::SCOPE_PLANT)
         ->where('slug', $slug)
         ->firstOrFail();
 
     $categories = Category::query()
+        ->where('user_id', $user->id)
         ->where('scope', Category::SCOPE_PLANT)
         ->select('id', 'name', 'slug')
         ->orderBy('name')
         ->get();
 
     $plants = Plant::query()
-        ->where('user_id', request()->user()->id)
+        ->where('user_id', $user->id)
         ->where('category_id', $category->id)
         ->orderByDesc('created_at')
         ->get()
@@ -104,10 +111,14 @@ public function water(Request $request, Plant $plant)
 
 public function store(Request $request)
 {
+    $user = $request->user();
+
     $data = $request->validate([
         'category_id' => [
             'required',
-            Rule::exists('categories', 'id')->where('scope', Category::SCOPE_PLANT),
+            Rule::exists('categories', 'id')
+                ->where('scope', Category::SCOPE_PLANT)
+                ->where('user_id', $user->id),
         ],
         'subtitle' => ['required', 'string', 'max:160'],
         'planted_at' => ['required', 'date'],
@@ -122,7 +133,12 @@ public function store(Request $request)
         $imagePath = $request->file('image')->store('plant-images', 'public');
     }
 
-    $category = Category::select('id', 'name', 'slug')->findOrFail($data['category_id']);
+    $category = Category::query()
+        ->where('id', $data['category_id'])
+        ->where('user_id', $user->id)
+        ->where('scope', Category::SCOPE_PLANT)
+        ->select('id', 'name', 'slug')
+        ->firstOrFail();
 
     Plant::create([
         'name' => $data['subtitle'],
@@ -133,7 +149,7 @@ public function store(Request $request)
         'fertilizing_frequency' => $data['fertilizing_frequency'] ?? null,
         'notes' => $data['notes'] ?? null,
         'image_url' => $imagePath ? "/storage/{$imagePath}" : null,
-        'user_id' => $request->user()->id,
+        'user_id' => $user->id,
     ]);
 
     return redirect()

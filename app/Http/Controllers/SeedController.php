@@ -16,6 +16,7 @@ class SeedController extends Controller
         $user = $request->user();
 
         $categories = Category::query()
+            ->where('user_id', $user->id)
             ->where('scope', Category::SCOPE_SEED)
             ->withCount([
                 'seeds as count' => fn ($q) => $q->where('user_id', $user->id),
@@ -41,6 +42,7 @@ class SeedController extends Controller
     {
         $user = $request->user();
         $category = Category::query()
+            ->where('user_id', $user->id)
             ->where('scope', Category::SCOPE_SEED)
             ->where('slug', $slug)
             ->firstOrFail();
@@ -63,6 +65,7 @@ class SeedController extends Controller
             ]);
 
         $categories = Category::query()
+            ->where('user_id', $user->id)
             ->where('scope', Category::SCOPE_SEED)
             ->orderBy('name')
             ->get(['id', 'name', 'slug']);
@@ -80,7 +83,10 @@ class SeedController extends Controller
 
     public function create(Request $request)
     {
+        $user = $request->user();
+
         $categories = Category::query()
+            ->where('user_id', $user->id)
             ->where('scope', Category::SCOPE_SEED)
             ->orderBy('name')
             ->get(['id', 'name', 'slug']);
@@ -96,7 +102,13 @@ class SeedController extends Controller
         $user = $request->user();
 
         $data = $request->validate([
-            'category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->where('scope', Category::SCOPE_SEED)],
+            'category_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('categories', 'id')
+                    ->where('scope', Category::SCOPE_SEED)
+                    ->where('user_id', $user->id),
+            ],
             'name' => ['required', 'string', 'max:160'],
             'amount_text' => ['nullable', 'string', 'max:120'],
             'year' => ['nullable', 'integer', 'between:2000,2100'],
@@ -107,10 +119,18 @@ class SeedController extends Controller
 
         $category = null;
         if (!empty($data['category_id'])) {
-            $category = Category::query()->findOrFail($data['category_id']);
+            $category = Category::query()
+                ->where('id', $data['category_id'])
+                ->where('user_id', $user->id)
+                ->where('scope', Category::SCOPE_SEED)
+                ->firstOrFail();
         } else {
             $category = Category::query()->firstOrCreate(
-                ['scope' => Category::SCOPE_SEED, 'slug' => 'seemned-seed-default'],
+                [
+                    'user_id' => $user->id,
+                    'scope' => Category::SCOPE_SEED,
+                    'slug' => 'seemned-seed-default',
+                ],
                 ['name' => 'Seemned']
             );
         }
