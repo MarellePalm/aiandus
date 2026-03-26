@@ -31,7 +31,7 @@ import { Link } from '@inertiajs/vue3';
 
                 <!-- Pealkiri -->
                 <h1 class="mb-5 text-4xl font-bold tracking-tight text-[#2F2F2F] sm:text-5xl">
-                    Minu Aia Päevik
+                    Minu Aiapäevik
                 </h1>
 
                 <!-- Kirjeldus -->
