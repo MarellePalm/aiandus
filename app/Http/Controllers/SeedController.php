@@ -27,7 +27,7 @@ class SeedController extends Controller
                 'id' => $category->id,
                 'name' => $category->name,
                 'slug' => $category->slug,
-                'image' => $category->image ?: $this->fallbackCategoryImageUrl($category->id),
+                'image' => $category->image,
                 'count' => (int) ($category->count ?? 0),
                 'is_favorite' => (bool) $category->is_favorite,
                 'created_at' => $category->created_at?->toIso8601String(),
@@ -58,7 +58,7 @@ class SeedController extends Controller
                 'amount_text' => $seed->amount_text,
                 'year' => $seed->year,
                 'expires_at' => $seed->expires_at ? $seed->expires_at->format('Y') : null,
-                'image_url' => $seed->image_url ?: $this->fallbackImageUrl($seed->id),
+                'image_url' => $seed->image_url,
                 'notes' => $seed->notes,
                 'is_favorite' => (bool) $seed->is_favorite,
                 'created_at' => $seed->created_at?->toIso8601String(),
@@ -172,7 +172,7 @@ class SeedController extends Controller
                 'amount_text' => $seed->amount_text,
                 'year' => $seed->year,
                 'expires_at' => $seed->expires_at?->format('Y'),
-                'image_url' => $seed->image_url ?: $this->fallbackImageUrl($seed->id),
+                'image_url' => $seed->image_url,
                 'notes' => $seed->notes ?? null,
                 'is_favorite' => (bool) $seed->is_favorite,
             ],
@@ -233,13 +233,4 @@ class SeedController extends Controller
         return redirect()->route('seeds.index');
     }
 
-    private function fallbackImageUrl(int $seedId): string
-    {
-        return "https://picsum.photos/seed/seeme-{$seedId}/640/480";
-    }
-
-    private function fallbackCategoryImageUrl(int $categoryId): string
-    {
-        return "https://picsum.photos/seed/seemnekategooria-{$categoryId}/800/800";
-    }
 }

@@ -119,11 +119,11 @@ const toggleFavorite = (id: number) => {
 };
 
 const tabClass = (key: TabKey) => {
-    const base = 'flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full px-5 border transition-colors';
+    const base = 'flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full px-5 transition-colors';
     if (activeTab.value === key) {
-        return `${base} bg-primary text-white border-primary shadow-sm`;
+        return `${base} bg-primary text-white`;
     }
-    return `${base} bg-beige/60 text-forest border-beige hover:bg-beige`;
+    return `${base} bg-primary/10 text-primary hover:bg-primary/15`;
 };
 
 const resetToAll = () => {
