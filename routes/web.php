@@ -126,6 +126,43 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('map/AddBedPage');
     })->name('map.beds.create');
 
+    Route::get('beds/{bed}', function (\Illuminate\Http\Request $request, Bed $bed) {
+        abort_unless($bed->user_id === $request->user()->id, 403);
+
+        $plantsWithoutBed = Plant::query()
+            ->where('user_id', $request->user()->id)
+            ->whereNull('bed_id')
+            ->orderBy('name')
+            ->with('category:id,name,slug')
+            ->get(['id', 'name', 'image_url', 'category_id'])
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'name' => $p->name,
+                'image_url' => $p->image_url,
+                'category' => $p->category ? ['name' => $p->category->name, 'slug' => $p->category->slug] : null,
+            ]);
+
+        $bed->load(['plants' => fn ($q) => $q->select('id', 'name', 'image_url', 'bed_id', 'position_in_bed')]);
+
+        return Inertia::render('map/BedView', [
+            'bed' => [
+                'id' => $bed->id,
+                'name' => $bed->name,
+                'location' => $bed->location,
+                'rows' => (int) ($bed->rows ?? 3),
+                'columns' => (int) ($bed->columns ?? 3),
+                'layout' => $bed->layout,
+                'plants' => $bed->plants->map(fn ($p) => [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'image_url' => $p->image_url,
+                    'position_in_bed' => $p->position_in_bed,
+                ]),
+            ],
+            'plantsWithoutBed' => $plantsWithoutBed,
+        ]);
+    })->name('beds.show');
+
     Route::get('beds/{bed}/edit', function (\Illuminate\Http\Request $request, Bed $bed) {
         abort_unless($bed->user_id === $request->user()->id, 403);
 

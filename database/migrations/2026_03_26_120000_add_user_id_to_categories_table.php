@@ -10,9 +10,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('categories', function (Blueprint $table) {
-            $table->foreignId('user_id')->nullable()->after('id')->index();
-        });
+        if (! Schema::hasColumn('categories', 'user_id')) {
+            Schema::table('categories', function (Blueprint $table) {
+                $table->foreignId('user_id')->nullable()->after('id')->index();
+            });
+        }
 
         $categories = DB::table('categories')->get([
             'id', 'name', 'slug', 'scope', 'image', 'count', 'is_favorite',
@@ -44,6 +46,9 @@ return new class extends Migration
                     DB::table('categories')
                         ->where('user_id', $userId)
                         ->where('scope', $category->scope)
+                        ->where('slug', $slug)
+                        ->exists()
+                    || DB::table('categories')
                         ->where('slug', $slug)
                         ->exists()
                 ) {

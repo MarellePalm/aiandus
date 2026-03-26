@@ -74,4 +74,5 @@ class BedController extends Controller
         $bed->delete();
         return back()->with('success', 'Peenar eemaldatud.');
     }
+
 }
