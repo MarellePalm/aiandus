@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { Head } from '@inertiajs/vue3';
 
+import BackIconButton from '@/components/BackIconButton.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { getMoonInfo } from '@/lib/moon/moon';
@@ -262,6 +263,9 @@ onMounted(() => scrollDescriptionToCenter('auto'));
             top-row-class="mb-3"
             bottom-row-class="mb-4"
           >
+            <template #leading>
+              <BackIconButton href="/dashboard" aria-label="Tagasi avalehele" />
+            </template>
             <div class="flex items-center justify-center pb-2">
               <CalendarSwitchTabs active="moon" />
             </div>

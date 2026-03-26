@@ -2,6 +2,7 @@
 import { Head, router } from "@inertiajs/vue3";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
+import BackIconButton from "@/components/BackIconButton.vue";
 import CreatePlantModal from "@/components/CreatePlantModal.vue";
 import DeletePlantModal from "@/components/DeletePlantModal.vue";
 import DiaryHeader from "@/components/DiaryHeader.vue";
@@ -159,8 +160,6 @@ onBeforeUnmount(() => {
   document.removeEventListener("click", onDocClick);
 });
 
-const goBack = () => router.visit("/plants");
-
 /** fallback image */
 const fallbackImage = "https://picsum.photos/200/200";
 </script>
@@ -187,9 +186,7 @@ const fallbackImage = "https://picsum.photos/200/200";
             bottom-row-class="mb-0"
           >
             <template #leading>
-              <button class="flex items-center gap-1 font-medium text-primary" type="button" @click="goBack">
-                <span class="material-symbols-outlined text-[24px]">chevron_left</span>
-              </button>
+              <BackIconButton href="/plants" aria-label="Tagasi kategooriatesse" />
             </template>
             <template #actions>
               <button

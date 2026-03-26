@@ -2,6 +2,7 @@
 import { Head, router } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
+import BackIconButton from '@/components/BackIconButton.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -119,7 +120,6 @@ const confirmDeleteSeed = () => {
     });
 };
 
-const goBack = () => router.visit('/seeds');
 const openSeedEdit = (seed: SeedItem) => {
     editingSeed.value = seed;
     showEditSeed.value = true;
@@ -163,10 +163,7 @@ onBeforeUnmount(() => {
                         header-class="pt-6"
                     >
                         <template #leading>
-                            <button class="flex items-center gap-1 font-medium text-primary" type="button" @click="goBack">
-                                <span class="material-symbols-outlined text-[24px]">chevron_left</span>
-                                <span class="hidden text-sm sm:inline">Kategooriad</span>
-                            </button>
+                            <BackIconButton href="/seeds" aria-label="Tagasi kategooriatesse" />
                         </template>
                         <template #actions>
                                 <button class="flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10" type="button" @click="showSearch = true">

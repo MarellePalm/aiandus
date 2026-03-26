@@ -3,6 +3,7 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
+import BackIconButton from '@/components/BackIconButton.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -166,6 +167,9 @@ function selectDay(day: number) {
             top-row-class="mb-3"
             bottom-row-class="mb-4"
           >
+            <template #leading>
+              <BackIconButton href="/dashboard" aria-label="Tagasi avalehele" />
+            </template>
             <div class="flex items-center justify-center pb-2">
               <CalendarSwitchTabs active="day" />
             </div>

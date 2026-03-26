@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
 import CreateCategoryModal from '@/components/CreateCategoryModal.vue';
+import BackIconButton from '@/components/BackIconButton.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -150,6 +151,9 @@ const openEditCategory = (category: Category) => {
                         top-row-class="mb-3"
                         bottom-row-class="mb-4"
                     >
+                        <template #leading>
+                            <BackIconButton href="/dashboard" aria-label="Tagasi avalehele" />
+                        </template>
                         <template #actions>
                                 <button type="button" class="flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10" @click="showSearch = true">
                                     <span class="material-symbols-outlined text-xl">search</span>

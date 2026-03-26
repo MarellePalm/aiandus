@@ -2,6 +2,7 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
+import BackIconButton from '@/components/BackIconButton.vue';
 import CardActionsMenu from '@/components/CardActionsMenu.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import EditCategoryModal from '@/components/EditCategoryModal.vue';
@@ -173,6 +174,9 @@ const resetToAll = () => {
                     class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
                 >
                     <DiaryHeader title="Minu Taimed">
+                        <template #leading>
+                            <BackIconButton href="/dashboard" aria-label="Tagasi avalehele" />
+                        </template>
                         <template #actions>
                             <button
                                 class="flex h-10 w-10 items-center justify-center rounded-full text-primary transition hover:bg-primary/10"

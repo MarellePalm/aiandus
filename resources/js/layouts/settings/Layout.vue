@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
 
+import BackIconButton from '@/components/BackIconButton.vue';
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -36,10 +37,13 @@ const { urlIsActive } = useActiveUrl();
 
 <template>
     <div class="px-4 py-6">
-        <Heading
-            title="Seaded"
-            description="Halda oma profiili ja konto seadeid"
-        />
+        <div class="mb-4 flex items-start gap-3">
+            <BackIconButton href="/dashboard" aria-label="Tagasi avalehele" />
+            <Heading
+                title="Seaded"
+                description="Halda oma profiili ja konto seadeid"
+            />
+        </div>
 
         <div class="flex flex-col lg:flex-row lg:space-x-12">
             <aside class="w-full max-w-xl lg:w-48">
