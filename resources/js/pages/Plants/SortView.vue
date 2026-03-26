@@ -189,7 +189,6 @@ const fallbackImage = "https://picsum.photos/200/200";
             <template #leading>
               <button class="flex items-center gap-1 font-medium text-primary" type="button" @click="goBack">
                 <span class="material-symbols-outlined text-[24px]">chevron_left</span>
-                <span class="text-sm">Kategooriad</span>
               </button>
             </template>
             <template #actions>

@@ -58,10 +58,7 @@ const deleteSeed = () => {
         <div
             class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
         >
-            <DiaryHeader
-                title="Seemne detail"
-                title-class="text-forest text-3xl font-bold tracking-tight max-w-[12rem] truncate sm:max-w-none"
-            >
+            <DiaryHeader>
                 <template #leading>
                     <Link href="/seeds" class="flex h-10 w-10 items-center justify-center rounded-full hover:bg-primary/10">
                         <span class="material-symbols-outlined">arrow_back_ios_new</span>
