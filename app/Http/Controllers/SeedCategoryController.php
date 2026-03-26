@@ -21,8 +21,9 @@ class SeedCategoryController extends Controller
         }
 
         Category::create([
+            'user_id' => $request->user()->id,
             'name' => $data['name'],
-            'slug' => $this->uniqueSlug($data['name']),
+            'slug' => $this->uniqueSlug($data['name'], $request->user()->id),
             'scope' => Category::SCOPE_SEED,
             'image' => $imagePath ? "/storage/{$imagePath}" : null,
             'count' => 0,
@@ -35,6 +36,7 @@ class SeedCategoryController extends Controller
     public function update(Request $request, Category $category)
     {
         abort_unless($category->scope === Category::SCOPE_SEED, 404);
+        abort_unless($category->user_id === $request->user()->id, 403);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:80'],
@@ -53,16 +55,17 @@ class SeedCategoryController extends Controller
 
         $category->update([
             'name' => $data['name'],
-            'slug' => $this->uniqueSlug($data['name'], $category->id),
+            'slug' => $this->uniqueSlug($data['name'], $request->user()->id, $category->id),
             'image' => $imageUrl,
         ]);
 
         return back()->with('success', 'Seemnekategooria uuendatud!');
     }
 
-    public function toggleFavorite(Category $category)
+    public function toggleFavorite(Request $request, Category $category)
     {
         abort_unless($category->scope === Category::SCOPE_SEED, 404);
+        abort_unless($category->user_id === $request->user()->id, 403);
 
         $category->update([
             'is_favorite' => ! (bool) $category->is_favorite,
@@ -71,9 +74,10 @@ class SeedCategoryController extends Controller
         return back();
     }
 
-    public function destroy(Category $category)
+    public function destroy(Request $request, Category $category)
     {
         abort_unless($category->scope === Category::SCOPE_SEED, 404);
+        abort_unless($category->user_id === $request->user()->id, 403);
 
         if ($category->image && str_starts_with($category->image, '/storage/')) {
             $path = str_replace('/storage/', '', $category->image);
@@ -85,7 +89,7 @@ class SeedCategoryController extends Controller
         return back()->with('success', 'Seemnekategooria kustutatud!');
     }
 
-    private function uniqueSlug(string $name, ?int $ignoreId = null): string
+    private function uniqueSlug(string $name, int $userId, ?int $ignoreId = null): string
     {
         $base = str($name)->slug()->toString();
         $base = $base !== '' ? $base : 'kategooria';
@@ -94,6 +98,8 @@ class SeedCategoryController extends Controller
         $index = 2;
         while (
             Category::query()
+                ->where('user_id', $userId)
+                ->where('scope', Category::SCOPE_SEED)
                 ->where('slug', $slug)
                 ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
                 ->exists()

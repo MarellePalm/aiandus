@@ -11,6 +11,7 @@ class Category extends Model
     public const SCOPE_SEED = 'seed';
 
     protected $fillable = [
+        'user_id',
         'name',
         'slug',
         'scope',
