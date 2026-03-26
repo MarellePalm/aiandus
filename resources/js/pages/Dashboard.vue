@@ -233,7 +233,7 @@ function goToFabAction(href: string) {
     <div class="page bg-background-light min-h-0 flex flex-col">
       <div class="bg-background-light border-beige/50 relative mx-auto w-full max-w-[480px] overflow-x-clip border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
         <DiaryHeader
-          title="Minu Aia Päevik"
+          title="Minu Aiapäevik"
           :diary-label="todayLabel"
           :show-diary-label="false"
           header-class="pt-6"

@@ -14,6 +14,11 @@ return new class extends Migration
             $table->foreignId('user_id')->nullable()->after('id')->index();
         });
 
+        // Vana globaalne slug unique tuleb enne andmete dubleerimist eemaldada
+        Schema::table('categories', function (Blueprint $table) {
+            $table->dropUnique('categories_slug_unique');
+        });
+
         $categories = DB::table('categories')->get([
             'id', 'name', 'slug', 'scope', 'image', 'count', 'is_favorite',
         ]);
@@ -63,7 +68,7 @@ return new class extends Migration
                     'updated_at' => Carbon::now(),
                 ]);
 
-                $map[$category->id.'_'.$userId] = $newId;
+                $map[$category->id . '_' . $userId] = $newId;
             }
         }
 
@@ -82,10 +87,6 @@ return new class extends Migration
         }
 
         DB::table('categories')->whereNull('user_id')->delete();
-
-        Schema::table('categories', function (Blueprint $table) {
-            $table->dropUnique('categories_slug_unique');
-        });
 
         Schema::table('categories', function (Blueprint $table) {
             $table->foreignId('user_id')->nullable(false)->change();
