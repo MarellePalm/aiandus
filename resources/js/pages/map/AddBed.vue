@@ -35,8 +35,11 @@ const newBedLayout = ref<number[][]>(initialLayout());
 // -----------------------------
 function normalizeRectLayout() {
   const maxLen = Math.max(...newBedLayout.value.map((r) => r.length), 1);
+  const needsNormalize = newBedLayout.value.some((r) => r.length !== maxLen);
+  if (!needsNormalize) return;
+
   newBedLayout.value = newBedLayout.value.map((r) =>
-    r.length < maxLen ? [...r, ...Array.from({ length: maxLen - r.length }, () => 0)] : r,
+    r.length < maxLen ? [...r, ...Array.from({ length: maxLen - r.length }, () => 0)] : [...r],
   );
 }
 
@@ -88,8 +91,6 @@ function setInternalCell(displayR: number, displayC: number, value: Cell) {
 // Display matrix: add 1-cell margin around real layout
 // -----------------------------
 const displayLayout = computed<number[][]>(() => {
-  normalizeRectLayout();
-
   const cols = newBedLayout.value[0]?.length ?? 1;
   const top = Array.from({ length: cols + 2 }, () => 0);
   const bottom = Array.from({ length: cols + 2 }, () => 0);
@@ -97,6 +98,9 @@ const displayLayout = computed<number[][]>(() => {
 
   return [top, ...mid, bottom];
 });
+
+// Hoia algandmed kohe ristkülikuna, kuid väldi state'i muutmist computed-is.
+normalizeRectLayout();
 
 function inBounds(mat: number[][], r: number, c: number) {
   return r >= 0 && r < mat.length && c >= 0 && c < (mat[0]?.length ?? 0);
