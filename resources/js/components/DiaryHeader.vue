@@ -35,20 +35,7 @@ const wrapperClass = computed(
 
 <template>
     <header :class="wrapperClass">
-        <div :class="`flex items-center justify-between ${topRowClass}`">
-            <span
-                v-if="showDiaryLabel"
-                class="text-xs font-semibold tracking-widest text-primary uppercase"
-            >
-                {{ diaryLabel }}
-            </span>
-            <span v-else />
-            <div class="shrink-0">
-                <UserMenu settings-href="/settings" />
-            </div>
-        </div>
-
-        <div :class="`flex items-center justify-between gap-3 ${bottomRowClass}`">
+        <div :class="`flex items-center justify-between gap-3 ${topRowClass} ${bottomRowClass}`">
             <div class="flex min-w-0 items-center gap-3">
                 <Link
                     v-if="backHref"
@@ -63,6 +50,7 @@ const wrapperClass = computed(
             </div>
             <div class="flex shrink-0 items-center gap-2 sm:gap-5">
                 <slot name="actions" />
+                <UserMenu settings-href="/settings" />
             </div>
         </div>
 
