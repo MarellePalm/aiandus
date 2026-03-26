@@ -2,6 +2,7 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
+import BackIconButton from '@/components/BackIconButton.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -53,7 +54,11 @@ function bedCoverImage(bed: Bed): string | null {
             header-class="pt-6"
             top-row-class="mb-3"
             bottom-row-class="mb-4"
-          />
+          >
+            <template #leading>
+              <BackIconButton href="/dashboard" aria-label="Tagasi avalehele" />
+            </template>
+          </DiaryHeader>
 
           <main class="flex-1 px-6 py-4 md:px-8">
         <div class="space-y-6 sm:space-y-8">

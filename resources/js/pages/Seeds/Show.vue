@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
+import BackIconButton from '@/components/BackIconButton.vue';
 import CardActionsMenu from '@/components/CardActionsMenu.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 
@@ -60,9 +61,7 @@ const deleteSeed = () => {
         >
             <DiaryHeader>
                 <template #leading>
-                    <Link href="/seeds" class="flex h-10 w-10 items-center justify-center rounded-full hover:bg-primary/10">
-                        <span class="material-symbols-outlined">arrow_back_ios_new</span>
-                    </Link>
+                    <BackIconButton href="/seeds" />
                 </template>
                 <template #actions>
                     <CardActionsMenu

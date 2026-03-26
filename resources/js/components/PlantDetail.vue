@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { router } from "@inertiajs/vue3";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import BackIconButton from "@/components/BackIconButton.vue";
 
 type Plant = {
   id: number;
@@ -44,6 +45,13 @@ function goBack() {
     router.visit("/plants");
   }
 }
+
+const backHref = computed(() => {
+  if (props.plant.category_slug) {
+    return `/plants/category/${props.plant.category_slug}`;
+  }
+  return "/plants";
+});
 
 const hasWateringInfo = computed(() => !!props.plant.watering_in_days?.trim());
 
@@ -152,14 +160,7 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
       <!-- Top App Bar -->
       <div class="fixed top-0 left-0 right-0 z-50">
         <div class="w-full flex items-center justify-between px-4 py-3 md:px-6">
-          <button
-            type="button"
-            class="bg-white/60 dark:bg-black/20 backdrop-blur-md rounded-full p-2 flex items-center justify-center transition-colors"
-            @click="goBack"
-            aria-label="Tagasi"
-          >
-            <span class="material-symbols-outlined">arrow_back</span>
-          </button>
+          <BackIconButton :href="backHref" aria-label="Tagasi kategooriasse" />
 
           <div class="relative" data-plant-menu>
             <button
