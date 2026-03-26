@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Bed;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
-use Inertia\Inertia;
 
 class BedController extends Controller
 {
@@ -40,8 +39,7 @@ class BedController extends Controller
 
         Session::flash('success', 'Peenar lisatud.');
 
-        // Täislehe ümbersuunamine, et kaardivaade laeb värsked andmed (ei jää Inertia vahemällu)
-        return Inertia::location('/map');
+        return redirect()->route('map');
     }
 
     public function update(Request $request, Bed $bed)
