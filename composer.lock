@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0c6f03c7eb9808ae6b3c28041bdac0ea",
+    "content-hash": "49b8ebec0b7415e914ecfa78c45e2138",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -612,6 +612,82 @@
                 }
             ],
             "time": "2025-03-06T22:45:56+00:00"
+        },
+        {
+            "name": "erag/laravel-pwa",
+            "version": "v2.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/eramitgupta/laravel-pwa.git",
+                "reference": "024c4afa7e6b93cc4e0ad6ac960e6b314aab3e4b"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/eramitgupta/laravel-pwa/zipball/024c4afa7e6b93cc4e0ad6ac960e6b314aab3e4b",
+                "reference": "024c4afa7e6b93cc4e0ad6ac960e6b314aab3e4b",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/support": "^8.12|^9.0|^10.0|^11.0|^12.0|^13.0",
+                "laravel/pint": "^1.13",
+                "php": ">=8.0.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Pwa": "EragLaravelPwa\\Facades\\Pwa"
+                    },
+                    "providers": [
+                        "EragLaravelPwa\\EragLaravelPwaServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "files": [
+                    "src/Pwahelpers.php"
+                ],
+                "psr-4": {
+                    "EragLaravelPwa\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Er Amiit Gupta",
+                    "email": "info.eramitgupta@gmail.com",
+                    "homepage": "https://github.com/eramitgupta"
+                }
+            ],
+            "description": "A simple and easy-to-use PWA (Progressive Web App) package for Laravel applications.",
+            "keywords": [
+                "Progressive Web App",
+                "laravel",
+                "laravel package",
+                "laravel pwa",
+                "manifest",
+                "offline",
+                "pwa",
+                "service worker"
+            ],
+            "support": {
+                "issues": "https://github.com/eramitgupta/laravel-pwa/issues",
+                "source": "https://github.com/eramitgupta/laravel-pwa/tree/v2.0.0"
+            },
+            "funding": [
+                {
+                    "url": "https://www.paypal.com/paypalme/teamdevgeek",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/eramitgupta",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-03-18T12:23:10+00:00"
         },
         {
             "name": "fruitcake/php-cors",
@@ -1608,6 +1684,74 @@
                 "source": "https://github.com/laravel/nightwatch"
             },
             "time": "2026-03-18T23:25:05+00:00"
+        },
+        {
+            "name": "laravel/pint",
+            "version": "v1.29.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/laravel/pint.git",
+                "reference": "bdec963f53172c5e36330f3a400604c69bf02d39"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/laravel/pint/zipball/bdec963f53172c5e36330f3a400604c69bf02d39",
+                "reference": "bdec963f53172c5e36330f3a400604c69bf02d39",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "ext-mbstring": "*",
+                "ext-tokenizer": "*",
+                "ext-xml": "*",
+                "php": "^8.2.0"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.94.2",
+                "illuminate/view": "^12.54.1",
+                "larastan/larastan": "^3.9.3",
+                "laravel-zero/framework": "^12.0.5",
+                "mockery/mockery": "^1.6.12",
+                "nunomaduro/termwind": "^2.4.0",
+                "pestphp/pest": "^3.8.6",
+                "shipfastlabs/agent-detector": "^1.1.0"
+            },
+            "bin": [
+                "builds/pint"
+            ],
+            "type": "project",
+            "autoload": {
+                "psr-4": {
+                    "App\\": "app/",
+                    "Database\\Seeders\\": "database/seeders/",
+                    "Database\\Factories\\": "database/factories/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Nuno Maduro",
+                    "email": "enunomaduro@gmail.com"
+                }
+            ],
+            "description": "An opinionated code formatter for PHP.",
+            "homepage": "https://laravel.com",
+            "keywords": [
+                "dev",
+                "format",
+                "formatter",
+                "lint",
+                "linter",
+                "php"
+            ],
+            "support": {
+                "issues": "https://github.com/laravel/pint/issues",
+                "source": "https://github.com/laravel/pint"
+            },
+            "time": "2026-03-12T15:51:39+00:00"
         },
         {
             "name": "laravel/prompts",
@@ -6978,74 +7122,6 @@
                 "source": "https://github.com/laravel/pail"
             },
             "time": "2026-02-09T13:44:54+00:00"
-        },
-        {
-            "name": "laravel/pint",
-            "version": "v1.29.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/laravel/pint.git",
-                "reference": "bdec963f53172c5e36330f3a400604c69bf02d39"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/laravel/pint/zipball/bdec963f53172c5e36330f3a400604c69bf02d39",
-                "reference": "bdec963f53172c5e36330f3a400604c69bf02d39",
-                "shasum": ""
-            },
-            "require": {
-                "ext-json": "*",
-                "ext-mbstring": "*",
-                "ext-tokenizer": "*",
-                "ext-xml": "*",
-                "php": "^8.2.0"
-            },
-            "require-dev": {
-                "friendsofphp/php-cs-fixer": "^3.94.2",
-                "illuminate/view": "^12.54.1",
-                "larastan/larastan": "^3.9.3",
-                "laravel-zero/framework": "^12.0.5",
-                "mockery/mockery": "^1.6.12",
-                "nunomaduro/termwind": "^2.4.0",
-                "pestphp/pest": "^3.8.6",
-                "shipfastlabs/agent-detector": "^1.1.0"
-            },
-            "bin": [
-                "builds/pint"
-            ],
-            "type": "project",
-            "autoload": {
-                "psr-4": {
-                    "App\\": "app/",
-                    "Database\\Seeders\\": "database/seeders/",
-                    "Database\\Factories\\": "database/factories/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Nuno Maduro",
-                    "email": "enunomaduro@gmail.com"
-                }
-            ],
-            "description": "An opinionated code formatter for PHP.",
-            "homepage": "https://laravel.com",
-            "keywords": [
-                "dev",
-                "format",
-                "formatter",
-                "lint",
-                "linter",
-                "php"
-            ],
-            "support": {
-                "issues": "https://github.com/laravel/pint/issues",
-                "source": "https://github.com/laravel/pint"
-            },
-            "time": "2026-03-12T15:51:39+00:00"
         },
         {
             "name": "laravel/sail",

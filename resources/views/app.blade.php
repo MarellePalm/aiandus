@@ -29,7 +29,7 @@
                 background-color: oklch(0.145 0 0);
             }
         </style>
-
+        @PwaHead <!-- This includes the PWA meta tags -->
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
         <link rel="icon" href="/favicon.ico" sizes="any">
@@ -45,5 +45,6 @@
     </head>
     <body class="font-sans antialiased">
         @inertia
+        @RegisterServiceWorkerScript <!-- This registers the service worker -->
     </body>
 </html>
