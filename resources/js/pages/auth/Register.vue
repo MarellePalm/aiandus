@@ -1,12 +1,12 @@
-<!-- resources/js/pages/Auth/Register.vue (või sinu olemasolev asukoht) -->
 <script setup lang="ts">
-import { Form, Head, Link } from '@inertiajs/vue3';
+import { Form, Head } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 import InputError from '@/components/InputError.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import AuthBase from '@/layouts/AuthLayout.vue';
 import { login } from '@/routes';
 import { store } from '@/routes/register';
 
@@ -15,43 +15,29 @@ const showPasswordConfirmation = ref(false);
 </script>
 
 <template>
-  <div class="page min-h-screen">
+  <AuthBase
+    title="Registreerimine"
+    description="Alusta oma rohelist teekonda ja loo isiklik aia paevik tana."
+    :back-href="'/'"
+    :show-logo="true"
+  >
     <Head title="Registreerimine" />
 
-    <div class="page-container-wide py-6 sm:py-10">
-      <!-- Top bar -->
-      <div class="flex items-center justify-between pb-2">
-        <Link href="/" class="icon-btn" aria-label="Tagasi">
-          <span class="material-symbols-outlined">arrow_back_ios</span>
-        </Link>
-        <div class="flex-1" />
-      </div>
-
-      <main class="auth-shell">
-        <!-- Header -->
-        <div class="auth-header">
-          <div class="auth-icon">
-            <span class="material-symbols-outlined text-4xl text-primary">potted_plant</span>
-          </div>
-
-          <h1 class="auth-title">Registreerimine</h1>
-          <p class="auth-subtitle">
-            Alusta oma rohelist teekonda ja loo isiklik aia päevik täna.
-          </p>
-        </div>
-
-        <!-- Form -->
-        <div class="panel w-full">
-          <Form
-            v-bind="store.form()"
-            :reset-on-success="['password', 'password_confirmation']"
-            v-slot="{ errors, processing }"
-            class="auth-form"
-          >
+    <div class="w-full">
+      <div class="panel w-full">
+        <Form
+          v-bind="store.form()"
+          :reset-on-success="['password', 'password_confirmation']"
+          v-slot="{ errors, processing }"
+          class="auth-form"
+        >
             <!-- Name -->
             <div class="flex flex-col gap-2">
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-muted-foreground">Nimi</span>
+              </div>
               <label class="auth-field">
-                <span class="auth-label">Nimi</span>
+                <span class="sr-only">Nimi</span>
                 <input
                   id="name"
                   name="name"
@@ -60,7 +46,7 @@ const showPasswordConfirmation = ref(false);
                   autofocus
                   :tabindex="1"
                   autocomplete="name"
-                  placeholder="Sinu nimi"
+                  placeholder="Nimi"
                   class="auth-input"
                 />
               </label>
@@ -69,8 +55,11 @@ const showPasswordConfirmation = ref(false);
 
             <!-- Email -->
             <div class="flex flex-col gap-2">
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-muted-foreground">Email</span>
+              </div>
               <label class="auth-field">
-                <span class="auth-label">E-post</span>
+                <span class="sr-only">Email</span>
                 <input
                   id="email"
                   name="email"
@@ -78,7 +67,7 @@ const showPasswordConfirmation = ref(false);
                   required
                   :tabindex="2"
                   autocomplete="email"
-                  placeholder="aiapidaja@mail.ee"
+                  placeholder="Email"
                   class="auth-input"
                 />
               </label>
@@ -87,8 +76,11 @@ const showPasswordConfirmation = ref(false);
 
             <!-- Password -->
             <div class="flex flex-col gap-2">
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-muted-foreground">Parool</span>
+              </div>
               <label class="auth-field relative">
-                <span class="auth-label">Parool</span>
+                <span class="sr-only">Parool</span>
                 <input
                   id="password"
                   name="password"
@@ -116,8 +108,11 @@ const showPasswordConfirmation = ref(false);
 
             <!-- Password confirmation -->
             <div class="flex flex-col gap-2">
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-muted-foreground">Kinnita parool</span>
+              </div>
               <label class="auth-field relative">
-                <span class="auth-label">Kinnita parool</span>
+                <span class="sr-only">Kinnita parool</span>
                 <input
                   id="password_confirmation"
                   name="password_confirmation"
@@ -147,7 +142,7 @@ const showPasswordConfirmation = ref(false);
             <div class="auth-actions">
               <Button
                 type="submit"
-                class="btn-primary w-full rounded-xl"
+                class="btn-primary w-full"
                 tabindex="5"
                 :disabled="processing"
                 data-test="register-user-button"
@@ -163,14 +158,8 @@ const showPasswordConfirmation = ref(false);
                 </TextLink>
               </p>
             </div>
-          </Form>
-        </div>
-      </main>
-
-      <!-- Decorative leaf (jätsin alles, nüüd tokenitega) -->
-      <div class="pointer-events-none fixed right-[-50px] bottom-[-50px] opacity-[0.03] dark:opacity-[0.07]">
-        <span class="material-symbols-outlined text-[300px] select-none text-primary">eco</span>
+        </Form>
       </div>
     </div>
-  </div>
+  </AuthBase>
 </template>

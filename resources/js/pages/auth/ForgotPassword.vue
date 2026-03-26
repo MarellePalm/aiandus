@@ -6,7 +6,7 @@ import InputError from '@/components/InputError.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import AuthLayout from '@/layouts/AuthLayout.vue';
+import AuthBase from '@/layouts/AuthLayout.vue';
 import { login } from '@/routes';
 import { email } from '@/routes/password';
 
@@ -16,9 +16,11 @@ defineProps<{
 </script>
 
 <template>
-  <AuthLayout
+  <AuthBase
     title="Unustasid salasõna?"
     description="Sisesta oma meiliaadress, saadame sellele lingi salasõna taastamiseks"
+    :back-href="'/'"
+    :show-logo="true"
   >
     <Head title="Taasta salasõna" />
 
@@ -26,19 +28,22 @@ defineProps<{
       {{ status }}
     </div>
 
-    <div class="space-y-6">
+    <div class="w-full">
       <div class="panel w-full">
         <Form v-bind="email.form()" v-slot="{ errors, processing }" class="auth-form">
           <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-muted-foreground">Email</span>
+            </div>
             <label class="auth-field">
-              <span class="auth-label">E-post</span>
+              <span class="sr-only">Email</span>
               <input
                 id="email"
                 type="email"
                 name="email"
                 autocomplete="off"
                 autofocus
-                placeholder="email@näide.com"
+                placeholder="Email"
                 class="auth-input"
               />
             </label>
@@ -58,10 +63,21 @@ defineProps<{
         </Form>
       </div>
 
-      <div class="text-center text-sm text-muted-foreground">
-        <span>Tagasi</span>
+      <div class="pt-4 text-center text-sm text-muted-foreground">
+        Tagasi
         <TextLink :href="login()" class="auth-link">sisselogimislehele</TextLink>
       </div>
     </div>
-  </AuthLayout>
+  </AuthBase>
 </template>
+
+<style scoped>
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: inherit;
+  -webkit-box-shadow: 0 0 0 1000px transparent inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
+</style>
