@@ -41,8 +41,12 @@ defineProps<{
         >
           <!-- Email -->
           <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-muted-foreground">Email</span>
+            </div>
+
             <label class="auth-field">
-              <span class="auth-label">Email aadress</span>
+              <span class="sr-only">Email</span>
               <input
                 id="email"
                 type="email"
@@ -51,7 +55,7 @@ defineProps<{
                 autofocus
                 :tabindex="1"
                 autocomplete="email"
-                placeholder="email@näide.com"
+                placeholder="Email"
                 class="auth-input"
               />
             </label>
