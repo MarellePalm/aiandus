@@ -12,6 +12,7 @@ type Bed = {
   location: string | null;
   image_url?: string | null;
   layout?: number[][] | null;
+  plants?: { id: number; name: string; image_url: string | null; position_in_bed: string | null }[];
 };
 
 const props = defineProps<{

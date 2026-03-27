@@ -2,6 +2,8 @@
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
+import BackIconButton from '@/components/BackIconButton.vue';
+import CardActionsMenu from '@/components/CardActionsMenu.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
@@ -29,7 +31,6 @@ const breadcrumbs = [
   { title: props.bed.name, href: `/beds/${props.bed.id}` },
 ];
 
-const openMenu = ref(false);
 const cellModal = ref<{ row: number; col: number } | null>(null);
 const coverTick = ref(0);
 let coverTimer: ReturnType<typeof setInterval> | null = null;
@@ -116,12 +117,15 @@ const plantsWithoutBedByCategory = computed(() => {
       <div class="bg-background-light text-forest font-display min-h-screen antialiased">
         <div class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
           <DiaryHeader
-            :title="bed.name"
-            back-href="/map"
+            title=""
             header-class="pt-6"
-            top-row-class="mb-3"
+            top-row-class="mb-2"
             bottom-row-class="mb-4"
-          />
+          >
+            <template #leading>
+              <BackIconButton href="/map" aria-label="Tagasi peenarde loendisse" />
+            </template>
+          </DiaryHeader>
 
           <main class="flex-1 px-6 py-4 md:px-8 space-y-4">
             <section class="rounded-2xl border border-border bg-card shadow-soft">
@@ -129,30 +133,22 @@ const plantsWithoutBedByCategory = computed(() => {
                 class="h-38 bg-cover bg-center relative overflow-hidden rounded-t-2xl"
                 :style="bedCoverImage() ? { backgroundImage: `url('${bedCoverImage()}')` } : {}"
               >
+                <div class="absolute right-2 top-2 z-10">
+                  <CardActionsMenu
+                    @edit="router.get(`/beds/${bed.id}/edit`)"
+                    @delete="deleteBed"
+                  />
+                </div>
                 <div v-if="!bedCoverImage()" class="absolute inset-0 bg-linear-to-br from-primary/15 via-muted/40 to-muted/20 flex items-center justify-center">
                   <span class="material-symbols-outlined text-5xl text-primary/80">grass</span>
+                </div>
+                <div class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/70 via-black/30 to-transparent p-3">
+                  <h2 class="text-lg font-semibold text-white">{{ bed.name }}</h2>
                 </div>
               </div>
               <div class="p-4 flex items-start justify-between gap-3">
                 <div>
-                  <h2 class="text-lg font-semibold">{{ bed.name }}</h2>
                   <p v-if="bed.location" class="text-sm text-muted-foreground">{{ bed.location }}</p>
-                </div>
-                <div class="relative">
-                  <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-card/70" @click="openMenu = !openMenu">
-                    <span class="material-symbols-outlined text-[20px]">more_vert</span>
-                  </button>
-                  <div v-if="openMenu" class="fixed inset-0 z-5" @click="openMenu = false" />
-                  <div v-if="openMenu" class="absolute right-0 top-full z-10 mt-1 min-w-[140px] rounded-lg border border-border bg-card py-1 shadow-lg">
-                    <button type="button" class="menu-item flex w-full items-center gap-2 px-4 py-2 text-left" @click="router.get(`/beds/${bed.id}/edit`)">
-                      <span class="material-symbols-outlined text-lg">edit</span>
-                      Muuda
-                    </button>
-                    <button type="button" class="menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-destructive" @click="deleteBed">
-                      <span class="material-symbols-outlined text-lg">delete</span>
-                      Kustuta
-                    </button>
-                  </div>
                 </div>
               </div>
             </section>
@@ -168,9 +164,7 @@ const plantsWithoutBedByCategory = computed(() => {
                 >
                   <template v-for="r in range(getBedLayout().length)" :key="r">
                     <template v-for="c in range(getBedColumns())" :key="`${r}-${c}`">
-                      <div v-if="(getBedLayout()[r]?.[c] ?? 0) === -1" class="min-w-[64px] min-h-[64px] rounded-xl border border-border bg-muted/50" />
-                      <div v-else-if="(getBedLayout()[r]?.[c] ?? 1) === 0" class="min-w-[64px] min-h-[64px] rounded-xl border border-dashed border-muted-foreground/25 bg-muted/25" />
-                      <div v-else-if="plantAt(r, c)" class="relative min-w-[64px] min-h-[64px] rounded-xl bg-card border-2 border-amber-300/70 overflow-hidden group">
+                      <div v-if="plantAt(r, c)" class="relative min-w-[64px] min-h-[64px] rounded-xl bg-card border-2 border-amber-300/70 overflow-hidden group">
                         <div class="absolute inset-0 bg-cover bg-center" :style="plantAt(r, c)?.image_url ? { backgroundImage: `url('${plantAt(r, c)?.image_url}')` } : {}" />
                         <div class="absolute inset-0 bg-linear-to-t from-black/75 via-black/20 to-transparent" />
                         <span class="absolute bottom-1.5 left-1.5 right-1.5 text-white text-[11px] font-semibold truncate">{{ plantAt(r, c)?.name }}</span>
@@ -178,6 +172,8 @@ const plantsWithoutBedByCategory = computed(() => {
                           <span class="material-symbols-outlined text-sm">close</span>
                         </button>
                       </div>
+                      <div v-else-if="(getBedLayout()[r]?.[c] ?? 0) === -1" class="min-w-[64px] min-h-[64px] rounded-xl border border-border bg-muted/50" />
+                      <div v-else-if="(getBedLayout()[r]?.[c] ?? 1) === 0" class="min-w-[64px] min-h-[64px] rounded-xl border border-dashed border-muted-foreground/25 bg-muted/25" />
                       <button v-else type="button" class="min-w-[64px] min-h-[64px] rounded-xl border-2 border-dashed border-amber-300/50 bg-amber-50/70 text-amber-800/90" @click="cellModal = { row: r, col: c }">
                         <span class="material-symbols-outlined text-2xl">add_circle</span>
                       </button>

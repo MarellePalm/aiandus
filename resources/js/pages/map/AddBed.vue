@@ -5,7 +5,14 @@ import { computed, onBeforeUnmount, ref } from 'vue';
 const props = withDefaults(
   defineProps<{
     mode?: 'create' | 'edit';
-    bed?: { id: number; name: string; location: string | null; image_url?: string | null; layout?: number[][] | null };
+    bed?: {
+      id: number;
+      name: string;
+      location: string | null;
+      image_url?: string | null;
+      layout?: number[][] | null;
+      plants?: { id: number; name: string; image_url: string | null; position_in_bed: string | null }[];
+    };
   }>(),
   {
     mode: 'create',
@@ -16,7 +23,15 @@ const props = withDefaults(
 function initialLayout(): number[][] {
   const layout = props.bed?.layout;
   if (layout && Array.isArray(layout) && layout.length && layout.some((row) => Array.isArray(row) && row.length)) {
-    return layout.map((row) => (Array.isArray(row) ? [...row] : []));
+    return layout.map((row) =>
+      Array.isArray(row)
+        ? row.map((cell) => {
+            const n = Number(cell);
+            if (n === 1 || n === 0 || n === -1) return n;
+            return 0;
+          })
+        : [],
+    );
   }
   return [[1]];
 }
@@ -88,6 +103,11 @@ function setInternalCell(displayR: number, displayC: number, value: Cell) {
   if (r >= newBedLayout.value.length) return;
   if (c >= (newBedLayout.value[0]?.length ?? 0)) return;
   newBedLayout.value[r][c] = value;
+}
+
+function plantAtInternal(internalR: number, internalC: number) {
+  const key = `${internalR},${internalC}`;
+  return props.bed?.plants?.find((p) => p.position_in_bed === key);
 }
 
 // -----------------------------
@@ -354,10 +374,23 @@ const addTileClass = computed(() => {
               <button
                 v-if="cell === 1"
                 type="button"
-                class="w-full h-full rounded-lg border-2 border-amber-300/70 dark:border-amber-700/60 bg-amber-100/50 dark:bg-amber-900/20"
-                title="Peenra ruut"
+                class="relative w-full h-full overflow-hidden rounded-lg border-2 border-amber-300/70 dark:border-amber-700/60 bg-amber-100/50 dark:bg-amber-900/20"
+                :title="plantAtInternal(dri - 1, dci - 1) ? `Siin on taim: ${plantAtInternal(dri - 1, dci - 1)?.name}` : 'Peenra ruut'"
                 @click="setInternalCell(dri, dci, activeTool)"
-              />
+              >
+                <div
+                  v-if="plantAtInternal(dri - 1, dci - 1)?.image_url"
+                  class="absolute inset-0 bg-cover bg-center opacity-90"
+                  :style="{ backgroundImage: `url('${plantAtInternal(dri - 1, dci - 1)?.image_url}')` }"
+                />
+                <div v-if="plantAtInternal(dri - 1, dci - 1)" class="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
+                <span
+                  v-if="plantAtInternal(dri - 1, dci - 1)"
+                  class="absolute bottom-1 left-1 right-1 truncate text-[10px] font-semibold text-white"
+                >
+                  {{ plantAtInternal(dri - 1, dci - 1)?.name }}
+                </span>
+              </button>
 
               <!-- -1 = vahekäik/kivi -->
               <button
@@ -373,24 +406,13 @@ const addTileClass = computed(() => {
                 />
               </button>
 
-              <!-- 0 and adjacent => "+" -->
-              <button
-                v-else-if="cell === 0 && isAdjacentToPlant(dri, dci)"
-                type="button"
-                :class="addTileClass"
-                :title="activeTool === -1 ? (isMarginCell(dri, dci) ? 'Lisa vahekäik (laiendab)' : 'Lisa vahekäik') : (isMarginCell(dri, dci) ? 'Lisa peenar (laiendab)' : 'Lisa peenar')"
-                @click="addAtDisplay(dri, dci)"
-              >
-                <span class="material-symbols-outlined text-2xl">add</span>
-              </button>
-
-              <!-- 0 = tühi -->
+              <!-- 0 = tühi / lisatav ruut -->
               <button
                 v-else
                 type="button"
-                class="w-full h-full rounded-lg border border-dashed border-muted-foreground/40 bg-muted/30"
-                title="Tühi ala"
-                @click="setInternalCell(dri, dci, activeTool)"
+                :class="cell === 0 && isAdjacentToPlant(dri, dci) ? addTileClass : 'w-full h-full rounded-lg border border-dashed border-muted-foreground/40 bg-muted/30'"
+                :title="isMarginCell(dri, dci) ? 'Lisa ruut (laiendab peenart)' : 'Lisa ruut'"
+                @click="isMarginCell(dri, dci) ? addAtDisplay(dri, dci) : setInternalCell(dri, dci, activeTool)"
               />
             </div>
           </template>

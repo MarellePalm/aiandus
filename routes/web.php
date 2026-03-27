@@ -173,6 +173,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('beds/{bed}/edit', function (\Illuminate\Http\Request $request, Bed $bed) {
         abort_unless($bed->user_id === $request->user()->id, 403);
+        $bed->load(['plants' => fn ($q) => $q->select('id', 'name', 'image_url', 'bed_id', 'position_in_bed')]);
 
         return Inertia::render('map/EditBedPage', [
             'bed' => [
@@ -181,6 +182,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'location' => $bed->location,
                 'image_url' => $bed->image_url,
                 'layout' => $bed->layout,
+                'plants' => $bed->plants->map(fn ($p) => [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'image_url' => $p->image_url,
+                    'position_in_bed' => $p->position_in_bed,
+                ]),
             ],
         ]);
     })->name('beds.edit');
