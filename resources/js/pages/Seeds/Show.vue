@@ -5,6 +5,7 @@ import { ref } from 'vue';
 import BackIconButton from '@/components/BackIconButton.vue';
 import CardActionsMenu from '@/components/CardActionsMenu.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
+import BottomNav from '@/pages/BottomNav.vue';
 
 import DeleteConfirmModal from './DeleteConfirmModal.vue';
 import EditSeedModal from './EditSeedModal.vue';
@@ -59,7 +60,7 @@ const deleteSeed = () => {
         <div
             class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
         >
-            <DiaryHeader>
+            <DiaryHeader :title="props.seed.name">
                 <template #leading>
                     <BackIconButton href="/seeds" />
                 </template>
@@ -88,10 +89,13 @@ const deleteSeed = () => {
 
                 <h2 class="text-2xl font-bold">{{ props.seed.name }}</h2>
 
-                <div class="mt-4 space-y-2 text-sm text-forest/80">
-                    <p>Kogus: <strong>{{ props.seed.amount_text ?? '—' }}</strong></p>
-                    <p>Ostmise aasta: <strong>{{ props.seed.year ?? '—' }}</strong></p>
-                    <p>Aegumisaasta: <strong>{{ props.seed.expires_at ?? '—' }}</strong></p>
+                <div
+                    v-if="props.seed.amount_text || props.seed.year || props.seed.expires_at"
+                    class="mt-4 space-y-2 text-sm text-forest/80"
+                >
+                    <p v-if="props.seed.amount_text">Kogus: <strong>{{ props.seed.amount_text }}</strong></p>
+                    <p v-if="props.seed.year">Ostmise aasta: <strong>{{ props.seed.year }}</strong></p>
+                    <p v-if="props.seed.expires_at">Aegumisaasta: <strong>{{ props.seed.expires_at }}</strong></p>
                 </div>
 
                 <div class="mt-8">
@@ -120,5 +124,6 @@ const deleteSeed = () => {
             :seed="props.seed"
             @updated="router.reload({ only: ['seed'] })"
         />
+        <BottomNav active="seeds" />
     </div>
 </template>

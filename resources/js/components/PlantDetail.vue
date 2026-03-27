@@ -158,9 +158,14 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
   >
     <div class="relative w-full flex flex-col pt-20">
       <!-- Top App Bar -->
-      <div class="fixed top-0 left-0 right-0 z-50">
+      <div class="fixed top-0 left-0 right-0 z-50 bg-background-light/80 backdrop-blur-md">
         <div class="w-full flex items-center justify-between px-4 py-3 md:px-6">
-          <BackIconButton :href="backHref" aria-label="Tagasi kategooriasse" />
+          <div class="flex min-w-0 flex-1 items-center gap-2">
+            <BackIconButton :href="backHref" aria-label="Tagasi kategooriasse" />
+            <h1 class="max-w-[14rem] truncate text-left text-forest text-xl font-bold tracking-tight sm:max-w-[20rem]">
+              {{ props.plant.subtitle }}
+            </h1>
+          </div>
 
           <div class="relative" data-plant-menu>
             <button
@@ -215,13 +220,6 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
 
       <!-- Content -->
       <div class="relative z-10 -mt-12 px-6 md:-mt-16 md:px-12">
-        <div class="mb-8 md:mb-10">
-          <h1
-            class="mb-1 font-serif text-4xl italic tracking-tight text-[#2d3a2a] dark:text-primary md:text-5xl"
-          >
-            {{ props.plant.subtitle }}
-          </h1>
-        </div>
 
         <div class="flex flex-col gap-8 md:grid md:grid-cols-2 md:items-start md:gap-10">
           <!-- LEFT = MÄRKMED -->
