@@ -7,7 +7,7 @@ import DiaryHeader from '@/components/DiaryHeader.vue'
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue'
 import BottomNav from '@/pages/BottomNav.vue'
 
-type ChipKey = 'all' | 'week' | 'month' | 'favorites'
+type ChipKey = 'all' | 'month' | 'undone'
 type NoteKind = 'task' | 'reminder' | 'journal'
 
 type Note = {
@@ -62,16 +62,15 @@ const items = computed<Note[]>(() =>
 
 const chips: { key: ChipKey; label: string }[] = [
   { key: 'all', label: 'Kõik' },
-  { key: 'week', label: 'Sel nädalal' },
   { key: 'month', label: 'Sel kuul' },
-  { key: 'favorites', label: 'Lemmikud' },
+  { key: 'undone', label: 'Tegemata tööd' },
 ]
 
 const query = ref(props.filters?.q ?? '')
 const activeChip = ref<ChipKey>(props.filters?.chip ?? 'all')
 
 function chipClass(key: ChipKey) {
-  const base = 'h-9 shrink-0 rounded-full px-4 text-xs font-semibold whitespace-nowrap transition-colors'
+  const base = 'min-h-9 w-full rounded-full px-2 py-1 text-center text-xs leading-tight font-semibold whitespace-normal break-words transition-colors'
   return key === activeChip.value
     ? `${base} bg-primary text-white`
     : `${base} bg-primary/10 text-primary hover:bg-primary/15`
@@ -80,6 +79,13 @@ function chipClass(key: ChipKey) {
 function parseISODate(iso: string) {
   const [y, m, d] = iso.split('-').map(Number)
   return new Date(y, (m ?? 1) - 1, d ?? 1)
+}
+
+function toISODate(date: Date) {
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
 }
 
 function humanLabel(dateISO: string) {
@@ -91,14 +97,43 @@ function humanLabel(dateISO: string) {
 }
 
 const filteredGroups = computed<Group[]>(() => {
-  const map = new Map<string, Note[]>()
+  const now = new Date()
+  const from = new Date(now)
+  from.setDate(now.getDate() - 6)
+  const startOfWeek = new Date(from.getFullYear(), from.getMonth(), from.getDate())
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 
+  const byISO = new Map<string, Note[]>()
   for (const n of items.value) {
-    const label = humanLabel(n.dateISO)
-    map.set(label, [...(map.get(label) ?? []), n])
+    const d = parseISODate(n.dateISO)
+    const dayOnly = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+
+    // Ajafilter chip'i järgi
+    if (
+      activeChip.value === 'month' &&
+      (dayOnly.getMonth() !== now.getMonth() || dayOnly.getFullYear() !== now.getFullYear())
+    ) continue
+    byISO.set(n.dateISO, [...(byISO.get(n.dateISO) ?? []), n])
   }
 
-  return [...map.entries()].map(([label, groupItems]) => ({ label, items: groupItems }))
+  // "Kõik" ja "Sel nädalal": näita alati viimase 7 päeva kuupäevi, ka tühje päevi.
+  if (activeChip.value === 'all') {
+    const groups: Group[] = []
+    for (let i = 0; i < 7; i += 1) {
+      const d = new Date(now)
+      d.setDate(now.getDate() - i)
+      const iso = toISODate(d)
+      groups.push({
+        label: humanLabel(iso),
+        items: byISO.get(iso) ?? [],
+      })
+    }
+    return groups
+  }
+
+  // Muudel filtritel näita ainult olemasolevaid kuupäevi, uusim ees.
+  const sorted = [...byISO.entries()].sort(([a], [b]) => (a < b ? 1 : -1))
+  return sorted.map(([iso, groupItems]) => ({ label: humanLabel(iso), items: groupItems }))
 })
 
 function refresh() {
@@ -154,20 +189,20 @@ watch(query, () => {
         </DiaryHeader>
 
         <main class="flex-1 px-6 py-4 pb-24 md:px-8">
-          <div class="rounded-2xl border border-primary/10 bg-white/70 p-4">
-          <div class="relative mb-4">
+          <div class="rounded-2xl border border-primary/10 bg-white/70 p-4 shadow-soft">
+          <div class="relative mb-3">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
               search
             </span>
             <input
               v-model.trim="query"
-              class="w-full pl-10 pr-4 h-11 bg-secondary/60 border-none rounded-lg focus:ring-2 focus:ring-ring/40 text-sm outline-none"
+              class="w-full pl-10 pr-4 h-11 bg-secondary/60 border-none rounded-xl focus:ring-2 focus:ring-ring/40 text-sm outline-none"
               placeholder="Otsi märkmeid..."
               type="text"
             />
           </div>
 
-          <div class="flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-1">
+          <div class="grid grid-cols-3 gap-2 pb-1">
             <button
               v-for="chip in chips"
               :key="chip.key"
@@ -176,25 +211,6 @@ watch(query, () => {
               @click="activeChip = chip.key; refresh()"
             >
               {{ chip.label }}
-            </button>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              class="flex items-center justify-between px-3 py-2 bg-secondary/60 rounded-lg text-xs font-medium text-muted-foreground"
-              disabled
-            >
-              <span>Tüüp</span>
-              <span class="material-symbols-outlined cursor-pointer text-sm">expand_more</span>
-            </button>
-            <button
-              type="button"
-              class="flex items-center justify-between px-3 py-2 bg-secondary/60 rounded-lg text-xs font-medium text-muted-foreground"
-              disabled
-            >
-              <span>Kategooria</span>
-              <span class="material-symbols-outlined cursor-pointer text-sm">expand_more</span>
             </button>
           </div>
         </div>
@@ -235,121 +251,59 @@ watch(query, () => {
             {{ group.label }}
           </h3>
 
-          <div class="space-y-3">
+          <div class="grid grid-cols-2 gap-3">
             <article
               v-for="note in group.items"
               :key="note.id"
-              class="card p-4 rounded-xl border border-border shadow-soft hover:shadow-md hover:border-primary/20 transition-all cursor-pointer"
-              :class="note.kind === 'reminder' ? 'border-l-4 border-l-primary' : ''"
+              class="rounded-2xl border border-border/60 bg-card p-3 shadow-soft transition hover:border-primary/30 hover:shadow-md cursor-pointer"
               role="button"
               tabindex="0"
               @click="router.visit(`/calendar/notes/${note.id}/edit`)"
               @keydown.enter="router.visit(`/calendar/notes/${note.id}/edit`)"
             >
-              <div v-if="note.kind === 'task'" class="flex items-start gap-3" @click.stop>
-                <div class="mt-0.5">
-                  <input
-                    class="size-5 rounded border-input text-primary focus:ring-ring"
-                    type="checkbox"
-                    :checked="!!note.done"
-                    @change="toggleDone(note.id)"
-                  />
-                </div>
-
-                <div class="flex-1">
-                  <div class="flex justify-between items-start gap-3">
-                    <h4 class="font-semibold" :class="note.done ? 'line-through opacity-60' : ''">
-                      {{ note.title }}
-                    </h4>
-
-                    <span
-                      class="text-[10px] px-2 py-0.5 rounded uppercase font-bold"
-                      :class="note.tagStyle === 'primary' ? 'bg-primary/15 text-primary' : 'bg-secondary text-muted-foreground'"
-                    >
-                      {{ note.tag }}
-                    </span>
-                  </div>
-
-                  <p v-if="note.body" class="text-xs text-muted-foreground mt-1">
-                    {{ note.body }}
-                  </p>
-
-                  <div class="mt-3 flex gap-2">
-                    <Link
-                      class="px-3 py-2 rounded-lg text-xs font-semibold bg-secondary text-muted-foreground"
-                      :href="`/calendar/notes/${note.id}/edit`"
-                      @click.stop
-                    >
-                      Muuda
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              <div v-else-if="note.kind === 'reminder'">
-                <div class="flex justify-between items-start mb-2">
-                  <div class="flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-primary text-lg">
-                      notifications_active
-                    </span>
-                    <h4 class="font-semibold">{{ note.title }}</h4>
-                  </div>
-                  <span class="text-[10px] text-muted-foreground font-medium">{{ note.time }}</span>
-                </div>
-                <p class="text-sm text-muted-foreground">{{ note.body }}</p>
-
-                <div class="mt-3 flex gap-2" @click.stop>
-                  <button
-                    type="button"
-                    class="px-3 py-2 rounded-lg text-xs font-semibold bg-primary text-primary-foreground"
-                    @click="toggleDone(note.id)"
-                  >
-                    Märgi tehtuks
-                  </button>
-                  <Link
-                    class="px-3 py-2 rounded-lg text-xs font-semibold bg-secondary text-muted-foreground"
-                    :href="`/calendar/notes/${note.id}/edit`"
-                  >
-                    Muuda
-                  </Link>
-                </div>
-              </div>
-
-              <div v-else class="space-y-3">
-                <div class="flex justify-between items-start gap-3">
-                  <h4 class="font-semibold">{{ note.title }}</h4>
-                  <span class="text-[10px] px-2 py-0.5 rounded uppercase font-bold bg-primary/15 text-primary">
-                    {{ note.tag }}
+              <div class="mb-2 flex items-start justify-between gap-2">
+                <span
+                  class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                  :class="note.kind === 'journal' ? 'bg-primary/10 text-primary' : 'bg-secondary text-muted-foreground'"
+                >
+                  <span class="material-symbols-outlined text-[13px]">
+                    {{ note.kind === 'task' ? 'checklist' : note.kind === 'reminder' ? 'notifications_active' : 'description' }}
                   </span>
-                </div>
+                  {{ note.tag }}
+                </span>
+                <input
+                  v-if="note.kind === 'task'"
+                  class="size-4 rounded border-input text-primary focus:ring-ring"
+                  type="checkbox"
+                  :checked="!!note.done"
+                  @click.stop
+                  @change="toggleDone(note.id)"
+                />
+              </div>
 
-                <p class="text-sm text-muted-foreground">
-                  {{ note.body }}
-                </p>
+              <h4 class="font-semibold text-base leading-snug line-clamp-2" :class="note.done ? 'line-through opacity-60' : ''">
+                {{ note.title || 'Nimetu kirje' }}
+              </h4>
+              <p v-if="note.body" class="mt-1 text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                {{ note.body }}
+              </p>
 
-                <div v-if="note.images?.length" class="flex gap-2 overflow-x-auto no-scrollbar">
+              <div class="mt-2">
+                <p v-if="note.time" class="text-[11px] font-semibold text-primary">{{ note.time }}</p>
+                <div v-if="note.images?.length" class="mt-2 flex gap-2 overflow-x-auto no-scrollbar">
                   <div
                     v-for="(img, idx) in note.images"
                     :key="idx"
-                    class="size-20 shrink-0 rounded-lg bg-center bg-cover border border-border"
+                    class="size-14 shrink-0 rounded-lg bg-center bg-cover border border-border"
                     :style="{ backgroundImage: `url('${img}')` }"
                     role="img"
                     :aria-label="`Pilt ${idx + 1}`"
                   />
                 </div>
-
-                <div class="flex gap-2" @click.stop>
-                  <Link
-                    class="px-3 py-2 rounded-lg text-xs font-semibold bg-secondary text-muted-foreground"
-                    :href="`/calendar/notes/${note.id}/edit`"
-                  >
-                    Muuda
-                  </Link>
-                </div>
               </div>
             </article>
 
-            <p v-if="group.items.length === 0" class="text-sm text-muted-foreground">
+            <p v-if="group.items.length === 0" class="col-span-2 text-sm text-muted-foreground">
               Pole kirjeid.
             </p>
           </div>

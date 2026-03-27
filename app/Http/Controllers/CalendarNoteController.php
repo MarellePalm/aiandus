@@ -61,16 +61,47 @@ class CalendarNoteController extends Controller
 
     public function overview(Request $request)
     {
-        $user = $request->user();   
+        $user = $request->user();
+        $q = trim((string) $request->get('q', ''));
+        $chip = (string) $request->get('chip', 'all');
+        if (! in_array($chip, ['all', 'month', 'undone'], true)) {
+            $chip = 'all';
+        }
 
-        $notes = CalendarNote::query()
-            ->where('user_id', $user->id)
-            ->orderBy('note_date')
-            ->orderBy('id')
+        $query = CalendarNote::query()
+            ->where('user_id', $user->id);
+
+        if ($q !== '') {
+            $query->where(function ($builder) use ($q) {
+                $builder
+                    ->where('title', 'like', "%{$q}%")
+                    ->orWhere('body', 'like', "%{$q}%");
+            });
+        }
+
+        if ($chip === 'month') {
+            $start = Carbon::now()->startOfMonth()->toDateString();
+            $end = Carbon::now()->endOfMonth()->toDateString();
+            $query->whereBetween('note_date', [$start, $end]);
+        } elseif ($chip === 'undone') {
+            $query
+                ->where('type', 'task')
+                ->where(function ($builder) {
+                    $builder->where('done', false)->orWhereNull('done');
+                });
+        }
+
+        $notes = $query
+            ->orderByDesc('note_date')
+            ->orderByDesc('id')
             ->get();
 
         return Inertia::render('calendarNotes/NotesOverview', [
             'notes' => $notes,
+            'filters' => [
+                'q' => $q !== '' ? $q : null,
+                'chip' => $chip,
+            ],
         ]);
     }
 
