@@ -92,6 +92,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'id' => $b->id,
                 'name' => $b->name,
                 'location' => $b->location,
+                'image_url' => $b->image_url,
                 'rows' => (int) ($b->rows ?? 3),
                 'columns' => (int) ($b->columns ?? 3),
                 'layout' => $b->layout,
@@ -122,8 +123,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ]);
     })->name('map');
 
-    Route::get('map/beds/new', function () {
-        return Inertia::render('map/AddBedPage');
+    Route::get('map/beds/new', function (\Illuminate\Http\Request $request) {
+        $isFirstBed = !Bed::query()
+            ->where('user_id', $request->user()->id)
+            ->exists();
+
+        return Inertia::render('map/AddBedPage', [
+            'showGuide' => $isFirstBed,
+        ]);
     })->name('map.beds.create');
 
     Route::get('beds/{bed}', function (\Illuminate\Http\Request $request, Bed $bed) {
@@ -149,6 +156,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'id' => $bed->id,
                 'name' => $bed->name,
                 'location' => $bed->location,
+                'image_url' => $bed->image_url,
                 'rows' => (int) ($bed->rows ?? 3),
                 'columns' => (int) ($bed->columns ?? 3),
                 'layout' => $bed->layout,
@@ -171,6 +179,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'id' => $bed->id,
                 'name' => $bed->name,
                 'location' => $bed->location,
+                'image_url' => $bed->image_url,
                 'layout' => $bed->layout,
             ],
         ]);

@@ -12,6 +12,7 @@ class Bed extends Model
         'user_id',
         'name',
         'location',
+        'image_url',
         'rows',
         'columns',
         'layout',

@@ -9,7 +9,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 
 type PlantInBed = { id: number; name: string; image_url: string | null; position_in_bed: string | null };
-type Bed = { id: number; name: string; location: string | null; rows: number; columns: number; layout?: number[][] | null; plants: PlantInBed[] };
+type Bed = { id: number; name: string; location: string | null; image_url?: string | null; rows: number; columns: number; layout?: number[][] | null; plants: PlantInBed[] };
 type PlantWithoutBed = { id: number; name: string; image_url: string | null; category?: { name: string; slug: string } | null };
 
 const props = defineProps<{
@@ -21,6 +21,8 @@ const breadcrumbs = [{ title: 'Aiaplaan', href: '/map' }];
 const showOnboardingHint = computed(
   () => props.beds.length === 0 && props.plantsWithoutBed.length === 0,
 );
+const showPlantsWithoutBedHint = ref(false);
+const PLANTS_WITHOUT_BED_HINT_SEEN_KEY = 'mapPlantsWithoutBedHintSeen';
 
 const coverTick = ref(0);
 let coverTimer: ReturnType<typeof setInterval> | null = null;
@@ -29,6 +31,16 @@ onMounted(() => {
   coverTimer = setInterval(() => {
     coverTick.value += 1;
   }, 3500);
+
+  try {
+    const hasSeenHint = localStorage.getItem(PLANTS_WITHOUT_BED_HINT_SEEN_KEY) === '1';
+    if (!hasSeenHint) {
+      showPlantsWithoutBedHint.value = true;
+      localStorage.setItem(PLANTS_WITHOUT_BED_HINT_SEEN_KEY, '1');
+    }
+  } catch {
+    showPlantsWithoutBedHint.value = false;
+  }
 });
 
 onBeforeUnmount(() => {
@@ -36,6 +48,7 @@ onBeforeUnmount(() => {
 });
 
 function bedCoverImage(bed: Bed): string | null {
+  if (bed.image_url) return bed.image_url;
   const images = bed.plants.map((p) => p.image_url).filter((x): x is string => Boolean(x));
   if (!images.length) return null;
   const idx = (coverTick.value + (bed.id % images.length)) % images.length;
@@ -106,17 +119,16 @@ function bedCoverImage(bed: Bed): string | null {
 
           <!-- Taimed ilma peenrata -->
           <section class="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-soft">
-            <div class="mb-3.5 border-b border-border/60 pb-3">
+            <div class="mb-3 border-b border-border/60 pb-3">
               <div class="flex items-center justify-between gap-3">
-                <h2 class="text-lg font-semibold flex items-center gap-2">
-                  <span class="material-symbols-outlined text-primary text-[1.2rem]" aria-hidden="true">eco</span>
-                  Taimed ilma peenrata
-                </h2>
+                <h2 class="text-base sm:text-lg font-semibold">Taimed ilma peenrata</h2>
                 <span class="inline-flex items-center rounded-full border border-primary/20 bg-primary/8 px-2.5 py-1 text-[11px] font-semibold text-primary">
                   {{ plantsWithoutBed.length }}
                 </span>
               </div>
-              <p class="text-xs text-muted-foreground mt-1.5">Vali üleval peenral tühi ruut ja lisa taim.</p>
+              <p v-if="showPlantsWithoutBedHint" class="text-xs text-muted-foreground mt-1.5">
+                Vali peenral tühi ruut ja lisa taim.
+              </p>
             </div>
 
             <div
@@ -126,11 +138,11 @@ function bedCoverImage(bed: Bed): string | null {
               Kõik taimed on peenrale määratud või sul pole taimi.
             </div>
 
-            <div v-else class="flex gap-3 overflow-x-auto pb-1 no-scrollbar snap-x snap-mandatory">
+            <div v-else class="flex gap-3 overflow-x-auto pb-2 pr-16 no-scrollbar snap-x snap-mandatory">
               <article
                 v-for="plant in plantsWithoutBed"
                 :key="plant.id"
-                class="group relative h-40 w-40 shrink-0 snap-start overflow-hidden rounded-2xl border border-border/60 bg-card shadow-soft"
+                class="group relative h-36 w-36 shrink-0 snap-start overflow-hidden rounded-2xl border border-border/60 bg-card shadow-soft"
               >
                 <div
                   class="absolute inset-0 bg-cover bg-center"
@@ -142,10 +154,10 @@ function bedCoverImage(bed: Bed): string | null {
                 >
                   <span class="material-symbols-outlined text-3xl">eco</span>
                 </div>
-                <div class="absolute inset-0 bg-linear-to-t from-black/70 via-black/25 to-transparent" />
-                <div class="absolute bottom-0 left-0 right-0 p-2.5">
+                <div class="absolute inset-0 bg-linear-to-t from-black/75 via-black/30 to-transparent" />
+                <div class="absolute bottom-0 left-0 right-0 p-2.5 backdrop-blur-[1px]">
                   <p class="text-sm font-semibold text-white truncate">{{ plant.name }}</p>
-                  <p class="text-[11px] text-white/85 truncate">Vali ruut peenra kaardilt</p>
+                  <p class="text-[11px] text-white/85 truncate">Vali ruut peenral</p>
                 </div>
               </article>
             </div>

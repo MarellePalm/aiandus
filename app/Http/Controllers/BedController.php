@@ -13,6 +13,7 @@ class BedController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'location' => ['nullable', 'string', 'max:255'],
+            'image' => ['nullable', 'image', 'max:4096'],
             'layout' => ['nullable', 'array'],
             'layout.*' => ['array'],
             // -1 = vahekäik / tee / kivi, 0 = tühi, 1 = peenraruut
@@ -27,10 +28,16 @@ class BedController extends Controller
             $columns = $rows > 0 ? max(array_map('count', $layout)) : 1;
         }
 
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('bed-images', 'public');
+        }
+
         Bed::create([
             'user_id' => $request->user()->id,
             'name' => $data['name'],
             'location' => $data['location'] ?? null,
+            'image_url' => $imagePath ? "/storage/{$imagePath}" : null,
             'rows' => $rows,
             'columns' => $columns,
             'layout' => $layout,
@@ -49,6 +56,7 @@ class BedController extends Controller
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:120'],
             'location' => ['nullable', 'string', 'max:255'],
+            'image' => ['nullable', 'image', 'max:4096'],
             'rows' => ['sometimes', 'integer', 'min:1', 'max:12'],
             'columns' => ['sometimes', 'integer', 'min:1', 'max:12'],
             'layout' => ['nullable', 'array'],
@@ -58,6 +66,10 @@ class BedController extends Controller
         ]);
 
         $payload = array_filter($data, fn ($v) => $v !== null);
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('bed-images', 'public');
+            $payload['image_url'] = "/storage/{$path}";
+        }
         if (isset($data['layout']) && is_array($data['layout']) && !empty($data['layout'])) {
             $payload['rows'] = count($data['layout']);
             $payload['columns'] = max(array_map('count', $data['layout']));

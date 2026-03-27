@@ -303,7 +303,7 @@ function goToFabAction(href: string) {
                 >
                   <span class="material-symbols-outlined text-lg">drag_indicator</span>
                 </button>
-                <h3 class="font-semibold text-foreground text-xs">{{ sectionTitle('weather') }}</h3>
+                <h3 class="font-semibold text-foreground text-sm">{{ sectionTitle('weather') }}</h3>
                 <span
                   class="material-symbols-outlined text-lg text-muted-foreground shrink-0 transition"
                   :class="[
@@ -346,7 +346,7 @@ function goToFabAction(href: string) {
                 >
                   <span class="material-symbols-outlined text-lg">drag_indicator</span>
                 </button>
-                <h3 class="font-semibold text-foreground text-xs">{{ sectionTitle('moon') }}</h3>
+                <h3 class="font-semibold text-foreground text-sm">{{ sectionTitle('moon') }}</h3>
                 <span
                   class="material-symbols-outlined text-lg text-muted-foreground shrink-0 transition"
                   :class="[
@@ -389,7 +389,7 @@ function goToFabAction(href: string) {
                 >
                   <span class="material-symbols-outlined text-lg">drag_indicator</span>
                 </button>
-                <h3 class="font-semibold text-foreground text-xs">{{ sectionTitle('notes') }}</h3>
+                <h3 class="font-semibold text-foreground text-sm">{{ sectionTitle('notes') }}</h3>
                 <span
                   class="material-symbols-outlined text-lg text-muted-foreground shrink-0 transition"
                   :class="[
@@ -466,7 +466,7 @@ function goToFabAction(href: string) {
                 >
                   <span class="material-symbols-outlined text-lg">drag_indicator</span>
                 </button>
-                <h3 class="font-semibold text-foreground text-xs">{{ sectionTitle('recent') }}</h3>
+                <h3 class="font-semibold text-foreground text-sm">{{ sectionTitle('recent') }}</h3>
                 <span
                   class="material-symbols-outlined text-lg text-muted-foreground shrink-0 transition"
                   :class="[
@@ -541,7 +541,7 @@ function goToFabAction(href: string) {
                 >
                   <span class="material-symbols-outlined text-lg">drag_indicator</span>
                 </button>
-                <h3 class="font-semibold text-foreground text-xs">{{ sectionTitle('recentSeeds') }}</h3>
+                <h3 class="font-semibold text-foreground text-sm">{{ sectionTitle('recentSeeds') }}</h3>
                 <span
                   class="material-symbols-outlined text-lg text-muted-foreground shrink-0 transition"
                   :class="[

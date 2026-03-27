@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 
 const props = withDefaults(
   defineProps<{
     mode?: 'create' | 'edit';
-    bed?: { id: number; name: string; location: string | null; layout?: number[][] | null };
+    bed?: { id: number; name: string; location: string | null; image_url?: string | null; layout?: number[][] | null };
   }>(),
   {
     mode: 'create',
@@ -24,6 +24,9 @@ function initialLayout(): number[][] {
 const showAddBed = ref(true);
 const newBedName = ref(props.mode === 'edit' ? props.bed?.name ?? '' : '');
 const newBedLocation = ref(props.mode === 'edit' ? props.bed?.location ?? '' : '');
+const existingImageUrl = ref(props.mode === 'edit' ? props.bed?.image_url ?? null : null);
+const newBedImage = ref<File | null>(null);
+const newBedImagePreview = ref<string | null>(null);
 
 //  1  = peenraruut
 //  0  = tühi / määramata
@@ -35,8 +38,11 @@ const newBedLayout = ref<number[][]>(initialLayout());
 // -----------------------------
 function normalizeRectLayout() {
   const maxLen = Math.max(...newBedLayout.value.map((r) => r.length), 1);
+  const needsNormalize = newBedLayout.value.some((r) => r.length !== maxLen);
+  if (!needsNormalize) return;
+
   newBedLayout.value = newBedLayout.value.map((r) =>
-    r.length < maxLen ? [...r, ...Array.from({ length: maxLen - r.length }, () => 0)] : r,
+    r.length < maxLen ? [...r, ...Array.from({ length: maxLen - r.length }, () => 0)] : [...r],
   );
 }
 
@@ -88,8 +94,6 @@ function setInternalCell(displayR: number, displayC: number, value: Cell) {
 // Display matrix: add 1-cell margin around real layout
 // -----------------------------
 const displayLayout = computed<number[][]>(() => {
-  normalizeRectLayout();
-
   const cols = newBedLayout.value[0]?.length ?? 1;
   const top = Array.from({ length: cols + 2 }, () => 0);
   const bottom = Array.from({ length: cols + 2 }, () => 0);
@@ -97,6 +101,9 @@ const displayLayout = computed<number[][]>(() => {
 
   return [top, ...mid, bottom];
 });
+
+// Hoia algne layout ristkülikuna, kuid väldi reaktiivse state muutmist computed sees.
+normalizeRectLayout();
 
 function inBounds(mat: number[][], r: number, c: number) {
   return r >= 0 && r < mat.length && c >= 0 && c < (mat[0]?.length ?? 0);
@@ -183,20 +190,44 @@ function submit() {
     name: newBedName.value.trim(),
     location: newBedLocation.value.trim() || undefined,
     layout: newBedLayout.value,
+    image: newBedImage.value ?? undefined,
   };
 
   if (props.mode === 'edit' && props.bed) {
     router.put(`/beds/${props.bed.id}`, payload, {
+      forceFormData: true,
       preserveScroll: true,
       onSuccess: () => resetForm(),
     });
   } else {
     router.post('/beds', payload, {
+      forceFormData: true,
       preserveScroll: true,
       onSuccess: () => resetForm(),
     });
   }
 }
+
+function onImageChange(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0] ?? null;
+  newBedImage.value = file;
+
+  if (newBedImagePreview.value) {
+    URL.revokeObjectURL(newBedImagePreview.value);
+    newBedImagePreview.value = null;
+  }
+
+  if (file) {
+    newBedImagePreview.value = URL.createObjectURL(file);
+  }
+}
+
+onBeforeUnmount(() => {
+  if (newBedImagePreview.value) {
+    URL.revokeObjectURL(newBedImagePreview.value);
+  }
+});
 
 const addTileClass = computed(() => {
   if (activeTool.value === -1) {
@@ -248,6 +279,22 @@ const addTileClass = computed(() => {
           placeholder="nt Tagaaed, esiukse paremal"
           maxlength="255"
         />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-foreground mb-1">Peenra pilt (valikuline)</label>
+        <input
+          type="file"
+          accept="image/*"
+          class="form-input w-full file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary hover:file:bg-primary/20"
+          @change="onImageChange"
+        />
+        <div v-if="newBedImagePreview || existingImageUrl" class="mt-3">
+          <div
+            class="h-28 w-full rounded-xl border border-border bg-cover bg-center"
+            :style="{ backgroundImage: `url('${newBedImagePreview ?? existingImageUrl}')` }"
+          />
+        </div>
       </div>
 
       <!-- AKTIIVNE LEGEND = tööriistavalik -->
