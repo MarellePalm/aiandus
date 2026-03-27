@@ -6,6 +6,10 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 import AddBed from '@/pages/map/AddBed.vue';
 
+const props = defineProps<{
+  showGuide?: boolean;
+}>();
+
 const breadcrumbs = [
   { title: 'Aiaplaan', href: '/map' },
   { title: 'Lisa peenar', href: '/map/beds/new' },
@@ -25,7 +29,7 @@ const breadcrumbs = [
           top-row-class="mb-2"
           bottom-row-class="mb-0"
         />
-        <p class="-mt-2 text-muted-foreground">
+        <p v-if="props.showGuide" class="-mt-2 text-muted-foreground">
           Loo uus peenar ja joonista selle kuju ruutudest.
         </p>
 

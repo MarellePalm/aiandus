@@ -11,6 +11,7 @@ type Bed = {
   id: number;
   name: string;
   location: string | null;
+  image_url?: string | null;
   rows: number;
   columns: number;
   layout?: number[][] | null;
@@ -44,6 +45,7 @@ onBeforeUnmount(() => {
 });
 
 function bedCoverImage(): string | null {
+  if (props.bed.image_url) return props.bed.image_url;
   const images = props.bed.plants.map((p) => p.image_url).filter((x): x is string => Boolean(x));
   if (!images.length) return null;
   return images[coverTick.value % images.length];
@@ -122,9 +124,9 @@ const plantsWithoutBedByCategory = computed(() => {
           />
 
           <main class="flex-1 px-6 py-4 md:px-8 space-y-4">
-            <section class="rounded-2xl border border-border bg-card shadow-soft overflow-hidden">
+            <section class="rounded-2xl border border-border bg-card shadow-soft">
               <div
-                class="h-38 bg-cover bg-center relative"
+                class="h-38 bg-cover bg-center relative overflow-hidden rounded-t-2xl"
                 :style="bedCoverImage() ? { backgroundImage: `url('${bedCoverImage()}')` } : {}"
               >
                 <div v-if="!bedCoverImage()" class="absolute inset-0 bg-linear-to-br from-primary/15 via-muted/40 to-muted/20 flex items-center justify-center">

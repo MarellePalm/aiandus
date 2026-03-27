@@ -23,7 +23,7 @@ export const MOON_SIGN_INESSIVE_ET: Record<ZodiacSignName, string> = {
   Jäär: 'Jääras',
   Sõnn: 'Sõnnis',
   Kaksikud: 'Kaksikutes',
-  Vähk: 'Vähikus',
+  Vähk: 'Vähis',
   Lõvi: 'Lõvis',
   Neitsi: 'Neitsis',
   Kaalud: 'Kaaludes',

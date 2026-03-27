@@ -10,6 +10,7 @@ type Bed = {
   id: number;
   name: string;
   location: string | null;
+  image_url?: string | null;
   layout?: number[][] | null;
 };
 
@@ -37,9 +38,6 @@ const breadcrumbs = [
             top-row-class="mb-2"
             bottom-row-class="mb-0"
           />
-          <p class="-mt-2 text-muted-foreground">
-            Kohanda peenra nime, asukohta ja kuju.
-          </p>
         </section>
 
         <section class="page-container-wide">
