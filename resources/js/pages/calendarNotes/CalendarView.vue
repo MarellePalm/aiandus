@@ -1,7 +1,7 @@
 <!-- resources/js/Pages/Calendar.vue -->
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import BackIconButton from '@/components/BackIconButton.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
@@ -118,6 +118,29 @@ const selectedReminders = computed<Note[]>(() =>
 const selectedDiaryNotes = computed<Note[]>(() =>
   selectedNotes.value.filter((n) => !n.type || n.type === 'note'),
 );
+type DayFeedItem = {
+  key: string;
+  kind: 'action' | 'note';
+  note: Note;
+};
+const dayFeedItems = computed<DayFeedItem[]>(() => [
+  ...selectedTasks.value.map((note, index) => ({ key: `task-${String(note.id ?? index)}`, kind: 'action' as const, note })),
+  ...selectedReminders.value.map((note, index) => ({
+    key: `reminder-${String(note.id ?? index)}`,
+    kind: 'action' as const,
+    note,
+  })),
+  ...selectedDiaryNotes.value.map((note, index) => ({ key: `note-${String(note.id ?? index)}`, kind: 'note' as const, note })),
+]);
+const selectedSummary = computed(() => ({
+  actions: selectedTasks.value.length + selectedReminders.value.length,
+  notes: selectedDiaryNotes.value.length,
+}));
+const selectedTotal = computed(
+  () => selectedSummary.value.actions + selectedSummary.value.notes,
+);
+const showCalendarEmptyHint = ref(false);
+const CALENDAR_EMPTY_HINT_SEEN_KEY = 'calendarEmptyHintSeen';
 
 function toggleTaskDone(n: Note) {
   if (n.id == null) return;
@@ -131,27 +154,26 @@ function formatDueAt(iso: string) {
   return `${date} kell ${time}`;
 }
 
-const openMenuId = ref<number | string | null>(null);
-
-function toggleNoteMenu(id: number | string | undefined) {
-  if (id == null) return;
-  openMenuId.value = openMenuId.value === id ? null : id;
-}
-
-function closeNoteMenu() {
-  openMenuId.value = null;
-}
-
-function deleteNote(n: Note) {
-  if (n.id == null) return;
-  if (!confirm('Kustuta see märge?')) return;
-  closeNoteMenu();
-  router.delete(`/calendar/notes/${n.id}`);
-}
-
 function selectDay(day: number) {
   selectedDay.value = day;
 }
+
+function previewText(text?: string, max = 120) {
+  if (!text) return '';
+  return text.length > max ? `${text.slice(0, max).trim()}...` : text;
+}
+
+onMounted(() => {
+  try {
+    const seen = localStorage.getItem(CALENDAR_EMPTY_HINT_SEEN_KEY) === '1';
+    if (!seen) {
+      showCalendarEmptyHint.value = true;
+      localStorage.setItem(CALENDAR_EMPTY_HINT_SEEN_KEY, '1');
+    }
+  } catch {
+    showCalendarEmptyHint.value = false;
+  }
+});
 </script>
 
 <template>
@@ -231,165 +253,65 @@ function selectDay(day: number) {
         </section>
 
         <!-- Valitud päev: ülesanded ja märkmed -->
-        <section class="journal-panel">
-          <div class="mb-6">
-            <p class="journal-subtitle capitalize">{{ selectedMonthLabel }}</p>
-            <h2 class="journal-title capitalize">{{ selectedWeekday }}</h2>
+        <section class="rounded-2xl border border-border bg-card/90 p-4 sm:p-5 shadow-soft">
+          <div class="mb-5">
+            <p class="text-xs tracking-wide text-muted-foreground capitalize">{{ selectedMonthLabel }}</p>
+            <h2 class="mt-1 text-2xl font-bold capitalize text-foreground">{{ selectedWeekday }}</h2>
           </div>
 
-          <!-- Tänased tööd -->
-          <section class="mb-8">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="journal-section-title inline-flex items-center gap-2">
-                <span class="material-symbols-outlined text-[14px]">checklist</span>
-                Tänased tööd
-              </h3>
-            </div>
-
-            <div v-if="selectedTasks.length" class="space-y-3">
-              <label
-                v-for="t in selectedTasks"
-                :key="String(t.id)"
-                class="journal-check-row cursor-pointer items-start"
+          <section class="mb-2 space-y-3">
+            <div v-if="dayFeedItems.length" class="flex overflow-x-auto gap-3 pb-1 no-scrollbar">
+              <article
+                v-for="item in dayFeedItems"
+                :key="item.key"
+                class="basis-[calc((100%-0.75rem)/2)] min-w-[calc((100%-0.75rem)/2)] shrink-0 rounded-xl border border-border/60 bg-card p-2.5 shadow-soft"
               >
-                <input
-                  type="checkbox"
-                  :checked="!!t.done"
-                  class="journal-check accent-primary mt-0.5"
-                  @change="toggleTaskDone(t)"
-                />
-                <span class="min-w-0">
-                  <span
-                    :class="['journal-row-text', t.done ? 'line-through opacity-70' : '']"
-                  >
-                    {{ t.title || t.body || 'Ülesanne' }}
+                <div class="mb-2 flex items-start justify-between gap-2">
+                  <span class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary">
+                    <span class="material-symbols-outlined text-[12px]">
+                      {{ item.kind === 'action' ? 'checklist' : 'description' }}
+                    </span>
+                    {{ item.kind === 'action' ? 'Töö' : 'Märge' }}
                   </span>
-                  <span
-                    v-if="t.due_at"
-                    class="journal-time block mt-0.5"
-                  >
-                    Tähtaeg: {{ formatDueAt(t.due_at) }}
-                  </span>
-                </span>
-              </label>
-            </div>
-            <p v-else class="journal-empty">Täna ülesandeid pole.</p>
-          </section>
-
-          <!-- Meeldetuletused -->
-          <section class="mb-8">
-            <h3 class="journal-section-title inline-flex items-center gap-2">
-              <span class="material-symbols-outlined text-[14px]">notifications_active</span>
-              Meeldetuletused
-            </h3>
-
-            <div v-if="selectedReminders.length" class="space-y-3 mt-4">
-              <div v-for="n in selectedReminders" :key="String(n.id ?? n.title)" class="journal-reminder">
-                <p class="journal-row-text">
-                  {{ n.title || 'Meeldetuletus' }}
-                  <span v-if="n.reminder_time" class="journal-time block mt-0.5">— {{ n.reminder_time }}</span>
-                </p>
-              </div>
-            </div>
-
-            <p v-else class="journal-empty mt-4">Täna meeldetuletusi ei ole.</p>
-          </section>
-
-          <!-- Päevikumärkmed -->
-          <section>
-            <div class="flex justify-between items-baseline mb-3">
-              <h3 class="journal-section-title mb-0 inline-flex items-center gap-2">
-                <span class="material-symbols-outlined text-[14px]">description</span>
-                Päevikumärkmed
-              </h3>
-              <span class="journal-time journal-time--placeholder" aria-hidden="true" />
-            </div>
-
-            <div v-if="selectedDiaryNotes.length" class="space-y-3">
-              <div
-                v-for="n in selectedDiaryNotes"
-                :key="String(n.id ?? n.title)"
-                class="journal-note relative flex gap-2 group"
-              >
-                <div class="min-w-0 flex-1">
-                  <p class="journal-note-title">{{ n.title || 'Märge' }}</p>
-                  <p v-if="n.body" class="journal-note-body">{{ n.body }}</p>
-                  <div v-if="n.media_urls?.length" class="mt-3 flex flex-wrap gap-2">
-                    <a
-                      v-for="(url, i) in n.media_urls"
-                      :key="i"
-                      :href="url"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="block"
-                    >
-                      <img
-                        :src="url"
-                        :alt="`Märkme foto ${i + 1}`"
-                        class="w-16 h-16 object-cover rounded-lg border border-border hover:opacity-90 transition"
-                      />
-                    </a>
-                  </div>
-                </div>
-                <div class="relative shrink-0">
-                  <button
-                    type="button"
-                    class="icon-btn size-9 rounded-full
-                           opacity-0 pointer-events-none
-                           group-hover:opacity-100 group-hover:pointer-events-auto
-                           group-focus-within:opacity-100 group-focus-within:pointer-events-auto
-                           transition-opacity"
-                    :class="openMenuId === n.id ? 'opacity-100 pointer-events-auto' : ''"
-                    aria-label="Valikud"
-                    aria-haspopup="true"
-                    :aria-expanded="openMenuId === n.id"
-                    @click="toggleNoteMenu(n.id)"
-                  >
-                    <span class="material-symbols-outlined text-xl">more_vert</span>
-                  </button>
-                  <!-- Click-outside overlay to close menu -->
-                  <div
-                    v-if="openMenuId === n.id"
-                    class="fixed inset-0 z-5"
-                    aria-hidden="true"
-                    @click="closeNoteMenu"
+                  <input
+                    v-if="item.kind === 'action'"
+                    type="checkbox"
+                    :checked="!!item.note.done"
+                    class="journal-check accent-primary mt-0.5"
+                    @change="toggleTaskDone(item.note)"
                   />
-                  <div
-                    v-if="openMenuId === n.id"
-                    class="absolute right-0 top-full z-10 mt-1 min-w-[140px] rounded-lg border border-border bg-card py-1 shadow-lg"
-                    role="menu"
-                  >
-                    <Link
-                      :href="`/calendar/notes/${n.id}/edit`"
-                      class="menu-item flex w-full items-center gap-2 px-4 py-2 text-left"
-                      role="menuitem"
-                      @click="closeNoteMenu"
-                    >
-                      <span class="material-symbols-outlined text-lg">edit</span>
-                      Muuda
-                    </Link>
-                    <button
-                      type="button"
-                      class="menu-item flex w-full items-center gap-2 px-4 py-2 text-left text-destructive"
-                      role="menuitem"
-                      @click="deleteNote(n)"
-                    >
-                      <span class="material-symbols-outlined text-lg">delete</span>
-                      Kustuta
-                    </button>
-                  </div>
                 </div>
-              </div>
+                <p :class="['text-base leading-snug font-bold line-clamp-2', item.kind === 'action' && item.note.done ? 'line-through opacity-70' : '']">
+                  {{ item.note.title || item.note.body || 'Kirje' }}
+                </p>
+                <p v-if="item.note.body && item.note.title" class="mt-1 text-xs text-muted-foreground line-clamp-2">
+                  {{ previewText(item.note.body, 90) }}
+                </p>
+                <p v-if="item.kind === 'action' && item.note.due_at" class="mt-1.5 text-[11px] font-semibold text-primary line-clamp-1">
+                  {{ formatDueAt(item.note.due_at) }}
+                </p>
+                <p v-else-if="item.kind === 'action' && item.note.reminder_time" class="mt-1.5 text-[11px] font-semibold text-primary line-clamp-1">
+                  {{ item.note.reminder_time }}
+                </p>
+                <img
+                  v-else-if="item.kind === 'note' && item.note.media_urls?.[0]"
+                  :src="item.note.media_urls[0]"
+                  alt="Märkme foto"
+                  class="mt-2 h-14 w-14 rounded-lg border border-border/60 object-cover"
+                />
+              </article>
             </div>
 
-            <p v-else class="journal-empty">Sellel päeval pole veel päevikumärkmeid.</p>
+            <div v-if="selectedTotal === 0" class="rounded-xl border border-border bg-muted/25 px-4 py-3">
+              <p class="text-sm text-muted-foreground">Sellel päeval pole veel kirjeid.</p>
+              <p v-if="showCalendarEmptyHint" class="mt-1 text-xs text-muted-foreground">
+                Kasuta paremal all olevat + nuppu, et lisada uus kirje.
+              </p>
+            </div>
           </section>
 
-          <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-between">
-            <Link
-              href="/calendar/overview"
-              class="btn-panel-link mt-0!"
-            >
+          <div class="mt-5">
+            <Link href="/calendar/overview" class="btn-panel-link mt-0!">
               <span class="material-symbols-outlined text-lg">description</span>
               <span class="font-semibold text-sm">Vaata kõiki märkmeid</span>
               <span class="material-symbols-outlined text-lg ml-auto">chevron_right</span>

@@ -264,7 +264,7 @@ onMounted(() => scrollDescriptionToCenter('auto'));
             bottom-row-class="mb-4"
           >
             <template #leading>
-              <BackIconButton href="/dashboard" aria-label="Tagasi avalehele" />
+              <BackIconButton href="/calendar" aria-label="Tagasi kalendrisse" />
             </template>
             <div class="flex items-center justify-center pb-2">
               <CalendarSwitchTabs active="moon" />

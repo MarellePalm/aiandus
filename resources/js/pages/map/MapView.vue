@@ -63,7 +63,7 @@ function bedCoverImage(bed: Bed): string | null {
       <div class="bg-background-light text-forest font-display min-h-screen antialiased">
         <div class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
           <DiaryHeader
-            title="Minu peenrad"
+            title="Peenrad"
             header-class="pt-6"
             top-row-class="mb-3"
             bottom-row-class="mb-4"

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 
+import BackIconButton from '@/components/BackIconButton.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
@@ -33,12 +34,15 @@ const breadcrumbs = [
         <section class="page-container-wide">
           <DiaryHeader
             title="Muuda peenart"
-            back-href="/map"
             title-class="text-forest text-3xl font-bold tracking-tight"
             header-class="pt-6 px-0 md:px-0"
             top-row-class="mb-2"
             bottom-row-class="mb-0"
-          />
+          >
+            <template #leading>
+              <BackIconButton href="/map" aria-label="Tagasi peenarde vaatesse" />
+            </template>
+          </DiaryHeader>
         </section>
 
         <section class="page-container-wide">

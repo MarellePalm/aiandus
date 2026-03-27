@@ -46,7 +46,7 @@ function tabClass(key: ActiveKey) {
       ]"
     >
       <span class="material-symbols-outlined text-[18px]">nightlight</span>
-      Kuufaasid
+      Kuukalender
     </Link>
   </div>
 </template>

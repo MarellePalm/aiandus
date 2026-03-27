@@ -89,7 +89,7 @@ const signSymbol = computed(() => SIGN_SYMBOL[zodiac.value.moonSign] ?? '☾');
       <span class="material-symbols-outlined text-[20px] transition group-hover:translate-x-0.5">
         calendar_month
       </span>
-      <span>Kuufaaside kalender</span>
+      <span>Kuukalender</span>
       <span class="material-symbols-outlined text-lg opacity-70">chevron_right</span>
     </Link>
   </div>
