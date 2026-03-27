@@ -212,8 +212,8 @@ onBeforeUnmount(() => {
 
                                     <div class="min-w-0 flex-1">
                                         <h3 class="truncate text-lg font-semibold">{{ seed.name }}</h3>
-                                        <p class="mt-1 text-sm text-text-muted">Ostetud: {{ seed.year ?? '-' }}</p>
-                                        <p class="text-sm text-text-muted">Aegub: {{ seed.expires_at ?? '-' }}</p>
+                                        <p v-if="seed.year" class="mt-1 text-sm text-text-muted">Ostetud: {{ seed.year }}</p>
+                                        <p v-if="seed.expires_at" class="text-sm text-text-muted">Aegub: {{ seed.expires_at }}</p>
                                     </div>
 
                                     <div class="relative shrink-0" data-seed-menu @click.stop>

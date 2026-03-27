@@ -131,11 +131,11 @@ const toggleFavorite = (id: number) => {
 
 const tabClass = (key: TabKey) => {
     const base =
-        'flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full px-5 border transition-colors';
+        'flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full px-5 transition-colors';
     if (activeTab.value === key) {
-        return `${base} bg-primary text-white border-primary shadow-sm`;
+        return `${base} bg-primary text-white`;
     }
-    return `${base} bg-beige/60 text-forest border-beige hover:bg-beige`;
+    return `${base} bg-primary/10 text-primary hover:bg-primary/15`;
 };
 
 const resetToAll = () => {
@@ -152,28 +152,10 @@ const resetToAll = () => {
             <div
                 class="bg-background-light text-forest font-display min-h-screen antialiased"
             >
-                <!-- Botanical Line Art Accents (Decorative) -->
-                <div
-                    class="pointer-events-none fixed top-0 left-0 h-32 w-32 opacity-10 select-none"
-                >
-                    <span
-                        class="material-symbols-outlined translate-x-[-20%] translate-y-[-20%] -rotate-45 text-[120px]"
-                        >eco</span
-                    >
-                </div>
-                <div
-                    class="pointer-events-none fixed right-0 bottom-20 h-32 w-32 opacity-10 select-none"
-                >
-                    <span
-                        class="material-symbols-outlined translate-x-[20%] rotate-12 text-[120px]"
-                        >potted_plant</span
-                    >
-                </div>
-
                 <div
                     class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
                 >
-                    <DiaryHeader title="Minu Taimed">
+                    <DiaryHeader title="Taimed">
                         <template #leading>
                             <BackIconButton href="/dashboard" aria-label="Tagasi avalehele" />
                         </template>
