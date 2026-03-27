@@ -182,19 +182,30 @@ onBeforeUnmount(() => {
     <!-- Lehe režiim: /seeds/create -->
     <template v-if="isStandalone">
         <Head title="Lisa varu" />
-        <div class="min-h-screen bg-background-light text-forest font-display antialiased p-4 pb-8">
-            <Link
-                href="/seeds"
-                class="inline-flex items-center gap-1 text-[#2E2E2E]/70 hover:text-[#2E2E2E] mb-4"
-            >
-                <span class="material-symbols-outlined text-xl">arrow_back</span>
-                Tagasi
-            </Link>
-            <div class="max-w-lg mx-auto">
+        <div class="min-h-screen bg-background-light text-forest font-display antialiased">
+            <div class="fixed inset-0 z-50 flex items-start justify-center p-4 pt-6 sm:items-center sm:pt-4">
+                <Link
+                    href="/seeds"
+                    class="absolute inset-0 bg-black/30 backdrop-blur-[2px]"
+                    aria-label="Sulge"
+                />
+                <div class="relative w-full max-w-lg max-h-[92vh] overflow-hidden rounded-3xl bg-[#FAF8F4] shadow-xl ring-1 ring-black/5">
+                    <div class="max-h-[92vh] overflow-y-auto p-5 sm:p-6">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
                 <h1 class="text-lg font-semibold text-[#2E2E2E]">Lisa varu</h1>
                 <p class="mt-1 text-sm text-[#2E2E2E]/70 mb-5">
                     Lisa nimi, kogus, pilt, ostmisaasta ja aegumisaasta.
                 </p>
+                            </div>
+                            <Link
+                                href="/seeds"
+                                class="rounded-full p-2 text-[#2E2E2E]/60 hover:bg-black/5 hover:text-[#2E2E2E]"
+                                aria-label="Sulge"
+                            >
+                                ✕
+                            </Link>
+                        </div>
 
                 <div class="mt-5">
                     <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Nimi</label>
@@ -321,7 +332,9 @@ onBeforeUnmount(() => {
                     </Link>
                 </div>
             </div>
-        </div>
+                    </div>
+                </div>
+            </div>
     </template>
 
     <!-- Modaal -->

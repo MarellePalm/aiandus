@@ -81,7 +81,7 @@ class CalendarNoteController extends Controller
         $data = $request->validate([
             'note_date' => ['required', 'date'],
             'title' => ['nullable', 'string', 'max:255'],
-            'body' => ['required', 'string', 'max:5000'],
+            'body' => ['nullable', 'string', 'max:5000'],
             'type' => ['nullable', 'string', 'in:note,task'],
             'due_date' => ['nullable', 'date'],
             'due_time' => ['nullable', 'string', 'regex:/^\d{1,2}:\d{2}$/'],
@@ -128,7 +128,7 @@ class CalendarNoteController extends Controller
             'plant_id' => $plantId,
             'note_date' => $data['note_date'],
             'title' => $data['title'] ?? null,
-            'body' => $data['body'],
+            'body' => $data['body'] ?? '',
             'media' => $paths,
             'type' => $type,
             'done' => $type === 'task' ? false : null,
@@ -186,7 +186,7 @@ class CalendarNoteController extends Controller
         $data = $request->validate([
             'note_date' => ['required', 'date'],
             'title' => ['nullable', 'string', 'max:255'],
-            'body' => ['required', 'string', 'max:5000'],
+            'body' => ['nullable', 'string', 'max:5000'],
             'type' => ['nullable', 'string', 'in:note,task'],
             'done' => ['sometimes', 'boolean'],
             'due_date' => ['nullable', 'date'],
@@ -214,7 +214,7 @@ class CalendarNoteController extends Controller
         $update = [
             'note_date' => $data['note_date'],
             'title' => $data['title'] ?? null,
-            'body' => $data['body'],
+            'body' => $data['body'] ?? '',
             'media' => $paths,
             'due_at' => $dueAt,
         ];

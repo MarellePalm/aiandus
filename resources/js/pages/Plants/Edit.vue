@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Link, useForm } from "@inertiajs/vue3";
+import { Head, Link, useForm } from "@inertiajs/vue3";
 import { computed, onBeforeUnmount, ref } from "vue";
+import BackIconButton from "@/components/BackIconButton.vue";
 
 type Plant = {
   id: number;
@@ -65,171 +66,142 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <!-- 2) Ekraan täislaiusega: eemaldas max-w-5xl -->
-  <div class="w-full px-4 py-6 lg:px-8">
-    <!-- Header: tagasi vasakul noolega -->
-    <div class="mb-5 flex items-start justify-between gap-3">
-      <div class="flex items-start gap-3">
-        <!-- 1) Tagasi nupp vasakul ja noolega -->
-        <Link
-          :href="`/plants/${props.plant.id}`"
-          class="inline-flex h-10 w-10 items-center justify-center rounded-xl border hover:bg-black/5"
-          aria-label="Tagasi"
-          title="Tagasi"
-        >
-          <!-- simple arrow-left icon -->
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="h-5 w-5"
-          >
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </Link>
+  <Head title="Muuda taime" />
+  <div class="min-h-screen bg-background-light text-forest font-display antialiased">
+    <div class="fixed inset-0 z-50 flex items-start justify-center p-4 pt-6 sm:items-center sm:pt-4">
+      <Link
+        :href="`/plants/${props.plant.id}`"
+        class="absolute inset-0 bg-black/30 backdrop-blur-[2px]"
+        aria-label="Sulge"
+      />
 
-        <div>
-          <h1 class="text-2xl font-semibold leading-tight">Muuda taime</h1>
-          <p class="text-sm opacity-70">Muuda sorti, kastmist, väetamist, märkmeid ja pilti.</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      <!-- Pilt -->
-      <div class="rounded-2xl border bg-white p-4 shadow-sm">
-        <div class="flex items-center justify-between">
-          <h2 class="text-base font-semibold">Pilt</h2>
-          <button
-            type="button"
-            class="text-sm underline opacity-80 hover:opacity-100"
-            @click="pickFile"
-          >
-            Vali uus pilt
-          </button>
-        </div>
-
-        <!-- (pilt jääb nagu sul oli; kui tahad, saan hiljem teha "tõe pildi nähtavaks" variandi) -->
-        <div class="mt-3 overflow-hidden rounded-2xl border bg-black/5">
-          <div v-if="currentImage" class="aspect-[4/3] w-full">
-            <img :src="currentImage" alt="Taime pilt" class="h-full w-full object-contain" />
-          </div>
-          <div v-else class="flex aspect-[4/3] w-full items-center justify-center text-sm opacity-70">
-            Pilti pole
-          </div>
-        </div>
-
-        <input ref="fileInput" type="file" class="hidden" accept="image/*" @change="onFileChange" />
-
-        <div class="mt-4 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            class="rounded-xl border px-3 py-2 text-sm hover:bg-black/5"
-            @click="pickFile"
-          >
-            Laadi pilt
-          </button>
-
-          <button
-            v-if="pickedFile"
-            type="button"
-            class="rounded-xl border px-3 py-2 text-sm hover:bg-black/5"
-            @click="clearFile"
-          >
-            Tühista valik
-          </button>
-        </div>
-
-        <div v-if="form.errors.image" class="mt-2 text-sm text-red-600">
-          {{ form.errors.image }}
-        </div>
-      </div>
-
-      <!-- Vorm -->
-      <div class="rounded-2xl border bg-white p-4 shadow-sm">
-        <h2 class="text-base font-semibold">Andmed</h2>
-
-        <form class="mt-4 space-y-4" @submit.prevent="submit">
-          <!-- 1) Sort -->
-          <div>
-            <label class="mb-1 block text-sm font-medium">Sort</label>
-            <input
-              v-model="form.subtitle"
-              class="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black/10"
-              placeholder="Nt. Mehiko minikurk"
-            />
-            <div v-if="form.errors.subtitle" class="mt-1 text-sm text-red-600">
-              {{ form.errors.subtitle }}
+      <div class="relative w-full max-w-lg max-h-[92vh] overflow-hidden rounded-3xl bg-[#FAF8F4] shadow-xl ring-1 ring-black/5">
+        <div class="max-h-[92vh] overflow-y-auto p-5 sm:p-6">
+          <div class="mb-5 flex items-start justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <BackIconButton :href="`/plants/${props.plant.id}`" aria-label="Tagasi taime vaatesse" />
+              <div>
+                <h1 class="text-lg font-semibold text-[#2E2E2E]">Muuda taime</h1>
+                <p class="mt-1 text-sm text-[#2E2E2E]/70">Muuda sorti, kastmist, väetamist, märkmeid ja pilti.</p>
+              </div>
             </div>
-          </div>
-
-          <!-- 2) Kastmine -->
-          <div>
-            <label class="mb-1 block text-sm font-medium">Kastmine (päeva pärast)</label>
-            <input
-              v-model="form.watering_in_days"
-              class="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black/10"
-              placeholder="Nt. iga nädal"
-            />
-            <p class="mt-1 text-xs opacity-60">
-              Näide: iga nädal, 2x nädalas, kui muld on kuiv
-            </p>
-            <div v-if="form.errors.watering_in_days" class="mt-1 text-sm text-red-600">
-              {{ form.errors.watering_in_days }}
-            </div>
-          </div>
-
-          <!-- 3) Väetamine -->
-          <div>
-            <label class="mb-1 block text-sm font-medium">Väetamine</label>
-            <input
-              v-model="form.fertilizing_frequency"
-              class="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black/10"
-              placeholder="Nt. iga 2 nädala tagant"
-            />
-            <div v-if="form.errors.fertilizing_frequency" class="mt-1 text-sm text-red-600">
-              {{ form.errors.fertilizing_frequency }}
-            </div>
-          </div>
-
-          <!-- 3) Märkmed ära võta -->
-          <div>
-            <label class="mb-1 block text-sm font-medium">Märkmed</label>
-            <textarea
-              v-model="form.notes"
-              rows="6"
-              class="w-full rounded-xl border px-3 py-2 outline-none focus:ring-2 focus:ring-black/10"
-              placeholder="Kirjuta siia..."
-            />
-            <div v-if="form.errors.notes" class="mt-1 text-sm text-red-600">
-              {{ form.errors.notes }}
-            </div>
-
-            <!-- siia saab hiljem lisada kalender-vaate sidumise -->
-            <!-- nt: "Lisa märge kuupäevaga" / "Ava kalender" -->
-          </div>
-
-          <div class="flex flex-col-reverse gap-3 md:flex-row md:items-center md:justify-end">
             <Link
               :href="`/plants/${props.plant.id}`"
-              class="rounded-xl border px-4 py-2 text-center text-sm hover:bg-black/5"
+              class="rounded-full p-2 text-[#2E2E2E]/60 hover:bg-black/5 hover:text-[#2E2E2E]"
+              aria-label="Sulge"
             >
-              Loobu
+              ✕
             </Link>
+          </div>
+
+          <form class="space-y-5" @submit.prevent="submit">
+        <div>
+          <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Pilt</label>
+          <div class="mt-3 overflow-hidden rounded-2xl border border-black/10 bg-white/70">
+            <div v-if="currentImage" class="aspect-[4/3] w-full">
+              <img :src="currentImage" alt="Taime pilt" class="h-full w-full object-contain" />
+            </div>
+            <div v-else class="flex aspect-[4/3] w-full items-center justify-center text-sm text-[#2E2E2E]/70">
+              Pilti pole
+            </div>
+          </div>
+
+          <input ref="fileInput" type="file" class="hidden" accept="image/*" @change="onFileChange" />
+
+          <div class="mt-4 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              class="rounded-2xl border border-black/10 bg-white px-4 py-2 text-sm font-medium text-[#2E2E2E]/80 transition hover:bg-black/5"
+              @click="pickFile"
+            >
+              Laadi pilt
+            </button>
 
             <button
-              type="submit"
-              class="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-              :disabled="form.processing"
+              v-if="pickedFile"
+              type="button"
+              class="rounded-2xl border border-black/10 bg-white px-4 py-2 text-sm font-medium text-[#2E2E2E]/80 transition hover:bg-black/5"
+              @click="clearFile"
             >
-              Salvesta
+              Tühista valik
             </button>
           </div>
-        </form>
+
+          <div v-if="form.errors.image" class="mt-2 text-sm text-red-600">
+            {{ form.errors.image }}
+          </div>
+        </div>
+
+        <div>
+          <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Sort</label>
+          <input
+            v-model="form.subtitle"
+            class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+            placeholder="Nt. Mehiko minikurk"
+          />
+          <div v-if="form.errors.subtitle" class="mt-1 text-sm text-red-600">
+            {{ form.errors.subtitle }}
+          </div>
+        </div>
+
+        <div>
+          <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Kastmine</label>
+          <input
+            v-model="form.watering_in_days"
+            class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+            placeholder="Nt. iga nädal"
+          />
+          <p class="mt-1 text-xs text-[#2E2E2E]/60">
+            Näide: iga nädal, 2x nädalas, kui muld on kuiv
+          </p>
+          <div v-if="form.errors.watering_in_days" class="mt-1 text-sm text-red-600">
+            {{ form.errors.watering_in_days }}
+          </div>
+        </div>
+
+        <div>
+          <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Väetamine</label>
+          <input
+            v-model="form.fertilizing_frequency"
+            class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+            placeholder="Nt. iga 2 nädala tagant"
+          />
+          <div v-if="form.errors.fertilizing_frequency" class="mt-1 text-sm text-red-600">
+            {{ form.errors.fertilizing_frequency }}
+          </div>
+        </div>
+
+        <div>
+          <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Märkmed</label>
+          <textarea
+            v-model="form.notes"
+            rows="6"
+            class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+            placeholder="Kirjuta siia..."
+          />
+          <div v-if="form.errors.notes" class="mt-1 text-sm text-red-600">
+            {{ form.errors.notes }}
+          </div>
+        </div>
+
+            <div class="sticky bottom-0 mt-6 flex flex-col gap-3 bg-[#FAF8F4] pt-4 pb-1">
+          <button
+            type="submit"
+            class="w-full rounded-2xl bg-[#6B8C68] px-4 py-3 font-medium text-white transition hover:bg-[#4F6A52] disabled:opacity-60"
+            :disabled="form.processing"
+          >
+            Salvesta
+          </button>
+
+          <Link
+            :href="`/plants/${props.plant.id}`"
+            class="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-center text-sm font-medium text-[#2E2E2E]/80 transition hover:bg-black/5"
+          >
+            Loobu
+          </Link>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   </div>

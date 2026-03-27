@@ -1,16 +1,28 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
+import { Head, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 const form = ref({
-    name: '',
     species: '',
-    location: '',
+    category: '',
     planted_at: '',
+    watering: '',
+    fertilizing: '',
     notes: '',
 });
 
 const processing = ref(false);
+const fileInputRef = ref<HTMLInputElement | null>(null);
+const imagePreview = ref<string | null>(null);
+const categoryOptions = ['Köögiviljad', 'Lilled', 'Toataimed', 'Maitsetaimed'];
+
+function closeModal() {
+    if (window.history.length > 1) {
+        window.history.back();
+        return;
+    }
+    router.visit('/dashboard');
+}
 
 function submit() {
     // TODO: wire this up to an Inertia post when backend route is ready
@@ -20,147 +32,146 @@ function submit() {
      
     console.log('Add plant form submitted:', form.value);
 }
+
+function openPicker() {
+    fileInputRef.value?.click();
+}
+
+function onFileChange(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    if (!file || !file.type.startsWith('image/')) return;
+    imagePreview.value = URL.createObjectURL(file);
+}
 </script>
 
 <template>
-    <div
-        class="bg-[#fafaf9] dark:bg-[#171b17] text-[#141514] dark:text-gray-100 min-h-screen flex justify-center font-sans"
-    >
+    <div class="bg-background-light text-forest font-display antialiased min-h-screen">
         <Head title="Lisa taim">
-            <!-- Ensure Material Symbols for icons -->
             <link
                 href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
                 rel="stylesheet"
             />
         </Head>
 
-        <!-- Phone Form Factor Container -->
-        <div
-            class="w-full max-w-[430px] min-h-screen flex flex-col relative overflow-hidden"
-        >
-            <!-- TopAppBar -->
-            <header
-                class="flex items-center px-6 pt-12 pb-6 bg-[#fafaf9]/80 dark:bg-[#171b17]/80 backdrop-blur-md sticky top-0 z-10"
-            >
-                <button
-                    type="button"
-                    class="flex items-center justify-center size-10 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-                    @click="window.history.back()"
-                >
-                    <span
-                        class="material-symbols-outlined text-[#141514] dark:text-white"
-                        >arrow_back_ios_new</span
-                    >
-                </button>
-                <h1
-                    class="flex-1 text-center text-lg font-bold tracking-tight text-[#141514] dark:text-white pr-10"
-                >
-                    Lisa Taim
-                </h1>
-            </header>
+        <div class="fixed inset-0 z-50 flex items-start justify-center p-4 pt-6 sm:items-center sm:pt-4">
+            <button
+                type="button"
+                class="absolute inset-0 bg-black/30 backdrop-blur-[2px]"
+                aria-label="Sulge"
+                @click="closeModal"
+            />
 
-            <main class="flex-1 px-6 pb-24 flex flex-col gap-8">
-                <!-- EmptyState / Photo Placeholder -->
-                <div class="mt-4">
-                    <div
-                        class="group relative flex flex-col items-center justify-center aspect-square w-full rounded-[3rem] border-2 border-dashed border-[#dfe2df] dark:border-gray-700 bg-white/50 dark:bg-white/5 transition-all hover:border-[#679263]/50 overflow-hidden shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)]"
-                    >
-                        <div class="flex flex-col items-center gap-4 p-8 text-center">
-                            <div
-                                class="size-16 rounded-full bg-[#679263]/10 flex items-center justify-center text-[#679263]"
-                            >
-                                <span class="material-symbols-outlined !text-3xl"
-                                    >add_a_photo</span
-                                >
-                            </div>
-                            <div class="flex flex-col gap-1">
-                                <p
-                                    class="text-[#141514] dark:text-white text-lg font-bold leading-tight"
-                                >
-                                    Lisa foto
-                                </p>
-                                <p
-                                    class="text-gray-500 dark:text-gray-400 text-sm font-normal"
-                                >
-                                    Sinu taime portree
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                class="mt-2 flex min-w-[120px] cursor-pointer items-center justify-center rounded-full h-11 px-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-[#141514] dark:text-white text-sm font-bold shadow-sm active:scale-95 transition-transform"
-                            >
-                                Vali fail
-                            </button>
+            <div class="relative w-full max-w-lg max-h-[92vh] overflow-hidden rounded-3xl bg-[#FAF8F4] shadow-xl ring-1 ring-black/5">
+                <div class="max-h-[92vh] overflow-y-auto p-5 sm:p-6">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <h3 class="text-lg font-semibold text-[#2E2E2E]">Lisa taim</h3>
+                            <p class="mt-1 text-sm text-[#2E2E2E]/70">
+                                Lisa taime põhiandmed.
+                            </p>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Form Fields -->
-                <form class="flex flex-col gap-6" @submit.prevent="submit">
-                    <!-- TextField: Taime nimi -->
-                    <div class="flex flex-col gap-2">
-                        <label
-                            class="text-[#141514] dark:text-gray-300 text-sm font-semibold px-1"
-                            >Taime nimi</label
+                        <button
+                            type="button"
+                            class="rounded-full p-2 text-[#2E2E2E]/60 hover:bg-black/5 hover:text-[#2E2E2E]"
+                            aria-label="Sulge"
+                            @click="closeModal"
                         >
-                        <div class="relative">
-                            <input
-                                v-model="form.name"
-                                type="text"
-                                required
-                                placeholder="Kirjuta siia..."
-                                class="w-full h-14 px-5 rounded-xl border-none bg-white dark:bg-gray-800 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] focus:ring-2 focus:ring-[#679263]/20 placeholder:italic placeholder:text-gray-400 text-[#141514] dark:text-white transition-all"
-                            />
-                        </div>
+                            ✕
+                        </button>
                     </div>
 
-                    <!-- TextField: Sort -->
-                    <div class="flex flex-col gap-2">
-                        <label
-                            class="text-[#141514] dark:text-gray-300 text-sm font-semibold px-1"
-                            >Sort</label
-                        >
-                        <div class="relative">
+                    <form class="mt-5 flex flex-col gap-5" @submit.prevent="submit">
+                        <div>
+                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Sort</label>
                             <input
                                 v-model="form.species"
                                 type="text"
                                 placeholder="nt. Monstera Deliciosa"
-                                class="w-full h-14 px-5 rounded-xl border-none bg-white dark:bg-gray-800 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] focus:ring-2 focus:ring-[#679263]/20 placeholder:text-gray-400 text-[#141514] dark:text-white transition-all"
+                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
                             />
                         </div>
-                    </div>
 
-                    <!-- TextField: Istutamise kuupäev -->
-                    <div class="flex flex-col gap-2">
-                        <label
-                            class="text-[#141514] dark:text-gray-300 text-sm font-semibold px-1"
-                            >Istutamise kuupäev</label
-                        >
-                        <div class="relative">
+                        <div>
+                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Kategooria</label>
+                            <select
+                                v-model="form.category"
+                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                            >
+                                <option value="" disabled>Vali kategooria...</option>
+                                <option v-for="option in categoryOptions" :key="option" :value="option">{{ option }}</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Istutamise kuupäev</label>
                             <input
                                 v-model="form.planted_at"
                                 type="date"
-                                class="w-full h-14 px-5 rounded-xl border-none bg-white dark:bg-gray-800 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] focus:ring-2 focus:ring-[#679263]/20 text-[#141514] dark:text-white transition-all cursor-pointer"
+                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
                             />
                         </div>
-                    </div>
 
-                    <!-- Extra Spacing for Slow Paced Feel -->
-                    <div class="h-12" />
+                        <div>
+                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Kastmine</label>
+                            <input
+                                v-model="form.watering"
+                                type="text"
+                                placeholder="nt. iga nädal"
+                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                            />
+                        </div>
 
-                    <!-- Bottom Primary Button -->
-                    <div class="mt-auto">
-                        <button
-                            type="submit"
-                            :disabled="processing"
-                            class="w-full h-16 bg-[#679263] text-white font-bold text-lg rounded-xl shadow-lg shadow-[#679263]/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                            <span class="material-symbols-outlined">potted_plant</span>
-                            Salvesta taim
-                        </button>
-                    </div>
-                </form>
-            </main>
+                        <div>
+                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Väetamine</label>
+                            <input
+                                v-model="form.fertilizing"
+                                type="text"
+                                placeholder="nt. iga 2 nädala tagant"
+                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                            />
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Pilt</label>
+                            <input ref="fileInputRef" type="file" accept="image/*" class="hidden" @change="onFileChange" />
+                            <button
+                                type="button"
+                                class="mt-3 w-full rounded-2xl border-2 border-dashed border-black/10 bg-white/60 px-6 py-8 text-center hover:bg-white/80"
+                                @click="openPicker"
+                            >
+                                <template v-if="!imagePreview">
+                                    <span class="material-symbols-outlined text-5xl text-[#6B8C68]">add_a_photo</span>
+                                    <p class="mt-2 text-sm text-[#2E2E2E]/70">Lisa taime pilt</p>
+                                </template>
+                                <template v-else>
+                                    <img :src="imagePreview" alt="Eelvaade" class="mx-auto max-h-40 rounded-xl object-cover" />
+                                </template>
+                            </button>
+                        </div>
+
+                        <div>
+                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Märkmed</label>
+                            <textarea
+                                v-model="form.notes"
+                                rows="4"
+                                placeholder="Lisa siia täiendav info..."
+                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                            />
+                        </div>
+
+                        <div class="sticky bottom-0 bg-[#FAF8F4] pt-4 pb-1">
+                            <button
+                                type="submit"
+                                :disabled="processing"
+                                class="w-full rounded-2xl bg-[#6B8C68] px-4 py-3 font-medium text-white transition hover:bg-[#4F6A52] disabled:opacity-60"
+                            >
+                                Salvesta taim
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 </template>
