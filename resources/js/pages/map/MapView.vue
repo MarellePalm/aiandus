@@ -91,12 +91,12 @@ function bedCoverImage(bed: Bed): string | null {
               Peenraid pole. Lisa esimene peenar paremal alanurgas oleva + nupuga – siis näed teda siin pildiliselt.
             </div>
 
-            <div v-else class="grid grid-cols-2 gap-3">
+            <div v-else class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
                 <Link
                   v-for="bed in props.beds"
                   :key="bed.id"
                   :href="`/beds/${bed.id}`"
-                  class="group relative aspect-square overflow-hidden rounded-2xl border border-border/70 text-left shadow-soft transition-all duration-200 hover:border-primary/25 hover:shadow-md"
+                  class="group relative aspect-square min-h-[140px] overflow-hidden rounded-2xl border border-border/70 text-left shadow-soft transition-all duration-200 hover:border-primary/25 hover:shadow-md"
                 >
                   <div
                     class="absolute inset-0 bg-cover bg-center"
@@ -118,7 +118,7 @@ function bedCoverImage(bed: Bed): string | null {
         </section>
 
           <!-- Taimed ilma peenrata -->
-          <section class="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-soft">
+          <section class="rounded-2xl border border-border/40 bg-card/70 p-3.5 sm:p-4 shadow-soft">
             <div class="mb-3 border-b border-border/60 pb-3">
               <div class="flex items-center justify-between gap-3">
                 <h2 class="text-base sm:text-lg font-semibold">Taimed ilma peenrata</h2>
@@ -133,7 +133,7 @@ function bedCoverImage(bed: Bed): string | null {
 
             <div
               v-if="!plantsWithoutBed.length"
-              class="rounded-xl bg-muted/35 py-3 px-4 text-center text-xs text-muted-foreground"
+              class="rounded-xl bg-muted/25 py-3 px-4 text-center text-xs text-muted-foreground"
             >
               Kõik taimed on peenrale määratud või sul pole taimi.
             </div>
@@ -157,7 +157,7 @@ function bedCoverImage(bed: Bed): string | null {
                 <div class="absolute inset-0 bg-linear-to-t from-black/75 via-black/30 to-transparent" />
                 <div class="absolute bottom-0 left-0 right-0 p-2.5 backdrop-blur-[1px]">
                   <p class="text-sm font-semibold text-white truncate">{{ plant.name }}</p>
-                  <p class="text-[11px] text-white/85 truncate">Vali ruut peenral</p>
+                  <p class="text-[11px] text-white/85 truncate">Lisa peenrale</p>
                 </div>
               </article>
             </div>
@@ -170,6 +170,7 @@ function bedCoverImage(bed: Bed): string | null {
           aria-label="Lisa peenar"
           :size-px="52"
           :icon-size-px="30"
+          :bottom-px="112"
           @click="router.visit('/map/beds/new')"
         />
 
