@@ -183,19 +183,17 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
             >
               <button
                 type="button"
-                class="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-[#2E2E2E] hover:bg-black/5"
+                class="w-full px-4 py-3 text-left text-sm text-[#2E2E2E] hover:bg-black/5"
                 @click="editPlant"
               >
-                <span class="material-symbols-outlined text-[20px] text-[#6B8C68]">edit</span>
                 Muuda taime
               </button>
 
               <button
                 type="button"
-                class="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-[#2E2E2E] hover:bg-black/5"
+                class="w-full px-4 py-3 text-left text-sm text-[#2E2E2E] hover:bg-black/5"
                 @click="openDelete"
               >
-                <span class="material-symbols-outlined text-[20px] text-red-600">delete</span>
                 Kustuta
               </button>
             </div>

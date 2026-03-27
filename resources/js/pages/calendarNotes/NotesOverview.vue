@@ -2,6 +2,7 @@
 import { Head, Link, router } from '@inertiajs/vue3'
 import { computed, ref, watch } from 'vue'
 
+import BackIconButton from '@/components/BackIconButton.vue'
 import DiaryHeader from '@/components/DiaryHeader.vue'
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue'
 import BottomNav from '@/pages/BottomNav.vue'
@@ -70,9 +71,10 @@ const query = ref(props.filters?.q ?? '')
 const activeChip = ref<ChipKey>(props.filters?.chip ?? 'all')
 
 function chipClass(key: ChipKey) {
+  const base = 'h-9 shrink-0 rounded-full px-4 text-xs font-semibold whitespace-nowrap transition-colors'
   return key === activeChip.value
-    ? 'bg-primary text-primary-foreground'
-    : 'bg-secondary text-muted-foreground cursor-pointer hover:bg-secondary/80'
+    ? `${base} bg-primary text-white`
+    : `${base} bg-primary/10 text-primary hover:bg-primary/15`
 }
 
 function parseISODate(iso: string) {
@@ -131,33 +133,28 @@ watch(query, () => {
 <template>
   <div class="page page-with-bottomnav">
     <Head title="Koondvaade">
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
-        rel="stylesheet"
-      />
       <link
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         rel="stylesheet"
       />
     </Head>
 
-    <DiaryHeader
-      title="Minu märkmed"
-      title-class="text-forest text-3xl font-bold tracking-tight"
-      header-class="pt-6"
-      top-row-class="mb-2"
-      bottom-row-class="mb-3"
-    >
-      <template #leading>
-        <span class="material-symbols-outlined text-primary text-3xl">potted_plant</span>
-      </template>
-    </DiaryHeader>
+    <div class="bg-background-light text-forest font-display min-h-screen antialiased">
+      <div class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
+        <DiaryHeader
+          title="Märkmed"
+          title-class="text-forest text-3xl font-bold tracking-tight"
+          header-class="pt-6"
+          top-row-class="mb-3"
+          bottom-row-class="mb-4"
+        >
+          <template #leading>
+            <BackIconButton href="/calendar" aria-label="Tagasi kalendrisse" />
+          </template>
+        </DiaryHeader>
 
-    <main class="flex-1 pb-24">
-      <div class="p-4">
-        <div class="card p-4">
+        <main class="flex-1 px-6 py-4 pb-24 md:px-8">
+          <div class="rounded-2xl border border-primary/10 bg-white/70 p-4">
           <div class="relative mb-4">
             <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
               search
@@ -175,11 +172,7 @@ watch(query, () => {
               v-for="chip in chips"
               :key="chip.key"
               type="button"
-              class="px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all"
-              :class="[
-                chipClass(chip.key),
-                activeChip === chip.key ? 'shadow-sm ring-1 ring-primary/30' : '',
-              ]"
+              :class="chipClass(chip.key)"
               @click="activeChip = chip.key; refresh()"
             >
               {{ chip.label }}
@@ -205,9 +198,8 @@ watch(query, () => {
             </button>
           </div>
         </div>
-      </div>
 
-      <div class="px-4 space-y-6">
+      <div class="space-y-6 pt-6">
         <!-- Tühi olek -->
         <div
           v-if="filteredGroups.length === 0"
@@ -363,16 +355,12 @@ watch(query, () => {
           </div>
         </section>
       </div>
-    </main>
+        </main>
 
-    <FloatingPlusButton aria-label="Lisa märge" :size-px="52" :icon-size-px="30" @click="onAdd" />
+        <FloatingPlusButton aria-label="Lisa märge" :size-px="52" :icon-size-px="30" @click="onAdd" />
 
-    <BottomNav active="calendar" />
+        <BottomNav active="calendar" />
+      </div>
+    </div>
   </div>
 </template>
-
-<style scoped>
-:global(body) {
-  font-family: "Plus Jakarta Sans", var(--font-sans);
-}
-</style>
