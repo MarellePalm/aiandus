@@ -11,7 +11,7 @@ type Plant = {
   image_url?: string;
   notes?: string;
   tags?: string[];
-  watering_in_days?: number | null;
+  watering_frequency?: string | null;
   fertilizing_frequency?: string | null;
   next_fertilizing_label?: string | null;
   category_slug?: string;
@@ -49,21 +49,14 @@ const backHref = computed(() => {
   return "/plants";
 });
 
-const hasWateringInfo = computed(() => props.plant.watering_in_days != null);
+const hasWateringInfo = computed(() => !!props.plant.watering_frequency?.trim());
 
 const hasFertilizingInfo = computed(() => {
   return !!props.plant.fertilizing_frequency || !!props.plant.next_fertilizing_label;
 });
 
 const wateringText = computed(() => {
-  return props.plant.watering_in_days != null
-    ? `${props.plant.watering_in_days} päeva`
-    : "";
-});
-
-const wateringDueSoon = computed(() => {
-  const d = props.plant.watering_in_days;
-  return d != null && d <= 2;
+  return props.plant.watering_frequency?.trim() || "";
 });
 
 const menuOpen = ref(false);
@@ -216,112 +209,107 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
 
       <!-- Content -->
       <div class="relative z-10 px-6 pt-6 md:px-12 md:pt-8">
-        <div class="flex flex-col gap-8 md:grid md:grid-cols-2 md:items-start md:gap-10">
-          <!-- LEFT = MÄRKMED -->
-          <div class="md:col-start-1">
-            <div class="mb-4 flex items-center justify-between">
-              <h3 class="text-lg font-bold tracking-tight">Märkmed</h3>
-              <button
-                type="button"
-                class="text-sm font-semibold text-primary"
-                @click="emit('edit-notes')"
-              >
-                Muuda
-              </button>
-            </div>
-
-            <div
-              class="rounded-2xl border border-[#e6e2d5]/50 bg-white/50 p-6 dark:border-white/5 dark:bg-surface-dark/40"
-            >
-              <p class="font-body leading-relaxed text-[#4a524a] dark:text-gray-300">
-                {{ props.plant.notes || "Märkmeid veel pole." }}
-              </p>
-
-              <div v-if="props.plant.tags?.length" class="mt-4 flex flex-wrap gap-2">
-                <span
-                  v-for="tag in props.plant.tags"
-                  :key="tag"
-                  class="rounded-full bg-primary/5 px-3 py-1 text-[11px] font-bold uppercase tracking-tighter text-primary dark:bg-primary/10"
+        <div class="md:mx-auto md:max-w-4xl">
+          <div class="flex flex-col gap-8 md:grid md:grid-cols-2 md:items-start md:gap-10">
+            <!-- LEFT = MÄRKMED -->
+            <div class="md:col-start-1">
+              <div class="mb-4 flex items-center justify-between">
+                <h3 class="text-lg font-bold tracking-tight">Märkmed</h3>
+                <button
+                  type="button"
+                  class="text-sm font-semibold text-primary"
+                  @click="emit('edit-notes')"
                 >
-                  {{ tag }}
-                </span>
+                  Muuda
+                </button>
               </div>
-            </div>
-          </div>
 
-          <!-- RIGHT = KASTMINE + VÄETAMINE -->
-          <div class="flex flex-col gap-4 md:col-start-2">
-            <!-- Watering Card -->
-            <div
-              v-if="hasWateringInfo"
-              class="rounded-2xl border border-[#e6e2d5] bg-surface-light p-5 shadow-sm dark:border-white/5 dark:bg-surface-dark"
-            >
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                  <div class="rounded-xl bg-primary/10 p-3 text-primary dark:bg-primary/20">
-                    <span class="material-symbols-outlined">opacity</span>
-                  </div>
+              <div
+                class="rounded-2xl border border-[#e6e2d5]/50 bg-white/50 p-6 dark:border-white/5 dark:bg-surface-dark/40"
+              >
+                <p class="font-body leading-relaxed text-[#4a524a] dark:text-gray-300">
+                  {{ props.plant.notes || "Märkmeid veel pole." }}
+                </p>
 
-                  <div class="flex flex-col">
-                    <span
-                      class="mb-0.5 text-xs font-bold uppercase tracking-wider text-gray-400"
-                    >
-                      Kastmine
-                    </span>
-                    <span class="font-body text-base font-medium leading-tight">
-                      {{ wateringText }}
-                    </span>
-                  </div>
-                </div>
-
-                <div v-if="wateringDueSoon" class="relative flex h-3 w-3 shrink-0">
+                <div v-if="props.plant.tags?.length" class="mt-4 flex flex-wrap gap-2">
                   <span
-                    class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-20"
-                  ></span>
-                  <span class="relative inline-flex h-3 w-3 rounded-full bg-primary"></span>
-                </div>
-
-                <div v-else class="shrink-0 text-[#717a71]">
-                  <span class="material-symbols-outlined text-[20px]">check_circle</span>
+                    v-for="tag in props.plant.tags"
+                    :key="tag"
+                    class="rounded-full bg-primary/5 px-3 py-1 text-[11px] font-bold uppercase tracking-tighter text-primary dark:bg-primary/10"
+                  >
+                    {{ tag }}
+                  </span>
                 </div>
               </div>
             </div>
 
-            <!-- Fertilizing Card -->
-            <div
-              v-if="hasFertilizingInfo"
-              class="rounded-2xl border border-[#e6e2d5] bg-surface-light p-5 shadow-sm dark:border-white/5 dark:bg-surface-dark"
-            >
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                  <div class="rounded-xl bg-primary/10 p-3 text-primary dark:bg-primary/20">
-                    <span class="material-symbols-outlined">potted_plant</span>
+            <!-- RIGHT = KASTMINE + VÄETAMINE -->
+            <div class="flex flex-col gap-4 md:col-start-2">
+              <!-- Watering Card -->
+              <div
+                v-if="hasWateringInfo"
+                class="rounded-2xl border border-[#e6e2d5] bg-surface-light p-5 shadow-sm dark:border-white/5 dark:bg-surface-dark"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-4">
+                    <div class="rounded-xl bg-primary/10 p-3 text-primary dark:bg-primary/20">
+                      <span class="material-symbols-outlined">opacity</span>
+                    </div>
+
+                    <div class="flex flex-col">
+                      <span
+                        class="mb-0.5 text-xs font-bold uppercase tracking-wider text-gray-400"
+                      >
+                        Kastmine
+                      </span>
+                      <span class="font-body text-base font-medium leading-tight">
+                        {{ wateringText }}
+                      </span>
+                    </div>
                   </div>
 
-                  <div class="flex flex-col">
-                    <span
-                      class="mb-0.5 text-xs font-bold uppercase tracking-wider text-gray-400"
-                    >
-                      Väetamine
-                    </span>
-
-                    <span class="font-body text-base font-medium leading-tight">
-                      <template v-if="props.plant.fertilizing_frequency">
-                        {{ props.plant.fertilizing_frequency }}
-                      </template>
-
-                      <span
-                        v-if="props.plant.next_fertilizing_label"
-                        class="ml-1 text-sm text-[#717a71]"
-                      >
-                        (Järgmine: {{ props.plant.next_fertilizing_label }})
-                      </span>
-                    </span>
+                  <div class="shrink-0 text-[#717a71]">
+                    <span class="material-symbols-outlined text-[20px]">check_circle</span>
                   </div>
                 </div>
+              </div>
 
-                <div class="shrink-0 text-[#717a71]">
-                  <span class="material-symbols-outlined text-[20px]">calendar_today</span>
+              <!-- Fertilizing Card -->
+              <div
+                v-if="hasFertilizingInfo"
+                class="rounded-2xl border border-[#e6e2d5] bg-surface-light p-5 shadow-sm dark:border-white/5 dark:bg-surface-dark"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-4">
+                    <div class="rounded-xl bg-primary/10 p-3 text-primary dark:bg-primary/20">
+                      <span class="material-symbols-outlined">potted_plant</span>
+                    </div>
+
+                    <div class="flex flex-col">
+                      <span
+                        class="mb-0.5 text-xs font-bold uppercase tracking-wider text-gray-400"
+                      >
+                        Väetamine
+                      </span>
+
+                      <span class="font-body text-base font-medium leading-tight">
+                        <template v-if="props.plant.fertilizing_frequency">
+                          {{ props.plant.fertilizing_frequency }}
+                        </template>
+
+                        <span
+                          v-if="props.plant.next_fertilizing_label"
+                          class="ml-1 text-sm text-[#717a71]"
+                        >
+                          (Järgmine: {{ props.plant.next_fertilizing_label }})
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="shrink-0 text-[#717a71]">
+                    <span class="material-symbols-outlined text-[20px]">calendar_today</span>
+                  </div>
                 </div>
               </div>
             </div>
