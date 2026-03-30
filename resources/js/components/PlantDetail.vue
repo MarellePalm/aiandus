@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { router } from "@inertiajs/vue3";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+
 import BackIconButton from "@/components/BackIconButton.vue";
 
 type Plant = {
@@ -10,7 +11,7 @@ type Plant = {
   image_url?: string;
   notes?: string;
   tags?: string[];
-  watering_in_days?: string | null;
+  watering_in_days?: number | null;
   fertilizing_frequency?: string | null;
   next_fertilizing_label?: string | null;
   category_slug?: string;
@@ -19,13 +20,9 @@ type Plant = {
 const props = withDefaults(
   defineProps<{
     plant: Plant;
-    markingWatered?: boolean;
-    justWatered?: boolean;
     backUrl?: string | null;
   }>(),
   {
-    markingWatered: false,
-    justWatered: false,
     backUrl: null,
   }
 );
@@ -33,7 +30,6 @@ const props = withDefaults(
 const emit = defineEmits<{
   (e: "back"): void;
   (e: "edit-notes"): void;
-  (e: "mark-watered"): void;
 }>();
 
 const fallbackImage = "https://picsum.photos/900/1200";
@@ -53,19 +49,21 @@ const backHref = computed(() => {
   return "/plants";
 });
 
-const hasWateringInfo = computed(() => !!props.plant.watering_in_days?.trim());
+const hasWateringInfo = computed(() => props.plant.watering_in_days != null);
 
 const hasFertilizingInfo = computed(() => {
   return !!props.plant.fertilizing_frequency || !!props.plant.next_fertilizing_label;
 });
 
 const wateringText = computed(() => {
-  return props.plant.watering_in_days || "";
+  return props.plant.watering_in_days != null
+    ? `${props.plant.watering_in_days} päeva`
+    : "";
 });
 
 const wateringDueSoon = computed(() => {
   const d = props.plant.watering_in_days;
-  return typeof d === "number" && d <= 2;
+  return d != null && d <= 2;
 });
 
 const menuOpen = ref(false);
@@ -217,8 +215,7 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
       </div>
 
       <!-- Content -->
-      <div class="relative z-10 -mt-12 px-6 md:-mt-16 md:px-12">
-
+      <div class="relative z-10 px-6 pt-6 md:px-12 md:pt-8">
         <div class="flex flex-col gap-8 md:grid md:grid-cols-2 md:items-start md:gap-10">
           <!-- LEFT = MÄRKMED -->
           <div class="md:col-start-1">
@@ -329,21 +326,6 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- CTA -->
-        <div class="mt-10 pb-10">
-          <button
-            type="button"
-            class="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-5 text-lg font-bold text-white shadow-lg shadow-primary/20 transition-all active:scale-[0.98] hover:bg-[#5a8056] disabled:opacity-50"
-            :disabled="props.markingWatered"
-            @click="emit('mark-watered')"
-          >
-            <span class="material-symbols-outlined">water_drop</span>
-            <span v-if="props.markingWatered">Salvestan…</span>
-            <span v-else-if="props.justWatered">Kastetud</span>
-            <span v-else>Märgi kastetuks</span>
-          </button>
         </div>
       </div>
     </div>

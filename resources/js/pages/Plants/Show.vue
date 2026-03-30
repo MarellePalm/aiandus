@@ -20,9 +20,7 @@ type Plant = {
 const { plant } = defineProps<{ plant: Plant }>();
 
 const showMenu = ref(false);
-function toggleMenu() {
-  showMenu.value = !showMenu.value;
-}
+
 function closeMenu() {
   showMenu.value = false;
 }
@@ -60,22 +58,7 @@ function confirmDelete() {
   });
 }
 
-/** Mark watered */
-const markingWatered = ref(false);
-const justWatered = ref(false);
 
-function markWatered() {
-  markingWatered.value = true;
-
-  router.post(`/plants/${plant.id}/waterings`, {}, {
-    onSuccess: () => {
-      justWatered.value = true;
-    },
-    onFinish: () => {
-      markingWatered.value = false;
-    },
-  });
-}
 </script>
 
 <template>
@@ -88,10 +71,7 @@ function markWatered() {
         <main class="pb-24">
           <PlantDetail
             :plant="plant"
-            @menu="toggleMenu"
-            :marking-watered="markingWatered"
-            :just-watered="justWatered"
-            @mark-watered="markWatered"
+            
           />
         </main>
       </div>
