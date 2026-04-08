@@ -197,26 +197,6 @@ function getBiodynamicDayType(date = new Date()): BiodynamicDayType {
   return SIGN_TO_DAY_TYPE[signIndex];
 }
 
-/** Biodünaamika päevatüübi eestikeelne nimetus. */
-function getBiodynamicDayLabel(dayType: BiodynamicDayType): string {
-  return BIODYNAMIC_ET[dayType].label;
-}
-
-/** Lühike aiandusnõuanne (märksõnad). */
-function getBiodynamicHint(dayType: BiodynamicDayType): string {
-  return formatHintEt(BIODYNAMIC_ET[dayType]);
-}
-
-/** Lühike kirjeldus (märksõnade-põhine). */
-function getBiodynamicDescription(dayType: BiodynamicDayType): string {
-  return formatDescriptionEt(BIODYNAMIC_ET[dayType]);
-}
-
-/** Märksõnad UI jaoks (struktureeritult). */
-function getBiodynamicKeywords(dayType: BiodynamicDayType): BiodynamicInfoEt {
-  return BIODYNAMIC_ET[dayType];
-}
-
 /** „Kui Kuu on selles märgis“ — soe lühitekst (traditsioon, mitte tehniline). */
 export const ZODIAC_NARRATIVE_UI_ET: Record<ZodiacSignName, string> = {
   Jäär:

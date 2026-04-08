@@ -100,8 +100,6 @@ const filteredGroups = computed<Group[]>(() => {
   const now = new Date()
   const from = new Date(now)
   from.setDate(now.getDate() - 6)
-  const startOfWeek = new Date(from.getFullYear(), from.getMonth(), from.getDate())
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 
   const byISO = new Map<string, Note[]>()
   for (const n of items.value) {

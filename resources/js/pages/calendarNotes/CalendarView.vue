@@ -4,11 +4,11 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
 
 import BackIconButton from '@/components/BackIconButton.vue';
+import CalendarSwitchTabs from '@/components/calendar/CalendarSwitchTabs.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
-import CalendarSwitchTabs from '@/components/calendar/CalendarSwitchTabs.vue';
 import { calendar } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 

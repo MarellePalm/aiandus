@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { Head } from '@inertiajs/vue3';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import BackIconButton from '@/components/BackIconButton.vue';
+import CalendarSwitchTabs from '@/components/calendar/CalendarSwitchTabs.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { getMoonInfo } from '@/lib/moon/moon';
@@ -11,7 +12,6 @@ import {
 } from '@/lib/moon/moonAdvice';
 import { calendarMomentForZodiac, getZodiacInfo } from '@/lib/moon/zodiac';
 import BottomNav from '@/pages/BottomNav.vue';
-import CalendarSwitchTabs from '@/components/calendar/CalendarSwitchTabs.vue';
 
 import MoonPhaseIcon from './MoonPhaseIcon.vue';
 
