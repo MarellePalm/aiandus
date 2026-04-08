@@ -182,38 +182,38 @@ export function calendarMomentForZodiac(d: Date): Date {
 }
 
 /** Päikese tähtkuju antud kuupäeva järgi (eesti keeles). */
-export function getSunSign(date = new Date()): ZodiacSignName {
+function getSunSign(date = new Date()): ZodiacSignName {
   return ZODIAC_NAMES_ET[longitudeToSignIndex(sunLongitudeDeg(date))];
 }
 
 /** Kuu tähtkuju antud kuupäeva järgi (eesti keeles). */
-export function getMoonSign(date = new Date()): ZodiacSignName {
+function getMoonSign(date = new Date()): ZodiacSignName {
   return ZODIAC_NAMES_ET[longitudeToSignIndex(moonLongitudeDeg(date))];
 }
 
 /** Biodünaamika päevatüüp kuu tähtkuju põhjal. */
-export function getBiodynamicDayType(date = new Date()): BiodynamicDayType {
+function getBiodynamicDayType(date = new Date()): BiodynamicDayType {
   const signIndex = longitudeToSignIndex(moonLongitudeDeg(date));
   return SIGN_TO_DAY_TYPE[signIndex];
 }
 
 /** Biodünaamika päevatüübi eestikeelne nimetus. */
-export function getBiodynamicDayLabel(dayType: BiodynamicDayType): string {
+function getBiodynamicDayLabel(dayType: BiodynamicDayType): string {
   return BIODYNAMIC_ET[dayType].label;
 }
 
 /** Lühike aiandusnõuanne (märksõnad). */
-export function getBiodynamicHint(dayType: BiodynamicDayType): string {
+function getBiodynamicHint(dayType: BiodynamicDayType): string {
   return formatHintEt(BIODYNAMIC_ET[dayType]);
 }
 
 /** Lühike kirjeldus (märksõnade-põhine). */
-export function getBiodynamicDescription(dayType: BiodynamicDayType): string {
+function getBiodynamicDescription(dayType: BiodynamicDayType): string {
   return formatDescriptionEt(BIODYNAMIC_ET[dayType]);
 }
 
 /** Märksõnad UI jaoks (struktureeritult). */
-export function getBiodynamicKeywords(dayType: BiodynamicDayType): BiodynamicInfoEt {
+function getBiodynamicKeywords(dayType: BiodynamicDayType): BiodynamicInfoEt {
   return BIODYNAMIC_ET[dayType];
 }
 

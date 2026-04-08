@@ -2,13 +2,6 @@
 import type { MoonPhase8, MoonInfo } from './moon';
 import { moonPhaseDisplayLabel } from './moonPhaseDisplay';
 
-/** Lühike selgitus rakenduse loogika kohta. */
-export const MOON_SOFT_HARD_RULE_DESCRIPTION_ET =
-  'Selles rakenduses jaotatakse kuutsükkel pehmeks ja kõvaks ajaks lihtsustatud reegli alusel. Pehmeks ajaks loetakse ligikaudu kolm päeva enne ja kolm päeva pärast noorkuud. Ülejäänud kuutsükkel on kõva aeg. Tegemist on praktilise lihtsustusega, mida saab igal aastal ühtemoodi uuesti arvutada.';
-
-export const MOON_TRADITION_SCIENCE_NOTE_ET =
-  'Kuufaasidel põhinevad aiandustavad kuuluvad peamiselt rahvapärimuse ja traditsioonilise aiatarkuse hulka. Tänapäevane teadus ei kinnita üheselt, et kuufaasid üksinda määraksid taimede kasvu või tööde edukuse. Kuufaaside astronoomiline järjestus on selgelt määratav, kuid aianduslik tõlgendus tugineb valdavalt traditsioonile.';
-
 export type MoonAdvice = {
   title: MoonPhase8;
   displayTitle: string;

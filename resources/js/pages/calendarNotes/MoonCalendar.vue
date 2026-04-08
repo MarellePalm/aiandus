@@ -9,7 +9,6 @@ import { getMoonInfo } from '@/lib/moon/moon';
 import {
   moonAdvice,
 } from '@/lib/moon/moonAdvice';
-import { MOON_INTRO_HOME_ET } from '@/lib/moon/moonCopy';
 import { calendarMomentForZodiac, getZodiacInfo } from '@/lib/moon/zodiac';
 import BottomNav from '@/pages/BottomNav.vue';
 import CalendarSwitchTabs from '@/components/calendar/CalendarSwitchTabs.vue';
@@ -279,12 +278,6 @@ onMounted(() => scrollDescriptionToCenter('auto'));
           </DiaryHeader>
 
           <main class="flex-1 px-6 py-4 md:px-8 space-y-6">
-            <p
-              class="max-w-lg mx-auto w-full text-sm leading-relaxed text-foreground/85 px-1 sm:px-0"
-            >
-              {{ MOON_INTRO_HOME_ET }}
-            </p>
-
         <section class="card p-3 sm:p-4 md:p-5 max-w-lg mx-auto w-full">
           <div class="flex items-center justify-between mb-3">
             <button type="button" class="icon-btn" @click="prevMonth" aria-label="Eelmine kuu">
