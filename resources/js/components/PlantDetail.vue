@@ -303,12 +303,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                                     </div>
                                 </div>
 
-                                <div class="shrink-0 text-[#717a71]">
-                                    <span
-                                        class="material-symbols-outlined text-[20px]"
-                                        >check_circle</span
-                                    >
-                                </div>
+                              
                             </div>
                         </div>
 
@@ -364,13 +359,6 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                                             </span>
                                         </span>
                                     </div>
-                                </div>
-
-                                <div class="shrink-0 text-[#717a71]">
-                                    <span
-                                        class="material-symbols-outlined text-[20px]"
-                                        >calendar_today</span
-                                    >
                                 </div>
                             </div>
                         </div>

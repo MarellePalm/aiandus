@@ -20,7 +20,7 @@ class Plant extends Model
         'notes',
         'tags',
         'last_watered_at',
-        'watering_in_days',
+        'watering_frequency',
         'fertilizing_frequency',
     ];
 
