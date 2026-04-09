@@ -260,6 +260,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('plants', PlantController::class)->except(['create']);
     Route::post('/plants/{plant}/waterings', [PlantController::class, 'water'])
         ->name('plants.water');
+    
 });
 
 require __DIR__ . '/settings.php';

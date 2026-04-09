@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import BackIconButton from '@/components/BackIconButton.vue';
 import CreatePlantModal from '@/components/CreatePlantModal.vue';
@@ -16,9 +16,10 @@ import SearchModal from './SearchModal.vue';
 
 type PlantItem = {
     id: number;
-    subtitle: string; // sort
-    planted_at: string; // kuupäev (string)
+    subtitle: string;
+    planted_at: string;
     image_url?: string | null;
+    is_favorite?: boolean;
 };
 
 type CategoryItem = { id: number; name: string; slug: string };
@@ -33,13 +34,31 @@ const showSearch = ref(false);
 const searchQuery = ref('');
 const plantNames = computed(() => props.plants.map((p) => p.subtitle));
 
-/** Tabs */
-type TabKey = 'all' | 'recent';
+type TabKey = 'all' | 'favorites';
 const activeTab = ref<TabKey>('all');
+
+const localPlants = ref<PlantItem[]>([...props.plants]);
+
+watch(
+    () => props.plants,
+    (next) => {
+        localPlants.value = [...next];
+    },
+);
+
+const selectedSort = ref('name_asc');
+
+const sortOptions = [
+    { label: 'Nimi A–Z', value: 'name_asc' },
+    { label: 'Nimi Z–A', value: 'name_desc' },
+    { label: 'Istutamise kuupäev: uuemad enne', value: 'planted_desc' },
+    { label: 'Istutamise kuupäev: vanemad enne', value: 'planted_asc' },
+];
 
 const tabClass = (key: TabKey) => {
     const base =
         'px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition';
+
     return activeTab.value === key
         ? `${base} bg-primary text-white`
         : `${base} bg-primary/10 text-primary`;
@@ -50,28 +69,80 @@ const resetToAll = () => {
     searchQuery.value = '';
 };
 
-/** Sorteeringud */
-const allSorted = computed(() => {
-    return [...props.plants].sort((a, b) =>
-        (a.subtitle ?? '').localeCompare(b.subtitle ?? '', 'et', {
-            sensitivity: 'base',
-        }),
+const parseEeDate = (dateStr: string) => {
+    if (!dateStr) return 0;
+
+    const parts = dateStr.split('.');
+    if (parts.length !== 3) return 0;
+
+    const [day, month, year] = parts.map(Number);
+
+    if (!day || !month || !year) return 0;
+
+    return new Date(year, month - 1, day).getTime();
+};
+
+const toggleFavorite = (id: number) => {
+    const idx = localPlants.value.findIndex((p) => p.id === id);
+    if (idx === -1) return;
+
+    const prev = localPlants.value[idx].is_favorite === true;
+
+    localPlants.value[idx] = {
+        ...localPlants.value[idx],
+        is_favorite: !prev,
+    };
+
+    router.patch(
+        `/plants/${id}/favorite`,
+        {},
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onError: () => {
+                localPlants.value[idx] = {
+                    ...localPlants.value[idx],
+                    is_favorite: prev,
+                };
+            },
+        },
     );
-});
+};
 
-const recent5 = computed(() => {
-    return [...props.plants]
-        .sort((a, b) => {
-            const da = new Date(a.planted_at).getTime();
-            const db = new Date(b.planted_at).getTime();
-            return db - da;
-        })
-        .slice(0, 5);
-});
+const basePlants = computed(() => {
+    let list = [...localPlants.value];
 
-const basePlants = computed(() =>
-    activeTab.value === 'recent' ? recent5.value : allSorted.value,
-);
+    if (activeTab.value === 'favorites') {
+        list = list.filter((p) => p.is_favorite === true);
+    }
+
+    switch (selectedSort.value) {
+        case 'name_desc':
+            return [...list].sort((a, b) =>
+                (b.subtitle ?? '').localeCompare(a.subtitle ?? '', 'et', {
+                    sensitivity: 'base',
+                }),
+            );
+
+        case 'planted_desc':
+            return [...list].sort(
+                (a, b) => parseEeDate(b.planted_at) - parseEeDate(a.planted_at),
+            );
+
+        case 'planted_asc':
+            return [...list].sort(
+                (a, b) => parseEeDate(a.planted_at) - parseEeDate(b.planted_at),
+            );
+
+        case 'name_asc':
+        default:
+            return [...list].sort((a, b) =>
+                (a.subtitle ?? '').localeCompare(b.subtitle ?? '', 'et', {
+                    sensitivity: 'base',
+                }),
+            );
+    }
+});
 
 const visiblePlants = computed(() => {
     let list = basePlants.value;
@@ -83,7 +154,7 @@ const visiblePlants = computed(() => {
 
     return list;
 });
-/** Kuupäeva formaat */
+
 const formatDateEE = (iso: string) => {
     if (!iso) return '';
     const d = new Date(iso);
@@ -94,12 +165,10 @@ const formatDateEE = (iso: string) => {
     return `${dd}.${mm}.${yyyy}`;
 };
 
-/** Add plant modal */
 const isAddPlantOpen = ref(false);
 const openAddPlant = () => (isAddPlantOpen.value = true);
 const onPlantCreated = () => router.reload({ only: ['plants'] });
 
-/** Menu + delete */
 const menuOpenForId = ref<number | null>(null);
 const toggleMenu = (id: number) =>
     (menuOpenForId.value = menuOpenForId.value === id ? null : id);
@@ -108,7 +177,6 @@ const deleteOpen = ref(false);
 const deleteTarget = ref<PlantItem | null>(null);
 const deleting = ref(false);
 
-/** Hoia alles “tagasi siia vaatesse” URL */
 const returnUrl = ref<string>('');
 
 const askDelete = (p: PlantItem) => {
@@ -147,7 +215,6 @@ const doDelete = () => {
     });
 };
 
-/** click-outside dropdown */
 const onDocClick = (e: MouseEvent) => {
     if (!menuOpenForId.value) return;
     const t = e.target as HTMLElement | null;
@@ -164,16 +231,6 @@ onBeforeUnmount(() => {
     document.removeEventListener('click', onDocClick);
 });
 
-const selectedSort = ref('name_asc');
-
-const sortOptions = [
-    { label: 'Nimi A–Z', value: 'name_asc' },
-    { label: 'Nimi Z–A', value: 'name_desc' },
-    { label: 'Istutamise kuupäev: uuemad enne', value: 'planted_desc' },
-    { label: 'Istutamise kuupäev: vanemad enne', value: 'planted_asc' },
-];
-
-/** fallback image */
 const fallbackImage = 'https://picsum.photos/200/200';
 </script>
 
@@ -193,12 +250,6 @@ const fallbackImage = 'https://picsum.photos/200/200';
             <div
                 class="bg-background-light text-text-main font-display min-h-screen"
             >
-                <div class="mb-4 flex justify-end">
-                    <SortDropdown
-                        v-model="selectedSort"
-                        :options="sortOptions"
-                    />
-                </div>
                 <div
                     class="bg-background-light relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x border-primary/10 shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
                 >
@@ -222,15 +273,13 @@ const fallbackImage = 'https://picsum.photos/200/200';
                                 aria-label="Otsi"
                                 @click="showSearch = true"
                             >
-                                <span
-                                    class="material-symbols-outlined text-[24px]"
-                                    >search</span
-                                >
+                                <span class="material-symbols-outlined text-[24px]">
+                                    search
+                                </span>
                             </button>
                         </template>
                     </DiaryHeader>
 
-                    <!-- MODAL -->
                     <CreatePlantModal
                         v-model:open="isAddPlantOpen"
                         :categories="props.categories"
@@ -241,6 +290,7 @@ const fallbackImage = 'https://picsum.photos/200/200';
                         "
                         @created="onPlantCreated"
                     />
+
                     <SearchModal
                         v-model:open="showSearch"
                         :initialQuery="searchQuery"
@@ -251,7 +301,6 @@ const fallbackImage = 'https://picsum.photos/200/200';
                     />
 
                     <main class="pb-24">
-                        <!-- Tabs + sort -->
                         <div class="px-4 py-6">
                             <div
                                 class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
@@ -268,10 +317,10 @@ const fallbackImage = 'https://picsum.photos/200/200';
                                     </button>
                                     <button
                                         type="button"
-                                        :class="tabClass('recent')"
-                                        @click="activeTab = 'recent'"
+                                        :class="tabClass('favorites')"
+                                        @click="activeTab = 'favorites'"
                                     >
-                                        Viimati lisatud
+                                        Lemmikud
                                     </button>
                                 </div>
 
@@ -284,7 +333,6 @@ const fallbackImage = 'https://picsum.photos/200/200';
                             </div>
                         </div>
 
-                        <!-- List -->
                         <div class="px-4">
                             <div
                                 v-if="visiblePlants.length === 0"
@@ -297,9 +345,41 @@ const fallbackImage = 'https://picsum.photos/200/200';
                                 <div
                                     v-for="p in visiblePlants"
                                     :key="p.id"
+                                    class="relative rounded-2xl border border-primary/10 bg-white p-4 shadow-sm"
                                     @click="router.visit(`/plants/${p.id}`)"
-                                    class="rounded-2xl border border-primary/10 bg-white p-4 shadow-sm"
                                 >
+                                    <button
+                                        type="button"
+                                        class="absolute top-3 left-3 z-10 flex h-8 w-8 items-center justify-center rounded-full shadow-sm backdrop-blur-md transition hover:scale-105"
+                                        :class="
+                                            p.is_favorite
+                                                ? 'bg-rose-50 ring-1 ring-rose-200'
+                                                : 'bg-white/70 ring-1 ring-black/10 hover:bg-white'
+                                        "
+                                        @click.prevent.stop="toggleFavorite(p.id)"
+                                        aria-label="Lisa lemmikuks"
+                                    >
+                                        <span
+                                            class="material-symbols-outlined text-[18px] transition"
+                                            :class="
+                                                p.is_favorite
+                                                    ? 'text-rose-600 drop-shadow-sm'
+                                                    : 'text-[#2E2E2E]/45'
+                                            "
+                                            :style="
+                                                p.is_favorite
+                                                    ? {
+                                                          fontVariationSettings: `'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24`,
+                                                      }
+                                                    : {
+                                                          fontVariationSettings: `'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
+                                                      }
+                                            "
+                                        >
+                                            favorite
+                                        </span>
+                                    </button>
+
                                     <div class="flex items-center gap-4">
                                         <img
                                             class="h-16 w-16 rounded-xl border border-primary/10 object-cover"
@@ -336,8 +416,9 @@ const fallbackImage = 'https://picsum.photos/200/200';
                                             >
                                                 <span
                                                     class="material-symbols-outlined text-[22px]"
-                                                    >more_horiz</span
                                                 >
+                                                    more_horiz
+                                                </span>
                                             </button>
 
                                             <div
