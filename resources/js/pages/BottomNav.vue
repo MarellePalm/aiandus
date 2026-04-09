@@ -47,7 +47,7 @@ function labelClass(key: NavKey) {
           :class="itemClass('dashboard')"
           :aria-current="activeKey === 'dashboard' ? 'page' : undefined"
         >
-          <span class="material-symbols-outlined text-2xl">grid_view</span>
+          <span class="material-symbols-outlined text-2xl">home</span>
           <span :class="labelClass('dashboard')">Täna</span>
         </Link>
 
@@ -59,7 +59,7 @@ function labelClass(key: NavKey) {
           :class="itemClass('calendar')"
           :aria-current="activeKey === 'calendar' ? 'page' : undefined"
         >
-          <span class="material-symbols-outlined text-2xl">calendar_today</span>
+          <span class="material-symbols-outlined text-2xl">calendar_month</span>
           <span :class="labelClass('calendar')">Kalender</span>
         </Link>
 
@@ -79,7 +79,7 @@ function labelClass(key: NavKey) {
           :class="itemClass('seeds')"
           :aria-current="activeKey === 'seeds' ? 'page' : undefined"
         >
-          <span class="material-symbols-outlined text-2xl">inventory_2</span>
+          <span class="material-symbols-outlined text-2xl">shelves</span>
           <span :class="labelClass('seeds')">Varud</span>
         </Link>
 

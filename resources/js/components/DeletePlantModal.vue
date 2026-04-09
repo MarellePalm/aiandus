@@ -43,23 +43,23 @@ onBeforeUnmount(() => {
           @click="$emit('close')"
         />
 
-        <div class="relative w-full max-w-sm rounded-3xl bg-[#FAF8F4] shadow-xl ring-1 ring-black/5">
+        <div class="relative w-full max-w-sm rounded-3xl bg-card shadow-xl ring-1 ring-border">
           <div class="pointer-events-none absolute -top-3 -left-3 opacity-20">
-            <div class="h-10 w-10 rounded-full bg-[#E6E2D5]" />
+            <div class="h-10 w-10 rounded-full bg-muted" />
           </div>
 
           <div class="p-5 sm:p-6">
             <div class="flex items-start justify-between gap-3">
               <div>
-                <h3 class="text-lg font-semibold text-[#2E2E2E]">Kustuta taim?</h3>
-                <p class="mt-1 text-sm text-[#2E2E2E]/70">
+                <h3 class="text-lg font-semibold text-foreground">Kustuta taim?</h3>
+                <p class="mt-1 text-sm text-foreground/70">
                   {{ plant?.name }} eemaldatakse jäädavalt.
                 </p>
               </div>
 
               <button
                 type="button"
-                class="rounded-full p-2 text-[#2E2E2E]/60 hover:bg-black/5 hover:text-[#2E2E2E]"
+                class="rounded-full p-2 text-foreground/60 hover:bg-black/5 hover:text-foreground"
                 aria-label="Sulge"
                 @click="$emit('close')"
               >
@@ -79,7 +79,7 @@ onBeforeUnmount(() => {
 
               <button
                 type="button"
-                class="text-sm text-[#2E2E2E]/60 hover:text-[#2E2E2E]"
+                class="text-sm text-foreground/60 hover:text-foreground"
                 :disabled="processing"
                 @click="$emit('close')"
               >

@@ -143,8 +143,8 @@ const openEditCategory = (category: Category) => {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="page page-with-bottomnav">
-            <div class="bg-background-light text-forest font-display min-h-screen antialiased">
-                <div class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
+            <div class="bg-background text-foreground font-display min-h-screen antialiased">
+                <div class="bg-background border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
                     <DiaryHeader
                         title="Varud"
                         header-class="pt-6"
@@ -178,9 +178,9 @@ const openEditCategory = (category: Category) => {
                             <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
                                 <span class="material-symbols-outlined text-primary">category</span>
                             </div>
-                            <h2 class="text-lg font-semibold text-forest">Seemnekategooriad puuduvad</h2>
-                            <p class="mt-2 text-sm text-forest/70">
-                                Vajuta üleval paremal <strong>+</strong>, et lisada esimene kategooria.
+                            <h2 class="text-lg font-semibold text-foreground">Varud puuduvad</h2>
+                            <p class="mt-2 text-sm text-muted-foreground">
+                                Vajuta üleval paremal <strong>+</strong>, et lisada esimene varu.
                             </p>
                         </div>
 
@@ -215,7 +215,7 @@ const openEditCategory = (category: Category) => {
                                     :class="
                                         cat.is_favorite === true
                                             ? 'bg-rose-50 ring-1 ring-rose-200'
-                                            : 'bg-white/70 ring-1 ring-black/10 hover:bg-white'
+                                            : 'bg-card/70 ring-1 ring-border hover:bg-card'
                                     "
                                     @click.prevent.stop="toggleFavorite(cat.id)"
                                     aria-label="Lisa lemmikuks"
@@ -225,7 +225,7 @@ const openEditCategory = (category: Category) => {
                                         :class="
                                             cat.is_favorite === true
                                                 ? 'text-rose-600 drop-shadow-sm'
-                                                : 'text-[#2E2E2E]/45'
+                                                : 'text-foreground/45'
                                         "
                                         :style="
                                             cat.is_favorite === true

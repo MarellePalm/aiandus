@@ -131,7 +131,7 @@ class SeedController extends Controller
                     'scope' => Category::SCOPE_SEED,
                     'slug' => 'seemned-seed-default',
                 ],
-                ['name' => 'Seemned']
+                ['name' => 'Varud']
             );
         }
 

@@ -24,7 +24,7 @@ const breadcrumbs = [
       <main class="pb-6 space-y-4">
         <DiaryHeader
           title="Lisa peenar"
-          title-class="text-forest text-3xl font-bold tracking-tight"
+          title-class="text-foreground text-3xl font-bold tracking-tight"
           header-class="pt-6 px-0 md:px-0"
           top-row-class="mb-2"
           bottom-row-class="mb-0"

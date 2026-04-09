@@ -182,25 +182,25 @@ onBeforeUnmount(() => {
     <!-- Lehe režiim: /seeds/create -->
     <template v-if="isStandalone">
         <Head title="Lisa varu" />
-        <div class="min-h-screen bg-background-light text-forest font-display antialiased">
+        <div class="min-h-screen bg-background text-foreground font-display antialiased">
             <div class="fixed inset-0 z-50 flex items-start justify-center p-4 pt-6 sm:items-center sm:pt-4">
                 <Link
                     href="/seeds"
                     class="absolute inset-0 bg-black/30 backdrop-blur-[2px]"
                     aria-label="Sulge"
                 />
-                <div class="relative w-full max-w-lg max-h-[92vh] overflow-hidden rounded-3xl bg-[#FAF8F4] shadow-xl ring-1 ring-black/5">
+                <div class="relative w-full max-w-lg max-h-[92vh] overflow-hidden rounded-3xl bg-card shadow-xl ring-1 ring-border">
                     <div class="max-h-[92vh] overflow-y-auto p-5 sm:p-6">
                         <div class="flex items-start justify-between gap-3">
                             <div>
-                <h1 class="text-lg font-semibold text-[#2E2E2E]">Lisa varu</h1>
-                <p class="mt-1 text-sm text-[#2E2E2E]/70 mb-5">
+                <h1 class="text-lg font-semibold text-foreground">Lisa varu</h1>
+                <p class="mt-1 text-sm text-foreground/70 mb-5">
                     Lisa nimi, kogus, pilt, ostmisaasta ja aegumisaasta.
                 </p>
                             </div>
                             <Link
                                 href="/seeds"
-                                class="rounded-full p-2 text-[#2E2E2E]/60 hover:bg-black/5 hover:text-[#2E2E2E]"
+                                class="rounded-full p-2 text-foreground/60 hover:bg-black/5 hover:text-foreground"
                                 aria-label="Sulge"
                             >
                                 ✕
@@ -208,23 +208,23 @@ onBeforeUnmount(() => {
                         </div>
 
                 <div class="mt-5">
-                    <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Nimi</label>
+                    <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">Nimi</label>
                     <input
                         ref="nameInputRef"
                         v-model="form.name"
                         type="text"
                         placeholder="nt Tomat"
-                        class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                        class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     />
                     <p v-if="form.errors.name" class="mt-2 text-sm text-red-600">{{ form.errors.name }}</p>
                 </div>
 
                 <div class="mt-5">
-                    <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Kategooria</label>
+                    <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">Kategooria</label>
                     <select
                         ref="categorySelectRef"
                         v-model="form.category_id"
-                        class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                        class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     >
                         <option :value="null" disabled>Vali kategooria...</option>
                         <option v-for="c in (props.categories ?? [])" :key="c.id" :value="c.id">{{ c.name }}</option>
@@ -234,12 +234,12 @@ onBeforeUnmount(() => {
 
                 <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Ostmise aasta</label>
+                        <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">Ostmise aasta</label>
                         <input
                             v-model="form.year"
                             type="number"
                             max="2100"
-                            class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                            class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                             @focus="markEmptyOnFocus('year')"
                             @input="normalizeSpinnerStart('year')"
                             @keydown.up="startYearFrom2020('year')"
@@ -248,12 +248,12 @@ onBeforeUnmount(() => {
                         <p v-if="form.errors.year" class="mt-2 text-sm text-red-600">{{ form.errors.year }}</p>
                     </div>
                     <div>
-                        <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Aegumisaasta</label>
+                        <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">Aegumisaasta</label>
                         <input
                             v-model="form.expires_at"
                             type="number"
                             max="2100"
-                            class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                            class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                             @focus="markEmptyOnFocus('expires_at')"
                             @input="normalizeSpinnerStart('expires_at')"
                             @keydown.up="startYearFrom2020('expires_at')"
@@ -264,18 +264,18 @@ onBeforeUnmount(() => {
                 </div>
 
                 <div class="mt-5">
-                    <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Kogus</label>
+                    <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">Kogus</label>
                     <input
                         v-model="form.amount_text"
                         type="text"
                         placeholder="nt 1 tk või 2 liitrit"
-                        class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                        class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     />
                     <p v-if="form.errors.amount_text" class="mt-2 text-sm text-red-600">{{ form.errors.amount_text }}</p>
                 </div>
 
                 <div class="mt-5">
-                    <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Pilt</label>
+                    <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">Pilt</label>
                     <input
                         ref="fileInputRef"
                         type="file"
@@ -285,12 +285,12 @@ onBeforeUnmount(() => {
                     />
                     <button
                         type="button"
-                        class="mt-3 w-full rounded-2xl border-2 border-dashed border-black/10 bg-white/60 px-6 py-8 text-center hover:bg-white/80"
+                        class="mt-3 w-full rounded-2xl border-2 border-dashed border-border bg-background px-6 py-8 text-center hover:bg-muted/50"
                         @click="openPicker"
                     >
                         <template v-if="!hasImage">
-                            <span class="material-symbols-outlined text-5xl text-[#6B8C68]">add_a_photo</span>
-                            <p class="mt-2 text-sm text-[#2E2E2E]/70">Lisa varu pilt</p>
+                            <span class="material-symbols-outlined text-5xl text-primary">add_a_photo</span>
+                            <p class="mt-2 text-sm text-foreground/70">Lisa varu pilt</p>
                         </template>
                         <template v-else>
                             <img
@@ -305,12 +305,12 @@ onBeforeUnmount(() => {
                 </div>
 
                 <div class="mt-5">
-                    <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Märkused</label>
+                    <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">Märkused</label>
                     <textarea
                         v-model="form.notes"
                         rows="4"
                         placeholder="Lisa siia varu kohta täiendav info..."
-                        class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                        class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     />
                     <p v-if="form.errors.notes" class="mt-2 text-sm text-red-600">{{ form.errors.notes }}</p>
                 </div>
@@ -318,7 +318,7 @@ onBeforeUnmount(() => {
                 <div class="mt-6 flex flex-col gap-3">
                     <button
                         type="button"
-                        class="rounded-2xl bg-[#6B8C68] px-4 py-3 font-medium text-white transition hover:bg-[#4F6A52] disabled:opacity-60"
+                        class="rounded-2xl bg-primary px-4 py-3 font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
                         :disabled="form.processing || !form.name.trim()"
                         @click="submit"
                     >
@@ -326,7 +326,7 @@ onBeforeUnmount(() => {
                     </button>
                     <Link
                         href="/seeds"
-                        class="text-center text-sm text-[#2E2E2E]/60 hover:text-[#2E2E2E]"
+                        class="text-center text-sm text-foreground/60 hover:text-foreground"
                     >
                         Tühista
                     </Link>
@@ -353,18 +353,18 @@ onBeforeUnmount(() => {
                     @click="close"
                 />
 
-                <div class="relative w-full max-w-lg max-h-[92vh] overflow-hidden rounded-3xl bg-[#FAF8F4] shadow-xl ring-1 ring-black/5">
+                <div class="relative w-full max-w-lg max-h-[92vh] overflow-hidden rounded-3xl bg-card shadow-xl ring-1 ring-border">
                     <div class="max-h-[92vh] overflow-y-auto p-5 sm:p-6">
                         <div class="flex items-start justify-between gap-3">
                             <div>
-                                <h3 class="text-lg font-semibold text-[#2E2E2E]">Lisa varu</h3>
-                                <p class="mt-1 text-sm text-[#2E2E2E]/70">
+                                <h3 class="text-lg font-semibold text-foreground">Lisa varu</h3>
+                                <p class="mt-1 text-sm text-foreground/70">
                                     Lisa nimi, kogus, pilt, ostmisaasta ja aegumisaasta.
                                 </p>
                             </div>
                             <button
                                 type="button"
-                                class="rounded-full p-2 text-[#2E2E2E]/60 hover:bg-black/5 hover:text-[#2E2E2E]"
+                                class="rounded-full p-2 text-foreground/60 hover:bg-black/5 hover:text-foreground"
                                 @click="close"
                                 aria-label="Sulge"
                             >
@@ -373,7 +373,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div class="mt-5">
-                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                            <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">
                                 Nimi
                             </label>
                             <input
@@ -381,19 +381,19 @@ onBeforeUnmount(() => {
                                 v-model="form.name"
                                 type="text"
                                 placeholder="nt Tomat"
-                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                             />
                             <p v-if="form.errors.name" class="mt-2 text-sm text-red-600">{{ form.errors.name }}</p>
                         </div>
 
                         <div class="mt-5">
-                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                            <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">
                                 Kategooria
                             </label>
                             <select
                                 ref="categorySelectRef"
                                 v-model="form.category_id"
-                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                             >
                                 <option :value="null" disabled>Vali kategooria...</option>
                                 <option v-for="c in props.categories ?? []" :key="c.id" :value="c.id">
@@ -407,14 +407,14 @@ onBeforeUnmount(() => {
 
                         <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
-                                <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                                <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">
                                     Ostmise aasta
                                 </label>
                                 <input
                                     v-model="form.year"
                                     type="number"
                                     max="2100"
-                                    class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                    class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                     @focus="markEmptyOnFocus('year')"
                                     @input="normalizeSpinnerStart('year')"
                                     @keydown.up="startYearFrom2020('year')"
@@ -423,14 +423,14 @@ onBeforeUnmount(() => {
                                 <p v-if="form.errors.year" class="mt-2 text-sm text-red-600">{{ form.errors.year }}</p>
                             </div>
                             <div>
-                                <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                                <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">
                                     Aegumisaasta
                                 </label>
                                 <input
                                     v-model="form.expires_at"
                                     type="number"
                                     max="2100"
-                                    class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                    class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                     @focus="markEmptyOnFocus('expires_at')"
                                     @input="normalizeSpinnerStart('expires_at')"
                                     @keydown.up="startYearFrom2020('expires_at')"
@@ -441,20 +441,20 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div class="mt-5">
-                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                            <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">
                                 Kogus
                             </label>
                             <input
                                 v-model="form.amount_text"
                                 type="text"
                                 placeholder="nt 1 tk või 2 liitrit"
-                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                             />
                             <p v-if="form.errors.amount_text" class="mt-2 text-sm text-red-600">{{ form.errors.amount_text }}</p>
                         </div>
 
                         <div class="mt-5">
-                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                            <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">
                                 Pilt
                             </label>
                             <input
@@ -466,12 +466,12 @@ onBeforeUnmount(() => {
                             />
                             <button
                                 type="button"
-                                class="mt-3 w-full rounded-2xl border-2 border-dashed border-black/10 bg-white/60 px-6 py-8 text-center hover:bg-white/80"
+                                class="mt-3 w-full rounded-2xl border-2 border-dashed border-border bg-background px-6 py-8 text-center hover:bg-muted/50"
                                 @click="openPicker"
                             >
                                 <template v-if="!hasImage">
-                                    <span class="material-symbols-outlined text-5xl text-[#6B8C68]">add_a_photo</span>
-                                    <p class="mt-2 text-sm text-[#2E2E2E]/70">Lisa seemne pilt</p>
+                                    <span class="material-symbols-outlined text-5xl text-primary">add_a_photo</span>
+                                    <p class="mt-2 text-sm text-foreground/70">Lisa seemne pilt</p>
                                 </template>
                                 <template v-else>
                                     <img
@@ -486,22 +486,22 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div class="mt-5">
-                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                            <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">
                                 Märkused
                             </label>
                             <textarea
                                 v-model="form.notes"
                                 rows="4"
                                 placeholder="Lisa siia seemne kohta täiendav info..."
-                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                             />
                             <p v-if="form.errors.notes" class="mt-2 text-sm text-red-600">{{ form.errors.notes }}</p>
                         </div>
 
-                        <div class="sticky bottom-0 mt-6 flex flex-col gap-3 bg-[#FAF8F4] pt-4 pb-1">
+                        <div class="sticky bottom-0 mt-6 flex flex-col gap-3 bg-card pt-4 pb-1">
                             <button
                                 type="button"
-                                class="rounded-2xl bg-[#6B8C68] px-4 py-3 font-medium text-white transition hover:bg-[#4F6A52] disabled:opacity-60"
+                                class="rounded-2xl bg-primary px-4 py-3 font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
                                 :disabled="form.processing || !form.name.trim()"
                                 @click="submit"
                             >
@@ -509,7 +509,7 @@ onBeforeUnmount(() => {
                             </button>
                             <button
                                 type="button"
-                                class="text-sm text-[#2E2E2E]/60 hover:text-[#2E2E2E]"
+                                class="text-sm text-foreground/60 hover:text-foreground"
                                 :disabled="form.processing"
                                 @click="close"
                             >

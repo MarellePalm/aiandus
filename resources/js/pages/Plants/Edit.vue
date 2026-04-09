@@ -68,7 +68,7 @@ onBeforeUnmount(() => {
 
 <template>
   <Head title="Muuda taime" />
-  <div class="min-h-screen bg-background-light text-forest font-display antialiased">
+  <div class="min-h-screen bg-background text-foreground font-display antialiased">
     <div class="fixed inset-0 z-50 flex items-start justify-center p-4 pt-6 sm:items-center sm:pt-4">
       <Link
         :href="`/plants/${props.plant.id}`"

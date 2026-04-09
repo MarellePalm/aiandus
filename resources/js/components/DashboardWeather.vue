@@ -159,12 +159,12 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
     <div class="flex justify-between items-start mb-4">
       <div class="space-y-1">
         <div class="inline-flex items-center gap-2 mb-2">
-          <div class="inline-flex items-center bg-primary/15 text-primary px-3 py-1 rounded-full text-xs font-semibold">
+          <div class="inline-flex items-center rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-primary dark:bg-primary/25 dark:text-primary-foreground">
             Täna
           </div>
           <div
             v-if="q.isSuccess.value && locationName"
-            class="inline-flex items-center bg-secondary/60 text-xs text-muted-foreground px-3 py-1 rounded-full"
+            class="inline-flex items-center rounded-full bg-muted/70 px-3 py-1 text-xs text-foreground/85 ring-1 ring-border/70 dark:bg-card/80"
           >
             <span class="material-symbols-outlined text-sm mr-1">location_on</span>
             <span class="truncate max-w-[120px]">{{ locationName }}</span>
@@ -172,7 +172,7 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
         </div>
 
         <div class="flex items-baseline gap-1">
-          <span class="text-[40px] sm:text-[44px] font-bold leading-none tracking-tight">
+          <span class="text-[40px] sm:text-[44px] font-bold leading-none tracking-tight text-foreground">
             <template v-if="q.isSuccess.value && temp !== null">
               {{ Math.round(temp) }}°C
             </template>
@@ -181,13 +181,13 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
         </div>
 
         <div v-if="q.isSuccess.value" class="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-secondary/60 px-2.5 py-1 ring-1 ring-border/70">
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-muted/70 px-2.5 py-1 ring-1 ring-border/70 dark:bg-card/80">
             <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">device_thermostat</span>
             <span class="text-foreground/85 font-medium">
               Max {{ Math.round(tMax ?? 0) }}° / Min {{ Math.round(tMin ?? 0) }}°
             </span>
           </span>
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-secondary/60 px-2.5 py-1 ring-1 ring-border/70">
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-muted/70 px-2.5 py-1 ring-1 ring-border/70 dark:bg-card/80">
             <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">partly_cloudy_day</span>
             <span class="text-foreground/85 font-semibold truncate max-w-40">
               {{ todayWeatherLabel ?? '—' }}
@@ -196,21 +196,21 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
         </div>
 
         <div v-if="q.isSuccess.value" class="flex flex-wrap items-center gap-2 mt-3 text-sm text-muted-foreground">
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-secondary/60 px-2.5 py-1 ring-1 ring-border/70">
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-muted/70 px-2.5 py-1 ring-1 ring-border/70 dark:bg-card/80">
             <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">air</span>
             <span class="text-foreground/80">{{ windSpeed != null ? `${windSpeed.toFixed(1)} m/s` : '—' }}</span>
           </span>
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-secondary/60 px-2.5 py-1 ring-1 ring-border/70">
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-muted/70 px-2.5 py-1 ring-1 ring-border/70 dark:bg-card/80">
             <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">water_drop</span>
             <span class="text-foreground/80">{{ humidity != null ? `${humidity}%` : '—' }}</span>
           </span>
         </div>
         <div v-if="q.isSuccess.value && (sunrise || sunset)" class="mt-2 grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-secondary/60 px-2.5 py-1 ring-1 ring-border/70">
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-muted/70 px-2.5 py-1 ring-1 ring-border/70 dark:bg-card/80">
             <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">wb_twilight</span>
             <span class="text-foreground/80">{{ sunrise ? `Tõuseb ${sunrise}` : '—' }}</span>
           </span>
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-secondary/60 px-2.5 py-1 ring-1 ring-border/70">
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-muted/70 px-2.5 py-1 ring-1 ring-border/70 dark:bg-card/80">
             <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">nightlight_round</span>
             <span class="text-foreground/80">{{ sunset ? `Loojub ${sunset}` : '—' }}</span>
           </span>
@@ -218,7 +218,7 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
       </div>
 
       <div class="flex flex-col items-end">
-        <div class="rounded-full bg-secondary/60 ring-1 ring-border/70 p-1.5 sm:p-2">
+        <div class="rounded-full bg-muted/70 p-1.5 ring-1 ring-border/70 dark:bg-card/80 sm:p-2">
           <img
             v-if="q.isSuccess.value && todayWeatherIconUrl"
             :src="todayWeatherIconUrl"
@@ -250,9 +250,9 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
         <div
           v-for="d in forecastDays"
           :key="d.date"
-          class="flex flex-col items-center p-3 rounded-2xl bg-secondary/50 dark:bg-black/10 backdrop-blur-sm shrink-0 w-28 ring-1 ring-border/70 shadow-sm"
+          class="flex w-28 shrink-0 flex-col items-center rounded-2xl bg-muted/60 p-3 ring-1 ring-border/70 shadow-sm backdrop-blur-sm dark:bg-card/85"
         >
-          <span class="text-[24px] font-bold uppercase tracking-wide text-muted-foreground">
+          <span class="text-xs font-semibold uppercase tracking-wide text-foreground/80">
             {{ new Intl.DateTimeFormat('et-EE', { weekday: 'short' }).format(new Date(d.date)) }}
           </span>
 

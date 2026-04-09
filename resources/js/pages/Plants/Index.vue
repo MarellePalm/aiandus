@@ -150,10 +150,10 @@ const resetToAll = () => {
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="page page-with-bottomnav">
             <div
-                class="bg-background-light text-forest font-display min-h-screen antialiased"
+                class="bg-background text-foreground font-display min-h-screen antialiased"
             >
                 <div
-                    class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
+                    class="bg-background border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
                 >
                     <DiaryHeader title="Taimed">
                         <template #leading>
@@ -244,7 +244,7 @@ const resetToAll = () => {
                                     :class="
                                         cat.is_favorite
                                             ? 'bg-rose-50 ring-1 ring-rose-200'
-                                            : 'bg-white/70 ring-1 ring-black/10 hover:bg-white'
+                                            : 'bg-card/70 ring-1 ring-border hover:bg-card'
                                     "
                                     @click.prevent.stop="toggleFavorite(cat.id)"
                                     aria-label="Lisa lemmikuks"
@@ -254,7 +254,7 @@ const resetToAll = () => {
                                         :class="
                                             cat.is_favorite
                                                 ? 'text-rose-600 drop-shadow-sm'
-                                                : 'text-[#2E2E2E]/45'
+                                                : 'text-foreground/45'
                                         "
                                         :style="
                                             cat.is_favorite
@@ -305,38 +305,38 @@ const resetToAll = () => {
 
                             <!-- card -->
                             <div
-                                class="relative w-full max-w-sm rounded-3xl bg-[#FAF8F4] p-6 text-center shadow-xl ring-1 ring-black/5"
+                                class="relative w-full max-w-sm rounded-3xl bg-card p-6 text-center shadow-xl ring-1 ring-border"
                             >
                                 <div
-                                    class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#E6E2D5]"
+                                    class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted"
                                 >
                                     <span
-                                        class="material-symbols-outlined text-2xl text-[#6B8C68]"
+                                        class="material-symbols-outlined text-2xl text-primary"
                                     >
                                         delete
                                     </span>
                                 </div>
 
                                 <h3
-                                    class="text-lg font-semibold text-[#2E2E2E]"
+                                    class="text-lg font-semibold text-foreground"
                                 >
                                     Kustuta kategooria?
                                 </h3>
 
-                                <p class="mt-2 text-sm text-[#2E2E2E]/70">
+                                <p class="mt-2 text-sm text-muted-foreground">
                                     Seda tegevust ei saa tagasi võtta.
                                 </p>
 
                                 <div class="mt-6 flex flex-col gap-3">
                                     <button
-                                        class="rounded-2xl bg-[#6B8C68] py-3 font-medium text-white transition hover:bg-[#4F6A52]"
+                                        class="rounded-2xl bg-primary py-3 font-medium text-primary-foreground transition hover:bg-primary/90"
                                         @click="confirmDelete"
                                     >
                                         Jah, kustuta
                                     </button>
 
                                     <button
-                                        class="text-sm text-[#2E2E2E]/60 hover:text-[#2E2E2E]"
+                                        class="text-sm text-muted-foreground hover:text-foreground"
                                         @click="showDeleteModal = false"
                                     >
                                         Tühista
@@ -353,8 +353,6 @@ const resetToAll = () => {
     :icon-size-px="30"
     @click="showCreateCategory = true"
 />
-
-<BottomNav active="plants" /> 
 
                 <BottomNav active="plants" />
             </div>

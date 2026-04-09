@@ -174,13 +174,13 @@ const fallbackImage = "https://picsum.photos/200/200";
     ]"
   >
     <div class="page page-with-bottomnav">
-      <div class="bg-background-light text-text-main font-display min-h-screen">
+      <div class="bg-background text-foreground font-display min-h-screen">
         <div
-          class="bg-background-light relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x border-primary/10 shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
+          class="bg-background relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x border-primary/10 shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
         >
           <DiaryHeader
             :title="props.category.name"
-            title-class="text-forest text-3xl font-bold tracking-tight"
+            title-class="text-foreground text-3xl font-bold tracking-tight"
             header-class="pt-6"
             top-row-class="mb-2"
             bottom-row-class="mb-0"
@@ -229,7 +229,7 @@ const fallbackImage = "https://picsum.photos/200/200";
 
             <!-- List -->
             <div class="px-4">
-              <div v-if="visiblePlants.length === 0" class="rounded-2xl border border-primary/10 bg-white p-6 text-sm text-text-muted">
+              <div v-if="visiblePlants.length === 0" class="rounded-2xl border border-primary/10 bg-card p-6 text-sm text-muted-foreground">
                 Sorte veel pole. Vajuta “+”, et lisada esimene.
               </div>
 
@@ -238,7 +238,7 @@ const fallbackImage = "https://picsum.photos/200/200";
                   v-for="p in visiblePlants"
                   :key="p.id"
                   @click="router.visit(`/plants/${p.id}`)"
-                  class="rounded-2xl border border-primary/10 bg-white p-4 shadow-sm"
+                  class="rounded-2xl border border-primary/10 bg-card p-4 shadow-sm"
                 >
                   <div class="flex items-center gap-4">
                     <img
@@ -248,10 +248,10 @@ const fallbackImage = "https://picsum.photos/200/200";
                     />
 
                     <div class="min-w-0 flex-1">
-                      <div class="truncate text-lg font-bold text-text-main">
+                      <div class="truncate text-lg font-bold text-foreground">
                         {{ p.subtitle }}
                       </div>
-                      <div class="mt-1 text-sm text-text-muted">
+                      <div class="mt-1 text-sm text-muted-foreground">
                         Istutatud: {{ formatDateEE(p.planted_at) }}
                       </div>
                     </div>
@@ -259,7 +259,7 @@ const fallbackImage = "https://picsum.photos/200/200";
                     <div class="relative" data-plant-menu @click.stop>
                       <button
                         type="button"
-                        class="flex h-10 w-10 items-center justify-center rounded-full text-text-muted transition hover:bg-primary/10"
+                        class="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition hover:bg-primary/10"
                         aria-label="Menüü"
                         @click.stop.prevent="toggleMenu(p.id)"
                       >
@@ -268,7 +268,7 @@ const fallbackImage = "https://picsum.photos/200/200";
 
                       <div
                         v-if="menuOpenForId === p.id"
-                        class="absolute right-0 top-12 z-20 w-44 overflow-hidden rounded-xl border border-primary/10 bg-white shadow-lg"
+                        class="absolute right-0 top-12 z-20 w-44 overflow-hidden rounded-xl border border-primary/10 bg-card shadow-lg"
                         @click.stop
                       >
                         <button
@@ -280,7 +280,7 @@ const fallbackImage = "https://picsum.photos/200/200";
                         </button>
                         <button
                           type="button"
-                          class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50"
+                          class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-500/10"
                           @click.stop="askDelete(p)"
                         >
                           Kustuta
