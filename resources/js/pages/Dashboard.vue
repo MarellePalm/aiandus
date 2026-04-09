@@ -212,7 +212,7 @@ onMounted(() => {
 // Lumememma-stiilis + nupp: väikesed ümarad kiirtegevused selle kohal
 const showFabMenu = ref(false);
 const fabActions = [
-  { href: '/calendar/note-form', icon: 'calendar_month', label: 'Lisa märkmed' },
+  { href: '/calendar/note-form', icon: 'edit_note', label: 'Lisa märkmed' },
   { href: '/plants/create', icon: 'local_florist', label: 'Lisa taim' },
   { href: '/seeds/create', icon: 'shelves', label: 'Lisa varu' },
   { href: '/map/beds/new', icon: 'map', label: 'Lisa peenar' },
@@ -496,9 +496,6 @@ function goToFabAction(href: string) {
                   <p class="text-[10px] uppercase tracking-tighter text-primary font-bold mt-1 italic">
                     {{ relativeDays(p.created_at) }}
                   </p>
-                  <div class="flex gap-1 mt-2">
-                    <span class="material-symbols-outlined text-xs">local_florist</span>
-                  </div>
                 </Link>
               </div>
               <p v-if="recentPlants.length === 0" class="text-sm text-muted-foreground py-4">
@@ -571,9 +568,6 @@ function goToFabAction(href: string) {
                     <p class="text-[10px] uppercase tracking-tighter text-primary font-bold mt-1 italic">
                       {{ relativeDays(s.created_at) }}
                     </p>
-                    <div class="flex gap-1 mt-2">
-                      <span class="material-symbols-outlined text-xs">shelves</span>
-                    </div>
                   </Link>
                 </div>
                 <p v-if="recentSeeds.length === 0" class="text-sm text-muted-foreground py-4">
