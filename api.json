@@ -1,0 +1,202 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Laravel",
+        "version": "0.0.1",
+        "description": "OpenAPI documentation for Aiandus backend endpoints."
+    },
+    "servers": [
+        {
+            "url": "http://localhost/api"
+        }
+    ],
+    "tags": [
+        {
+            "name": "System",
+            "description": "System health and availability endpoints"
+        }
+    ],
+    "paths": {
+        "/health": {
+            "get": {
+                "operationId": "apiHealth",
+                "description": "Returns backend status information for monitoring and smoke checks.",
+                "summary": "Health check",
+                "tags": [
+                    "System"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "const": "ok"
+                                        },
+                                        "app": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "status",
+                                        "app"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/weather": {
+            "get": {
+                "operationId": "weather",
+                "tags": [
+                    "Weather"
+                ],
+                "parameters": [
+                    {
+                        "name": "lat",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "lon",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "useOpenWeather": {
+                                            "type": "boolean"
+                                        },
+                                        "": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "useOpenWeather",
+                                        null
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "const": "Ilmaandmete p\u00e4ring eba\u00f5nnestus"
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Asukoht (lat/lon) puudub. Luba brauseris asukoha jagamine."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "OPENWEATHER_API_KEY pole .env failis. Lisa v\u00f5ti ja k\u00e4ivita: php artisan config:clear"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "responses": {
+            "AuthenticationException": {
+                "description": "Unauthenticated",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Error overview."
+                                }
+                            },
+                            "required": [
+                                "message"
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
