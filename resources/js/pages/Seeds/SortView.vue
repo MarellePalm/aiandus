@@ -155,11 +155,11 @@ onBeforeUnmount(() => {
 
     <AppLayout :breadcrumbs="[{ title: 'Aed', href: '/seeds' }, { title: props.category.name, href: `/seeds/category/${props.category.slug}` }]">
         <div class="page page-with-bottomnav">
-            <div class="bg-background-light text-forest font-display min-h-screen antialiased">
-                <div class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
+            <div class="bg-background text-foreground font-display min-h-screen antialiased">
+                <div class="bg-background border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
                     <DiaryHeader
                         :title="props.category.name"
-                        title-class="text-forest text-3xl font-bold tracking-tight max-w-[12rem] truncate sm:max-w-none"
+                        title-class="text-foreground text-3xl font-bold tracking-tight max-w-[12rem] truncate sm:max-w-none"
                         header-class="pt-6"
                     >
                         <template #leading>
@@ -183,22 +183,22 @@ onBeforeUnmount(() => {
                             <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
                                 <span class="material-symbols-outlined text-primary">potted_plant</span>
                             </div>
-                            <h2 class="text-lg font-semibold text-forest">Selles kategoorias seemneid pole</h2>
-                            <p class="mt-2 text-sm text-forest/70">Vajuta üleval paremal <strong>+</strong>, et lisada seeme.</p>
+                            <h2 class="text-lg font-semibold text-foreground">Selles kategoorias seemneid pole</h2>
+                            <p class="mt-2 text-sm text-muted-foreground">Vajuta üleval paremal <strong>+</strong>, et lisada seeme.</p>
                         </div>
 
                         <div v-else class="space-y-4">
                             <div
                                 v-for="seed in filteredSeeds"
                                 :key="seed.id"
-                                class="rounded-2xl border border-primary/10 bg-white p-4 shadow-sm transition hover:shadow-md"
+                                class="rounded-2xl border border-primary/10 bg-card p-4 shadow-sm transition hover:shadow-md"
                                 role="button"
                                 tabindex="0"
                                 @click="openSeed(seed.id)"
                                 @keydown.enter.prevent="openSeed(seed.id)"
                             >
                                 <div class="flex items-center gap-4">
-                                    <div class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-primary/10 bg-gray-100">
+                                    <div class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-primary/10 bg-muted/40">
                                         <img
                                             v-if="seed.image_url"
                                             :src="seed.image_url"
@@ -212,14 +212,14 @@ onBeforeUnmount(() => {
 
                                     <div class="min-w-0 flex-1">
                                         <h3 class="truncate text-lg font-semibold">{{ seed.name }}</h3>
-                                        <p v-if="seed.year" class="mt-1 text-sm text-text-muted">Ostetud: {{ seed.year }}</p>
-                                        <p v-if="seed.expires_at" class="text-sm text-text-muted">Aegub: {{ seed.expires_at }}</p>
+                                        <p v-if="seed.year" class="mt-1 text-sm text-muted-foreground">Ostetud: {{ seed.year }}</p>
+                                        <p v-if="seed.expires_at" class="text-sm text-muted-foreground">Aegub: {{ seed.expires_at }}</p>
                                     </div>
 
                                     <div class="relative shrink-0" data-seed-menu @click.stop>
                                         <button
                                             type="button"
-                                            class="flex h-10 w-10 items-center justify-center rounded-full text-text-muted transition hover:bg-primary/10"
+                                            class="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition hover:bg-primary/10"
                                             aria-label="Menüü"
                                             @click.stop.prevent="toggleMenu(seed.id)"
                                         >
@@ -228,7 +228,7 @@ onBeforeUnmount(() => {
 
                                         <div
                                             v-if="menuOpenForId === seed.id"
-                                            class="absolute right-0 top-12 z-20 w-48 overflow-hidden rounded-xl border border-primary/10 bg-white shadow-lg"
+                                            class="absolute right-0 top-12 z-20 w-48 overflow-hidden rounded-xl border border-primary/10 bg-card shadow-lg"
                                             @click.stop
                                         >
                                             <button
@@ -247,7 +247,7 @@ onBeforeUnmount(() => {
                                             </button>
                                             <button
                                                 type="button"
-                                                class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50"
+                                                class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-500/10"
                                                 @click.stop="openDeleteSeed(seed); menuOpenForId = null"
                                             >
                                                 Kustuta
