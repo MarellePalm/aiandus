@@ -151,7 +151,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <Head :title="`Seemned - ${props.category.name}`" />
+    <Head :title="`Varud - ${props.category.name}`" />
 
     <AppLayout :breadcrumbs="[{ title: 'Aed', href: '/seeds' }, { title: props.category.name, href: `/seeds/category/${props.category.slug}` }]">
         <div class="page page-with-bottomnav">
@@ -183,8 +183,8 @@ onBeforeUnmount(() => {
                             <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
                                 <span class="material-symbols-outlined text-primary">potted_plant</span>
                             </div>
-                            <h2 class="text-lg font-semibold text-foreground">Selles kategoorias seemneid pole</h2>
-                            <p class="mt-2 text-sm text-muted-foreground">Vajuta üleval paremal <strong>+</strong>, et lisada seeme.</p>
+                            <h2 class="text-lg font-semibold text-foreground">Selles kategoorias varusi ei ole</h2>
+                            <p class="mt-2 text-sm text-muted-foreground">Vajuta üleval paremal <strong>+</strong>, et lisada varu.</p>
                         </div>
 
                         <div v-else class="space-y-4">

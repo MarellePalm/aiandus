@@ -261,8 +261,8 @@ onMounted(() => scrollDescriptionToCenter('auto'));
   <Head title="Kuufaaside kalender" />
   <AppLayout>
     <div class="page page-with-bottomnav">
-      <div class="bg-background-light text-forest font-display min-h-screen antialiased">
-        <div class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
+      <div class="bg-background text-foreground font-display min-h-screen antialiased">
+        <div class="bg-background border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
           <DiaryHeader
             title="Kuufaaside kalender"
             header-class="pt-6"

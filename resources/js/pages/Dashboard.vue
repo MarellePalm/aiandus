@@ -212,9 +212,9 @@ onMounted(() => {
 // Lumememma-stiilis + nupp: väikesed ümarad kiirtegevused selle kohal
 const showFabMenu = ref(false);
 const fabActions = [
-  { href: '/calendar/note-form', icon: 'calendar_today', label: 'Lisa märkmed' },
+  { href: '/calendar/note-form', icon: 'calendar_month', label: 'Lisa märkmed' },
   { href: '/plants/create', icon: 'local_florist', label: 'Lisa taim' },
-  { href: '/seeds/create', icon: 'inventory_2', label: 'Lisa varu' },
+  { href: '/seeds/create', icon: 'shelves', label: 'Lisa varu' },
   { href: '/map/beds/new', icon: 'map', label: 'Lisa peenar' },
 ];
 function closeFabMenu() {
@@ -230,8 +230,8 @@ function goToFabAction(href: string) {
   <Head title="Dashboard" />
 
   <AppLayout :breadcrumbs="breadcrumbs">
-    <div class="page bg-background-light min-h-0 flex flex-col">
-      <div class="bg-background-light border-beige/50 relative mx-auto w-full max-w-[480px] overflow-x-clip border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
+    <div class="page bg-background min-h-0 flex flex-col">
+      <div class="bg-background border-beige/50 relative mx-auto w-full max-w-[480px] overflow-x-clip border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
         <DiaryHeader
           title="Minu Aiapäevik"
           :diary-label="todayLabel"
@@ -572,7 +572,7 @@ function goToFabAction(href: string) {
                       {{ relativeDays(s.created_at) }}
                     </p>
                     <div class="flex gap-1 mt-2">
-                      <span class="material-symbols-outlined text-xs">inventory_2</span>
+                      <span class="material-symbols-outlined text-xs">shelves</span>
                     </div>
                   </Link>
                 </div>
@@ -583,7 +583,7 @@ function goToFabAction(href: string) {
                   href="/seeds"
                   class="btn-panel-link"
                 >
-                  <span class="material-symbols-outlined text-lg">inventory_2</span>
+                  <span class="material-symbols-outlined text-lg">shelves</span>
                   <span class="font-semibold text-sm">Vaata kõiki varusid</span>
                   <span class="material-symbols-outlined text-lg ml-auto">chevron_right</span>
                 </Link>

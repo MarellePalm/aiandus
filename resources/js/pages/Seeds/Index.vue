@@ -178,9 +178,9 @@ const openEditCategory = (category: Category) => {
                             <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
                                 <span class="material-symbols-outlined text-primary">category</span>
                             </div>
-                            <h2 class="text-lg font-semibold text-foreground">Seemnekategooriad puuduvad</h2>
+                            <h2 class="text-lg font-semibold text-foreground">Varud puuduvad</h2>
                             <p class="mt-2 text-sm text-muted-foreground">
-                                Vajuta üleval paremal <strong>+</strong>, et lisada esimene kategooria.
+                                Vajuta üleval paremal <strong>+</strong>, et lisada esimene varu.
                             </p>
                         </div>
 

@@ -20,9 +20,9 @@ const { plant } = defineProps<{ plant: Plant }>();
 
 <template>
   <div class="page page-with-bottomnav">
-    <div class="bg-background-light text-text-main font-display min-h-screen">
+    <div class="bg-background text-text-main font-display min-h-screen">
       <div
-        class="bg-background-light relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x border-primary/10 shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
+        class="bg-background relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x border-primary/10 shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
       >
         <main class="pb-24">
           <PlantDetail :plant="plant" />
