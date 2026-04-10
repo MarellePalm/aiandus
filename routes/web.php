@@ -258,8 +258,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Plants
     Route::get('plants/create', fn () => Inertia::render('AddPlant'))->name('plants.create');
     Route::resource('plants', PlantController::class)->except(['create']);
+    Route::patch('/plants/{plant}/favorite', [PlantController::class, 'toggleFavorite'])
+    ->name('plants.favorite');
     Route::post('/plants/{plant}/waterings', [PlantController::class, 'water'])
         ->name('plants.water');
+    
 });
 
 require __DIR__ . '/settings.php';
