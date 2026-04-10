@@ -22,6 +22,7 @@ class Plant extends Model
         'last_watered_at',
         'watering_frequency',
         'fertilizing_frequency',
+        'is_favorite',
     ];
 
     protected $casts = [

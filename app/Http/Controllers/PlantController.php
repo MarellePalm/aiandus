@@ -60,6 +60,7 @@ class PlantController extends Controller
                 'planted_at' => $p->planted_at ? date('d.m.Y', strtotime($p->planted_at)) : '',
                 'status' => $p->status ?? 'ISTIK',
                 'image_url' => $p->image_url,
+                'is_favorite' => (bool) $p->is_favorite,
             ]);
 
         return Inertia::render('Plants/SortView', [
@@ -238,6 +239,15 @@ class PlantController extends Controller
 
         return redirect()->route('plants.show', $plant->id)->with('success', 'Taim uuendatud!');
     }
+
+   public function toggleFavorite(Plant $plant)
+{
+    $plant->update([
+        'is_favorite' => ! $plant->is_favorite,
+    ]);
+
+    return back();
+}
 
     public function destroy(Request $request, Plant $plant)
     {

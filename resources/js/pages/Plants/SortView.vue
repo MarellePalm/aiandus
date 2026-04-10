@@ -345,44 +345,12 @@ const fallbackImage = 'https://picsum.photos/200/200';
                                 <div
                                     v-for="p in visiblePlants"
                                     :key="p.id"
-                                    class="relative rounded-2xl border border-primary/10 bg-white p-4 shadow-sm"
+                                    class="relative rounded-2xl border border-primary/10 bg-white p-4 shadow-sm transition hover:shadow-md"
                                     @click="router.visit(`/plants/${p.id}`)"
                                 >
-                                    <button
-                                        type="button"
-                                        class="absolute top-3 left-3 z-10 flex h-8 w-8 items-center justify-center rounded-full shadow-sm backdrop-blur-md transition hover:scale-105"
-                                        :class="
-                                            p.is_favorite
-                                                ? 'bg-rose-50 ring-1 ring-rose-200'
-                                                : 'bg-white/70 ring-1 ring-black/10 hover:bg-white'
-                                        "
-                                        @click.prevent.stop="toggleFavorite(p.id)"
-                                        aria-label="Lisa lemmikuks"
-                                    >
-                                        <span
-                                            class="material-symbols-outlined text-[18px] transition"
-                                            :class="
-                                                p.is_favorite
-                                                    ? 'text-rose-600 drop-shadow-sm'
-                                                    : 'text-[#2E2E2E]/45'
-                                            "
-                                            :style="
-                                                p.is_favorite
-                                                    ? {
-                                                          fontVariationSettings: `'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24`,
-                                                      }
-                                                    : {
-                                                          fontVariationSettings: `'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
-                                                      }
-                                            "
-                                        >
-                                            favorite
-                                        </span>
-                                    </button>
-
                                     <div class="flex items-center gap-4">
                                         <img
-                                            class="h-16 w-16 rounded-xl border border-primary/10 object-cover"
+                                            class="h-16 w-16 shrink-0 rounded-xl border border-primary/10 object-cover"
                                             :src="p.image_url || fallbackImage"
                                             alt=""
                                         />
@@ -402,44 +370,80 @@ const fallbackImage = 'https://picsum.photos/200/200';
                                         </div>
 
                                         <div
-                                            class="relative"
+                                            class="ml-2 flex shrink-0 items-center gap-2"
                                             data-plant-menu
                                             @click.stop
                                         >
                                             <button
                                                 type="button"
-                                                class="text-text-muted flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-primary/10"
-                                                aria-label="Menüü"
-                                                @click.stop.prevent="
-                                                    toggleMenu(p.id)
+                                                class="flex h-9 w-9 items-center justify-center rounded-full border border-primary/10 bg-white transition hover:scale-105 hover:bg-primary/5"
+                                                :class="
+                                                    p.is_favorite
+                                                        ? 'text-rose-600 shadow-sm'
+                                                        : 'text-[#2E2E2E]/45'
+                                                "
+                                                @click.prevent.stop="
+                                                    toggleFavorite(p.id)
+                                                "
+                                                aria-label="Lisa lemmikuks"
+                                                :title="
+                                                    p.is_favorite
+                                                        ? 'Eemalda lemmikutest'
+                                                        : 'Lisa lemmikuks'
                                                 "
                                             >
                                                 <span
-                                                    class="material-symbols-outlined text-[22px]"
+                                                    class="material-symbols-outlined text-[20px] leading-none transition"
+                                                    :style="
+                                                        p.is_favorite
+                                                            ? {
+                                                                  fontVariationSettings: `'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24`,
+                                                              }
+                                                            : {
+                                                                  fontVariationSettings: `'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
+                                                              }
+                                                    "
                                                 >
-                                                    more_horiz
+                                                    favorite
                                                 </span>
                                             </button>
 
-                                            <div
-                                                v-if="menuOpenForId === p.id"
-                                                class="absolute top-12 right-0 z-20 w-44 overflow-hidden rounded-xl border border-primary/10 bg-white shadow-lg"
-                                                @click.stop
-                                            >
+                                            <div class="relative">
                                                 <button
                                                     type="button"
-                                                    class="w-full px-4 py-3 text-left text-sm hover:bg-primary/5"
-                                                    @click.stop="editPlant(p)"
+                                                    class="text-text-muted flex h-9 w-9 items-center justify-center rounded-full border border-transparent transition hover:bg-primary/10"
+                                                    aria-label="Menüü"
+                                                    @click.stop.prevent="
+                                                        toggleMenu(p.id)
+                                                    "
                                                 >
-                                                    Muuda
+                                                    <span
+                                                        class="material-symbols-outlined text-[22px]"
+                                                    >
+                                                        more_horiz
+                                                    </span>
                                                 </button>
-                                                <button
-                                                    type="button"
-                                                    class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50"
-                                                    @click.stop="askDelete(p)"
+
+                                                <div
+                                                    v-if="menuOpenForId === p.id"
+                                                    class="absolute top-11 right-0 z-20 w-44 overflow-hidden rounded-xl border border-primary/10 bg-white shadow-lg"
+                                                    @click.stop
                                                 >
-                                                    Kustuta
-                                                </button>
+                                                    <button
+                                                        type="button"
+                                                        class="w-full px-4 py-3 text-left text-sm hover:bg-primary/5"
+                                                        @click.stop="editPlant(p)"
+                                                    >
+                                                        Muuda
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50"
+                                                        @click.stop="askDelete(p)"
+                                                    >
+                                                        Kustuta
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
