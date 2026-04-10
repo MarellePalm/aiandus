@@ -23,11 +23,11 @@ import { Head, Link } from '@inertiajs/vue3';
         <main class="relative z-10 mx-auto flex min-h-[100dvh] w-full max-w-3xl flex-col justify-between gap-5 px-5 pt-24 pb-6 md:min-h-0 md:gap-8 md:px-8 md:pt-28 md:pb-14">
             <section class="flex flex-col gap-5 md:gap-6">
                 <div>
-                    <p class="-mt-8 mb-4 inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold tracking-[0.12em] text-primary uppercase shadow-sm md:-mt-10 md:px-3 md:text-xs md:tracking-[0.14em]">
+                    <p class="-mt-12 mb-4 inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold tracking-[0.12em] text-primary uppercase shadow-sm md:-mt-10 md:px-3 md:text-xs md:tracking-[0.14em]">
                         UUS! Kevadhooaeg 2026
                     </p>
                     <h1 class="max-w-xl text-4xl leading-[1.06] font-extrabold tracking-tight sm:text-5xl md:max-w-none md:whitespace-nowrap md:text-5xl">
-                        Sinu <span class="text-primary">nutikas</span> aiaabiline
+                        Sinu <span class="text-primary">nutikas</span> aiandusabiline
                     </h1>
                     <p class="mt-3 max-w-xl text-base leading-6 text-foreground/80 sm:text-lg sm:leading-7">
                         Planeeri, jälgi ja halda oma aeda ühes kohas. Tea alati, mis kus kasvab 🌿
