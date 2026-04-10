@@ -13,6 +13,7 @@ type Plant = {
   fertilizing_frequency?: string | null;
   next_fertilizing_label?: string | null;
   category_slug?: string;
+  quantity?: number | null;
 };
 
 const { plant } = defineProps<{ plant: Plant }>();

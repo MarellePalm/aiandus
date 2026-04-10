@@ -91,6 +91,7 @@ class PlantController extends Controller
                 'fertilizing_frequency' => $plant->fertilizing_frequency,
                 'next_fertilizing_label' => $plant->next_fertilizing_label,
                 'category_slug' => $plant->category?->slug,
+                'quantity' => $plant->quantity ?? 1,
             ],
         ]);
     }

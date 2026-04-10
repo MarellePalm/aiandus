@@ -381,14 +381,24 @@ onBeforeUnmount(() => {
 
                             <!-- KOGUS -->
                             <div>
-                                <label for="quantity">Taimede arv (tk)</label>
+                                <label
+                                    class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase"
+                                >
+                                    Taimede arv (tk)
+                                </label>
                                 <input
-                                    id="quantity"
-                                    placeholder="1"
                                     v-model="form.quantity"
                                     type="number"
                                     min="1"
+                                    class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                    placeholder="1"
                                 />
+                                <div
+                                    v-if="form.errors.quantity"
+                                    class="mt-1 text-sm text-red-600"
+                                >
+                                    {{ form.errors.quantity }}
+                                </div>
                             </div>
 
                             <!-- KASTMINE -->
