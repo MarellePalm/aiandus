@@ -109,11 +109,6 @@ function addDays(d: Date, days: number): Date {
   return x;
 }
 
-function shiftSelectedDay(delta: number) {
-  if (!selectedDateObj.value) return;
-  selectCalendarDate(addDays(selectedDateObj.value, delta));
-}
-
 function shiftFromDate(d: Date, delta: number) {
   selectCalendarDate(addDays(d, delta));
 }
