@@ -65,6 +65,14 @@
 }
 
 @layer base {
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+  }
+
   * {
     @apply border-border outline-ring/50;
   }
@@ -192,7 +200,7 @@
 @layer components {
   /* Layout */
   .page {
-    @apply min-h-screen bg-background text-foreground;
+    @apply min-h-screen bg-background text-foreground overflow-x-hidden;
   }
 
   .page-with-bottomnav {

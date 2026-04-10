@@ -1,6 +1,7 @@
 <!-- resources/js/layouts/auth/AuthSimpleLayout.vue -->
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
+import BackIconButton from '@/components/BackIconButton.vue';
 
 const props = withDefaults(
   defineProps<{
@@ -62,9 +63,7 @@ const props = withDefaults(
 
       <!-- Top bar -->
       <div class="flex items-center justify-between pb-2">
-        <Link v-if="props.backHref" :href="props.backHref" class="icon-btn" aria-label="Tagasi">
-          <span class="material-symbols-outlined">arrow_back_ios</span>
-        </Link>
+        <BackIconButton v-if="props.backHref" :href="props.backHref" aria-label="Tagasi" />
         <div class="flex-1" />
       </div>
 
