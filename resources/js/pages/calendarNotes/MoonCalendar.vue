@@ -114,6 +114,10 @@ function shiftSelectedDay(delta: number) {
   selectCalendarDate(addDays(selectedDateObj.value, delta));
 }
 
+function shiftFromDate(d: Date, delta: number) {
+  selectCalendarDate(addDays(d, delta));
+}
+
 function dayInfoForDate(d: Date) {
   const moon = getMoonInfo(d);
   const advice = moonAdvice(moon);
@@ -126,19 +130,13 @@ function dayInfoForDate(d: Date) {
     illumination: moon.illumination,
     lunationT: moon.lunationT,
     biodynamicLabel: zodiac.biodynamicDayLabel,
-    biodynamicDescription: zodiac.biodynamicDescription,
-    moonSign: zodiac.moonSign,
+    biodynamicCrops: zodiac.crops,
+    biodynamicNotes: zodiac.notes,
     tasks: advice.tasks,
     avoid: advice.avoid,
     moodHeadline: advice.moodHeadline,
     leadParagraph: advice.leadParagraph,
-    textLong: advice.textLong,
-    astronomyShort: advice.astronomyShort,
-    signNarrative: zodiac.signNarrative,
     moonSignInessive: zodiac.moonSignInessive,
-    homeTasks: advice.homeTasks ?? [],
-    traditionKeyword: advice.traditionKeyword,
-    tasksShort: advice.tasks.slice(0, 2).join(', '),
   };
 }
 
@@ -153,6 +151,22 @@ function paragraphsFromTextLong(text: string | undefined | null): string[] {
 
 function dayInfo(day: number) {
   return dayInfoForDate(dateForDay(day));
+}
+
+function bestTaskOfDay(tasks: string[]): string | null {
+  const task = tasks[0];
+  if (!task) return null;
+
+  const normalized = task.trim().toLowerCase();
+  const pretty: Record<string, string> = {
+    rohi: 'Rohi peenrad',
+    harvenda: 'Harvenda taimi',
+    komposti: 'Lisa komposti',
+    korrasta: 'Korrasta peenrad',
+  };
+
+  if (pretty[normalized]) return pretty[normalized];
+  return task.charAt(0).toUpperCase() + task.slice(1);
 }
 
 function formatDateLong(d: Date) {
@@ -180,7 +194,7 @@ const neighborDates = computed(() => {
       off,
       d,
       info,
-      textParagraphs: paragraphsFromTextLong(info.textLong),
+      textParagraphs: paragraphsFromTextLong(info.leadParagraph),
     };
   });
 });
@@ -258,13 +272,13 @@ onMounted(() => scrollDescriptionToCenter('auto'));
 </script>
 
 <template>
-  <Head title="Kuufaaside kalender" />
+  <Head title="Kuukalender" />
   <AppLayout>
     <div class="page page-with-bottomnav">
       <div class="bg-background-light text-forest font-display min-h-screen antialiased">
         <div class="bg-background-light border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
           <DiaryHeader
-            title="Kuufaaside kalender"
+            title="Kuukalender"
             header-class="pt-6"
             top-row-class="mb-3"
             bottom-row-class="mb-4"
@@ -278,7 +292,7 @@ onMounted(() => scrollDescriptionToCenter('auto'));
           </DiaryHeader>
 
           <main class="flex-1 px-6 py-4 md:px-8 space-y-6">
-        <section class="card p-3 sm:p-4 md:p-5 max-w-lg mx-auto w-full">
+        <section class="card p-2 sm:p-3 md:p-3.5 max-w-lg mx-auto w-full">
           <div class="flex items-center justify-between mb-3">
             <button type="button" class="icon-btn" @click="prevMonth" aria-label="Eelmine kuu">
               <span class="material-symbols-outlined">chevron_left</span>
@@ -392,40 +406,6 @@ onMounted(() => scrollDescriptionToCenter('auto'));
             </div>
           </template>
 
-          <!-- Eelmine / valitud kuupäev / järgmine -->
-          <div
-            v-if="selectedDateObj"
-            class="mt-3 flex items-center gap-1 sm:gap-2 rounded-xl border border-border/60 bg-muted/20 px-1 py-2 sm:px-2"
-          >
-            <button
-              type="button"
-              class="icon-btn shrink-0"
-              aria-label="Eelmine päev"
-              @click="shiftSelectedDay(-1)"
-            >
-              <span class="material-symbols-outlined">chevron_left</span>
-            </button>
-            <div class="min-w-0 flex-1 px-1 text-center">
-              <p class="text-sm font-semibold text-foreground leading-tight">
-                {{ formatDateLong(selectedDateObj) }}
-              </p>
-              <p
-                v-if="isToday(selectedDateObj)"
-                class="mt-0.5 text-xs font-medium text-primary"
-              >
-                Täna
-              </p>
-            </div>
-            <button
-              type="button"
-              class="icon-btn shrink-0"
-              aria-label="Järgmine päev"
-              @click="shiftSelectedDay(1)"
-            >
-              <span class="material-symbols-outlined">chevron_right</span>
-            </button>
-          </div>
-
           <!-- Päevakirjeldused: keri vasakule/paremale (nagu dashboardi viimased taimed) -->
           <div
             v-if="selectedDateObj && neighborDates.length"
@@ -449,71 +429,84 @@ onMounted(() => scrollDescriptionToCenter('auto'));
                 "
                 aria-live="polite"
               >
-                <div class="px-3 sm:px-4 pb-3 sm:pb-4 pt-4 sm:pt-5 w-full min-w-0 space-y-3">
-                  <div
-                    class="relative overflow-hidden rounded-xl border border-primary/20 bg-linear-to-br from-primary/10 via-primary/4 to-sky-500/8 px-3 py-3 shadow-sm"
+                <div class="flex items-center gap-1 sm:gap-2 px-2 py-2 border-b border-border/50">
+                  <button
+                    type="button"
+                    class="icon-btn shrink-0"
+                    aria-label="Eelmine päev"
+                    @click="shiftFromDate(row.d, -1)"
                   >
-                    <span
-                      class="pointer-events-none absolute -right-4 -top-4 text-primary/12 dark:text-primary/20"
-                      aria-hidden="true"
+                    <span class="material-symbols-outlined">chevron_left</span>
+                  </button>
+                  <div class="min-w-0 flex-1 px-1 text-center">
+                    <p class="text-sm font-semibold text-foreground leading-tight">
+                      {{ formatDateLong(row.d) }}
+                    </p>
+                    <p
+                      v-if="isToday(row.d)"
+                      class="mt-0.5 text-xs font-medium text-primary"
                     >
-                      <span class="material-symbols-outlined text-[4.5rem] leading-none">wb_twilight</span>
-                    </span>
-                    <div class="relative z-1 mb-2 flex items-center gap-3">
+                      Täna
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    class="icon-btn shrink-0"
+                    aria-label="Järgmine päev"
+                    @click="shiftFromDate(row.d, 1)"
+                  >
+                    <span class="material-symbols-outlined">chevron_right</span>
+                  </button>
+                </div>
+                <div class="px-2.5 sm:px-3 pb-3 sm:pb-4 pt-3.5 sm:pt-4 w-full min-w-0 space-y-3.5">
+                  <div class="space-y-2.5">
+                    <div class="flex items-center gap-2.5">
                       <MoonPhaseIcon
                         :lunation-t="row.info.lunationT"
                         :phase-index="row.info.phaseIndex"
-                        :size="40"
+                        :size="30"
                         class="shrink-0 text-primary"
                       />
-                      <p class="min-w-0 flex-1 text-[18px] font-semibold uppercase tracking-wide text-primary leading-tight">
+                      <p class="min-w-0 flex-1 text-base font-semibold text-foreground leading-tight">
                         {{ row.info.phaseDisplay }}
                       </p>
                     </div>
-                    <p class="relative z-1 text-sm font-medium text-primary mt-1.5">
-                      {{ row.info.moodHeadline }}
-                    </p>
-                    <p class="relative z-1 text-sm text-foreground/85 leading-relaxed mt-2">
-                      {{ row.info.leadParagraph }}
-                    </p>
-                  </div>
-
-                  <div
-                    class="rounded-xl border border-primary/20 bg-linear-to-br from-muted/50 via-muted/35 to-primary/8 px-3 py-2.5 shadow-sm"
-                  >
-                    <p
-                      class="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-primary/85 dark:text-primary/80"
-                    >
-                      <span
-                        class="material-symbols-outlined text-[14px] text-primary/70 dark:text-primary/65"
-                        aria-hidden="true"
-                      >
-                        signpost
+                    <div class="flex flex-wrap items-center gap-2 pt-0.5">
+                      <span class="inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
+                        {{ row.info.moodHeadline.replace(/\.$/, '') }}
                       </span>
-                      Päevatüüp
-                    </p>
-                    <p class="text-sm font-semibold text-foreground mt-1">
-                      Kuu on {{ row.info.moonSignInessive }}
-                    </p>
-                    <p class="text-[10px] text-muted-foreground mt-0.5">
-                      {{ row.info.biodynamicLabel }}
-                    </p>
-                    <p class="text-sm text-foreground/80 leading-relaxed mt-2">
-                      {{ row.info.biodynamicDescription }}
-                    </p>
+                      <span class="inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
+                        Kuu on {{ row.info.moonSignInessive }}
+                      </span>
+                      <span class="inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
+                        {{ row.info.biodynamicLabel }}
+                      </span>
+                    </div>
+                    <div v-if="row.info.biodynamicCrops.length" class="pt-2 border-t border-border/50">
+                      <div class="flex flex-wrap gap-1.5">
+                        <span
+                          v-for="crop in row.info.biodynamicCrops"
+                          :key="crop"
+                          class="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
+                        >
+                          {{ crop }}
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
                   <!-- Aiatööd -->
-                  <div
-                    class="rounded-xl border border-emerald-500/25 bg-linear-to-b from-emerald-500/8 to-muted/20 px-3 py-3 shadow-sm"
-                  >
-                    <p
-                      class="mb-2.5 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-800/90 dark:text-emerald-300/90"
-                    >
-                      <span class="material-symbols-outlined text-[14px] opacity-85" aria-hidden="true">grass</span>
-                      Täna tee aias
+                  <div class="pt-1.5 border-t border-border/50">
+                    <div v-if="bestTaskOfDay(row.info.tasks)" class="mb-3 rounded-lg border border-border/60 bg-muted/25 px-3 py-2">
+                      <p class="text-xs font-semibold text-foreground/70">Parim tegevus täna</p>
+                      <p class="text-sm font-semibold text-foreground">
+                        {{ bestTaskOfDay(row.info.tasks) }}
+                      </p>
+                    </div>
+                    <p class="mb-2 text-sm font-semibold text-foreground">
+                      Täna tee
                     </p>
-                    <ul v-if="row.info.tasks.length" class="w-full space-y-2 text-sm text-foreground/90">
+                    <ul v-if="row.info.tasks.length" class="w-full space-y-2 text-sm text-foreground">
                       <li
                         v-for="task in row.info.tasks"
                         :key="task"
@@ -525,47 +518,51 @@ onMounted(() => scrollDescriptionToCenter('auto'));
                         >
                           ✓
                         </span>
-                        <span class="min-w-0 flex-1 leading-snug pt-0.5">{{ task }}</span>
+                        <span class="min-w-0 flex-1 leading-snug pt-0.5 text-foreground">{{ task }}</span>
                       </li>
                     </ul>
-                    <p v-else class="text-sm text-muted-foreground">Täna ei ole erisoovitusi.</p>
+                    <p v-else class="text-sm text-foreground">Täna ei ole erisoovitusi.</p>
                   </div>
 
-                  <div
-                    v-if="row.info.avoid.length"
-                    class="relative overflow-hidden rounded-xl border border-amber-400/40 bg-linear-to-br from-amber-500/14 via-amber-500/5 to-orange-500/8 px-3 py-3 shadow-[0_10px_32px_-14px_rgba(217,119,6,0.38)] dark:border-amber-500/30 dark:shadow-[0_10px_32px_-14px_rgba(251,191,36,0.12)]"
-                  >
-                    <div
-                      class="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-amber-300/25 blur-2xl dark:bg-amber-400/15"
-                      aria-hidden="true"
-                    />
-                    <div class="relative mb-2.5 flex items-center gap-2">
-                      <span
-                        class="material-symbols-outlined shrink-0 text-[22px] text-amber-700 dark:text-amber-300"
-                        style="font-variation-settings: 'FILL' 1, 'wght' 400"
-                        aria-hidden="true"
-                      >
-                        auto_awesome
-                      </span>
-                      <p class="text-sm font-semibold leading-snug text-amber-950 dark:text-amber-100">
-                        Need võivad täna oodata
-                      </p>
-                    </div>
-                    <ul class="relative w-full space-y-2.5 text-sm text-stone-800 dark:text-amber-50/95">
+                  <div v-if="row.info.avoid.length" class="border-t border-border/50 pt-3">
+                    <p class="mb-2 text-sm font-semibold text-foreground">
+                      Soovitused
+                    </p>
+                    <ul class="w-full space-y-1.5 text-sm text-foreground">
                       <li
                         v-for="item in row.info.avoid"
                         :key="item"
                         class="flex gap-2.5 items-start"
                       >
                         <span
-                          class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-600/25 text-[11px] font-semibold text-amber-950 dark:bg-amber-400/25 dark:text-amber-100"
+                          class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-muted-foreground"
                           aria-hidden="true"
                         >
                           –
                         </span>
-                        <span class="min-w-0 flex-1 leading-snug">{{ item }}</span>
+                        <span class="min-w-0 flex-1 leading-snug text-foreground">{{ item }}</span>
                       </li>
                     </ul>
+                  </div>
+                  <div v-if="row.info.biodynamicNotes.length" class="border-t border-border/50 pt-3">
+                    <p class="mb-2 text-sm font-semibold text-foreground">
+                      Märkused
+                    </p>
+                    <ul class="space-y-1.5 text-sm text-foreground">
+                      <li
+                        v-for="note in row.info.biodynamicNotes"
+                        :key="note"
+                        class="flex items-start gap-2"
+                      >
+
+                        <span class="min-w-0 flex-1 leading-snug text-foreground">{{ note }}</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div v-if="row.textParagraphs.length" class="border-t border-border/50 pt-3">
+                    <p class="text-sm text-foreground leading-relaxed">
+                      {{ row.textParagraphs[0] }}
+                    </p>
                   </div>
                 </div>
               </section>
