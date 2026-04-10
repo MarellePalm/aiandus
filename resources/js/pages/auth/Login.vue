@@ -1,6 +1,6 @@
 <!-- resources/js/pages/Auth/Login.vue -->
 <script setup lang="ts">
-import { Form, Head } from '@inertiajs/vue3';
+import { Form, Head, Link } from '@inertiajs/vue3';
 
 import InputError from '@/components/InputError.vue';
 import TextLink from '@/components/TextLink.vue';
@@ -121,9 +121,13 @@ defineProps<{
 
             <div v-if="canRegister" class="text-center text-sm text-muted-foreground">
               Sul pole veel kontot?
-              <TextLink :href="register()" class="auth-link" :tabindex="6">
+              <Link
+                :href="register()"
+                class="ml-1 inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-primary font-semibold no-underline hover:bg-primary/15"
+                :tabindex="6"
+              >
                 Registreeru siin
-              </TextLink>
+              </Link>
             </div>
           </div>
         </Form>

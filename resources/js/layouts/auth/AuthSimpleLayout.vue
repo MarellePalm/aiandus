@@ -24,43 +24,6 @@ const props = withDefaults(
     <Head :title="props.title || 'Autentimine'" />
 
     <div class="page-container-wide relative min-h-screen overflow-hidden py-6 sm:py-10">
-      <!-- Optional botanical decor (uses note-decor classes from app.css, already used in NoteForm) -->
-      <div class="note-decor note-decor--tr" aria-hidden="true">
-        <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path
-            d="M40 160C40 160 50 100 120 80C190 60 180 20 180 20"
-            stroke="currentColor"
-            stroke-linecap="round"
-            stroke-width="2"
-          />
-          <path
-            d="M120 80C120 80 140 110 130 140"
-            stroke="currentColor"
-            stroke-linecap="round"
-            stroke-width="2"
-          />
-          <circle cx="120" cy="80" r="4" fill="currentColor" />
-        </svg>
-      </div>
-
-      <div class="note-decor note-decor--bl" aria-hidden="true">
-        <svg width="250" height="250" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path
-            d="M160 160C160 160 150 100 80 80C10 60 20 20 20 20"
-            stroke="currentColor"
-            stroke-linecap="round"
-            stroke-width="2"
-          />
-          <path
-            d="M80 80C80 80 60 110 70 140"
-            stroke="currentColor"
-            stroke-linecap="round"
-            stroke-width="2"
-          />
-          <circle cx="80" cy="80" r="4" fill="currentColor" />
-        </svg>
-      </div>
-
       <!-- Top bar -->
       <div class="flex items-center justify-between pb-2">
         <BackIconButton v-if="props.backHref" :href="props.backHref" aria-label="Tagasi" />
