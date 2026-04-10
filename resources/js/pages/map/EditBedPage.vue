@@ -34,7 +34,7 @@ const breadcrumbs = [
         <section class="page-container-wide">
           <DiaryHeader
             title="Muuda peenart"
-            title-class="text-forest text-3xl font-bold tracking-tight"
+            title-class="text-foreground text-3xl font-bold tracking-tight"
             header-class="pt-6 px-0 md:px-0"
             top-row-class="mb-2"
             bottom-row-class="mb-0"

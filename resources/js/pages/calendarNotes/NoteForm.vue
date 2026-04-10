@@ -112,7 +112,7 @@ function cancel() {
   <Head :title="props.editMode ? 'Muuda märget' : 'Lisa märge'" />
 
   <AppLayout :breadcrumbs="breadcrumbs">
-    <div class="bg-background-light text-forest font-display min-h-screen antialiased">
+    <div class="bg-background text-foreground font-display min-h-screen antialiased">
       <div class="fixed inset-0 z-50 flex items-start justify-center p-4 pt-6 sm:items-center sm:pt-4">
         <button
           type="button"
@@ -121,18 +121,18 @@ function cancel() {
           @click="cancel"
         />
 
-        <div class="relative w-full max-w-2xl max-h-[92vh] overflow-hidden rounded-3xl bg-[#FAF8F4] shadow-xl ring-1 ring-black/5">
+        <div class="relative w-full max-w-2xl max-h-[92vh] overflow-hidden rounded-3xl bg-card shadow-xl ring-1 ring-border">
           <div class="max-h-[92vh] overflow-y-auto p-5 sm:p-6">
             <div class="flex items-start justify-between gap-3">
               <div>
-                <h3 class="text-lg font-semibold text-[#2E2E2E]">{{ props.editMode ? 'Muuda märget' : 'Lisa märge' }}</h3>
-                <p class="mt-1 text-sm text-[#2E2E2E]/70">
+                <h3 class="text-lg font-semibold text-foreground">{{ props.editMode ? 'Muuda märget' : 'Lisa märge' }}</h3>
+                <p class="mt-1 text-sm text-foreground/70">
                   {{ props.editMode ? 'Uuenda märkme sisu.' : 'Lisa märkus, ülesanne või meeldetuletus.' }}
                 </p>
               </div>
               <button
                 type="button"
-                class="rounded-full p-2 text-[#2E2E2E]/60 hover:bg-black/5 hover:text-[#2E2E2E]"
+                class="rounded-full p-2 text-foreground/60 hover:bg-black/5 hover:text-foreground"
                 @click="cancel"
                 aria-label="Sulge"
               >
@@ -142,7 +142,7 @@ function cancel() {
 
             <form class="mt-5 space-y-6" @submit.prevent="submit">
                 <div>
-                  <label class="mb-2 block text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Mida lisad?</label>
+                  <label class="mb-2 block text-sm font-semibold tracking-widest text-foreground/70 uppercase">Mida lisad?</label>
                   <div class="flex gap-2 p-1 rounded-xl bg-muted/60">
                     <button
                       v-for="opt in typeOptions"
@@ -164,22 +164,22 @@ function cancel() {
 
                 <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <div>
-                    <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase" for="note_date">Kuupäev</label>
-                    <input id="note_date" v-model="form.note_date" type="date" class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20" />
+                    <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase" for="note_date">Kuupäev</label>
+                    <input id="note_date" v-model="form.note_date" type="date" class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
                     <p v-if="form.errors.note_date" class="text-red-600 dark:text-red-400 text-xs mt-1">
                       {{ form.errors.note_date }}
                     </p>
                   </div>
 
                   <div>
-                    <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase" for="title">Pealkiri</label>
+                    <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase" for="title">Pealkiri</label>
                     <div class="relative">
                       <input
                         id="title"
                         v-model="form.title"
                         type="text"
                         placeholder="nt. Väetasin tomatid"
-                        class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 pr-12 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                        class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 pr-12 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                         autocomplete="off"
                       />
                       <span
@@ -196,14 +196,14 @@ function cancel() {
                 </div>
 
                 <div>
-                  <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase" for="body">Märkme sisu</label>
+                  <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase" for="body">Märkme sisu</label>
                   <div class="relative">
                     <textarea
                       id="body"
                       v-model="form.body"
                       rows="7"
                       placeholder="Kirjelda lähemalt oma tegevusi või tähelepanekuid..."
-                      class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 pr-12 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                      class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 pr-12 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     />
                     <span class="absolute right-4 top-4 material-symbols-outlined text-muted-foreground" aria-hidden="true">
                       edit_note
@@ -217,24 +217,24 @@ function cancel() {
                 <!-- Ülesande tähtaeg ja meeldetuletus (ainult ülesandel) -->
                 <div v-if="form.type === 'task'" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase" for="due_date">Tähtaeg</label>
+                    <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase" for="due_date">Tähtaeg</label>
                     <input
                       id="due_date"
                       v-model="form.due_date"
                       type="date"
-                      class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                      class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     />
                     <p v-if="form.errors.due_date" class="text-red-600 dark:text-red-400 text-xs mt-1">
                       {{ form.errors.due_date }}
                     </p>
                   </div>
                   <div>
-                    <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase" for="due_time">Meeldetuletus kell</label>
+                    <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase" for="due_time">Meeldetuletus kell</label>
                     <input
                       id="due_time"
                       v-model="form.due_time"
                       type="time"
-                      class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                      class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     />
                     <p v-if="form.errors.due_time" class="text-red-600 dark:text-red-400 text-xs mt-1">
                       {{ form.errors.due_time }}
@@ -244,12 +244,12 @@ function cancel() {
 
                 <!-- Photos -->
                 <div>
-                  <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Fotod</label>
+                  <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">Fotod</label>
                   <input
                     type="file"
                     accept="image/*"
                     multiple
-                    class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-[#2E2E2E] shadow-sm outline-none file:mr-3 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-primary file:font-medium"
+                    class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground shadow-sm outline-none file:mr-3 file:rounded-full file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:text-primary file:font-medium"
                     @change="onPhotosChange"
                   />
                   <p v-if="form.errors.photos" class="text-red-600 dark:text-red-400 text-xs mt-1">
@@ -290,8 +290,8 @@ function cancel() {
                 <!-- Bed + Plant (no duplicate frequency here) -->
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase" for="bed">Seo peenraga</label>
-                    <select id="bed" v-model.number="form.bed_id" class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20">
+                    <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase" for="bed">Seo peenraga</label>
+                    <select id="bed" v-model.number="form.bed_id" class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
                       <option :value="null">Ei ole seotud</option>
                       <option
                         v-for="bed in (props.beds ?? [])"
@@ -307,8 +307,8 @@ function cancel() {
                   </div>
 
                   <div>
-                    <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase" for="plant">Seo taimega</label>
-                    <select id="plant" v-model.number="form.plant_id" class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20">
+                    <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase" for="plant">Seo taimega</label>
+                    <select id="plant" v-model.number="form.plant_id" class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
                       <option :value="null">Ei ole seotud</option>
                       <option
                         v-for="plant in (props.plants ?? [])"
@@ -325,12 +325,12 @@ function cancel() {
                 </div>
 
                 <!-- Actions -->
-                <div class="sticky bottom-0 mt-6 space-y-3 bg-[#FAF8F4] pt-4 pb-1">
-                  <button type="submit" class="w-full rounded-2xl bg-[#6B8C68] px-4 py-3 font-medium text-white transition hover:bg-[#4F6A52] disabled:opacity-60" :disabled="form.processing">
+                <div class="sticky bottom-0 mt-6 space-y-3 bg-card pt-4 pb-1">
+                  <button type="submit" class="w-full rounded-2xl bg-primary px-4 py-3 font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60" :disabled="form.processing">
                     {{ props.editMode ? 'Salvesta muudatused' : 'Salvesta märge' }}
                   </button>
 
-                  <button type="button" class="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 font-medium text-[#2E2E2E]/80 transition hover:bg-black/5" @click="cancel">
+                  <button type="button" class="w-full rounded-2xl border border-border bg-background px-4 py-3 font-medium text-foreground/80 transition hover:bg-black/5" @click="cancel">
                     Tühista
                   </button>
 

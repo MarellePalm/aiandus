@@ -196,7 +196,7 @@
   }
 
   .page-with-bottomnav {
-    @apply pb-24 lg:pb-10;
+    @apply bg-background pb-20 lg:pb-10;
   }
 
   .page-container {
@@ -468,7 +468,6 @@
              text-[11px] font-semibold
              bg-primary/15 text-primary;
     }
-  }
 
   /* Moon Zodiac Badge */
   .mzBadge {
@@ -852,3 +851,4 @@
     @apply text-sm text-foreground/85 font-medium opacity-90;
   }
 
+}

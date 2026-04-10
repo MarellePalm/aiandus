@@ -144,23 +144,23 @@ onBeforeUnmount(() => {
           @click="close"
         />
 
-        <div class="relative w-full max-w-lg rounded-3xl bg-[#FAF8F4] shadow-xl ring-1 ring-black/5">
+        <div class="relative w-full max-w-lg rounded-3xl bg-card shadow-xl ring-1 ring-border">
           <div class="pointer-events-none absolute -top-3 -left-3 opacity-20">
-            <div class="h-10 w-10 rounded-full bg-[#E6E2D5]" />
+            <div class="h-10 w-10 rounded-full bg-muted" />
           </div>
 
           <div class="max-h-[90vh] overflow-y-auto p-5 sm:p-6">
             <div class="flex items-start justify-between gap-3">
               <div>
-                <h3 class="text-lg font-semibold text-[#2E2E2E]">Lisa taim</h3>
-                <p class="mt-1 text-sm text-[#2E2E2E]/70">
+                <h3 class="text-lg font-semibold text-foreground">Lisa taim</h3>
+                <p class="mt-1 text-sm text-foreground/70">
                   Vali kategooria, lisa sort, kuupäev ja soovi korral hooldusinfo ning foto.
                 </p>
               </div>
 
               <button
                 type="button"
-                class="rounded-full p-2 text-[#2E2E2E]/60 hover:bg-black/5 hover:text-[#2E2E2E]"
+                class="rounded-full p-2 text-foreground/60 hover:bg-black/5 hover:text-foreground"
                 @click="close"
                 aria-label="Sulge"
               >
@@ -171,7 +171,7 @@ onBeforeUnmount(() => {
             <main class="mt-5 flex flex-col gap-6">
               <!-- FOTO -->
               <div>
-                <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">
                   Foto
                 </label>
 
@@ -186,7 +186,7 @@ onBeforeUnmount(() => {
                 <button
                   type="button"
                   class="mt-3 w-full overflow-hidden rounded-2xl border-2 border-dashed px-6 py-8 text-center transition"
-                  :class="isDragging ? 'border-[#6B8C68] bg-[#6B8C68]/10' : 'border-black/10 bg-white/50 hover:bg-white/70'"
+                  :class="isDragging ? 'border-primary bg-primary/10' : 'border-border bg-background hover:bg-muted/50'"
                   @click="openPicker"
                   @dragenter.prevent="isDragging = true"
                   @dragover.prevent="isDragging = true"
@@ -194,16 +194,16 @@ onBeforeUnmount(() => {
                   @drop.prevent="onDrop"
                 >
                   <template v-if="!hasImage">
-                    <div class="flex flex-col items-center gap-3 text-[#2E2E2E]/60">
-                      <span class="material-symbols-outlined text-5xl text-[#6B8C68]">add_a_photo</span>
+                    <div class="flex flex-col items-center gap-3 text-foreground/60">
+                      <span class="material-symbols-outlined text-5xl text-primary">add_a_photo</span>
                       <span class="text-base">Lohistage foto siia või klõpsake</span>
-                      <span class="text-xs text-[#2E2E2E]/40">PNG, JPG, WEBP</span>
+                      <span class="text-xs text-foreground/40">PNG, JPG, WEBP</span>
                     </div>
                   </template>
 
                   <template v-else>
                     <div class="flex flex-col items-center gap-4">
-                      <div class="aspect-[16/10] w-full overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
+                      <div class="aspect-[16/10] w-full overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
                         <img
                           v-if="previewUrl"
                           :src="previewUrl"
@@ -215,7 +215,7 @@ onBeforeUnmount(() => {
                       <div class="flex flex-wrap justify-center gap-2">
                         <button
                           type="button"
-                          class="rounded-2xl border border-black/10 bg-white px-4 py-2 text-sm text-[#2E2E2E] shadow-sm hover:bg-black/5"
+                          class="rounded-2xl border border-border bg-background px-4 py-2 text-sm text-foreground shadow-sm hover:bg-black/5"
                           @click.stop="openPicker"
                         >
                           Vaheta
@@ -223,7 +223,7 @@ onBeforeUnmount(() => {
 
                         <button
                           type="button"
-                          class="rounded-2xl border border-black/10 bg-white px-4 py-2 text-sm text-[#2E2E2E] shadow-sm hover:bg-black/5"
+                          class="rounded-2xl border border-border bg-background px-4 py-2 text-sm text-foreground shadow-sm hover:bg-black/5"
                           @click.stop="setFile(null)"
                         >
                           Eemalda
@@ -238,10 +238,10 @@ onBeforeUnmount(() => {
                 </button>
 
                 <div v-if="form.progress" class="mt-5">
-                  <div class="h-2 w-full overflow-hidden rounded-full bg-black/10">
-                    <div class="h-2 rounded-full bg-[#6B8C68]" :style="{ width: `${form.progress.percentage}%` }" />
+                  <div class="h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div class="h-2 rounded-full bg-primary" :style="{ width: `${form.progress.percentage}%` }" />
                   </div>
-                  <p class="mt-2 text-xs text-[#2E2E2E]/60">
+                  <p class="mt-2 text-xs text-foreground/60">
                     Üleslaadimine: {{ form.progress.percentage }}%
                   </p>
                 </div>
@@ -249,7 +249,7 @@ onBeforeUnmount(() => {
 
               <!-- KATEGOORIA -->
               <div>
-                <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">
                   Kategooria
                 </label>
 
@@ -257,7 +257,7 @@ onBeforeUnmount(() => {
                   ref="categorySelectRef"
                   v-model="form.category_id"
                   @change="form.clearErrors('category_id')"
-                  class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                  class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 >
                   <option :value="null" disabled>Vali kategooria…</option>
                   <option v-for="c in props.categories" :key="c.id" :value="c.id">
@@ -272,14 +272,14 @@ onBeforeUnmount(() => {
 
               <!-- SORT -->
               <div>
-                <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">
                   Sort
                 </label>
 
                 <input
                   v-model="form.subtitle"
                   @input="form.clearErrors('subtitle')"
-                  class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20 placeholder:text-[#2E2E2E]/40"
+                  class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 placeholder:text-foreground/40"
                   placeholder="nt. Mehiko minikurk"
                   type="text"
                 />
@@ -291,7 +291,7 @@ onBeforeUnmount(() => {
 
               <!-- ISTUTAMISE KUUPÄEV -->
               <div>
-                <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">
                   Istutamise kuupäev
                 </label>
 
@@ -300,7 +300,7 @@ onBeforeUnmount(() => {
                   type="date"
                   @change="form.clearErrors('planted_at')"
                   @click="($event.target as HTMLInputElement).showPicker?.()"
-                  class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                  class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 />
 
                 <p v-if="form.errors.planted_at" class="mt-2 text-sm text-red-600">
@@ -310,7 +310,7 @@ onBeforeUnmount(() => {
 
               <!-- KASTMINE -->
               <div>
-                <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">
                   Kastmine
                 </label>
 
@@ -318,11 +318,11 @@ onBeforeUnmount(() => {
                   v-model="form.watering_in_days"
                   type="text"
                   @input="form.clearErrors('watering_in_days')"
-                  class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20 placeholder:text-[#2E2E2E]/40"
+                  class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 placeholder:text-foreground/40"
                   placeholder="nt. iga nädal"
                 />
 
-                <p class="mt-2 text-xs text-[#2E2E2E]/50">
+                <p class="mt-2 text-xs text-foreground/50">
                   Näide: iga nädal, 2x nädalas, kui muld on kuiv
                 </p>
 
@@ -333,19 +333,19 @@ onBeforeUnmount(() => {
 
               <!-- VÄETAMINE -->
               <div>
-                <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">
                   Väetamine
                 </label>
 
                 <input
                   v-model="form.fertilizing_frequency"
                   @input="form.clearErrors('fertilizing_frequency')"
-                  class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20 placeholder:text-[#2E2E2E]/40"
+                  class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 placeholder:text-foreground/40"
                   placeholder="nt. iga 2 nädala tagant"
                   type="text"
                 />
 
-                <p class="mt-2 text-xs text-[#2E2E2E]/50">
+                <p class="mt-2 text-xs text-foreground/50">
                   Valikuline. Kirjuta siia väetamise sagedus või juhis.
                 </p>
 
@@ -356,7 +356,7 @@ onBeforeUnmount(() => {
 
               <!-- MÄRKMED -->
               <div>
-                <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">
                   Märkmed
                 </label>
 
@@ -364,7 +364,7 @@ onBeforeUnmount(() => {
                   v-model="form.notes"
                   rows="4"
                   @input="form.clearErrors('notes')"
-                  class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20 placeholder:text-[#2E2E2E]/40"
+                  class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 placeholder:text-foreground/40"
                   placeholder="Soovi korral lisa meelespea või lisainfo..."
                 />
 
@@ -380,7 +380,7 @@ onBeforeUnmount(() => {
                   @click="submit"
                   :disabled="form.processing || !form.category_id"
                   class="rounded-2xl px-4 py-3 font-medium shadow-sm transition disabled:opacity-50"
-                  :class="form.category_id ? 'bg-[#6B8C68] text-white hover:bg-[#4F6A52]' : 'bg-black/10 text-[#2E2E2E]'"
+                  :class="form.category_id ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'bg-black/10 text-foreground'"
                 >
                   <span class="inline-flex items-center justify-center gap-2">
                     <span class="material-symbols-outlined">potted_plant</span>
@@ -390,7 +390,7 @@ onBeforeUnmount(() => {
 
                 <button
                   type="button"
-                  class="text-sm text-[#2E2E2E]/60 hover:text-[#2E2E2E]"
+                  class="text-sm text-foreground/60 hover:text-foreground"
                   :disabled="form.processing"
                   @click="close"
                 >

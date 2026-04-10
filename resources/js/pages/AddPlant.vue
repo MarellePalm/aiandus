@@ -46,7 +46,7 @@ function onFileChange(e: Event) {
 </script>
 
 <template>
-    <div class="bg-background-light text-forest font-display antialiased min-h-screen">
+    <div class="bg-background text-foreground font-display antialiased min-h-screen">
         <Head title="Lisa taim">
             <link
                 href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
