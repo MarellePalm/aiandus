@@ -15,6 +15,7 @@ type Plant = {
     fertilizing_frequency?: string | null;
     next_fertilizing_label?: string | null;
     category_slug?: string;
+    quantity?: number | null;
 };
 
 const props = withDefaults(
@@ -43,8 +44,6 @@ const backHref = computed(() => {
     }
     return '/plants';
 });
-
-
 
 const hasFertilizingInfo = computed(() => {
     return (
@@ -274,6 +273,35 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                                 </div>
                             </div>
                         </div>
+                        <!-- TAIMEDE ARV -->
+                        <div
+                            class="bg-surface-light dark:bg-surface-dark rounded-2xl border border-[#e6e2d5] p-5 shadow-sm dark:border-white/5"
+                        >
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-4">
+                                    <div
+                                        class="rounded-xl bg-primary/10 p-3 text-primary dark:bg-primary/20"
+                                    >
+                                        <span class="material-symbols-outlined"
+                                            >inventory_2</span
+                                        >
+                                    </div>
+
+                                    <div class="flex flex-col">
+                                        <span
+                                            class="mb-0.5 text-xs font-bold tracking-wider text-gray-400 uppercase"
+                                        >
+                                            Taimede arv
+                                        </span>
+                                        <span
+                                            class="font-body text-base leading-tight font-medium"
+                                        >
+                                            {{ props.plant.quantity ?? 1 }} tk
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                         <!-- KASTMINE -->
                         <div
@@ -302,8 +330,6 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                                         </span>
                                     </div>
                                 </div>
-
-                              
                             </div>
                         </div>
 

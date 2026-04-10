@@ -23,6 +23,7 @@ class Plant extends Model
         'watering_frequency',
         'fertilizing_frequency',
         'is_favorite',
+        'quantity',
     ];
 
     protected $casts = [

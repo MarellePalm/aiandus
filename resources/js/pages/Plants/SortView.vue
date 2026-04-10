@@ -18,6 +18,7 @@ type PlantItem = {
     id: number;
     subtitle: string;
     planted_at: string;
+    quantity?: number | null;
     image_url?: string | null;
     is_favorite?: boolean;
 };
@@ -273,7 +274,9 @@ const fallbackImage = 'https://picsum.photos/200/200';
                                 aria-label="Otsi"
                                 @click="showSearch = true"
                             >
-                                <span class="material-symbols-outlined text-[24px]">
+                                <span
+                                    class="material-symbols-outlined text-[24px]"
+                                >
                                     search
                                 </span>
                             </button>
@@ -367,6 +370,14 @@ const fallbackImage = 'https://picsum.photos/200/200';
                                                 Istutatud:
                                                 {{ formatDateEE(p.planted_at) }}
                                             </div>
+                                            <div>
+                                                <p
+                                                    class="text-sm text-[#2E2E2E]/70"
+                                                >
+                                                    Taimede arv:
+                                                    {{ p.quantity }} tk
+                                                </p>
+                                            </div>
                                         </div>
 
                                         <div
@@ -425,21 +436,27 @@ const fallbackImage = 'https://picsum.photos/200/200';
                                                 </button>
 
                                                 <div
-                                                    v-if="menuOpenForId === p.id"
+                                                    v-if="
+                                                        menuOpenForId === p.id
+                                                    "
                                                     class="absolute top-11 right-0 z-20 w-44 overflow-hidden rounded-xl border border-primary/10 bg-white shadow-lg"
                                                     @click.stop
                                                 >
                                                     <button
                                                         type="button"
                                                         class="w-full px-4 py-3 text-left text-sm hover:bg-primary/5"
-                                                        @click.stop="editPlant(p)"
+                                                        @click.stop="
+                                                            editPlant(p)
+                                                        "
                                                     >
                                                         Muuda
                                                     </button>
                                                     <button
                                                         type="button"
                                                         class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50"
-                                                        @click.stop="askDelete(p)"
+                                                        @click.stop="
+                                                            askDelete(p)
+                                                        "
                                                     >
                                                         Kustuta
                                                     </button>
