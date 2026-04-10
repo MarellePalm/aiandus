@@ -42,7 +42,6 @@ type BiodynamicInfoEt = Readonly<{
   element: 'vesi' | 'tuli' | 'maa' | 'õhk';
   crops: readonly string[];
   tasks: readonly string[];
-  description: string;
   notes?: readonly string[];
 }>;
 
@@ -64,51 +63,62 @@ const SIGN_TO_DAY_TYPE: BiodynamicDayType[] = [
 
 const BIODYNAMIC_ET: Record<BiodynamicDayType, BiodynamicInfoEt> = {
   leaf: {
-    label: 'lehepäev',
+    label: 'Lehepäev',
     element: 'vesi',
     crops: ['salat', 'kapsas', 'spinat', 'seller', 'maitseroheline'],
-    tasks: ['külv', 'istutamine', 'kastmine', 'niitmine'],
-    description:
-      'Hea aeg lehtköögiviljade külviks ja korjamiseks, muru niitmiseks ning toataimede kastmiseks ja väetamiseks.',
+    tasks: [
+      'külva lehtköögivilju',
+      'istuta rohelisi taimi',
+      'kasta taimi',
+      'niida muru',
+      'väeta toataimi',
+      'toeta lehemassi kasvu',
+    ],
     notes: ['Lehtköögivilju on parem koristada õie- või viljapäeval.'],
   },
   fruit: {
-    label: 'viljapäev',
+    label: 'Viljapäev',
     element: 'tuli',
     crops: ['tomat', 'paprika', 'oad', 'herned', 'mais', 'kõrvits'],
-    tasks: ['külv', 'istutamine', 'võrsete näpistamine', 'võsude eemaldamine'],
-    description:
-      'Hea aeg viljade ja seemnetaimede hoolduseks, muru külviks ning viljapuude lõikamiseks ja väetamiseks.',
-    notes: ['Viljapäeval korjatud saak säilib sageli eriti hästi.'],
+    tasks: [
+      'külva viljataimi',
+      'istuta viljakandvaid taimi',
+      'näpista võrseid',
+      'eemalda võsusid',
+      'toeta saagi kujunemist',
+      'hoolda seemnetaimi',
+    ],
+    notes: ['Viljapäeval korjatud saak säilib kauem.'],
   },
   root: {
-    label: 'juurepäev',
+    label: 'Juurepäev',
     element: 'maa',
     crops: ['porgand', 'kartul', 'sibul', 'peet', 'küüslauk'],
-    tasks: ['külv', 'istutamine', 'muldamine', 'väetamine'],
-    description:
-      'Hea aeg juur- ja köögiviljade külviks, kompostimiseks, rohimiseks ja saagi säilitamiseks.',
-    notes: ['Juurvilju on hea ladustada juurtepäeval.'],
+    tasks: [
+      'külva juurvilju',
+      'istuta juurvilju',
+      'mulda taimi',
+      'väeta mulda',
+      'rohii peenraid',
+      'valmista saaki säilitamiseks ette',
+    ],
+    notes: ['Juurvilju on hea hoiustada juurepäeval.'],
   },
   flower: {
-    label: 'õiepäev',
+    label: 'Õiepäev',
     element: 'õhk',
     crops: ['lilled', 'maitsetaimed'],
-    tasks: ['lilleistutused', 'maitsetaimede koristus', 'lõikelillede lõikamine'],
-    description:
-      'Hea aeg õistaimede ja ravimtaimede külviks, istutamiseks ja väetamiseks; sobib ka leivaküpsetamiseks.',
+    tasks: [
+      'istuta lilli',
+      'külva õistaimi',
+      'korista maitsetaimi',
+      'lõika lõikelilli',
+      'hoolda ilutaimi',
+      'tee kergemaid aiatöid',
+    ],
     notes: ['Õiepäeval lõigatud lilled püsivad kauem.'],
   },
 } as const;
-
-function formatHintEt(info: BiodynamicInfoEt): string {
-  return `Märksõnad: ${info.element}; ${info.crops.join(', ')}; tööd: ${info.tasks.join(', ')}.`;
-}
-
-function formatDescriptionEt(info: BiodynamicInfoEt): string {
-  // Ainult peamine lause; märkused jäävad kuufaasi "Märkused:" plokki, et ei kordaks.
-  return info.description;
-}
 
 // Tropiline aasta (päevades)
 const TROPICAL_YEAR = 365.2422;
@@ -181,11 +191,6 @@ export function calendarMomentForZodiac(d: Date): Date {
   return new Date(y, m, day, 12, 0, 0, 0);
 }
 
-/** Päikese tähtkuju antud kuupäeva järgi (eesti keeles). */
-function getSunSign(date = new Date()): ZodiacSignName {
-  return ZODIAC_NAMES_ET[longitudeToSignIndex(sunLongitudeDeg(date))];
-}
-
 /** Kuu tähtkuju antud kuupäeva järgi (eesti keeles). */
 function getMoonSign(date = new Date()): ZodiacSignName {
   return ZODIAC_NAMES_ET[longitudeToSignIndex(moonLongitudeDeg(date))];
@@ -197,34 +202,6 @@ function getBiodynamicDayType(date = new Date()): BiodynamicDayType {
   return SIGN_TO_DAY_TYPE[signIndex];
 }
 
-/** „Kui Kuu on selles märgis“ — soe lühitekst (traditsioon, mitte tehniline). */
-export const ZODIAC_NARRATIVE_UI_ET: Record<ZodiacSignName, string> = {
-  Jäär:
-    'Aktiivne ja kiire aeg. Sobib alustamiseks, külvamiseks ja viljataimedele tähelepanu andmiseks. Hea päev, kui tahad midagi käima lükata. Biodünaamilises käsitluses kuulub Jäär vilja- ja seemnepäevade hulka.',
-  Sõnn:
-    'Rahulik, viljakas ja maandatud aeg. Sobib juurdumiseks, istutamiseks ja kõigele, mis vajab stabiilsust. Biodünaamikas juurepäev — kui kuu on Sõnnis, tasakaalustab see kasvava kuu „hoogu“ pigem juurte ja mullaga kui ainult ülespoole kasvuga.',
-  Kaksikud:
-    'Kerge ja liikuv aeg. Sobib lilledele, kergematele töödele ja mitme asja vahel toimetamiseks. Õiepäev.',
-  Vähk:
-    'Pehme ja kasvule suunatud aeg. Sobib lehtköögiviljadele, ürtidele ja rohelisele kasvule. Lehepäev.',
-  Lõvi:
-    'Tugev ja nähtav aeg. Sobib vilja, seemnete ja küpsemise teemaga seotud töödeks. Viljapäev.',
-  Neitsi:
-    'Korralik ja praktiline aeg. Sobib juurviljadele, ümberistutamiseks ja mulla eest hoolitsemiseks. Juurepäev.',
-  Kaalud:
-    'Tasakaalu ja ilu aeg. Sobib lilledele, ilutaimedele ja harmooniat loovatele aiatöödele. Õiepäev.',
-  Skorpion:
-    'Sügav ja jõuline kasvuaeg. Sobib lehtedele, mahlasele rohelusele ja elujõulistele taimedele. Lehepäev.',
-  Ambur:
-    'Edasi liikuva energiaga aeg. Sobib viljataimedele, seemnetele ja kasvamist toetavatele töödele. Viljapäev.',
-  Kaljukits:
-    'Töökas ja vastupidav aeg. Sobib juurtele, tugevdamisele ja pika tulemusega töödele. Juurepäev.',
-  Veevalaja:
-    'Õhuline ja veidi katsetuslik aeg. Sobib lilledele ja loovamatele aiatöödele. Õiepäev.',
-  Kalad:
-    'Pehme, voolav ja hoolitsev aeg. Sobib lehtköögiviljadele, ürtidele ja rohelisele kasvule. Lehepäev.',
-};
-
 /** Tähtkujud + biodünaamika info (UI jaoks). */
 export function getZodiacInfo(date = new Date()) {
   const moonSign = getMoonSign(date);
@@ -232,16 +209,11 @@ export function getZodiacInfo(date = new Date()) {
   const info = BIODYNAMIC_ET[biodynamicDay];
 
   return {
-    sunSign: getSunSign(date),
     moonSign,
     moonSignInessive: MOON_SIGN_INESSIVE_ET[moonSign],
     biodynamicDayType: biodynamicDay,
     biodynamicDayLabel: info.label,
-    biodynamicHint: formatHintEt(info),
-    biodynamicDescription: formatDescriptionEt(info),
-    signNarrative: ZODIAC_NARRATIVE_UI_ET[moonSign],
-    element: info.element,
     crops: info.crops,
-    tasks: info.tasks,
+    notes: info.notes ?? [],
   };
 }

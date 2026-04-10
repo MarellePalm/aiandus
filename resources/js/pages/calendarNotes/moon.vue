@@ -77,8 +77,8 @@ const signSymbol = computed(() => SIGN_SYMBOL[zodiac.value.moonSign] ?? '☾');
           {{ dayTypeLabel }}
         </span>
       </div>
-      <p class="mt-1.5 text-xs text-muted-foreground leading-relaxed">
-        {{ zodiac.biodynamicDescription }}
+      <p v-if="zodiac.notes?.length" class="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+        {{ zodiac.notes[0] }}
       </p>
     </div>
 
