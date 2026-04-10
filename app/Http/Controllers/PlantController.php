@@ -61,6 +61,7 @@ class PlantController extends Controller
                 'status' => $p->status ?? 'ISTIK',
                 'image_url' => $p->image_url,
                 'is_favorite' => (bool) $p->is_favorite,
+                'quantity' => $p->quantity,
             ]);
 
         return Inertia::render('Plants/SortView', [
@@ -122,6 +123,7 @@ class PlantController extends Controller
             'fertilizing_frequency' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
             'image' => ['nullable', 'image', 'max:4096'],
+            'quantity' => ['nullable', 'integer', 'min:1'],
         ]);
 
         $imagePath = null;
@@ -146,6 +148,7 @@ class PlantController extends Controller
             'notes' => $data['notes'] ?? null,
             'image_url' => $imagePath ? "/storage/{$imagePath}" : null,
             'user_id' => $user->id,
+            'quantity' => $data['quantity'] ?? 1,
         ]);
 
         return redirect()
@@ -170,6 +173,7 @@ class PlantController extends Controller
                 'fertilizing_frequency' => $plant->fertilizing_frequency,
                 'bed_id' => $plant->bed_id,
                 'position_in_bed' => $plant->position_in_bed,
+                'quantity' => $plant->quantity ?? 1,
             ],
         ]);
     }
@@ -187,6 +191,7 @@ class PlantController extends Controller
             'bed_id' => ['nullable', 'exists:beds,id'],
             'position_in_bed' => ['nullable', 'string', 'max:120'],
             'image' => ['nullable', 'image', 'max:4096'],
+            'quantity' => ['nullable', 'integer', 'min:1'],
         ]);
 
         if (!empty($data['bed_id'])) {
@@ -209,6 +214,7 @@ class PlantController extends Controller
             'watering_frequency' => $data['watering_frequency'] ?? $plant->watering_frequency,
             'fertilizing_frequency' => $data['fertilizing_frequency'] ?? $plant->fertilizing_frequency,
             'image_url' => $data['image_url'] ?? $plant->image_url,
+            'quantity' => $data['quantity'] ?? $plant->quantity,
         ];
 
         if (array_key_exists('notes', $data)) {
