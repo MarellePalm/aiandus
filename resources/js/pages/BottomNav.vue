@@ -91,7 +91,7 @@ function labelClass(key: NavKey) {
           :aria-current="activeKey === 'map' ? 'page' : undefined"
         >
           <span class="material-symbols-outlined text-2xl">map</span>
-          <span :class="labelClass('map')">Peenraplaan</span>
+          <span :class="labelClass('map')">Peenrad</span>
         </Link>
 
         

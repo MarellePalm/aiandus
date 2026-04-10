@@ -180,7 +180,7 @@ const openEditCategory = (category: Category) => {
                             </div>
                             <h2 class="text-lg font-semibold text-foreground">Varud puuduvad</h2>
                             <p class="mt-2 text-sm text-muted-foreground">
-                                Vajuta üleval paremal <strong>+</strong>, et lisada esimene varu.
+                                Vajuta plussi, et lisada uus varu.
                             </p>
                         </div>
 

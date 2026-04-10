@@ -184,7 +184,7 @@ onBeforeUnmount(() => {
                                 <span class="material-symbols-outlined text-primary">potted_plant</span>
                             </div>
                             <h2 class="text-lg font-semibold text-foreground">Selles kategoorias varusi ei ole</h2>
-                            <p class="mt-2 text-sm text-muted-foreground">Vajuta üleval paremal <strong>+</strong>, et lisada varu.</p>
+                            <p class="mt-2 text-sm text-muted-foreground">Vajuta plussi, et lisada uus varu.</p>
                         </div>
 
                         <div v-else class="space-y-4">

@@ -626,7 +626,7 @@ function goToFabAction(href: string) {
         @click="closeFabMenu"
       />
 
-      <BottomNav active="dashboard" :fixed="false" />
+      <BottomNav active="dashboard" />
     </div>
   </AppLayout>
 </template>

@@ -1,62 +1,93 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 </script>
 
 <template>
-    <div class="relative min-h-screen overflow-hidden bg-[#F5F5EE]">
-        <!-- Taustapilt -->
-        
-            <div class="absolute inset-0 bg-[#F5F5EE]/70"></div>
+    <Head title="Aianduspäevik" />
 
-        <!-- Sisu -->
-        <div class="relative z-10 flex min-h-screen items-center justify-center px-6">
-            <div class="w-full max-w-xl text-center">
-                <!-- Ikoon -->
-                <div class="mx-auto mb-8 flex h-20 w-20 items-center justify-center rounded-full bg-[#E7ECD9] shadow-sm">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-9 w-9 text-[#5C7C45]"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M12 21c4.5-2 7-5.5 7-10 0-1.5-.3-2.9-.8-4.2C15.5 7 13 8.5 11.5 11c-1.5 2.3-1.8 4.9-.9 7.7M12 21c-3.5-1.2-6.5-4.5-7-8.8-.3-2.3.1-4.4 1.2-6.2 2.3.2 4.3 1.1 5.8 2.7"
-                        />
-                    </svg>
-                </div>
+    <div class="relative min-h-screen overflow-x-hidden bg-background text-foreground font-sans antialiased">
+        <div class="pointer-events-none fixed -top-20 -left-16 h-72 w-72 rounded-full bg-primary/10 blur-3xl"></div>
+        <div class="pointer-events-none fixed -right-24 -bottom-24 h-96 w-96 rounded-full bg-secondary blur-3xl"></div>
 
-                <!-- Pealkiri -->
-                <h1 class="mb-5 text-4xl font-bold tracking-tight text-[#2F2F2F] sm:text-5xl">
-                    Minu Aiapäevik
-                </h1>
-
-                <!-- Kirjeldus -->
-                <p class="mx-auto mb-10 max-w-md text-lg leading-8 text-[#7C7C73]">
-                    Alusta oma rohelise teekonda ja kogu ühte kohta taimed, ideed ja väikesed võidud oma aias.
-                </p>
-
-                <!-- Nupud -->
-                <div class="mx-auto flex max-w-md flex-col gap-4">
-                    <Link
-                        href="/login"
-                        class="inline-flex h-16 items-center justify-center rounded-full bg-[#4F7F3B] px-8 text-xl font-semibold text-white shadow-md transition hover:scale-[1.01] hover:bg-[#456F34]"
-                    >
-                        Logi sisse
-                    </Link>
-
-                    <Link
-                        href="/register"
-                        class="inline-flex h-16 items-center justify-center rounded-full bg-[#E3E7D8] px-8 text-xl font-semibold text-[#5D7843] transition hover:scale-[1.01] hover:bg-[#DCE2CF]"
-                    >
-                        Loo konto
-                    </Link>
+        <header class="fixed top-0 z-40 w-full bg-background/85 backdrop-blur-lg">
+            <div class="mx-auto flex w-full max-w-3xl items-center justify-between px-6 py-4 md:px-8">
+                <div class="flex items-center gap-2 text-primary">
+                    <span class="material-symbols-outlined text-[24px]" :style="{ fontVariationSettings: `'FILL' 0, 'wght' 400, 'opsz' 24` }">
+                        potted_plant
+                    </span>
+                    <span class="text-lg font-bold tracking-tight">Aianduspäevik</span>
                 </div>
             </div>
-        </div>
+        </header>
+
+        <main class="relative z-10 mx-auto flex w-full max-w-3xl flex-col gap-6 px-5 pt-24 pb-10 md:gap-8 md:px-8 md:pt-32 md:pb-14">
+            <section class="flex flex-col gap-5 md:gap-6">
+                <div>
+                    <p class="-mt-5 text-xs font-semibold tracking-[0.18em] text-primary/80 uppercase">
+                        UUS! Kevadhooaeg 2026
+                    </p>
+                    <h1 class="max-w-xl text-3xl leading-[1.12] font-bold tracking-tight sm:text-5xl">
+                        Sinu nutikas aiaabiline
+                    </h1>
+
+                    <p class="mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-lg sm:leading-7">
+                        Planeeri, jälgi ja halda oma aeda ühes kohas. Tea alati, mis kus kasvab.
+                    </p>
+                </div>
+
+                <Link
+                    href="/login"
+                    class="btn-primary group h-12 w-fit pr-5 pl-5 text-sm shadow-lg shadow-primary/20 md:h-14 md:px-7 md:text-base"
+                >
+                    <span>Alusta</span>
+                    <span class="material-symbols-outlined text-[18px] text-primary-foreground transition-transform group-hover:translate-x-0.5 md:text-[20px]">arrow_forward_ios</span>
+                </Link>
+            </section>
+
+            <section class="grid grid-cols-1 gap-3">
+                <article class="flex items-center gap-3 rounded-2xl border border-primary/10 bg-card px-4 py-3 shadow-sm md:gap-4 md:px-5 md:py-4">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-background shadow-sm md:h-12 md:w-12">
+                        <span class="material-symbols-outlined text-[20px] text-primary md:text-[24px]">calendar_month</span>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-foreground md:text-base">Kalender ja märkmed</h3>
+                        <p class="text-xs text-muted-foreground md:text-sm">Ära unusta ühtegi aiatööd.</p>
+                    </div>
+                </article>
+
+                <article class="flex items-center gap-3 rounded-2xl border border-primary/10 bg-card px-4 py-3 shadow-sm md:gap-4 md:px-5 md:py-4">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-background shadow-sm md:h-12 md:w-12">
+                        <span class="material-symbols-outlined text-[20px] text-primary md:text-[24px]">local_florist</span>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-foreground md:text-base">Taimed</h3>
+                        <p class="text-xs text-muted-foreground md:text-sm">Hoia oma taimed ühes kohas koos.</p>
+                    </div>
+                </article>
+
+                <article class="flex items-center gap-3 rounded-2xl border border-primary/10 bg-card px-4 py-3 shadow-sm md:gap-4 md:px-5 md:py-4">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-background shadow-sm md:h-12 md:w-12">
+                        <span class="material-symbols-outlined text-[20px] text-primary md:text-[24px]">shelves</span>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-foreground md:text-base">Varud</h3>
+                        <p class="text-xs text-muted-foreground md:text-sm">Näe kiiresti, mis varud on olemas.</p>
+                    </div>
+                </article>
+
+                <article class="flex items-center gap-3 rounded-2xl border border-primary/10 bg-card px-4 py-3 shadow-sm md:gap-4 md:px-5 md:py-4">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-background shadow-sm md:h-12 md:w-12">
+                        <span class="material-symbols-outlined text-[20px] text-primary md:text-[24px]">map</span>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-semibold text-foreground md:text-base">Visuaalne planeerimine</h3>
+                        <p class="text-xs text-muted-foreground md:text-sm">Loo oma aia plaan digitaalselt.</p>
+                    </div>
+                </article>
+            </section>
+
+           
+        </main>
     </div>
 </template>
 
