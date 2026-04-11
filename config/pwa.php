@@ -19,8 +19,8 @@ return [
     */
 
     'manifest' => [
-        'name' => 'Aianduspäevik',
-        'short_name' => 'Aianduspäevik',
+        'name' => 'Aiapäevik',
+        'short_name' => 'Aiapäevik',
         'background_color' => '#6777ef',
         'display' => 'fullscreen',
         'description' => 'A Progressive Web Application setup for Laravel projects.',

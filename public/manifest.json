@@ -1,6 +1,6 @@
 {
-    "name": "Aiandusp\u00e4evik",
-    "short_name": "Aiandusp\u00e4evik",
+    "name": "Aiap\u00e4evik",
+    "short_name": "Aiap\u00e4evik",
     "background_color": "#6777ef",
     "display": "fullscreen",
     "description": "A Progressive Web Application setup for Laravel projects.",

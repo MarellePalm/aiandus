@@ -3,7 +3,7 @@ import { Head, Link } from '@inertiajs/vue3';
 </script>
 
 <template>
-    <Head title="Aianduspäevik" />
+    <Head title="Aiapäevik" />
 
     <div class="relative min-h-screen overflow-x-hidden bg-background/85 text-foreground font-sans antialiased">
         <div class="pointer-events-none fixed -top-20 -left-16 h-72 w-72 rounded-full bg-primary/10 blur-3xl"></div>
@@ -15,7 +15,7 @@ import { Head, Link } from '@inertiajs/vue3';
                     <span class="material-symbols-outlined text-[24px]" :style="{ fontVariationSettings: `'FILL' 0, 'wght' 400, 'opsz' 24` }">
                         potted_plant
                     </span>
-                    <span class="text-lg font-bold tracking-tight">Aianduspäevik</span>
+                    <span class="text-lg font-bold tracking-tight">Aiapäevik</span>
                 </div>
             </div>
         </header>
@@ -30,7 +30,7 @@ import { Head, Link } from '@inertiajs/vue3';
                         Sinu <span class="text-primary">nutikas</span> aiandusabiline
                     </h1>
                     <p class="mt-3 max-w-xl text-base leading-6 text-foreground/80 sm:text-lg sm:leading-7">
-                        Planeeri, jälgi ja halda oma aeda ühes kohas. Tea alati, mis kus kasvab 🌿
+                        Planeeri, jälgi ja halda oma aeda ühes kohas. Tea alati, mis kus kasvab<span class="whitespace-nowrap">&nbsp;🌿</span>
                     </p>
                 </div>
 
