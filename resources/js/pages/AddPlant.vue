@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import SaveButton from '@/components/SaveButton.vue';
 
 const form = ref({
     species: '',
@@ -161,13 +162,11 @@ function onFileChange(e: Event) {
                         </div>
 
                         <div class="sticky bottom-0 bg-[#FAF8F4] pt-4 pb-1">
-                            <button
+                            <SaveButton
                                 type="submit"
                                 :disabled="processing"
-                                class="w-full rounded-2xl bg-[#6B8C68] px-4 py-3 font-medium text-white transition hover:bg-[#4F6A52] disabled:opacity-60"
-                            >
-                                Salvesta taim
-                            </button>
+                                class="bg-[#6B8C68] text-white hover:bg-[#4F6A52]"
+                            />
                         </div>
                     </form>
                 </div>

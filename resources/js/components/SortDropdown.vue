@@ -6,10 +6,15 @@ type SortOption = {
   value: string;
 };
 
-defineProps<{
+withDefaults(defineProps<{
   options: SortOption[];
   modelValue: string;
-}>();
+  iconOnly?: boolean;
+  compact?: boolean;
+}>(), {
+  iconOnly: false,
+  compact: false,
+});
 
 const emit = defineEmits<{
   (e: "update:modelValue", value: string): void;
@@ -41,10 +46,19 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
     <button
       type="button"
       class="flex items-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-2 text-sm font-medium text-[#2E2E2E]/80 shadow-sm transition hover:bg-black/5"
+      :class="[
+        iconOnly ? 'h-9 w-9 justify-center rounded-full p-0' : '',
+        compact && !iconOnly ? 'px-3 py-1.5 text-xs' : '',
+      ]"
       @click.stop="toggleDropdown"
     >
-      <span>Sorteeri</span>
-      <span class="text-xs">{{ open ? "▲" : "▼" }}</span>
+      <template v-if="iconOnly">
+        <span class="material-symbols-outlined text-[20px]">sort</span>
+      </template>
+      <template v-else>
+        <span>Sorteeri</span>
+        <span class="text-xs">{{ open ? "▲" : "▼" }}</span>
+      </template>
     </button>
 
     <div

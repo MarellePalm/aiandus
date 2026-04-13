@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import SaveButton from '@/components/SaveButton.vue';
 
 type Category = {
     id: number;
@@ -309,21 +310,18 @@ onBeforeUnmount(() => {
                     <textarea
                         v-model="form.notes"
                         rows="4"
-                        placeholder="Lisa siia varu kohta täiendav info..."
+                        placeholder="Soovi korral lisa meelespea või lisainfo..."
                         class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                     />
                     <p v-if="form.errors.notes" class="mt-2 text-sm text-red-600">{{ form.errors.notes }}</p>
                 </div>
 
                 <div class="mt-6 flex flex-col gap-3">
-                    <button
+                    <SaveButton
                         type="button"
-                        class="rounded-2xl bg-primary px-4 py-3 font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
                         :disabled="form.processing || !form.name.trim()"
                         @click="submit"
-                    >
-                        {{ form.processing ? 'Salvestan...' : 'Salvesta varu' }}
-                    </button>
+                    />
                     <Link
                         href="/seeds"
                         class="text-center text-sm text-foreground/60 hover:text-foreground"
@@ -492,21 +490,18 @@ onBeforeUnmount(() => {
                             <textarea
                                 v-model="form.notes"
                                 rows="4"
-                                placeholder="Lisa siia seemne kohta täiendav info..."
+                                placeholder="Soovi korral lisa meelespea või lisainfo..."
                                 class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                             />
                             <p v-if="form.errors.notes" class="mt-2 text-sm text-red-600">{{ form.errors.notes }}</p>
                         </div>
 
                         <div class="sticky bottom-0 mt-6 flex flex-col gap-3 bg-card pt-4 pb-1">
-                            <button
+                            <SaveButton
                                 type="button"
-                                class="rounded-2xl bg-primary px-4 py-3 font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
                                 :disabled="form.processing || !form.name.trim()"
                                 @click="submit"
-                            >
-                                {{ form.processing ? 'Salvestan...' : 'Salvesta varu' }}
-                            </button>
+                            />
                             <button
                                 type="button"
                                 class="text-sm text-foreground/60 hover:text-foreground"

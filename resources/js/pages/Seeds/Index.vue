@@ -31,7 +31,7 @@ const props = defineProps<{
     categories: Category[];
 }>();
 
-type TabKey = 'all' | 'favorites' | 'recent';
+type TabKey = 'all' | 'favorites';
 
 const activeTab = ref<TabKey>('all');
 const showCreateCategory = ref(false);
@@ -59,13 +59,6 @@ const filteredCategories = computed(() => {
         list = list.filter((c) => c.is_favorite === true);
     }
 
-    if (activeTab.value === 'recent') {
-        list = list.slice().sort((a, b) => {
-            const ad = new Date(a.created_at ?? 0).getTime();
-            const bd = new Date(b.created_at ?? 0).getTime();
-            return bd - ad;
-        });
-    }
 
     if (searchQuery.value.trim()) {
         const q = searchQuery.value.toLowerCase();
@@ -120,7 +113,8 @@ const toggleFavorite = (id: number) => {
 };
 
 const tabClass = (key: TabKey) => {
-    const base = 'flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full px-5 transition-colors';
+    const base =
+        'flex h-9 shrink-0 items-center justify-center rounded-full px-4 text-sm font-medium transition-colors';
     if (activeTab.value === key) {
         return `${base} bg-primary text-white`;
     }
@@ -160,15 +154,12 @@ const openEditCategory = (category: Category) => {
                                 </button>
                         </template>
 
-                        <div class="no-scrollbar flex gap-3 overflow-x-auto pb-2">
+                        <div class="no-scrollbar flex gap-2 overflow-x-auto pb-2">
                             <button :class="tabClass('all')" type="button" @click="resetToAll">
-                                <p class="text-sm font-semibold">Kõik kategooriad</p>
+                                Kõik
                             </button>
                             <button :class="tabClass('favorites')" type="button" @click="activeTab = 'favorites'">
-                                <p class="text-sm font-medium">Lemmikud</p>
-                            </button>
-                            <button :class="tabClass('recent')" type="button" @click="activeTab = 'recent'">
-                                <p class="text-sm font-medium">Hiljuti lisatud</p>
+                                Lemmikud
                             </button>
                         </div>
                     </DiaryHeader>
