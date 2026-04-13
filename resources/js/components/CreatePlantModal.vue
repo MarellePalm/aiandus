@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+
 import SaveButton from '@/components/SaveButton.vue';
 
 type Category = {
@@ -25,7 +26,7 @@ type PlantForm = {
     category_id: number | null;
     subtitle: string;
     planted_at: string;
-    watering_in_days: string;
+    watering_frequency: string;
     fertilizing_frequency: string;
     notes: string;
     image: File | null;
@@ -36,7 +37,7 @@ const form = useForm<PlantForm>({
     category_id: props.initialCategoryId ?? props.categories?.[0]?.id ?? null,
     subtitle: '',
     planted_at: '',
-    watering_in_days: '',
+    watering_frequency: '',
     fertilizing_frequency: '',
     notes: '',
     image: null,
@@ -95,7 +96,7 @@ const reset = () => {
         props.initialCategoryId ?? props.categories?.[0]?.id ?? null;
     form.subtitle = '';
     form.planted_at = '';
-    form.watering_in_days = '';
+    form.watering_frequency = '';
     form.fertilizing_frequency = '';
     form.notes = '';
     form.image = null;
@@ -421,10 +422,10 @@ onBeforeUnmount(() => {
                                 </label>
 
                                 <input
-                                    v-model="form.watering_in_days"
+                                    v-model="form.watering_frequency"
                                     type="text"
                                     @input="
-                                        form.clearErrors('watering_in_days')
+                                        form.clearErrors('watering_frequency')
                                     "
                                     class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none placeholder:text-foreground/40 focus:border-primary focus:ring-2 focus:ring-primary/20"
                                     placeholder="nt. iga nädal"
@@ -436,10 +437,10 @@ onBeforeUnmount(() => {
                                 </p>
 
                                 <p
-                                    v-if="form.errors.watering_in_days"
+                                    v-if="form.errors.watering_frequency"
                                     class="mt-2 text-sm text-red-600"
                                 >
-                                    {{ form.errors.watering_in_days }}
+                                    {{ form.errors.watering_frequency }}
                                 </p>
                             </div>
 
