@@ -27,7 +27,7 @@ import { Head, Link } from '@inertiajs/vue3';
                         UUS! Kevadhooaeg 2026
                     </p>
                     <h1 class="max-w-xl text-4xl leading-[1.06] font-extrabold tracking-tight sm:text-5xl md:max-w-none md:whitespace-nowrap md:text-5xl">
-                        Sinu <span class="text-primary">nutikas</span> aiandusabiline
+                        Sinu <span class="text-primary">nutikas</span> aiaabiline
                     </h1>
                     <p class="mt-3 max-w-xl text-base leading-6 text-foreground/80 sm:text-lg sm:leading-7">
                         Planeeri, jälgi ja halda oma aeda ühes kohas. Tea alati, mis kus kasvab<span class="whitespace-nowrap">&nbsp;🌿</span>

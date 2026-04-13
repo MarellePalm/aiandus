@@ -5,6 +5,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import BackIconButton from '@/components/BackIconButton.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
+import SortDropdown from '@/components/SortDropdown.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 
@@ -32,7 +33,7 @@ const props = defineProps<{
     categories: CategoryItem[];
 }>();
 
-type TabKey = 'all' | 'favorites' | 'recent';
+type TabKey = 'all' | 'favorites';
 const activeTab = ref<TabKey>('all');
 const showAddSeed = ref(false);
 const showSearch = ref(false);
@@ -46,6 +47,7 @@ const menuOpenForId = ref<number | null>(null);
 
 const localSeeds = ref<SeedItem[]>([...props.seeds]);
 const seedNames = computed(() => localSeeds.value.map((s) => s.name));
+const selectedSort = ref('name_asc');
 
 watch(
     () => props.seeds,
@@ -54,18 +56,60 @@ watch(
     },
 );
 
-const filteredSeeds = computed(() => {
+const sortOptions = [
+    { label: 'Nimi A–Z', value: 'name_asc' },
+    { label: 'Nimi Z–A', value: 'name_desc' },
+    { label: 'Ostuaasta: uuemad enne', value: 'year_desc' },
+    { label: 'Ostuaasta: vanemad enne', value: 'year_asc' },
+    { label: 'Aegumisaasta: uuemad enne', value: 'expires_desc' },
+    { label: 'Aegumisaasta: vanemad enne', value: 'expires_asc' },
+];
+
+const parseYear = (value?: number | null) => {
+    if (typeof value !== 'number' || Number.isNaN(value)) return 0;
+    return value;
+};
+
+const parseExpiresAt = (value?: string | null) => {
+    if (!value) return 0;
+    const t = new Date(value).getTime();
+    return Number.isNaN(t) ? 0 : t;
+};
+
+const baseSeeds = computed(() => {
     let list = [...localSeeds.value];
     if (activeTab.value === 'favorites') {
         list = list.filter((s) => s.is_favorite === true);
     }
-    if (activeTab.value === 'recent') {
-        list = list.slice().sort((a, b) => {
-            const ad = new Date(a.created_at ?? 0).getTime();
-            const bd = new Date(b.created_at ?? 0).getTime();
-            return bd - ad;
-        });
+
+    switch (selectedSort.value) {
+        case 'name_desc':
+            return [...list].sort((a, b) =>
+                (b.name ?? '').localeCompare(a.name ?? '', 'et', {
+                    sensitivity: 'base',
+                }),
+            );
+        case 'year_desc':
+            return [...list].sort((a, b) => parseYear(b.year) - parseYear(a.year));
+        case 'year_asc':
+            return [...list].sort((a, b) => parseYear(a.year) - parseYear(b.year));
+        case 'expires_desc':
+            return [...list].sort((a, b) => parseExpiresAt(b.expires_at) - parseExpiresAt(a.expires_at));
+        case 'expires_asc':
+            return [...list].sort((a, b) => parseExpiresAt(a.expires_at) - parseExpiresAt(b.expires_at));
+        case 'name_asc':
+        default:
+            return [...list].sort((a, b) =>
+                (a.name ?? '').localeCompare(b.name ?? '', 'et', {
+                    sensitivity: 'base',
+                }),
+            );
     }
+});
+
+const filteredSeeds = computed(() => {
+    let list = baseSeeds.value;
+
     if (searchQuery.value.trim()) {
         const q = searchQuery.value.toLowerCase();
         list = list.filter((s) => s.name.toLowerCase().includes(q));
@@ -74,7 +118,8 @@ const filteredSeeds = computed(() => {
 });
 
 const tabClass = (key: TabKey) => {
-    const base = 'flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full px-5 transition-colors';
+    const base =
+        'flex h-9 shrink-0 items-center justify-center rounded-full px-4 text-sm font-medium transition-colors';
     if (activeTab.value === key) return `${base} bg-primary text-white`;
     return `${base} bg-primary/10 text-primary hover:bg-primary/15`;
 };
@@ -171,10 +216,12 @@ onBeforeUnmount(() => {
                                 </button>
                         </template>
 
-                        <div class="no-scrollbar flex gap-3 overflow-x-auto pb-2">
+                        <div class="no-scrollbar flex items-center gap-2 overflow-x-auto pb-2">
                             <button type="button" :class="tabClass('all')" @click="activeTab = 'all'">Kõik</button>
                             <button type="button" :class="tabClass('favorites')" @click="activeTab = 'favorites'">Lemmikud</button>
-                            <button type="button" :class="tabClass('recent')" @click="activeTab = 'recent'">Hiljuti lisatud</button>
+                            <div class="shrink-0 ml-1">
+                                <SortDropdown v-model="selectedSort" :options="sortOptions" compact />
+                            </div>
                         </div>
                     </DiaryHeader>
 
@@ -216,42 +263,69 @@ onBeforeUnmount(() => {
                                         <p v-if="seed.expires_at" class="text-sm text-muted-foreground">Aegub: {{ seed.expires_at }}</p>
                                     </div>
 
-                                    <div class="relative shrink-0" data-seed-menu @click.stop>
+                                    <div class="ml-2 flex shrink-0 items-center gap-2" data-seed-menu @click.stop>
                                         <button
                                             type="button"
-                                            class="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition hover:bg-primary/10"
-                                            aria-label="Menüü"
-                                            @click.stop.prevent="toggleMenu(seed.id)"
+                                            class="flex h-9 w-9 items-center justify-center rounded-full border border-primary/10 bg-white transition hover:scale-105 hover:bg-primary/5"
+                                            :class="
+                                                seed.is_favorite
+                                                    ? 'text-rose-600 shadow-sm'
+                                                    : 'text-[#2E2E2E]/45'
+                                            "
+                                            @click.prevent.stop="toggleFavorite(seed.id)"
+                                            aria-label="Lisa lemmikuks"
+                                            :title="
+                                                seed.is_favorite
+                                                    ? 'Eemalda lemmikutest'
+                                                    : 'Lisa lemmikuks'
+                                            "
                                         >
-                                            <span class="material-symbols-outlined text-[22px]">more_horiz</span>
+                                            <span
+                                                class="material-symbols-outlined text-[20px] leading-none transition"
+                                                :style="
+                                                    seed.is_favorite
+                                                        ? {
+                                                              fontVariationSettings: `'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24`,
+                                                          }
+                                                        : {
+                                                              fontVariationSettings: `'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
+                                                          }
+                                                "
+                                            >
+                                                favorite
+                                            </span>
                                         </button>
 
-                                        <div
-                                            v-if="menuOpenForId === seed.id"
-                                            class="absolute right-0 top-12 z-20 w-48 overflow-hidden rounded-xl border border-primary/10 bg-card shadow-lg"
-                                            @click.stop
-                                        >
+                                        <div class="relative">
                                             <button
                                                 type="button"
-                                                class="w-full px-4 py-3 text-left text-sm hover:bg-primary/5"
-                                                @click.stop="openSeedEdit(seed)"
+                                                class="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition hover:bg-primary/10"
+                                                aria-label="Menüü"
+                                                @click.stop.prevent="toggleMenu(seed.id)"
                                             >
-                                                Muuda
+                                                <span class="material-symbols-outlined text-[22px]">more_horiz</span>
                                             </button>
-                                            <button
-                                                type="button"
-                                                class="w-full px-4 py-3 text-left text-sm hover:bg-primary/5"
-                                                @click.stop="toggleFavorite(seed.id); menuOpenForId = null"
+
+                                            <div
+                                                v-if="menuOpenForId === seed.id"
+                                                class="absolute right-0 top-12 z-20 w-48 overflow-hidden rounded-xl border border-primary/10 bg-card shadow-lg"
+                                                @click.stop
                                             >
-                                                {{ seed.is_favorite ? 'Eemalda lemmikutest' : 'Lisa lemmikuks' }}
-                                            </button>
-                                            <button
-                                                type="button"
-                                                class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-500/10"
-                                                @click.stop="openDeleteSeed(seed); menuOpenForId = null"
-                                            >
-                                                Kustuta
-                                            </button>
+                                                <button
+                                                    type="button"
+                                                    class="w-full px-4 py-3 text-left text-sm hover:bg-primary/5"
+                                                    @click.stop="openSeedEdit(seed)"
+                                                >
+                                                    Muuda
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-500/10"
+                                                    @click.stop="openDeleteSeed(seed); menuOpenForId = null"
+                                                >
+                                                    Kustuta
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import SaveButton from '@/components/SaveButton.vue';
 
 type Category = {
     id: number;
@@ -116,11 +117,17 @@ watch(
 );
 
 function submit() {
-    form.post('/plants', {
+    form.transform((data) => ({
+        ...data,
+        planted_at: data.planted_at ? `${data.planted_at}-01-01` : '',
+    })).post('/plants', {
         forceFormData: true,
         onSuccess: () => {
             emit('created');
             close();
+        },
+        onFinish: () => {
+            form.transform((data) => data);
         },
     });
 }
@@ -181,12 +188,118 @@ onBeforeUnmount(() => {
                         </div>
 
                         <main class="mt-5 flex flex-col gap-6">
-                            <!-- FOTO -->
+                            <!-- SORT -->
                             <div>
                                 <label
                                     class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
                                 >
-                                    Foto
+                                    Sort
+                                </label>
+
+                                <input
+                                    v-model="form.subtitle"
+                                    @input="form.clearErrors('subtitle')"
+                                    class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none placeholder:text-foreground/40 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                    placeholder="nt. Mehiko minikurk"
+                                    type="text"
+                                />
+
+                                <p
+                                    v-if="form.errors.subtitle"
+                                    class="mt-2 text-sm text-red-600"
+                                >
+                                    {{ form.errors.subtitle }}
+                                </p>
+                            </div>
+
+                            <!-- KATEGOORIA -->
+                            <div>
+                                <label
+                                    class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
+                                >
+                                    Kategooria
+                                </label>
+
+                                <select
+                                    ref="categorySelectRef"
+                                    v-model="form.category_id"
+                                    @change="form.clearErrors('category_id')"
+                                    class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                >
+                                    <option :value="null" disabled>
+                                        Vali kategooria…
+                                    </option>
+                                    <option
+                                        v-for="c in props.categories"
+                                        :key="c.id"
+                                        :value="c.id"
+                                    >
+                                        {{ c.name }}
+                                    </option>
+                                </select>
+
+                                <p
+                                    v-if="form.errors.category_id"
+                                    class="mt-2 text-sm text-red-600"
+                                >
+                                    {{ form.errors.category_id }}
+                                </p>
+                            </div>
+
+                            <!-- ISTUTAMISE AASTA -->
+                            <div>
+                                <label
+                                    class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
+                                >
+                                    Istutamise aasta
+                                </label>
+
+                                <input
+                                    v-model="form.planted_at"
+                                    type="number"
+                                    min="1900"
+                                    max="2100"
+                                    @change="form.clearErrors('planted_at')"
+                                    class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                    placeholder="nt 2026"
+                                />
+
+                                <p
+                                    v-if="form.errors.planted_at"
+                                    class="mt-2 text-sm text-red-600"
+                                >
+                                    {{ form.errors.planted_at }}
+                                </p>
+                            </div>
+
+                            <!-- KOGUS -->
+                            <div>
+                                <label
+                                    class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase"
+                                >
+                                    Taimede arv (tk)
+                                </label>
+                                <input
+                                    v-model="form.quantity"
+                                    type="number"
+                                    min="1"
+                                    class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                    placeholder="1"
+                                />
+                                <div
+                                    v-if="form.errors.quantity"
+                                    class="mt-1 text-sm text-red-600"
+                                >
+                                    {{ form.errors.quantity }}
+                                </div>
+                            </div>
+
+                            <!-- PILT -->
+                            <div>
+                                <label
+                                    class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
+                                >
+                                    Pilt
                                 </label>
 
                                 <input
@@ -220,7 +333,7 @@ onBeforeUnmount(() => {
                                                 >add_a_photo</span
                                             >
                                             <span class="text-base"
-                                                >Lohistage foto siia või
+                                                >Lohistage pilt siia või
                                                 klõpsake</span
                                             >
                                             <span
@@ -293,112 +406,10 @@ onBeforeUnmount(() => {
                                 </div>
                             </div>
 
-                            <!-- KATEGOORIA -->
-                            <div>
-                                <label
-                                    class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
-                                >
-                                    Kategooria
-                                </label>
-
-                                <select
-                                    ref="categorySelectRef"
-                                    v-model="form.category_id"
-                                    @change="form.clearErrors('category_id')"
-                                    class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                >
-                                    <option :value="null" disabled>
-                                        Vali kategooria…
-                                    </option>
-                                    <option
-                                        v-for="c in props.categories"
-                                        :key="c.id"
-                                        :value="c.id"
-                                    >
-                                        {{ c.name }}
-                                    </option>
-                                </select>
-
-                                <p
-                                    v-if="form.errors.category_id"
-                                    class="mt-2 text-sm text-red-600"
-                                >
-                                    {{ form.errors.category_id }}
+                            <div class="border-t border-border pt-1">
+                                <p class="text-xs font-semibold tracking-widest text-foreground/50 uppercase">
+                                    Valikuline
                                 </p>
-                            </div>
-
-                            <!-- SORT -->
-                            <div>
-                                <label
-                                    class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
-                                >
-                                    Sort
-                                </label>
-
-                                <input
-                                    v-model="form.subtitle"
-                                    @input="form.clearErrors('subtitle')"
-                                    class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none placeholder:text-foreground/40 focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                    placeholder="nt. Mehiko minikurk"
-                                    type="text"
-                                />
-
-                                <p
-                                    v-if="form.errors.subtitle"
-                                    class="mt-2 text-sm text-red-600"
-                                >
-                                    {{ form.errors.subtitle }}
-                                </p>
-                            </div>
-
-                            <!-- ISTUTAMISE KUUPÄEV -->
-                            <div>
-                                <label
-                                    class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
-                                >
-                                    Istutamise kuupäev
-                                </label>
-
-                                <input
-                                    v-model="form.planted_at"
-                                    type="date"
-                                    @change="form.clearErrors('planted_at')"
-                                    @click="
-                                        (
-                                            $event.target as HTMLInputElement
-                                        ).showPicker?.()
-                                    "
-                                    class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                />
-
-                                <p
-                                    v-if="form.errors.planted_at"
-                                    class="mt-2 text-sm text-red-600"
-                                >
-                                    {{ form.errors.planted_at }}
-                                </p>
-                            </div>
-
-                            <!-- KOGUS -->
-                            <div>
-                                <label
-                                    class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase"
-                                >
-                                    Taimede arv (tk)
-                                </label>
-                                <input
-                                    v-model="form.quantity"
-                                    type="number"
-                                    min="1"
-                                    class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
-                                    placeholder="1"
-                                />
-                                <div
-                                    v-if="form.errors.quantity"
-                                    class="mt-1 text-sm text-red-600"
-                                >
-                                    {{ form.errors.quantity }}
-                                </div>
                             </div>
 
                             <!-- KASTMINE -->
@@ -491,32 +502,16 @@ onBeforeUnmount(() => {
 
                             <!-- ACTIONS -->
                             <div class="mt-1 flex flex-col gap-3">
-                                <button
+                                <SaveButton
                                     type="button"
-                                    @click="submit"
-                                    :disabled="
-                                        form.processing || !form.category_id
-                                    "
-                                    class="rounded-2xl px-4 py-3 font-medium shadow-sm transition disabled:opacity-50"
+                                    :disabled="form.processing || !form.category_id"
                                     :class="
                                         form.category_id
-                                            ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                                            : 'bg-black/10 text-foreground'
+                                            ? ''
+                                            : 'bg-black/10 text-foreground hover:bg-black/10'
                                     "
-                                >
-                                    <span
-                                        class="inline-flex items-center justify-center gap-2"
-                                    >
-                                        <span class="material-symbols-outlined"
-                                            >potted_plant</span
-                                        >
-                                        {{
-                                            form.processing
-                                                ? 'Salvestan...'
-                                                : 'Salvesta taim'
-                                        }}
-                                    </span>
-                                </button>
+                                    @click="submit"
+                                />
 
                                 <button
                                     type="button"
