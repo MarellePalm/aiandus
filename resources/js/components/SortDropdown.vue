@@ -45,7 +45,7 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
   <div class="relative inline-block" data-sort-dropdown>
     <button
       type="button"
-      class="flex items-center gap-2 rounded-2xl border border-black/10 bg-white px-4 py-2 text-sm font-medium text-[#2E2E2E]/80 shadow-sm transition hover:bg-black/5"
+      class="flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-medium text-foreground/80 shadow-sm transition hover:bg-black/5"
       :class="[
         iconOnly ? 'h-9 w-9 justify-center rounded-full p-0' : '',
         compact && !iconOnly ? 'px-3 py-1.5 text-xs' : '',
@@ -63,13 +63,13 @@ onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
 
     <div
       v-if="open"
-      class="absolute right-0 top-12 z-50 min-w-[220px] overflow-hidden rounded-2xl border border-black/10 bg-[#FAF8F4] shadow-xl ring-1 ring-black/5"
+      class="absolute right-0 top-12 z-50 min-w-[220px] overflow-hidden rounded-2xl border border-border bg-card shadow-xl ring-1 ring-border"
     >
       <button
         v-for="option in options"
         :key="option.value"
         type="button"
-        class="block w-full px-4 py-3 text-left text-sm text-[#2E2E2E] transition hover:bg-black/5"
+        class="block w-full px-4 py-3 text-left text-sm text-foreground transition hover:bg-black/5"
         @click="selectOption(option.value)"
       >
         {{ option.label }}

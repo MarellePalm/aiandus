@@ -174,7 +174,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                     <div class="relative" data-plant-menu>
                         <button
                             type="button"
-                            class="flex items-center justify-center rounded-full bg-white/60 p-2 backdrop-blur-md transition-colors dark:bg-black/20"
+                            class="flex items-center justify-center rounded-full bg-card/70 p-2 backdrop-blur-md transition-colors"
                             @click.stop="menuOpen = !menuOpen"
                             aria-label="Menüü"
                         >
@@ -185,11 +185,11 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
 
                         <div
                             v-if="menuOpen"
-                            class="absolute top-12 right-0 z-50 w-44 overflow-hidden rounded-2xl border border-black/10 bg-[#FAF8F4] shadow-xl ring-1 ring-black/5"
+                            class="absolute top-12 right-0 z-50 w-44 overflow-hidden rounded-2xl border border-border bg-card shadow-xl ring-1 ring-border"
                         >
                             <button
                                 type="button"
-                                class="w-full px-4 py-3 text-left text-sm text-[#2E2E2E] hover:bg-black/5"
+                                class="w-full px-4 py-3 text-left text-sm text-foreground hover:bg-black/5"
                                 @click="editPlant"
                             >
                                 Muuda taime
@@ -197,7 +197,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
 
                             <button
                                 type="button"
-                                class="w-full px-4 py-3 text-left text-sm text-[#2E2E2E] hover:bg-black/5"
+                                class="w-full px-4 py-3 text-left text-sm text-foreground hover:bg-black/5"
                                 @click="openDelete"
                             >
                                 Kustuta
@@ -248,7 +248,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                             </div>
 
                             <div
-                                class="dark:bg-surface-dark/40 rounded-2xl border border-[#e6e2d5]/50 bg-white/50 p-6 dark:border-white/5"
+                                class="rounded-2xl border border-border bg-card/60 p-6"
                             >
                                 <p
                                     class="font-body leading-relaxed text-[#4a524a] dark:text-gray-300"
@@ -386,6 +386,13 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                                         </span>
                                     </div>
                                 </div>
+
+                                <div class="shrink-0 text-[#717a71]">
+                                    <span
+                                        class="material-symbols-outlined text-[20px]"
+                                        >calendar_today</span
+                                    >
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -410,7 +417,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                     />
 
                     <div
-                        class="relative w-full max-w-sm rounded-3xl bg-[#FAF8F4] shadow-xl ring-1 ring-black/5"
+                        class="relative w-full max-w-sm rounded-3xl bg-card shadow-xl ring-1 ring-border"
                     >
                         <div
                             class="pointer-events-none absolute -top-3 -left-3 opacity-20"
@@ -422,11 +429,11 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                             <div class="flex items-start justify-between gap-3">
                                 <div>
                                     <h3
-                                        class="text-lg font-semibold text-[#2E2E2E]"
+                                        class="text-lg font-semibold text-foreground"
                                     >
                                         Kustuta taim?
                                     </h3>
-                                    <p class="mt-1 text-sm text-[#2E2E2E]/70">
+                                    <p class="mt-1 text-sm text-foreground/70">
                                         {{ props.plant.name }} eemaldatakse
                                         jäädavalt.
                                     </p>
@@ -434,7 +441,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
 
                                 <button
                                     type="button"
-                                    class="rounded-full p-2 text-[#2E2E2E]/60 hover:bg-black/5 hover:text-[#2E2E2E]"
+                                    class="rounded-full p-2 text-foreground/60 hover:bg-black/5 hover:text-foreground"
                                     aria-label="Sulge"
                                     @click="closeDelete"
                                 >
@@ -458,7 +465,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
 
                                 <button
                                     type="button"
-                                    class="text-sm text-[#2E2E2E]/60 hover:text-[#2E2E2E]"
+                                    class="text-sm text-foreground/60 hover:text-foreground"
                                     :disabled="deleting"
                                     @click="closeDelete"
                                 >

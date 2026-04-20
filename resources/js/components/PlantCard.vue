@@ -36,7 +36,7 @@ const statusStyles = (s: PlantStatus) => {
 
 <template>
   <div
-    class="relative flex gap-4 rounded-xl border border-primary/5 bg-white/90 p-4 shadow-[0_4px_20px_rgba(107,141,104,0.08)]"
+    class="relative flex gap-4 rounded-xl border border-primary/10 bg-card p-4 shadow-sm"
     role="button"
     tabindex="0"
     @click="goToPlant"
@@ -49,7 +49,7 @@ const statusStyles = (s: PlantStatus) => {
         :src="plant.image_url"
         :alt="plant.name"
       />
-      <div v-else class="flex h-full w-full items-center justify-center text-xs text-[#2E2E2E]/40">
+      <div v-else class="flex h-full w-full items-center justify-center text-xs text-foreground/40">
         Pole pilti
       </div>
     </div>
@@ -74,11 +74,11 @@ const statusStyles = (s: PlantStatus) => {
 
             <div
               v-if="menuOpen"
-              class="absolute right-0 top-10 z-20 w-44 overflow-hidden rounded-2xl border border-black/10 bg-[#FAF8F4] shadow-xl ring-1 ring-black/5"
+              class="absolute right-0 top-10 z-20 w-44 overflow-hidden rounded-2xl border border-border bg-card shadow-xl ring-1 ring-border"
             >
               <button
                 type="button"
-                class="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-[#2E2E2E] hover:bg-black/5"
+                class="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-foreground hover:bg-black/5"
                 @click.stop="emit('edit', plant)"
               >
                 <span class="material-symbols-outlined text-[20px] text-[#6B8C68]">edit</span>
@@ -87,7 +87,7 @@ const statusStyles = (s: PlantStatus) => {
 
               <button
                 type="button"
-                class="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-[#2E2E2E] hover:bg-black/5"
+                class="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-foreground hover:bg-black/5"
                 @click.stop="emit('delete', plant)"
               >
                 <span class="material-symbols-outlined text-[20px] text-red-600">delete</span>

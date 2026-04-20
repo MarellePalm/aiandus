@@ -90,26 +90,26 @@ function clear() {
 
       <!-- modal -->
       <div
-        class="relative w-full max-w-lg rounded-3xl bg-[#FAF8F4] shadow-xl ring-1 ring-black/5"
+        class="relative w-full max-w-lg rounded-3xl bg-card shadow-xl ring-1 ring-border"
       >
         <!-- väike “botanical” nurga-ornament (lihtne) -->
         <div class="pointer-events-none absolute -top-3 -left-3 opacity-20">
-          <div class="h-10 w-10 rounded-full bg-[#E6E2D5]" />
+          <div class="h-10 w-10 rounded-full bg-muted" />
         </div>
 
         <div class="p-5 sm:p-6">
           <div class="flex items-start justify-between gap-3">
             <div>
-              <h3 class="text-lg font-semibold text-[#2E2E2E]">
+              <h3 class="text-lg font-semibold text-foreground">
                 Otsi taimi
               </h3>
-              <p class="mt-1 text-sm text-[#2E2E2E]/70">
+              <p class="mt-1 text-sm text-foreground/70">
                 Sisesta nimi, sort või kategooria.
               </p>
             </div>
 
             <button
-              class="rounded-full p-2 text-[#2E2E2E]/60 hover:bg-black/5 hover:text-[#2E2E2E]"
+              class="rounded-full p-2 text-foreground/60 hover:bg-black/5 hover:text-foreground"
               @click="close"
               aria-label="Sulge"
             >
@@ -119,27 +119,27 @@ function clear() {
 
           <div class="mt-4 flex gap-2">
             <div class="relative flex-1">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[#2E2E2E]/40">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40">
                 🔎
               </span>
               <input
                 ref="inputRef"
                 v-model="query"
                 :placeholder="placeholder ?? 'Nt: kurk, tomat, till…'"
-                class="w-full rounded-2xl border border-black/10 bg-white px-10 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                class="w-full rounded-2xl border border-border bg-background px-10 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 @keydown.enter.prevent="submit"
               />
 
               <!-- Suggestions dropdown -->
             <div
                 v-if="matches.length"
-                class="absolute left-0 right-0 top-[calc(100%+8px)] z-10 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-lg"
+                class="absolute left-0 right-0 top-[calc(100%+8px)] z-10 overflow-hidden rounded-2xl border border-border bg-card shadow-lg"
 >
             <button
     v-for="m in matches"
     :key="m"
     type="button"
-    class="w-full px-4 py-2 text-left text-sm text-[#2E2E2E] hover:bg-black/5"
+    class="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-black/5"
     @click="query = m; submit()"
   >
     {{ m }}
@@ -149,7 +149,7 @@ function clear() {
 
               <button
                 v-if="query.length"
-                class="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl px-2 py-1 text-xs text-[#2E2E2E]/60 hover:bg-black/5"
+                class="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl px-2 py-1 text-xs text-foreground/60 hover:bg-black/5"
                 @click="clear"
                 type="button"
               >
@@ -159,7 +159,7 @@ function clear() {
 
             <button
               class="rounded-2xl px-4 py-3 font-medium shadow-sm transition disabled:opacity-50"
-              :class="canSearch ? 'bg-[#6B8C68] text-white hover:bg-[#4F6A52]' : 'bg-black/10 text-[#2E2E2E]'"
+              :class="canSearch ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'bg-black/10 text-foreground'"
               :disabled="!canSearch"
               @click="submit"
               type="button"
@@ -168,7 +168,7 @@ function clear() {
             </button>
           </div>
 
-          <div class="mt-4 flex items-center justify-between text-xs text-[#2E2E2E]/60">
+          <div class="mt-4 flex items-center justify-between text-xs text-foreground/60">
             <span>Enter = otsi</span>
             <span>Esc = sulge</span>
           </div>

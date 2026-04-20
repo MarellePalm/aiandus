@@ -339,7 +339,7 @@ const fallbackImage = 'https://picsum.photos/200/200';
                         <div class="px-4">
                             <div
                                 v-if="visiblePlants.length === 0"
-                                class="text-text-muted rounded-2xl border border-primary/10 bg-white p-6 text-sm"
+                                class="text-text-muted rounded-2xl border border-primary/10 bg-card p-6 text-sm"
                             >
                                 Sorte veel pole. Vajuta “+”, et lisada esimene.
                             </div>
@@ -348,7 +348,7 @@ const fallbackImage = 'https://picsum.photos/200/200';
                                 <div
                                     v-for="p in visiblePlants"
                                     :key="p.id"
-                                    class="relative rounded-2xl border border-primary/10 bg-white p-4 shadow-sm transition hover:shadow-md"
+                                    class="relative rounded-2xl border border-primary/10 bg-card p-4 shadow-sm transition hover:shadow-md"
                                     @click="router.visit(`/plants/${p.id}`)"
                                 >
                                     <div class="flex items-center gap-4">
@@ -372,7 +372,7 @@ const fallbackImage = 'https://picsum.photos/200/200';
                                             </div>
                                             <div>
                                                 <p
-                                                    class="text-sm text-[#2E2E2E]/70"
+                                                    class="text-sm text-foreground/70"
                                                 >
                                                     Taimede arv:
                                                     {{ p.quantity }} tk
@@ -387,11 +387,11 @@ const fallbackImage = 'https://picsum.photos/200/200';
                                         >
                                             <button
                                                 type="button"
-                                                class="flex h-9 w-9 items-center justify-center rounded-full border border-primary/10 bg-white transition hover:scale-105 hover:bg-primary/5"
+                                                class="flex h-9 w-9 items-center justify-center rounded-full border border-primary/10 bg-background transition hover:scale-105 hover:bg-primary/5"
                                                 :class="
                                                     p.is_favorite
                                                         ? 'text-rose-600 shadow-sm'
-                                                        : 'text-[#2E2E2E]/45'
+                                                        : 'text-foreground/45'
                                                 "
                                                 @click.prevent.stop="
                                                     toggleFavorite(p.id)
@@ -439,12 +439,12 @@ const fallbackImage = 'https://picsum.photos/200/200';
                                                     v-if="
                                                         menuOpenForId === p.id
                                                     "
-                                                    class="absolute top-11 right-0 z-20 w-44 overflow-hidden rounded-xl border border-primary/10 bg-white shadow-lg"
+                                                    class="absolute top-11 right-0 z-20 w-44 overflow-hidden rounded-xl border border-primary/10 bg-card shadow-lg"
                                                     @click.stop
                                                 >
                                                     <button
                                                         type="button"
-                                                        class="w-full px-4 py-3 text-left text-sm hover:bg-primary/5"
+                                                        class="w-full px-4 py-3 text-left text-sm text-foreground hover:bg-primary/5"
                                                         @click.stop="
                                                             editPlant(p)
                                                         "
@@ -453,7 +453,7 @@ const fallbackImage = 'https://picsum.photos/200/200';
                                                     </button>
                                                     <button
                                                         type="button"
-                                                        class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50"
+                                                        class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                                                         @click.stop="
                                                             askDelete(p)
                                                         "
