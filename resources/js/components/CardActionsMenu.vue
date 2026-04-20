@@ -23,7 +23,7 @@ const rootClass = computed(() =>
 const buttonClass = computed(() =>
   props.placement === 'inline'
     ? 'flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10'
-    : 'flex h-8 w-8 items-center justify-center rounded-full bg-white/75 text-primary shadow-sm backdrop-blur-md transition hover:scale-105 hover:bg-white'
+    : 'flex h-8 w-8 items-center justify-center rounded-full bg-card/80 text-primary shadow-sm backdrop-blur-md transition hover:scale-105 hover:bg-card'
 );
 
 const toggle = () => {
@@ -74,18 +74,18 @@ const onDelete = () => {
     <transition name="menu">
       <div
         v-if="open"
-        class="absolute top-10 right-0 min-w-[140px] overflow-hidden rounded-2xl border border-black/5 bg-white shadow-lg"
+        class="absolute top-10 right-0 min-w-[140px] overflow-hidden rounded-2xl border border-border bg-card shadow-lg"
         @click.stop
       >
         <button
-          class="w-full px-4 py-3 text-left text-sm hover:bg-primary/5"
+          class="w-full px-4 py-3 text-left text-sm text-foreground hover:bg-primary/5"
           @click.prevent.stop="onEdit"
         >
           Muuda
         </button>
 
         <button
-          class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50"
+          class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
           @click.prevent.stop="onDelete"
         >
           Kustuta

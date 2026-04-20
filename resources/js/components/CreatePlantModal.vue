@@ -118,17 +118,11 @@ watch(
 );
 
 function submit() {
-    form.transform((data) => ({
-        ...data,
-        planted_at: data.planted_at ? `${data.planted_at}-01-01` : '',
-    })).post('/plants', {
+    form.post('/plants', {
         forceFormData: true,
         onSuccess: () => {
             emit('created');
             close();
-        },
-        onFinish: () => {
-            form.transform((data) => data);
         },
     });
 }
@@ -247,22 +241,24 @@ onBeforeUnmount(() => {
                                 </p>
                             </div>
 
-                            <!-- ISTUTAMISE AASTA -->
+                            <!-- ISTUTAMISE KUUPÄEV -->
                             <div>
                                 <label
                                     class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
                                 >
-                                    Istutamise aasta
+                                    Istutamise kuupäev
                                 </label>
 
                                 <input
                                     v-model="form.planted_at"
-                                    type="number"
-                                    min="1900"
-                                    max="2100"
+                                    type="date"
                                     @change="form.clearErrors('planted_at')"
+                                    @click="
+                                        (
+                                            $event.target as HTMLInputElement
+                                        ).showPicker?.()
+                                    "
                                     class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                    placeholder="nt 2026"
                                 />
 
                                 <p
@@ -276,7 +272,7 @@ onBeforeUnmount(() => {
                             <!-- KOGUS -->
                             <div>
                                 <label
-                                    class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase"
+                                    class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
                                 >
                                     Taimede arv (tk)
                                 </label>
@@ -284,7 +280,7 @@ onBeforeUnmount(() => {
                                     v-model="form.quantity"
                                     type="number"
                                     min="1"
-                                    class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                    class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                     placeholder="1"
                                 />
                                 <div

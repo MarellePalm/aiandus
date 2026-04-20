@@ -226,7 +226,7 @@ const resetToAll = () => {
                                     class="absolute bottom-0 left-0 w-full p-4"
                                 >
                                     <span
-                                        class="mb-1 inline-block rounded-md bg-white/20 px-2 py-0.5 text-[10px] font-bold text-white uppercase backdrop-blur-md"
+                                        class="mb-1 inline-block rounded-md bg-card/30 px-2 py-0.5 text-[10px] font-bold text-white uppercase backdrop-blur-md dark:bg-black/30"
                                     >
                                         {{ cat.count }} Sorti
                                     </span>

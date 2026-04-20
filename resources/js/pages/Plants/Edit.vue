@@ -85,7 +85,7 @@ onBeforeUnmount(() => {
             />
 
             <div
-                class="relative max-h-[92vh] w-full max-w-lg overflow-hidden rounded-3xl bg-[#FAF8F4] shadow-xl ring-1 ring-black/5"
+                class="relative max-h-[92vh] w-full max-w-lg overflow-hidden rounded-3xl bg-card shadow-xl ring-1 ring-border"
             >
                 <div class="max-h-[92vh] overflow-y-auto p-5 sm:p-6">
                     <div class="mb-5 flex items-start justify-between gap-3">
@@ -96,11 +96,11 @@ onBeforeUnmount(() => {
                             />
                             <div>
                                 <h1
-                                    class="text-lg font-semibold text-[#2E2E2E]"
+                                    class="text-lg font-semibold text-foreground"
                                 >
                                     Muuda taime
                                 </h1>
-                                <p class="mt-1 text-sm text-[#2E2E2E]/70">
+                                <p class="mt-1 text-sm text-foreground/70">
                                     Muuda sorti, kastmist, väetamist, märkmeid
                                     ja pilti.
                                 </p>
@@ -108,7 +108,7 @@ onBeforeUnmount(() => {
                         </div>
                         <Link
                             :href="`/plants/${props.plant.id}`"
-                            class="rounded-full p-2 text-[#2E2E2E]/60 hover:bg-black/5 hover:text-[#2E2E2E]"
+                            class="rounded-full p-2 text-foreground/60 hover:bg-black/5 hover:text-foreground"
                             aria-label="Sulge"
                         >
                             ✕
@@ -118,11 +118,11 @@ onBeforeUnmount(() => {
                     <form class="space-y-5" @submit.prevent="submit">
                         <div>
                             <label
-                                class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase"
+                                class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
                                 >Pilt</label
                             >
                             <div
-                                class="mt-3 overflow-hidden rounded-2xl border border-black/10 bg-white/70"
+                                class="mt-3 overflow-hidden rounded-2xl border border-border bg-background/70"
                             >
                                 <div
                                     v-if="currentImage"
@@ -136,7 +136,7 @@ onBeforeUnmount(() => {
                                 </div>
                                 <div
                                     v-else
-                                    class="flex aspect-[4/3] w-full items-center justify-center text-sm text-[#2E2E2E]/70"
+                                    class="flex aspect-[4/3] w-full items-center justify-center text-sm text-foreground/70"
                                 >
                                     Pilti pole
                                 </div>
@@ -153,7 +153,7 @@ onBeforeUnmount(() => {
                             <div class="mt-4 flex flex-wrap items-center gap-3">
                                 <button
                                     type="button"
-                                    class="rounded-2xl border border-black/10 bg-white px-4 py-2 text-sm font-medium text-[#2E2E2E]/80 transition hover:bg-black/5"
+                                    class="rounded-2xl border border-border bg-background px-4 py-2 text-sm font-medium text-foreground/80 transition hover:bg-black/5"
                                     @click="pickFile"
                                 >
                                     Laadi pilt
@@ -162,7 +162,7 @@ onBeforeUnmount(() => {
                                 <button
                                     v-if="pickedFile"
                                     type="button"
-                                    class="rounded-2xl border border-black/10 bg-white px-4 py-2 text-sm font-medium text-[#2E2E2E]/80 transition hover:bg-black/5"
+                                    class="rounded-2xl border border-border bg-background px-4 py-2 text-sm font-medium text-foreground/80 transition hover:bg-black/5"
                                     @click="clearFile"
                                 >
                                     Tühista valik
@@ -179,12 +179,12 @@ onBeforeUnmount(() => {
 
                         <div>
                             <label
-                                class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase"
+                                class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
                                 >Sort</label
                             >
                             <input
                                 v-model="form.subtitle"
-                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 placeholder="Nt. Mehiko minikurk"
                             />
                             <div
@@ -197,7 +197,7 @@ onBeforeUnmount(() => {
 
                         <div>
                             <label
-                                class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase"
+                                class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
                             >
                                 Taimede arv (tk)
                             </label>
@@ -205,7 +205,7 @@ onBeforeUnmount(() => {
                                 v-model="form.quantity"
                                 type="number"
                                 min="1"
-                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 placeholder="1"
                             />
                             <div
@@ -218,15 +218,15 @@ onBeforeUnmount(() => {
 
                         <div>
                             <label
-                                class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase"
+                                class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
                                 >Kastmine</label
                             >
                             <input
                                 v-model="form.watering_frequency"
-                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 placeholder="Nt. iga nädal"
                             />
-                            <p class="mt-1 text-xs text-[#2E2E2E]/60">
+                            <p class="mt-1 text-xs text-foreground/60">
                                 Näide: iga nädal, 2x nädalas, kui muld on kuiv
                             </p>
                             <div
@@ -239,12 +239,12 @@ onBeforeUnmount(() => {
 
                         <div>
                             <label
-                                class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase"
+                                class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
                                 >Väetamine</label
                             >
                             <input
                                 v-model="form.fertilizing_frequency"
-                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 placeholder="Nt. iga 2 nädala tagant"
                             />
                             <div
@@ -257,13 +257,13 @@ onBeforeUnmount(() => {
 
                         <div>
                             <label
-                                class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase"
+                                class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
                                 >Märkmed</label
                             >
                             <textarea
                                 v-model="form.notes"
                                 rows="6"
-                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 placeholder="Kirjuta siia..."
                             />
                             <div
@@ -275,11 +275,11 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div
-                            class="sticky bottom-0 mt-6 flex flex-col gap-3 bg-[#FAF8F4] pt-4 pb-1"
+                            class="sticky bottom-0 mt-6 flex flex-col gap-3 bg-card pt-4 pb-1"
                         >
                             <button
                                 type="submit"
-                                class="w-full rounded-2xl bg-[#6B8C68] px-4 py-3 font-medium text-white transition hover:bg-[#4F6A52] disabled:opacity-60"
+                                class="w-full rounded-2xl bg-primary px-4 py-3 font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
                                 :disabled="form.processing"
                             >
                                 Salvesta
@@ -287,7 +287,7 @@ onBeforeUnmount(() => {
 
                             <Link
                                 :href="`/plants/${props.plant.id}`"
-                                class="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-center text-sm font-medium text-[#2E2E2E]/80 transition hover:bg-black/5"
+                                class="w-full rounded-2xl border border-border bg-background px-4 py-3 text-center text-sm font-medium text-foreground/80 transition hover:bg-black/5"
                             >
                                 Loobu
                             </Link>
