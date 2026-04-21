@@ -6,7 +6,6 @@ import BackIconButton from '@/components/BackIconButton.vue';
 import CardActionsMenu from '@/components/CardActionsMenu.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
-import SortDropdown from '@/components/SortDropdown.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 import SearchModal from '@/pages/Seeds/SearchModal.vue';
@@ -33,12 +32,7 @@ const favoriteBedIds = ref<number[]>([]);
 
 type TabKey = 'all' | 'favorites';
 const activeTab = ref<TabKey>('all');
-const selectedSort = ref<'name_asc' | 'name_desc' | 'recently_added'>('name_asc');
-const sortOptions = [
-  { label: 'Nimi A-Z', value: 'name_asc' },
-  { label: 'Nimi Z-A', value: 'name_desc' },
-  { label: 'Hiljuti lisatud', value: 'recently_added' },
-];
+const recentFirst = ref(false);
 
 onMounted(() => {
   try {
@@ -72,12 +66,10 @@ const filteredBeds = computed(() => {
     list = list.filter((b) => favoriteBedIds.value.includes(b.id));
   }
 
-  if (selectedSort.value === 'name_asc') {
-    list = list.slice().sort((a, b) => a.name.localeCompare(b.name, 'et'));
-  } else if (selectedSort.value === 'name_desc') {
-    list = list.slice().sort((a, b) => b.name.localeCompare(a.name, 'et'));
-  } else if (selectedSort.value === 'recently_added') {
+  if (recentFirst.value) {
     list = list.slice().sort((a, b) => b.id - a.id);
+  } else {
+    list = list.slice().sort((a, b) => a.name.localeCompare(b.name, 'et'));
   }
 
   if (searchQuery.value.trim()) {
@@ -90,9 +82,9 @@ const filteredBeds = computed(() => {
   return list;
 });
 
-const tabClass = (key: TabKey) => {
+const tabClass = (active: boolean) => {
   const base = 'flex h-9 shrink-0 items-center justify-center rounded-full px-4 text-sm font-medium transition-colors';
-  if (activeTab.value === key) return `${base} bg-primary text-white`;
+  if (active) return `${base} bg-primary text-white`;
   return `${base} bg-primary/10 text-primary hover:bg-primary/15`;
 };
 
@@ -206,11 +198,9 @@ function bedThumbCellClass(bed: Bed, row: number, col: number): string {
               </button>
             </template>
             <div class="no-scrollbar flex gap-2 overflow-x-auto pb-2">
-              <button :class="tabClass('all')" type="button" @click="resetToAll">Kõik</button>
-              <button :class="tabClass('favorites')" type="button" @click="activeTab = 'favorites'">Lemmikud</button>
-            </div>
-            <div class="mt-1 flex justify-start">
-              <SortDropdown v-model="selectedSort" :options="sortOptions" compact />
+              <button :class="tabClass(activeTab === 'all')" type="button" @click="resetToAll">Kõik</button>
+              <button :class="tabClass(activeTab === 'favorites')" type="button" @click="activeTab = 'favorites'">Lemmikud</button>
+              <button :class="tabClass(recentFirst)" type="button" @click="recentFirst = !recentFirst">Hiljuti lisatud</button>
             </div>
           </DiaryHeader>
 
