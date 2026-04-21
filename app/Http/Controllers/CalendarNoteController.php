@@ -15,6 +15,8 @@ class CalendarNoteController extends Controller
     public function create(Request $request)
     {
         $user = $request->user();
+        $requestedBedId = $request->integer('bed_id');
+        $requestedDate = $request->string('date')->toString();
 
         $beds = Bed::query()
             ->where('user_id', $user->id)
@@ -26,10 +28,29 @@ class CalendarNoteController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        $initialBedId = null;
+        if ($requestedBedId) {
+            $initialBedId = Bed::query()
+                ->where('user_id', $user->id)
+                ->where('id', $requestedBedId)
+                ->value('id');
+        }
+
+        $initialDate = null;
+        if ($requestedDate !== '') {
+            try {
+                $initialDate = Carbon::parse($requestedDate)->format('Y-m-d');
+            } catch (\Throwable) {
+                $initialDate = null;
+            }
+        }
+
         return Inertia::render('calendarNotes/NoteForm', [
             'editMode' => false,
             'beds' => $beds,
             'plants' => $plants,
+            'initialBedId' => $initialBedId,
+            'initialDate' => $initialDate,
         ]);
     }
 
@@ -64,7 +85,7 @@ class CalendarNoteController extends Controller
         $user = $request->user();
         $q = trim((string) $request->get('q', ''));
         $chip = (string) $request->get('chip', 'all');
-        if (! in_array($chip, ['all', 'month', 'undone'], true)) {
+        if (! in_array($chip, ['all', 'month', 'reminders'], true)) {
             $chip = 'all';
         }
 
@@ -83,12 +104,8 @@ class CalendarNoteController extends Controller
             $start = Carbon::now()->startOfMonth()->toDateString();
             $end = Carbon::now()->endOfMonth()->toDateString();
             $query->whereBetween('note_date', [$start, $end]);
-        } elseif ($chip === 'undone') {
-            $query
-                ->where('type', 'task')
-                ->where(function ($builder) {
-                    $builder->where('done', false)->orWhereNull('done');
-                });
+        } elseif ($chip === 'reminders') {
+            $query->whereNotNull('due_at');
         }
 
         $notes = $query
@@ -129,9 +146,8 @@ class CalendarNoteController extends Controller
             }
         }
 
-        $type = $data['type'] ?? 'note';
         $dueAt = null;
-        if ($type === 'task' && ! empty($data['due_date'])) {
+        if (! empty($data['due_date'])) {
             $dueAt = isset($data['due_time']) && $data['due_time'] !== ''
                 ? Carbon::parse($data['due_date'].' '.$data['due_time'])
                 : Carbon::parse($data['due_date'])->setTime(9, 0);
@@ -161,8 +177,8 @@ class CalendarNoteController extends Controller
             'title' => $data['title'] ?? null,
             'body' => $data['body'] ?? '',
             'media' => $paths,
-            'type' => $type,
-            'done' => $type === 'task' ? false : null,
+            'type' => 'note',
+            'done' => null,
             'due_at' => $dueAt,
         ]);
 
@@ -236,7 +252,7 @@ class CalendarNoteController extends Controller
         }
 
         $dueAt = null;
-        if (($data['type'] ?? $note->type) === 'task' && ! empty($data['due_date'] ?? null)) {
+        if (! empty($data['due_date'] ?? null)) {
             $dueAt = isset($data['due_time']) && $data['due_time'] !== ''
                 ? Carbon::parse($data['due_date'].' '.$data['due_time'])
                 : Carbon::parse($data['due_date'])->setTime(9, 0);
@@ -249,12 +265,8 @@ class CalendarNoteController extends Controller
             'media' => $paths,
             'due_at' => $dueAt,
         ];
-        if (array_key_exists('type', $data)) {
-            $update['type'] = $data['type'];
-        }
-        if (array_key_exists('done', $data)) {
-            $update['done'] = $data['done'];
-        }
+        $update['type'] = 'note';
+        $update['done'] = null;
         $bedId = null;
         if (! empty($data['bed_id'] ?? null)) {
             $bed = Bed::where('id', $data['bed_id'])->where('user_id', $user->id)->first();

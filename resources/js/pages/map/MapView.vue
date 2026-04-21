@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import BackIconButton from '@/components/BackIconButton.vue';
+import CardActionsMenu from '@/components/CardActionsMenu.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
+import SortDropdown from '@/components/SortDropdown.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
+import SearchModal from '@/pages/Seeds/SearchModal.vue';
 
 type PlantInBed = { id: number; name: string; image_url: string | null; position_in_bed: string | null };
 type Bed = { id: number; name: string; location: string | null; image_url?: string | null; rows: number; columns: number; layout?: number[][] | null; plants: PlantInBed[] };
@@ -23,15 +26,21 @@ const showOnboardingHint = computed(
 );
 const showPlantsWithoutBedHint = ref(false);
 const PLANTS_WITHOUT_BED_HINT_SEEN_KEY = 'mapPlantsWithoutBedHintSeen';
+const showSearch = ref(false);
+const searchQuery = ref('');
+const FAVORITE_BED_IDS_KEY = 'favoriteBedIds';
+const favoriteBedIds = ref<number[]>([]);
 
-const coverTick = ref(0);
-let coverTimer: ReturnType<typeof setInterval> | null = null;
+type TabKey = 'all' | 'favorites';
+const activeTab = ref<TabKey>('all');
+const selectedSort = ref<'name_asc' | 'name_desc' | 'recently_added'>('name_asc');
+const sortOptions = [
+  { label: 'Nimi A-Z', value: 'name_asc' },
+  { label: 'Nimi Z-A', value: 'name_desc' },
+  { label: 'Hiljuti lisatud', value: 'recently_added' },
+];
 
 onMounted(() => {
-  coverTimer = setInterval(() => {
-    coverTick.value += 1;
-  }, 3500);
-
   try {
     const hasSeenHint = localStorage.getItem(PLANTS_WITHOUT_BED_HINT_SEEN_KEY) === '1';
     if (!hasSeenHint) {
@@ -41,18 +50,134 @@ onMounted(() => {
   } catch {
     showPlantsWithoutBedHint.value = false;
   }
+
+  try {
+    const raw = localStorage.getItem(FAVORITE_BED_IDS_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      favoriteBedIds.value = parsed.map((v) => Number(v)).filter((v) => Number.isInteger(v));
+    }
+  } catch {
+    favoriteBedIds.value = [];
+  }
 });
 
-onBeforeUnmount(() => {
-  if (coverTimer) clearInterval(coverTimer);
+const bedNames = computed(() => props.beds.map((b) => b.name));
+
+const filteredBeds = computed(() => {
+  let list = [...props.beds];
+
+  if (activeTab.value === 'favorites') {
+    list = list.filter((b) => favoriteBedIds.value.includes(b.id));
+  }
+
+  if (selectedSort.value === 'name_asc') {
+    list = list.slice().sort((a, b) => a.name.localeCompare(b.name, 'et'));
+  } else if (selectedSort.value === 'name_desc') {
+    list = list.slice().sort((a, b) => b.name.localeCompare(a.name, 'et'));
+  } else if (selectedSort.value === 'recently_added') {
+    list = list.slice().sort((a, b) => b.id - a.id);
+  }
+
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase();
+    list = list.filter((b) =>
+      b.name.toLowerCase().includes(q) || (b.location ?? '').toLowerCase().includes(q),
+    );
+  }
+
+  return list;
 });
 
-function bedCoverImage(bed: Bed): string | null {
-  if (bed.image_url) return bed.image_url;
-  const images = bed.plants.map((p) => p.image_url).filter((x): x is string => Boolean(x));
-  if (!images.length) return null;
-  const idx = (coverTick.value + (bed.id % images.length)) % images.length;
-  return images[idx];
+const tabClass = (key: TabKey) => {
+  const base = 'flex h-9 shrink-0 items-center justify-center rounded-full px-4 text-sm font-medium transition-colors';
+  if (activeTab.value === key) return `${base} bg-primary text-white`;
+  return `${base} bg-primary/10 text-primary hover:bg-primary/15`;
+};
+
+function resetToAll() {
+  activeTab.value = 'all';
+  searchQuery.value = '';
+}
+
+function toggleFavoriteBed(id: number) {
+  const isFavorite = favoriteBedIds.value.includes(id);
+  favoriteBedIds.value = isFavorite
+    ? favoriteBedIds.value.filter((x) => x !== id)
+    : [...favoriteBedIds.value, id];
+
+  try {
+    localStorage.setItem(FAVORITE_BED_IDS_KEY, JSON.stringify(favoriteBedIds.value));
+  } catch {
+    // ignore storage failures
+  }
+}
+
+function isFavoriteBed(id: number): boolean {
+  return favoriteBedIds.value.includes(id);
+}
+
+function editBed(id: number) {
+  router.get(`/beds/${id}/edit`);
+}
+
+function deleteBed(id: number, name: string) {
+  if (!confirm(`Eemaldada peenar "${name}"? Taimed jäävad peenrata.`)) return;
+  router.delete(`/beds/${id}`, { preserveScroll: true });
+}
+
+function getBedLayout(bed: Bed): number[][] {
+  const L = bed.layout;
+  if (L && Array.isArray(L) && L.length > 0 && L.some((row) => Array.isArray(row) && row.length > 0)) {
+    return L as number[][];
+  }
+  return Array.from({ length: bed.rows || 1 }, () => Array.from({ length: bed.columns || 1 }, () => 1));
+}
+
+function getBedColumns(bed: Bed): number {
+  const layout = getBedLayout(bed);
+  if (layout.length === 0) return 1;
+  return Math.max(...layout.map((r) => r.length), 1);
+}
+
+function getBedRows(bed: Bed): number {
+  return Math.max(getBedLayout(bed).length, 1);
+}
+
+function bedThumbGridStyle(bed: Bed) {
+  const cols = getBedColumns(bed);
+  const rows = getBedRows(bed);
+  const maxSide = Math.max(cols, rows, 1);
+  const cellSize = 22 / maxSide;
+
+  return {
+    gridTemplateColumns: `repeat(${cols}, ${cellSize}px)`,
+    gridTemplateRows: `repeat(${rows}, ${cellSize}px)`,
+  };
+}
+
+function isLargeBedForThumb(bed: Bed): boolean {
+  return Math.max(getBedColumns(bed), getBedRows(bed)) > 6;
+}
+
+function bedThumbShapeStyle(bed: Bed) {
+  const cols = getBedColumns(bed);
+  const rows = getBedRows(bed);
+  const maxSide = Math.max(cols, rows, 1);
+  const maxPx = 30;
+
+  return {
+    width: `${Math.max(12, Math.round((cols / maxSide) * maxPx))}px`,
+    height: `${Math.max(12, Math.round((rows / maxSide) * maxPx))}px`,
+  };
+}
+
+function bedThumbCellClass(bed: Bed, row: number, col: number): string {
+  const layoutValue = getBedLayout(bed)[row]?.[col] ?? 1;
+  if (layoutValue === -1) return 'bg-transparent border-transparent';
+  if (layoutValue === 0) return 'bg-transparent border-transparent';
+  return 'bg-primary/15 border-primary/35';
 }
 </script>
 
@@ -71,6 +196,22 @@ function bedCoverImage(bed: Bed): string | null {
             <template #leading>
               <BackIconButton href="/dashboard" aria-label="Tagasi avalehele" />
             </template>
+            <template #actions>
+              <button
+                type="button"
+                class="flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10"
+                @click="showSearch = true"
+              >
+                <span class="material-symbols-outlined text-xl">search</span>
+              </button>
+            </template>
+            <div class="no-scrollbar flex gap-2 overflow-x-auto pb-2">
+              <button :class="tabClass('all')" type="button" @click="resetToAll">Kõik</button>
+              <button :class="tabClass('favorites')" type="button" @click="activeTab = 'favorites'">Lemmikud</button>
+            </div>
+            <div class="mt-1 flex justify-start">
+              <SortDropdown v-model="selectedSort" :options="sortOptions" compact />
+            </div>
           </DiaryHeader>
 
           <main class="flex-1 px-6 py-4 md:px-8">
@@ -91,27 +232,90 @@ function bedCoverImage(bed: Bed): string | null {
               Peenraid pole. Lisa esimene peenar paremal alanurgas oleva + nupuga – siis näed teda siin pildiliselt.
             </div>
 
-            <div v-else class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+            <div v-else-if="filteredBeds.length === 0" class="rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-6 py-8 text-center">
+              <p class="text-sm text-muted-foreground">Sobivaid peenraid ei leitud.</p>
+            </div>
+
+            <div v-else class="space-y-3">
                 <Link
-                  v-for="bed in props.beds"
+                  v-for="bed in filteredBeds"
                   :key="bed.id"
                   :href="`/beds/${bed.id}`"
-                  class="group relative aspect-square min-h-[140px] overflow-hidden rounded-2xl border border-border/70 text-left shadow-soft transition-all duration-200 hover:border-primary/25 hover:shadow-md"
+                  class="group relative block overflow-hidden rounded-2xl border border-border/70 bg-card px-4 py-3 text-left shadow-soft transition-all duration-200 hover:border-primary/30 hover:bg-muted/20"
                 >
                   <div
-                    class="absolute inset-0 bg-cover bg-center"
-                    :style="bedCoverImage(bed) ? { backgroundImage: `url('${bedCoverImage(bed)}')` } : {}"
+                    v-if="bed.image_url"
+                    class="absolute inset-0 bg-cover bg-center opacity-[0.3] transition-opacity duration-200 group-hover:opacity-[0.36]"
+                    :style="{ backgroundImage: `url('${bed.image_url}')` }"
+                    aria-hidden="true"
                   />
                   <div
-                    v-if="!bedCoverImage(bed)"
-                    class="absolute inset-0 bg-linear-to-br from-primary/12 via-muted/40 to-muted/20"
+                    v-if="bed.image_url"
+                    class="absolute inset-0 bg-background/48"
+                    aria-hidden="true"
                   />
-                  <div class="absolute inset-0 bg-linear-to-t from-black/65 via-black/25 to-transparent" />
-                  <div class="absolute bottom-0 left-0 right-0 p-3">
-                    <p class="text-sm font-semibold text-white truncate">{{ bed.name }}</p>
-                    <p class="text-[11px] text-white/85 mt-0.5">
-                      {{ bed.plants.length ? `${bed.plants.length} taime` : 'Tühi peenar' }}
-                    </p>
+
+                  <div class="relative z-10 flex items-center gap-3">
+                    <div class="min-w-0 flex flex-1 items-center gap-3">
+                      <div class="h-14 w-14 shrink-0 rounded-xl border border-stone-300/55 bg-stone-100/80 p-1">
+                        <div
+                          v-if="!isLargeBedForThumb(bed)"
+                          class="grid h-full w-full place-content-center gap-[2px]"
+                          :style="bedThumbGridStyle(bed)"
+                        >
+                          <template v-for="(rowData, r) in getBedLayout(bed)" :key="`thumb-row-${bed.id}-${r}`">
+                            <span
+                              v-for="(_, c) in rowData"
+                              :key="`thumb-cell-${bed.id}-${r}-${c}`"
+                              class="rounded-[2px] border"
+                              :class="bedThumbCellClass(bed, r, c)"
+                            />
+                          </template>
+                        </div>
+
+                        <div
+                          v-else
+                          class="flex h-full w-full items-center justify-center"
+                        >
+                          <div
+                            class="rounded-[5px] border border-stone-400/65 bg-stone-100/90 relative overflow-hidden"
+                            :style="bedThumbShapeStyle(bed)"
+                          >
+                            <span class="absolute inset-0 opacity-40" style="background-image: repeating-linear-gradient(90deg, rgba(161,161,170,0.35), rgba(161,161,170,0.35) 2px, transparent 2px, transparent 4px);" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="min-w-0">
+                        <p class="text-base font-semibold text-foreground truncate">{{ bed.name }}</p>
+                        <p v-if="bed.location" class="text-xs text-muted-foreground mt-0.5 truncate">{{ bed.location }}</p>
+                      </div>
+                    </div>
+                    <div class="ml-2 flex shrink-0 items-center gap-2" @click.stop>
+                      <button
+                        type="button"
+                        class="flex h-9 w-9 items-center justify-center rounded-full border border-primary/10 bg-white transition hover:scale-105 hover:bg-primary/5"
+                        :class="isFavoriteBed(bed.id) ? 'text-rose-600 shadow-sm' : 'text-foreground/45'"
+                        @click.prevent.stop="toggleFavoriteBed(bed.id)"
+                        aria-label="Lisa lemmikuks"
+                      >
+                        <span
+                          class="material-symbols-outlined text-[20px] leading-none transition"
+                          :style="
+                            isFavoriteBed(bed.id)
+                              ? { fontVariationSettings: `'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24` }
+                              : { fontVariationSettings: `'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24` }
+                          "
+                        >
+                          favorite
+                        </span>
+                      </button>
+                      <CardActionsMenu
+                        placement="inline"
+                        @edit="editBed(bed.id)"
+                        @delete="deleteBed(bed.id, bed.name)"
+                      />
+                    </div>
                   </div>
                 </Link>
               </div>
@@ -177,6 +381,15 @@ function bedCoverImage(bed: Bed): string | null {
         <BottomNav active="map" />
       </div>
     </div>
+    <SearchModal
+      v-model:open="showSearch"
+      :initial-query="searchQuery"
+      :suggestions="bedNames"
+      title="Otsi peenraid"
+      placeholder="Nt: kurgipeenar, tagaaed..."
+      @search="(q) => (searchQuery = q)"
+      @clear="searchQuery = ''"
+    />
   </AppLayout>
 </template>
 

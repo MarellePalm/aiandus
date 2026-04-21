@@ -3,7 +3,6 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import BackIconButton from '@/components/BackIconButton.vue';
-import CardActionsMenu from '@/components/CardActionsMenu.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
@@ -20,10 +19,19 @@ type Bed = {
   plants: PlantInBed[];
 };
 type PlantWithoutBed = { id: number; name: string; image_url: string | null; category?: { name: string; slug: string } | null };
+type BedNote = {
+  id: number;
+  note_date: string | null;
+  title: string | null;
+  body: string | null;
+  type: string | null;
+  done: boolean | null;
+};
 
 const props = defineProps<{
   bed: Bed;
   plantsWithoutBed: PlantWithoutBed[];
+  bedNotes?: BedNote[];
 }>();
 
 const breadcrumbs = [
@@ -70,6 +78,14 @@ function getBedColumns(): number {
   return Math.max(...layout.map((r) => r.length), 1);
 }
 
+const bedCellSize = computed(() => {
+  const cols = getBedColumns();
+  if (cols >= 10) return 42;
+  if (cols >= 8) return 48;
+  if (cols >= 6) return 56;
+  return 64;
+});
+
 function plantAt(row: number, col: number): PlantInBed | undefined {
   const key = `${row},${col}`;
   return props.bed.plants.find((p) => p.position_in_bed === key);
@@ -91,14 +107,6 @@ function assignPlantToCell(plantId: number, row: number, col: number) {
   });
 }
 
-function deleteBed() {
-  if (!confirm(`Eemaldada peenar "${props.bed.name}"? Taimed jäävad peenrata.`)) return;
-  router.delete(`/beds/${props.bed.id}`, {
-    preserveScroll: true,
-    onSuccess: () => router.visit('/map'),
-  });
-}
-
 const plantsWithoutBedByCategory = computed(() => {
   const map = new Map<string, PlantWithoutBed[]>();
   for (const p of props.plantsWithoutBed) {
@@ -108,6 +116,13 @@ const plantsWithoutBedByCategory = computed(() => {
   }
   return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0], 'et'));
 });
+
+function formatNoteDate(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('et-EE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
 </script>
 
 <template>
@@ -128,17 +143,22 @@ const plantsWithoutBedByCategory = computed(() => {
           </DiaryHeader>
 
           <main class="flex-1 px-6 py-4 md:px-8 space-y-4">
-            <section class="rounded-2xl border border-border bg-card shadow-soft">
+            <section class="relative overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
               <div
-                class="h-38 bg-cover bg-center relative overflow-hidden rounded-t-2xl"
+                v-if="bed.image_url"
+                class="pointer-events-none absolute inset-0 bg-cover bg-center opacity-[0.12]"
+                :style="{ backgroundImage: `url('${bed.image_url}')` }"
+                aria-hidden="true"
+              />
+              <div
+                v-if="bed.image_url"
+                class="pointer-events-none absolute inset-0 bg-background/70"
+                aria-hidden="true"
+              />
+              <div
+                class="h-38 bg-cover bg-center relative overflow-hidden rounded-t-2xl z-10"
                 :style="bedCoverImage() ? { backgroundImage: `url('${bedCoverImage()}')` } : {}"
               >
-                <div class="absolute right-2 top-2 z-10">
-                  <CardActionsMenu
-                    @edit="router.get(`/beds/${bed.id}/edit`)"
-                    @delete="deleteBed"
-                  />
-                </div>
                 <div v-if="!bedCoverImage()" class="absolute inset-0 bg-linear-to-br from-primary/15 via-muted/40 to-muted/20 flex items-center justify-center">
                   <span class="material-symbols-outlined text-5xl text-primary/80">grass</span>
                 </div>
@@ -146,7 +166,7 @@ const plantsWithoutBedByCategory = computed(() => {
                   <h2 class="text-lg font-semibold text-white">{{ bed.name }}</h2>
                 </div>
               </div>
-              <div class="p-4 flex items-start justify-between gap-3">
+              <div class="relative z-10 p-4 flex items-start justify-between gap-3">
                 <div>
                   <p v-if="bed.location" class="text-sm text-muted-foreground">{{ bed.location }}</p>
                 </div>
@@ -156,15 +176,15 @@ const plantsWithoutBedByCategory = computed(() => {
             <section class="rounded-2xl border border-border bg-card p-3 sm:p-4 shadow-soft">
               <div class="overflow-x-auto overflow-y-visible pb-1 -mx-1 px-1 custom-scrollbar">
                 <div
-                  class="inline-grid gap-2 sm:gap-2.5 p-3 sm:p-4 rounded-2xl border border-amber-200/70 bg-linear-to-br from-amber-50/60 to-amber-100/30 dark:from-amber-950/20 dark:to-amber-900/10 dark:border-amber-800/40 shadow-soft ring-1 ring-amber-200/30 dark:ring-amber-800/20 w-max min-w-0"
+                  class="inline-grid gap-2 sm:gap-2.5 p-3 sm:p-4 rounded-2xl border border-primary/25 bg-linear-to-br from-primary/5 to-muted/20 shadow-soft ring-1 ring-primary/10 w-max min-w-0"
                   :style="{
-                    gridTemplateColumns: `repeat(${getBedColumns()}, minmax(64px, 1fr))`,
-                    gridTemplateRows: `repeat(${getBedLayout().length}, minmax(64px, 1fr))`,
+                    gridTemplateColumns: `repeat(${getBedColumns()}, ${bedCellSize}px)`,
+                    gridTemplateRows: `repeat(${getBedLayout().length}, ${bedCellSize}px)`,
                   }"
                 >
                   <template v-for="r in range(getBedLayout().length)" :key="r">
                     <template v-for="c in range(getBedColumns())" :key="`${r}-${c}`">
-                      <div v-if="plantAt(r, c)" class="relative min-w-[64px] min-h-[64px] rounded-xl bg-card border-2 border-amber-300/70 overflow-hidden group">
+                      <div v-if="plantAt(r, c)" class="relative rounded-xl bg-card border-2 border-primary/35 overflow-hidden group" :style="{ width: `${bedCellSize}px`, height: `${bedCellSize}px` }">
                         <div class="absolute inset-0 bg-cover bg-center" :style="plantAt(r, c)?.image_url ? { backgroundImage: `url('${plantAt(r, c)?.image_url}')` } : {}" />
                         <div class="absolute inset-0 bg-linear-to-t from-black/75 via-black/20 to-transparent" />
                         <span class="absolute bottom-1.5 left-1.5 right-1.5 text-white text-[11px] font-semibold truncate">{{ plantAt(r, c)?.name }}</span>
@@ -172,10 +192,10 @@ const plantsWithoutBedByCategory = computed(() => {
                           <span class="material-symbols-outlined text-sm">close</span>
                         </button>
                       </div>
-                      <div v-else-if="(getBedLayout()[r]?.[c] ?? 0) === -1" class="min-w-[64px] min-h-[64px] rounded-xl border border-border bg-muted/50" />
-                      <div v-else-if="(getBedLayout()[r]?.[c] ?? 1) === 0" class="min-w-[64px] min-h-[64px] rounded-xl border border-dashed border-muted-foreground/25 bg-muted/25" />
-                      <button v-else type="button" class="min-w-[64px] min-h-[64px] rounded-xl border-2 border-dashed border-amber-300/50 bg-amber-50/70 text-amber-800/90" @click="cellModal = { row: r, col: c }">
-                        <span class="material-symbols-outlined text-2xl">add_circle</span>
+                      <div v-else-if="(getBedLayout()[r]?.[c] ?? 0) === -1" class="rounded-xl border border-border/70 bg-muted/35" :style="{ width: `${bedCellSize}px`, height: `${bedCellSize}px` }" />
+                      <div v-else-if="(getBedLayout()[r]?.[c] ?? 1) === 0" class="rounded-xl opacity-0 pointer-events-none" :style="{ width: `${bedCellSize}px`, height: `${bedCellSize}px` }" />
+                      <button v-else type="button" class="rounded-xl border border-dashed border-primary/35 bg-primary/8 text-primary/70 hover:bg-primary/14 hover:text-primary transition flex items-center justify-center" :style="{ width: `${bedCellSize}px`, height: `${bedCellSize}px` }" title="Lisa taim sellesse ruutu" @click="cellModal = { row: r, col: c }">
+                        <span class="material-symbols-outlined text-xl">add</span>
                       </button>
                     </template>
                   </template>
@@ -185,14 +205,50 @@ const plantsWithoutBedByCategory = computed(() => {
 
             <section v-if="plantsWithoutCell().length" class="rounded-2xl border border-border bg-card/90 p-4">
               <p class="text-xs font-medium text-muted-foreground mb-2">Muud taimed peenral</p>
-              <ul class="space-y-2">
-                <li v-for="p in plantsWithoutCell()" :key="p.id" class="flex items-center gap-3 rounded-xl bg-muted/40 border border-border/50 p-2.5">
-                  <span class="text-sm font-medium truncate">{{ p.name }}</span>
-                  <button type="button" class="ml-auto p-1.5 rounded-lg text-muted-foreground hover:bg-muted" @click="removePlantFromBed(p)">
+              <ul class="flex flex-wrap gap-2">
+                <li v-for="p in plantsWithoutCell()" :key="p.id" class="inline-flex items-center gap-2 rounded-full bg-muted/40 border border-border/50 py-1.5 pl-3 pr-1.5">
+                  <span class="text-sm font-medium">{{ p.name }}</span>
+                  <button type="button" class="p-1 rounded-full text-muted-foreground hover:bg-muted" @click="removePlantFromBed(p)">
                     <span class="material-symbols-outlined text-lg">close</span>
                   </button>
                 </li>
               </ul>
+            </section>
+
+            <section class="rounded-2xl border border-border bg-card/90 p-4">
+              <div class="mb-3 flex items-center justify-between gap-2">
+                <h3 class="text-sm font-semibold text-foreground">Märkmed</h3>
+                <Link
+                  :href="`/calendar/note-form?bed_id=${bed.id}`"
+                  class="inline-flex items-center gap-1 rounded-lg border border-primary/30 bg-primary/8 px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/14 transition"
+                >
+                  <span class="material-symbols-outlined text-base">add</span>
+                  Lisa
+                </Link>
+              </div>
+
+              <div v-if="props.bedNotes?.length" class="space-y-2.5">
+                <article
+                  v-for="note in props.bedNotes"
+                  :key="note.id"
+                  class="rounded-xl border border-border/60 bg-background/60 px-3 py-2.5"
+                >
+                  <div class="flex items-start justify-between gap-2">
+                    <p class="text-sm font-medium text-foreground line-clamp-1">
+                      {{ note.title || 'Märge' }}
+                    </p>
+                    <span class="text-xs text-muted-foreground shrink-0">
+                      {{ formatNoteDate(note.note_date) }}
+                    </span>
+                  </div>
+                  <p v-if="note.body" class="mt-1 text-sm text-muted-foreground line-clamp-2">
+                    {{ note.body }}
+                  </p>
+                </article>
+              </div>
+              <p v-else class="text-sm text-muted-foreground">
+                Selle peenra kohta märkmeid veel pole.
+              </p>
             </section>
           </main>
         </div>

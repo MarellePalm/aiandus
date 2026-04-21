@@ -36,12 +36,12 @@ function initialLayout(): number[][] {
   return [[1]];
 }
 
-const showAddBed = ref(true);
 const newBedName = ref(props.mode === 'edit' ? props.bed?.name ?? '' : '');
 const newBedLocation = ref(props.mode === 'edit' ? props.bed?.location ?? '' : '');
 const existingImageUrl = ref(props.mode === 'edit' ? props.bed?.image_url ?? null : null);
 const newBedImage = ref<File | null>(null);
 const newBedImagePreview = ref<string | null>(null);
+const HIDDEN_FILLER = -2;
 
 //  1  = peenraruut
 //  0  = tühi / määramata
@@ -57,30 +57,174 @@ function normalizeRectLayout() {
   if (!needsNormalize) return;
 
   newBedLayout.value = newBedLayout.value.map((r) =>
-    r.length < maxLen ? [...r, ...Array.from({ length: maxLen - r.length }, () => 0)] : [...r],
+    r.length < maxLen ? [...r, ...Array.from({ length: maxLen - r.length }, () => HIDDEN_FILLER)] : [...r],
   );
 }
 
-function addColumnLeft() {
+function compactLayout() {
+  if (!newBedLayout.value.length) {
+    newBedLayout.value = [[1]];
+    return;
+  }
+
+  let layout = newBedLayout.value.map((r) => [...r]);
+
+  const isEmptyRow = (row: number[]) => row.every((v) => v === 0) || row.every((v) => v === HIDDEN_FILLER);
+  const isEmptyCol = (idx: number) => {
+    const col = layout.map((r) => r[idx] ?? HIDDEN_FILLER);
+    return col.every((v) => v === 0) || col.every((v) => v === HIDDEN_FILLER);
+  };
+
+  while (layout.length > 1 && isEmptyRow(layout[0])) layout.shift();
+  while (layout.length > 1 && isEmptyRow(layout[layout.length - 1])) layout.pop();
+
+  const colCount = () => Math.max(...layout.map((r) => r.length), 1);
+  while (colCount() > 1 && isEmptyCol(0)) layout = layout.map((r) => r.slice(1));
+  while (colCount() > 1 && isEmptyCol(colCount() - 1)) layout = layout.map((r) => r.slice(0, -1));
+
+  if (!layout.length || !layout.some((row) => row.length)) layout = [[1]];
+
+  newBedLayout.value = layout;
   normalizeRectLayout();
-  newBedLayout.value = newBedLayout.value.map((r) => [0, ...r]);
 }
 
-function addColumnRight() {
+function expandUp(row: number, col: number) {
   normalizeRectLayout();
-  newBedLayout.value = newBedLayout.value.map((r) => [...r, 0]);
+  const cols = newBedLayout.value[0]?.length ?? 1;
+  const safeRow = Math.max(0, Math.min(row, newBedLayout.value.length - 1));
+  const safeCol = Math.max(0, Math.min(col, cols - 1));
+
+  if (safeRow > 0 && cellValueAt(safeRow - 1, safeCol) <= -1) {
+    newBedLayout.value[safeRow - 1][safeCol] = 0;
+    return;
+  }
+
+  const newRow = Array.from({ length: cols }, (_, i) => (i === safeCol ? 0 : HIDDEN_FILLER));
+  newBedLayout.value = [newRow, ...newBedLayout.value];
 }
 
-function addRowTop() {
+function expandDown(row: number, col: number) {
   normalizeRectLayout();
-  const len = newBedLayout.value[0]?.length ?? 1;
-  newBedLayout.value = [Array.from({ length: len }, () => 0), ...newBedLayout.value];
+  const safeRow = Math.max(0, Math.min(row, newBedLayout.value.length - 1));
+  const cols = newBedLayout.value[0]?.length ?? 1;
+  const safeCol = Math.max(0, Math.min(col, cols - 1));
+
+  if (safeRow < newBedLayout.value.length - 1 && cellValueAt(safeRow + 1, safeCol) <= -1) {
+    newBedLayout.value[safeRow + 1][safeCol] = 0;
+    return;
+  }
+
+  const newRow = Array.from({ length: cols }, (_, i) => (i === safeCol ? 0 : HIDDEN_FILLER));
+  newBedLayout.value = [...newBedLayout.value, newRow];
 }
 
-function addRowBottom() {
+function expandLeft(row: number, col: number) {
   normalizeRectLayout();
-  const len = newBedLayout.value[0]?.length ?? 1;
-  newBedLayout.value = [...newBedLayout.value, Array.from({ length: len }, () => 0)];
+  const safeRow = Math.max(0, Math.min(row, newBedLayout.value.length - 1));
+  const rowLen = newBedLayout.value[safeRow]?.length ?? 1;
+  const safeCol = Math.max(0, Math.min(col, rowLen - 1));
+
+  if (safeCol > 0 && cellValueAt(safeRow, safeCol - 1) <= -1) {
+    newBedLayout.value[safeRow][safeCol - 1] = 0;
+    return;
+  }
+
+  newBedLayout.value[safeRow] = [0, ...newBedLayout.value[safeRow]];
+  normalizeRectLayout();
+}
+
+function expandRight(row: number, col: number) {
+  normalizeRectLayout();
+  const safeRow = Math.max(0, Math.min(row, newBedLayout.value.length - 1));
+  const rowLen = newBedLayout.value[safeRow]?.length ?? 1;
+  const safeCol = Math.max(0, Math.min(col, rowLen - 1));
+
+  if (safeCol < rowLen - 1 && cellValueAt(safeRow, safeCol + 1) <= -1) {
+    newBedLayout.value[safeRow][safeCol + 1] = 0;
+    return;
+  }
+
+  newBedLayout.value[safeRow] = [...newBedLayout.value[safeRow], 0];
+  normalizeRectLayout();
+}
+
+function insertColumnAt(index: number, row: number) {
+  normalizeRectLayout();
+  const cols = newBedLayout.value[0]?.length ?? 1;
+  const safe = Math.max(0, Math.min(index, cols));
+  const safeRow = Math.max(0, Math.min(row, newBedLayout.value.length - 1));
+  newBedLayout.value = newBedLayout.value.map((row) => [
+    ...row.slice(0, safe),
+    HIDDEN_FILLER,
+    ...row.slice(safe),
+  ]);
+  newBedLayout.value[safeRow][safe] = 0;
+}
+
+function insertRowAt(index: number, col: number) {
+  normalizeRectLayout();
+  const rows = newBedLayout.value.length;
+  const cols = newBedLayout.value[0]?.length ?? 1;
+  const safe = Math.max(0, Math.min(index, rows));
+  const safeCol = Math.max(0, Math.min(col, cols - 1));
+  const newRow = Array.from({ length: cols }, (_, i) => (i === safeCol ? 0 : HIDDEN_FILLER));
+  newBedLayout.value = [
+    ...newBedLayout.value.slice(0, safe),
+    newRow,
+    ...newBedLayout.value.slice(safe),
+  ];
+}
+
+function canExpandTop(row: number, col: number): boolean {
+  if (cellValueAt(row, col) <= -1) return false;
+  for (let r = 0; r < newBedLayout.value.length; r += 1) {
+    if (cellValueAt(r, col) > -1) return row === r;
+  }
+  return row === 0;
+}
+
+function canExpandBottom(row: number, col: number): boolean {
+  if (cellValueAt(row, col) <= -1) return false;
+  for (let r = newBedLayout.value.length - 1; r >= 0; r -= 1) {
+    if (cellValueAt(r, col) > -1) return row === r;
+  }
+  return row === newBedLayout.value.length - 1;
+}
+
+function canExpandLeft(row: number, col: number): boolean {
+  if (cellValueAt(row, col) <= -1) return false;
+  return cellValueAt(row, col - 1) <= -1;
+}
+
+function canExpandRight(row: number, col: number): boolean {
+  if (cellValueAt(row, col) <= -1) return false;
+  return cellValueAt(row, col + 1) <= -1;
+}
+
+function canInsertBetweenRight(col: number): boolean {
+  return col < (newBedLayout.value[0]?.length ?? 1) - 1;
+}
+
+function canInsertBetweenBottom(row: number): boolean {
+  return row < newBedLayout.value.length - 1;
+}
+
+function cellValueAt(row: number, col: number): number {
+  return newBedLayout.value[row]?.[col] ?? -1;
+}
+
+function canShowArrowAt(row: number, col: number): boolean {
+  return cellValueAt(row, col) > -1;
+}
+
+function canInsertBetweenRightAt(row: number, col: number): boolean {
+  if (!canInsertBetweenRight(col)) return false;
+  return cellValueAt(row, col) > -1 && cellValueAt(row, col + 1) > -1;
+}
+
+function canInsertBetweenBottomAt(row: number, col: number): boolean {
+  if (!canInsertBetweenBottom(row)) return false;
+  return cellValueAt(row, col) > -1 && cellValueAt(row + 1, col) > -1;
 }
 
 // -----------------------------
@@ -97,12 +241,13 @@ type Cell = 1 | 0 | -1;
 const activeTool = ref<Cell>(1);
 
 function setInternalCell(displayR: number, displayC: number, value: Cell) {
-  const r = displayR - 1;
-  const c = displayC - 1;
+  const r = displayR;
+  const c = displayC;
   if (r < 0 || c < 0) return;
   if (r >= newBedLayout.value.length) return;
   if (c >= (newBedLayout.value[0]?.length ?? 0)) return;
   newBedLayout.value[r][c] = value;
+  compactLayout();
 }
 
 function plantAtInternal(internalR: number, internalC: number) {
@@ -110,87 +255,13 @@ function plantAtInternal(internalR: number, internalC: number) {
   return props.bed?.plants?.find((p) => p.position_in_bed === key);
 }
 
-// -----------------------------
-// Display matrix: add 1-cell margin around real layout
-// -----------------------------
 const displayLayout = computed<number[][]>(() => {
-  const cols = newBedLayout.value[0]?.length ?? 1;
-  const top = Array.from({ length: cols + 2 }, () => 0);
-  const bottom = Array.from({ length: cols + 2 }, () => 0);
-  const mid = newBedLayout.value.map((r) => [0, ...r, 0]);
-
-  return [top, ...mid, bottom];
+  return newBedLayout.value;
 });
 
 // Hoia algne layout ristkülikuna, kuid väldi reaktiivse state muutmist computed sees.
 normalizeRectLayout();
-
-function inBounds(mat: number[][], r: number, c: number) {
-  return r >= 0 && r < mat.length && c >= 0 && c < (mat[0]?.length ?? 0);
-}
-
-function isAdjacentToPlant(displayR: number, displayC: number): boolean {
-  const mat = displayLayout.value;
-  const dirs = [
-    [-1, 0],
-    [1, 0],
-    [0, -1],
-    [0, 1],
-  ] as const;
-
-  return dirs.some(([dr, dc]) => {
-    const rr = displayR + dr;
-    const cc = displayC + dc;
-    // "+" ruut iga mitte-tühja (1 või -1) ruudu kõrval
-    return inBounds(mat, rr, cc) && mat[rr][cc] !== 0;
-  });
-}
-
-function isMarginCell(displayR: number, displayC: number): boolean {
-  const mat = displayLayout.value;
-  const lastR = mat.length - 1;
-  const lastC = (mat[0]?.length ?? 1) - 1;
-  return displayR === 0 || displayC === 0 || displayR === lastR || displayC === lastC;
-}
-
-function addAtDisplay(displayR: number, displayC: number) {
-  normalizeRectLayout();
-
-  const mat = displayLayout.value;
-  const lastR = mat.length - 1;
-  const lastC = (mat[0]?.length ?? 1) - 1;
-
-  const onTop = displayR === 0;
-  const onBottom = displayR === lastR;
-  const onLeft = displayC === 0;
-  const onRight = displayC === lastC;
-
-  if (onTop) addRowTop();
-  if (onBottom) addRowBottom();
-  if (onLeft) addColumnLeft();
-  if (onRight) addColumnRight();
-
-  let internalR = displayR - 1;
-  let internalC = displayC - 1;
-
-  if (onTop) internalR = 0;
-  if (onLeft) internalC = 0;
-  if (onBottom) internalR = newBedLayout.value.length - 1;
-  if (onRight) internalC = (newBedLayout.value[0]?.length ?? 1) - 1;
-
-  if (
-    internalR < 0 ||
-    internalR >= newBedLayout.value.length ||
-    internalC < 0 ||
-    internalC >= (newBedLayout.value[0]?.length ?? 0)
-  ) {
-    return;
-  }
-
-  if (activeTool.value === 0) return;
-  newBedLayout.value[internalR][internalC] = activeTool.value;
-  normalizeRectLayout();
-}
+compactLayout();
 
 // -----------------------------
 // Form actions
@@ -199,17 +270,13 @@ function resetForm() {
   router.get('/map', { preserveScroll: true });
 }
 
-function openForm() {
-  showAddBed.value = true;
-}
-
 function submit() {
   if (!newBedName.value.trim() || !hasAnyPlantCell()) return;
 
   const payload = {
     name: newBedName.value.trim(),
     location: newBedLocation.value.trim() || undefined,
-    layout: newBedLayout.value,
+    layout: newBedLayout.value.map((row) => row.map((cell) => (cell === HIDDEN_FILLER ? -1 : cell))),
     image: newBedImage.value ?? undefined,
   };
 
@@ -249,31 +316,14 @@ onBeforeUnmount(() => {
   }
 });
 
-const addTileClass = computed(() => {
-  if (activeTool.value === -1) {
-    // Vahekäigu lisamine (neutraalsem)
-    return 'w-12 h-12 rounded-lg border-2 border-dashed border-border bg-muted/40 text-muted-foreground flex items-center justify-center hover:bg-muted/60 transition';
-  }
+const addTileClass =
+  'w-12 h-12 rounded-lg border-2 border-dashed border-primary/55 bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/18 transition';
 
-  // Peenra lisamine (default)
-  return 'w-12 h-12 rounded-lg border-2 border-dashed border-primary bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition';
-});
 </script>
 
 <template>
   <section class="mb-8">
-    <button
-      v-if="mode === 'create' && !showAddBed"
-      type="button"
-      class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-sm font-medium hover:bg-muted"
-      @click="openForm"
-    >
-      <span class="material-symbols-outlined text-lg">add_circle</span>
-      Lisa peenar
-    </button>
-
     <form
-      v-else
       class="rounded-xl border border-border bg-card p-4 space-y-4"
       @submit.prevent="submit"
     >
@@ -296,7 +346,7 @@ const addTileClass = computed(() => {
           v-model="newBedLocation"
           type="text"
           class="form-input w-full"
-          placeholder="nt Tagaaed, esiukse paremal"
+          placeholder="nt Tagaaed, esiuksest paremal"
           maxlength="255"
         />
       </div>
@@ -328,7 +378,7 @@ const addTileClass = computed(() => {
             :class="activeTool === 1 ? 'border-primary bg-primary/10 text-primary font-semibold' : 'text-muted-foreground'"
             @click="activeTool = 1"
           >
-            <span class="inline-block w-5 h-5 rounded-md border-2 border-amber-300/70 bg-amber-100/50" />
+            <span class="inline-block w-5 h-5 rounded-md border-2 border-primary/60 bg-primary/15" />
             Peenar
           </button>
 
@@ -363,60 +413,135 @@ const addTileClass = computed(() => {
       </div>
 
       <!-- GRID (CSS grid, mobiilis stabiilne) -->
-      <div
-        class="grid gap-2 justify-start"
-        :style="{ gridTemplateColumns: `repeat(${displayLayout[0]?.length ?? 1}, 3rem)` }"
-      >
-        <template v-for="(row, dri) in displayLayout" :key="dri">
-          <template v-for="(cell, dci) in row" :key="`${dri}-${dci}`">
-            <div class="relative w-12 h-12">
-              <!-- 1 = peenraruut -->
-              <button
-                v-if="cell === 1"
-                type="button"
-                class="relative w-full h-full overflow-hidden rounded-lg border-2 border-amber-300/70 dark:border-amber-700/60 bg-amber-100/50 dark:bg-amber-900/20"
-                :title="plantAtInternal(dri - 1, dci - 1) ? `Siin on taim: ${plantAtInternal(dri - 1, dci - 1)?.name}` : 'Peenra ruut'"
-                @click="setInternalCell(dri, dci, activeTool)"
-              >
-                <div
-                  v-if="plantAtInternal(dri - 1, dci - 1)?.image_url"
-                  class="absolute inset-0 bg-cover bg-center opacity-90"
-                  :style="{ backgroundImage: `url('${plantAtInternal(dri - 1, dci - 1)?.image_url}')` }"
-                />
-                <div v-if="plantAtInternal(dri - 1, dci - 1)" class="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
+      <div class="space-y-2 flex flex-col items-center">
+        <div class="flex w-full flex-col items-center">
+          <div
+            class="mx-auto grid gap-2 justify-center"
+            :style="{ gridTemplateColumns: `repeat(${displayLayout[0]?.length ?? 1}, 3rem)` }"
+          >
+            <template v-for="(row, dri) in displayLayout" :key="dri">
+              <template v-for="(cell, dci) in row" :key="`${dri}-${dci}`">
+                <div class="group/cell relative w-12 h-12">
+                  <button
+                    v-if="canExpandTop(dri, dci) && canShowArrowAt(dri, dci)"
+                    type="button"
+                    class="pointer-events-auto absolute -top-3 left-1/2 z-20 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full border border-black/45 bg-background text-black opacity-100 shadow-sm transition sm:pointer-events-none sm:opacity-0 sm:group-hover/cell:pointer-events-auto sm:group-hover/cell:opacity-100 sm:group-focus-within/cell:pointer-events-auto sm:group-focus-within/cell:opacity-100 hover:bg-black/10"
+                    title="Laienda üles"
+                    @click.stop="expandUp(dri, dci)"
+                  >
+                    <span class="material-symbols-outlined text-[11px] leading-none">keyboard_arrow_up</span>
+                  </button>
+                  <button
+                    v-if="canExpandBottom(dri, dci) && canShowArrowAt(dri, dci)"
+                    type="button"
+                    class="pointer-events-auto absolute -bottom-3 left-1/2 z-20 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full border border-black/45 bg-background text-black opacity-100 shadow-sm transition sm:pointer-events-none sm:opacity-0 sm:group-hover/cell:pointer-events-auto sm:group-hover/cell:opacity-100 sm:group-focus-within/cell:pointer-events-auto sm:group-focus-within/cell:opacity-100 hover:bg-black/10"
+                    title="Laienda alla"
+                    @click.stop="expandDown(dri, dci)"
+                  >
+                    <span class="material-symbols-outlined text-[11px] leading-none">keyboard_arrow_down</span>
+                  </button>
+                  <button
+                    v-if="canExpandLeft(dri, dci) && canShowArrowAt(dri, dci)"
+                    type="button"
+                    class="pointer-events-auto absolute -left-3 top-1/2 z-20 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full border border-black/45 bg-background text-black opacity-100 shadow-sm transition sm:pointer-events-none sm:opacity-0 sm:group-hover/cell:pointer-events-auto sm:group-hover/cell:opacity-100 sm:group-focus-within/cell:pointer-events-auto sm:group-focus-within/cell:opacity-100 hover:bg-black/10"
+                    title="Laienda vasakule"
+                    @click.stop="expandLeft(dri, dci)"
+                  >
+                    <span class="material-symbols-outlined text-[11px] leading-none">keyboard_arrow_left</span>
+                  </button>
+                  <button
+                    v-if="canExpandRight(dri, dci) && canShowArrowAt(dri, dci)"
+                    type="button"
+                    class="pointer-events-auto absolute -right-3 top-1/2 z-20 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full border border-black/45 bg-background text-black opacity-100 shadow-sm transition sm:pointer-events-none sm:opacity-0 sm:group-hover/cell:pointer-events-auto sm:group-hover/cell:opacity-100 sm:group-focus-within/cell:pointer-events-auto sm:group-focus-within/cell:opacity-100 hover:bg-black/10"
+                    title="Laienda paremale"
+                    @click.stop="expandRight(dri, dci)"
+                  >
+                    <span class="material-symbols-outlined text-[11px] leading-none">keyboard_arrow_right</span>
+                  </button>
+
+                  <button
+                    v-if="canInsertBetweenRightAt(dri, dci)"
+                    type="button"
+                    class="pointer-events-auto absolute -right-3 top-[28%] z-10 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-md border border-black/45 bg-background text-black opacity-100 shadow-sm transition sm:pointer-events-none sm:opacity-0 sm:group-hover/cell:pointer-events-auto sm:group-hover/cell:opacity-100 sm:group-focus-within/cell:pointer-events-auto sm:group-focus-within/cell:opacity-100 hover:bg-black/10"
+                    title="Lisa veerg kahe ruudu vahele"
+                    @click.stop="insertColumnAt(dci + 1, dri)"
+                  >
+                    <span class="material-symbols-outlined text-[10px] leading-none">add</span>
+                  </button>
+                  <button
+                    v-if="canInsertBetweenBottomAt(dri, dci)"
+                    type="button"
+                    class="pointer-events-auto absolute -bottom-3 left-[28%] z-10 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-md border border-black/45 bg-background text-black opacity-100 shadow-sm transition sm:pointer-events-none sm:opacity-0 sm:group-hover/cell:pointer-events-auto sm:group-hover/cell:opacity-100 sm:group-focus-within/cell:pointer-events-auto sm:group-focus-within/cell:opacity-100 hover:bg-black/10"
+                    title="Lisa rida kahe ruudu vahele"
+                    @click.stop="insertRowAt(dri + 1, dci)"
+                  >
+                    <span class="material-symbols-outlined text-[10px] leading-none">add</span>
+                  </button>
+
+                  <!-- 1 = peenraruut -->
+                  <button
+                    v-if="cell === 1"
+                    type="button"
+                    class="relative w-full h-full overflow-hidden rounded-lg border-2 border-primary/45 bg-primary/10"
+                    :title="plantAtInternal(dri, dci) ? `Siin on taim: ${plantAtInternal(dri, dci)?.name}` : 'Peenra ruut'"
+                    @click="setInternalCell(dri, dci, activeTool)"
+                  >
                 <span
-                  v-if="plantAtInternal(dri - 1, dci - 1)"
-                  class="absolute bottom-1 left-1 right-1 truncate text-[10px] font-semibold text-white"
+                  v-if="!plantAtInternal(dri, dci)"
+                  class="material-symbols-outlined absolute inset-0 m-auto h-5 w-5 text-primary/65"
                 >
-                  {{ plantAtInternal(dri - 1, dci - 1)?.name }}
+                  add
                 </span>
-              </button>
+                    <div v-if="plantAtInternal(dri, dci)" class="absolute inset-0 bg-primary/25" />
+                    <div
+                      v-if="plantAtInternal(dri, dci)?.image_url"
+                      class="absolute inset-0 bg-cover bg-center opacity-90"
+                      :style="{ backgroundImage: `url('${plantAtInternal(dri, dci)?.image_url}')` }"
+                    />
+                    <div v-if="plantAtInternal(dri, dci)" class="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
+                    <span
+                      v-if="plantAtInternal(dri, dci)"
+                      class="absolute bottom-1 left-1 right-1 truncate text-[10px] font-semibold text-white"
+                    >
+                      {{ plantAtInternal(dri, dci)?.name }}
+                    </span>
+                  </button>
 
-              <!-- -1 = vahekäik/kivi -->
-              <button
-                v-else-if="cell === -1"
-                type="button"
-                class="w-full h-full rounded-lg border border-border bg-muted/60 relative overflow-hidden"
-                title="Vahekäik / kivi"
-                @click="setInternalCell(dri, dci, activeTool)"
-              >
-                <span
-                  class="absolute inset-0 opacity-40 pointer-events-none text-muted-foreground"
-                  style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 10px 10px;"
-                />
-              </button>
+                  <!-- -1 = vahekäik/kivi -->
+                  <button
+                    v-else-if="cell === -1"
+                    type="button"
+                    class="w-full h-full rounded-lg border border-border bg-muted/60 relative overflow-hidden"
+                    title="Vahekäik / kivi"
+                    @click="setInternalCell(dri, dci, activeTool)"
+                  >
+                    <span
+                      class="absolute inset-0 opacity-40 pointer-events-none text-muted-foreground"
+                      style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 10px 10px;"
+                    />
+                  </button>
 
-              <!-- 0 = tühi / lisatav ruut -->
-              <button
-                v-else
-                type="button"
-                :class="cell === 0 && isAdjacentToPlant(dri, dci) ? addTileClass : 'w-full h-full rounded-lg border border-dashed border-muted-foreground/40 bg-muted/30'"
-                :title="isMarginCell(dri, dci) ? 'Lisa ruut (laiendab peenart)' : 'Lisa ruut'"
-                @click="isMarginCell(dri, dci) ? addAtDisplay(dri, dci) : setInternalCell(dri, dci, activeTool)"
-              />
-            </div>
-          </template>
-        </template>
+                  <div
+                    v-else-if="cell === HIDDEN_FILLER"
+                    class="w-full h-full pointer-events-none opacity-0"
+                    aria-hidden="true"
+                  />
+
+                  <!-- 0 = tühi / lisatav ruut -->
+                  <button
+                    v-else
+                    type="button"
+                    :class="cell === 0 ? addTileClass : 'w-full h-full rounded-lg border border-dashed border-muted-foreground/40 bg-muted/30'"
+                    title="Lisa ruut"
+                    @click="setInternalCell(dri, dci, activeTool)"
+                  >
+                    <span class="material-symbols-outlined text-lg leading-none">add</span>
+                  </button>
+                </div>
+              </template>
+            </template>
+          </div>
+        </div>
       </div>
 
       <div class="flex gap-2 pt-2">
