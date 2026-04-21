@@ -41,6 +41,16 @@ const openEditModal = () => {
     showEditSeed.value = true;
 };
 
+const formatDateEE = (value?: string | null) => {
+    if (!value) return '';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return value;
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}.${mm}.${yyyy}`;
+};
+
 const deleteSeed = () => {
     if (deleteProcessing.value) return;
     deleteProcessing.value = true;
@@ -95,7 +105,7 @@ const deleteSeed = () => {
                 >
                     <p v-if="props.seed.amount_text">Kogus: <strong>{{ props.seed.amount_text }}</strong></p>
                     <p v-if="props.seed.year">Ostmise aasta: <strong>{{ props.seed.year }}</strong></p>
-                    <p v-if="props.seed.expires_at">Aegumisaasta: <strong>{{ props.seed.expires_at }}</strong></p>
+                    <p v-if="props.seed.expires_at">Aegub: <strong>{{ formatDateEE(props.seed.expires_at) }}</strong></p>
                 </div>
 
                 <div class="mt-8">

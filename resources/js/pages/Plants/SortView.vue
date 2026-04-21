@@ -309,7 +309,7 @@ const fallbackImage = 'https://picsum.photos/200/200';
                                 class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
                             >
                                 <div
-                                    class="no-scrollbar flex gap-3 overflow-x-auto pb-2 sm:pb-0"
+                                    class="no-scrollbar flex gap-3 overflow-x-auto overflow-y-visible pb-2 sm:pb-0"
                                 >
                                     <button
                                         type="button"
@@ -327,7 +327,7 @@ const fallbackImage = 'https://picsum.photos/200/200';
                                     </button>
                                 </div>
 
-                                <div class="shrink-0 self-start sm:self-auto">
+                                <div class="ml-auto shrink-0 self-end sm:self-auto">
                                     <SortDropdown
                                         v-model="selectedSort"
                                         :options="sortOptions"

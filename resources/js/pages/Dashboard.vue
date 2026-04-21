@@ -230,7 +230,7 @@ function goToFabAction(href: string) {
   <Head title="Dashboard" />
 
   <AppLayout :breadcrumbs="breadcrumbs">
-    <div class="page bg-background min-h-0 flex flex-col">
+    <div class="page page-with-bottomnav bg-background min-h-0 flex flex-col">
       <div class="bg-background border-beige/50 relative mx-auto w-full max-w-[480px] overflow-x-clip border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
         <DiaryHeader
           title="Minu Aiapäevik"
@@ -275,7 +275,7 @@ function goToFabAction(href: string) {
           </div>
         </div>
 
-        <div class="px-6 pt-4 pb-0 space-y-8 md:px-8">
+        <div class="px-6 pt-4 pb-24 space-y-8 md:px-8">
           <!-- Järjestatavad plokid -->
         <template v-for="id in sectionOrder" :key="id">
           <!-- Weather -->
@@ -449,23 +449,25 @@ function goToFabAction(href: string) {
             @dragover="editLayout ? onDragOver($event) : undefined"
             @drop="editLayout ? onDrop('recent', $event) : undefined"
           >
-            <div
-              class="group flex items-center gap-2 px-3 py-2 bg-muted/40 border-b border-border cursor-pointer"
-              @click="toggleSectionCollapsed('recent')"
+            <button
+              type="button"
+              class="group relative z-10 flex w-full items-center gap-2 border-b border-border bg-muted/40 px-3 py-2 text-left cursor-pointer"
+              @click.stop="toggleSectionCollapsed('recent')"
             >
               <div class="flex flex-1 min-w-0 items-center gap-2">
-                <button
+                <span
                   v-if="editLayout"
-                  type="button"
                   class="inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground active:scale-95 transition cursor-grab"
                   draggable="true"
+                  role="button"
+                  tabindex="0"
                   aria-label="Lohista plokki"
                   @dragstart="onDragStart('recent', $event)"
                   @dragend="onDragEnd"
                   @click.stop
                 >
                   <span class="material-symbols-outlined text-lg">drag_indicator</span>
-                </button>
+                </span>
                 <h3 class="font-semibold text-foreground text-sm">{{ sectionTitle('recent') }}</h3>
                 <span
                   class="material-symbols-outlined text-lg text-muted-foreground shrink-0 transition"
@@ -478,7 +480,7 @@ function goToFabAction(href: string) {
                   expand_more
                 </span>
               </div>
-            </div>
+            </button>
             <div v-show="isSectionExpanded('recent')" class="p-4">
             <div class="dashboard-panel border-0 shadow-none p-0">
               <div class="flex overflow-x-auto gap-4 pb-2 no-scrollbar">
@@ -521,23 +523,25 @@ function goToFabAction(href: string) {
             @dragover="editLayout ? onDragOver($event) : undefined"
             @drop="editLayout ? onDrop('recentSeeds', $event) : undefined"
           >
-            <div
-              class="group flex items-center gap-2 px-3 py-2 bg-muted/40 border-b border-border cursor-pointer"
-              @click="toggleSectionCollapsed('recentSeeds')"
+            <button
+              type="button"
+              class="group relative z-10 flex w-full items-center gap-2 border-b border-border bg-muted/40 px-3 py-2 text-left cursor-pointer"
+              @click.stop="toggleSectionCollapsed('recentSeeds')"
             >
               <div class="flex flex-1 min-w-0 items-center gap-2">
-                <button
+                <span
                   v-if="editLayout"
-                  type="button"
                   class="inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground active:scale-95 transition cursor-grab"
                   draggable="true"
+                  role="button"
+                  tabindex="0"
                   aria-label="Lohista plokki"
                   @dragstart="onDragStart('recentSeeds', $event)"
                   @dragend="onDragEnd"
                   @click.stop
                 >
                   <span class="material-symbols-outlined text-lg">drag_indicator</span>
-                </button>
+                </span>
                 <h3 class="font-semibold text-foreground text-sm">{{ sectionTitle('recentSeeds') }}</h3>
                 <span
                   class="material-symbols-outlined text-lg text-muted-foreground shrink-0 transition"
@@ -550,7 +554,7 @@ function goToFabAction(href: string) {
                   expand_more
                 </span>
               </div>
-            </div>
+            </button>
             <div v-show="isSectionExpanded('recentSeeds')" class="p-4">
               <div class="dashboard-panel border-0 shadow-none p-0">
                 <div class="flex overflow-x-auto gap-4 pb-2 no-scrollbar">

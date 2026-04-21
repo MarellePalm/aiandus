@@ -73,16 +73,15 @@ const onFileChange = (e: Event) => {
 
 const openPicker = () => fileInputRef.value?.click();
 
-const emptyOnFocus = ref<Record<'year' | 'expires_at', boolean>>({
+const emptyOnFocus = ref<Record<'year', boolean>>({
     year: false,
-    expires_at: false,
 });
 
-const markEmptyOnFocus = (field: 'year' | 'expires_at') => {
+const markEmptyOnFocus = (field: 'year') => {
     emptyOnFocus.value[field] = !form[field]?.trim();
 };
 
-const normalizeSpinnerStart = (field: 'year' | 'expires_at') => {
+const normalizeSpinnerStart = (field: 'year') => {
     if (!emptyOnFocus.value[field]) return;
 
     if (form[field] === '1' || form[field] === '-1' || form[field] === '0') {
@@ -92,7 +91,7 @@ const normalizeSpinnerStart = (field: 'year' | 'expires_at') => {
     emptyOnFocus.value[field] = false;
 };
 
-const startYearFrom2020 = (field: 'year' | 'expires_at') => {
+const startYearFrom2020 = (field: 'year') => {
     const current = form[field]?.trim();
     if (!current) {
         form[field] = '2020';
@@ -147,17 +146,8 @@ watch(() => form.year, (value, previous) => {
     }
 });
 
-watch(() => form.expires_at, (value, previous) => {
-    if (isEmptyValue(previous) && shouldNormalizeTo2020(value)) {
-        form.expires_at = '2020';
-    }
-});
-
 const submit = () => {
-    form.transform((data) => ({
-        ...data,
-        expires_at: data.expires_at ? `${data.expires_at}-12-31` : '',
-    })).post('/seeds', {
+    form.post('/seeds', {
         forceFormData: true,
         onSuccess: () => {
             emit('created');
@@ -196,7 +186,7 @@ onBeforeUnmount(() => {
                             <div>
                 <h1 class="text-lg font-semibold text-foreground">Lisa varu</h1>
                 <p class="mt-1 text-sm text-foreground/70 mb-5">
-                    Lisa nimi, kogus, pilt, ostmisaasta ja aegumisaasta.
+                    Lisa nimi, kogus, pilt, ostmisaasta ja aegumise kuupäev.
                 </p>
                             </div>
                             <Link
@@ -249,16 +239,14 @@ onBeforeUnmount(() => {
                         <p v-if="form.errors.year" class="mt-2 text-sm text-red-600">{{ form.errors.year }}</p>
                     </div>
                     <div>
-                        <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">Aegumisaasta</label>
+                        <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">Aegub</label>
                         <input
                             v-model="form.expires_at"
-                            type="number"
-                            max="2100"
+                            type="date"
+                            lang="et-EE"
                             class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                            @focus="markEmptyOnFocus('expires_at')"
-                            @input="normalizeSpinnerStart('expires_at')"
-                            @keydown.up="startYearFrom2020('expires_at')"
-                            @keydown.down="startYearFrom2020('expires_at')"
+                            @change="form.clearErrors('expires_at')"
+                            @click="($event.target as HTMLInputElement).showPicker?.()"
                         />
                         <p v-if="form.errors.expires_at" class="mt-2 text-sm text-red-600">{{ form.errors.expires_at }}</p>
                     </div>
@@ -357,7 +345,7 @@ onBeforeUnmount(() => {
                             <div>
                                 <h3 class="text-lg font-semibold text-foreground">Lisa varu</h3>
                                 <p class="mt-1 text-sm text-foreground/70">
-                                    Lisa nimi, kogus, pilt, ostmisaasta ja aegumisaasta.
+                                    Lisa nimi, kogus, pilt, ostmisaasta ja aegumise kuupäev.
                                 </p>
                             </div>
                             <button
@@ -422,17 +410,15 @@ onBeforeUnmount(() => {
                             </div>
                             <div>
                                 <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">
-                                    Aegumisaasta
+                                    Aegub
                                 </label>
                                 <input
                                     v-model="form.expires_at"
-                                    type="number"
-                                    max="2100"
+                                    type="date"
+                                    lang="et-EE"
                                     class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                    @focus="markEmptyOnFocus('expires_at')"
-                                    @input="normalizeSpinnerStart('expires_at')"
-                                    @keydown.up="startYearFrom2020('expires_at')"
-                                    @keydown.down="startYearFrom2020('expires_at')"
+                                    @change="form.clearErrors('expires_at')"
+                                    @click="($event.target as HTMLInputElement).showPicker?.()"
                                 />
                                 <p v-if="form.errors.expires_at" class="mt-2 text-sm text-red-600">{{ form.errors.expires_at }}</p>
                             </div>

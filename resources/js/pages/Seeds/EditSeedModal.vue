@@ -76,16 +76,15 @@ const onFileChange = (e: Event) => {
 
 const openPicker = () => fileInputRef.value?.click();
 
-const emptyOnFocus = ref<Record<'year' | 'expires_at', boolean>>({
+const emptyOnFocus = ref<Record<'year', boolean>>({
     year: false,
-    expires_at: false,
 });
 
-const markEmptyOnFocus = (field: 'year' | 'expires_at') => {
+const markEmptyOnFocus = (field: 'year') => {
     emptyOnFocus.value[field] = !form[field]?.trim();
 };
 
-const normalizeSpinnerStart = (field: 'year' | 'expires_at') => {
+const normalizeSpinnerStart = (field: 'year') => {
     if (!emptyOnFocus.value[field]) return;
 
     if (form[field] === '1' || form[field] === '-1' || form[field] === '0') {
@@ -95,7 +94,7 @@ const normalizeSpinnerStart = (field: 'year' | 'expires_at') => {
     emptyOnFocus.value[field] = false;
 };
 
-const startYearFrom2020 = (field: 'year' | 'expires_at') => {
+const startYearFrom2020 = (field: 'year') => {
     const current = form[field]?.trim();
     if (!current) {
         form[field] = '2020';
@@ -113,7 +112,7 @@ const resetFromSeed = () => {
     form.name = props.seed?.name ?? '';
     form.amount_text = props.seed?.amount_text ?? '';
     form.year = props.seed?.year ? String(props.seed.year) : '';
-    form.expires_at = props.seed?.expires_at ? props.seed.expires_at.slice(0, 4) : '';
+    form.expires_at = props.seed?.expires_at ? props.seed.expires_at.slice(0, 10) : '';
     form.notes = props.seed?.notes ?? '';
     form.image = null;
     revokePreview();
@@ -156,18 +155,11 @@ watch(() => form.year, (value, previous) => {
     }
 });
 
-watch(() => form.expires_at, (value, previous) => {
-    if (isEmptyValue(previous) && shouldNormalizeTo2020(value)) {
-        form.expires_at = '2020';
-    }
-});
-
 const submit = () => {
     if (!props.seed) return;
 
     form.transform((data) => ({
         ...data,
-        expires_at: data.expires_at ? `${data.expires_at}-12-31` : '',
         _method: 'patch',
     })).post(`/seeds/${props.seed.id}`, {
         forceFormData: true,
@@ -267,17 +259,15 @@ onBeforeUnmount(() => {
                             </div>
                             <div>
                                 <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
-                                    Aegumisaasta
+                                    Aegub
                                 </label>
                                 <input
                                     v-model="form.expires_at"
-                                    type="number"
-                                    max="2100"
+                                    type="date"
+                                    lang="et-EE"
                                     class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
-                                    @focus="markEmptyOnFocus('expires_at')"
-                                    @input="normalizeSpinnerStart('expires_at')"
-                                    @keydown.up="startYearFrom2020('expires_at')"
-                                    @keydown.down="startYearFrom2020('expires_at')"
+                                    @change="form.clearErrors('expires_at')"
+                                    @click="($event.target as HTMLInputElement).showPicker?.()"
                                 />
                                 <p v-if="form.errors.expires_at" class="mt-2 text-sm text-red-600">{{ form.errors.expires_at }}</p>
                             </div>

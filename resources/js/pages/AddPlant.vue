@@ -109,6 +109,8 @@ function onFileChange(e: Event) {
                             <input
                                 v-model="form.planted_at"
                                 type="date"
+                                lang="et-EE"
+                                @click="($event.target as HTMLInputElement).showPicker?.()"
                                 class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
                             />
                         </div>
