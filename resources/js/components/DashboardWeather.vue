@@ -140,48 +140,6 @@ const fallbackWeatherColorClass = computed(() => {
   return 'text-slate-200';
 });
 
-function dailyFallbackSymbol(code: number | null | undefined, icon: string | null | undefined) {
-  if (icon) {
-    if (icon.includes('01d')) return 'light_mode';
-    if (icon.includes('01n')) return 'light_mode';
-    if (icon.includes('02') || icon.includes('03') || icon.includes('04')) return 'partly_cloudy_day';
-    if (icon.includes('09') || icon.includes('10')) return 'rainy';
-    if (icon.includes('11')) return 'thunderstorm';
-    if (icon.includes('13')) return 'weather_snowy';
-    if (icon.includes('50')) return 'foggy';
-  }
-  if (code == null) return 'light_mode';
-  if (code === 0 || code === 1) return 'light_mode';
-  if (code === 2 || code === 3) return 'partly_cloudy_day';
-  if (code >= 45 && code <= 48) return 'foggy';
-  if (code >= 51 && code <= 67) return 'rainy';
-  if (code >= 71 && code <= 77) return 'weather_snowy';
-  if (code >= 80 && code <= 82) return 'rainy';
-  if (code >= 95) return 'thunderstorm';
-  return 'cloud';
-}
-
-function dailyFallbackColorClass(code: number | null | undefined, icon: string | null | undefined) {
-  if (icon) {
-    if (icon.includes('01d')) return 'text-amber-400';
-    if (icon.includes('01n')) return 'text-amber-400';
-    if (icon.includes('02') || icon.includes('03') || icon.includes('04')) return 'text-sky-400';
-    if (icon.includes('09') || icon.includes('10')) return 'text-sky-500';
-    if (icon.includes('11')) return 'text-violet-400';
-    if (icon.includes('13')) return 'text-cyan-300';
-    if (icon.includes('50')) return 'text-slate-400';
-  }
-  if (code == null) return 'text-amber-400';
-  if (code === 0 || code === 1) return 'text-amber-400';
-  if (code === 2 || code === 3) return 'text-sky-400';
-  if (code >= 45 && code <= 48) return 'text-slate-400';
-  if (code >= 51 && code <= 67) return 'text-sky-500';
-  if (code >= 71 && code <= 77) return 'text-cyan-300';
-  if (code >= 80 && code <= 82) return 'text-sky-500';
-  if (code >= 95) return 'text-violet-400';
-  return 'text-primary';
-}
-
 function dailyIconUrl(icon: string | null | undefined, retina = false) {
   if (!icon) return null;
   const suffix = retina ? '@2x' : '';
