@@ -252,6 +252,7 @@ onBeforeUnmount(() => {
                                 <input
                                     v-model="form.planted_at"
                                     type="date"
+                                    lang="et-EE"
                                     @change="form.clearErrors('planted_at')"
                                     @click="
                                         (

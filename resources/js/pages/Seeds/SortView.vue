@@ -17,7 +17,7 @@ import SearchModal from './SearchModal.vue';
 type SeedItem = {
     id: number;
     name: string;
-    year?: number | null;
+    year?: number | string | null;
     expires_at?: string | null;
     image_url?: string | null;
     notes?: string | null;
@@ -61,19 +61,76 @@ const sortOptions = [
     { label: 'Nimi Z–A', value: 'name_desc' },
     { label: 'Ostuaasta: uuemad enne', value: 'year_desc' },
     { label: 'Ostuaasta: vanemad enne', value: 'year_asc' },
-    { label: 'Aegumisaasta: uuemad enne', value: 'expires_desc' },
-    { label: 'Aegumisaasta: vanemad enne', value: 'expires_asc' },
+    { label: 'Aegub: uuemad enne', value: 'expires_desc' },
+    { label: 'Aegub: vanemad enne', value: 'expires_asc' },
 ];
 
-const parseYear = (value?: number | null) => {
-    if (typeof value !== 'number' || Number.isNaN(value)) return 0;
-    return value;
+const parseYear = (value?: number | string | null) => {
+    if (typeof value === 'number') {
+        return Number.isNaN(value) ? 0 : value;
+    }
+    if (typeof value === 'string') {
+        const parsed = Number.parseInt(value, 10);
+        return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
 };
 
 const parseExpiresAt = (value?: string | null) => {
     if (!value) return 0;
-    const t = new Date(value).getTime();
+
+    const trimmed = value.trim();
+
+    // dd.mm.yyyy (või d.m.yyyy) -> võrdleme päris kuupäeva järgi
+    const dotParts = trimmed.split('.');
+    if (dotParts.length === 3) {
+        const [day, month, year] = dotParts.map((part) =>
+            Number.parseInt(part, 10),
+        );
+        if (
+            !Number.isNaN(day) &&
+            !Number.isNaN(month) &&
+            !Number.isNaN(year)
+        ) {
+            return new Date(year, month - 1, day).getTime();
+        }
+    }
+
+    // ISO-kuupäevad jms
+    const t = new Date(trimmed).getTime();
     return Number.isNaN(t) ? 0 : t;
+};
+
+const formatDateEE = (value?: string | null) => {
+    if (!value) return '';
+    const trimmed = value.trim();
+
+    // Kui backend saadab ainult aasta (nt "2028"), kuva detailselt.
+    if (/^\d{4}$/.test(trimmed)) return `01.01.${trimmed}`;
+
+    // Kui juba dd.mm.yyyy formaadis, tagasta ühtlaselt 2-kohalise päeva/kuuga.
+    const dotParts = trimmed.split('.');
+    if (dotParts.length === 3) {
+        const [day, month, year] = dotParts.map((part) =>
+            Number.parseInt(part, 10),
+        );
+        if (
+            !Number.isNaN(day) &&
+            !Number.isNaN(month) &&
+            !Number.isNaN(year)
+        ) {
+            const dd = String(day).padStart(2, '0');
+            const mm = String(month).padStart(2, '0');
+            return `${dd}.${mm}.${year}`;
+        }
+    }
+
+    const d = new Date(trimmed);
+    if (Number.isNaN(d.getTime())) return trimmed;
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}.${mm}.${yyyy}`;
 };
 
 const baseSeeds = computed(() => {
@@ -216,10 +273,10 @@ onBeforeUnmount(() => {
                                 </button>
                         </template>
 
-                        <div class="no-scrollbar flex items-center gap-2 overflow-x-auto pb-2">
+                        <div class="no-scrollbar flex items-center gap-2 overflow-x-auto overflow-y-visible pb-2">
                             <button type="button" :class="tabClass('all')" @click="activeTab = 'all'">Kõik</button>
                             <button type="button" :class="tabClass('favorites')" @click="activeTab = 'favorites'">Lemmikud</button>
-                            <div class="shrink-0 ml-1">
+                            <div class="ml-auto shrink-0">
                                 <SortDropdown v-model="selectedSort" :options="sortOptions" compact />
                             </div>
                         </div>
@@ -260,7 +317,9 @@ onBeforeUnmount(() => {
                                     <div class="min-w-0 flex-1">
                                         <h3 class="truncate text-lg font-semibold">{{ seed.name }}</h3>
                                         <p v-if="seed.year" class="mt-1 text-sm text-muted-foreground">Ostetud: {{ seed.year }}</p>
-                                        <p v-if="seed.expires_at" class="text-sm text-muted-foreground">Aegub: {{ seed.expires_at }}</p>
+                                        <p v-if="seed.expires_at" class="mt-1 text-sm text-muted-foreground">
+                                            Aegub: {{ formatDateEE(seed.expires_at) }}
+                                        </p>
                                     </div>
 
                                     <div class="ml-2 flex shrink-0 items-center gap-2" data-seed-menu @click.stop>

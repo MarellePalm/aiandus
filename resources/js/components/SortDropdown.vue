@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 
 type SortOption = {
   label: string;
@@ -21,9 +21,14 @@ const emit = defineEmits<{
 }>();
 
 const open = ref(false);
+const triggerRef = ref<HTMLElement | null>(null);
+const menuStyle = ref<Record<string, string>>({});
 
 function toggleDropdown() {
   open.value = !open.value;
+  if (open.value) {
+    nextTick(() => updateMenuPosition());
+  }
 }
 
 function selectOption(value: string) {
@@ -37,43 +42,60 @@ function onDocClick(e: MouseEvent) {
   open.value = false;
 }
 
-onMounted(() => document.addEventListener("click", onDocClick));
-onBeforeUnmount(() => document.removeEventListener("click", onDocClick));
+function updateMenuPosition() {
+  const el = triggerRef.value;
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  menuStyle.value = {
+    top: `${rect.bottom + 8}px`,
+    left: `${Math.max(8, rect.right - 220)}px`,
+    width: "220px",
+  };
+}
+
+onMounted(() => {
+  document.addEventListener("click", onDocClick);
+  window.addEventListener("resize", updateMenuPosition);
+  window.addEventListener("scroll", updateMenuPosition, true);
+});
+onBeforeUnmount(() => {
+  document.removeEventListener("click", onDocClick);
+  window.removeEventListener("resize", updateMenuPosition);
+  window.removeEventListener("scroll", updateMenuPosition, true);
+});
 </script>
 
 <template>
-  <div class="relative inline-block" data-sort-dropdown>
+  <div class="ml-auto flex justify-end" data-sort-dropdown>
     <button
+      ref="triggerRef"
       type="button"
-      class="flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-medium text-foreground/80 shadow-sm transition hover:bg-black/5"
+      class="flex h-9 w-9 items-center justify-center rounded-full border border-primary/30 bg-primary/5 text-primary shadow-sm transition hover:bg-primary/10"
       :class="[
-        iconOnly ? 'h-9 w-9 justify-center rounded-full p-0' : '',
-        compact && !iconOnly ? 'px-3 py-1.5 text-xs' : '',
+        iconOnly ? 'h-9 w-9' : '',
+        compact && !iconOnly ? 'h-9 w-9' : '',
       ]"
       @click.stop="toggleDropdown"
     >
-      <template v-if="iconOnly">
-        <span class="material-symbols-outlined text-[20px]">sort</span>
-      </template>
-      <template v-else>
-        <span>Sorteeri</span>
-        <span class="text-xs">{{ open ? "▲" : "▼" }}</span>
-      </template>
+      <span class="material-symbols-outlined text-[20px]">sort</span>
     </button>
 
-    <div
-      v-if="open"
-      class="absolute right-0 top-12 z-50 min-w-[220px] overflow-hidden rounded-2xl border border-border bg-card shadow-xl ring-1 ring-border"
-    >
-      <button
-        v-for="option in options"
-        :key="option.value"
-        type="button"
-        class="block w-full px-4 py-3 text-left text-sm text-foreground transition hover:bg-black/5"
-        @click="selectOption(option.value)"
+    <Teleport to="body">
+      <div
+        v-if="open"
+        class="fixed z-[120] overflow-hidden rounded-xl border border-primary/20 bg-card shadow-xl ring-1 ring-primary/10"
+        :style="menuStyle"
       >
-        {{ option.label }}
-      </button>
-    </div>
+        <button
+          v-for="option in options"
+          :key="option.value"
+          type="button"
+          class="block w-full px-4 py-3 text-left text-sm text-foreground transition hover:bg-primary/10"
+          @click="selectOption(option.value)"
+        >
+          {{ option.label }}
+        </button>
+      </div>
+    </Teleport>
   </div>
 </template>
