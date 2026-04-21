@@ -1,13 +1,13 @@
 <!-- resources/js/Pages/Calendar/NoteForm.vue -->
 <script setup lang="ts">
 import { Head, router, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import AppLayout from '@/layouts/AppLayout.vue';
 import { calendar } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 
-type NoteType = 'note' | 'task';
+type ReminderPreset = 'none' | 'same_day_morning' | 'day_before_evening' | 'custom';
 
 const props = defineProps<{
   note?: {
@@ -16,7 +16,6 @@ const props = defineProps<{
     title: string | null;
     body: string;
     media_urls?: string[];
-    type?: NoteType;
     due_date?: string | null;
     due_time?: string | null;
     bed_id?: number | null;
@@ -25,6 +24,8 @@ const props = defineProps<{
   beds?: { id: number; name: string; location?: string | null }[];
   plants?: { id: number; name: string }[];
   editMode?: boolean;
+  initialBedId?: number | null;
+  initialDate?: string | null;
 }>();
 
 const calendarUrl = calendar().url;
@@ -37,7 +38,7 @@ const form = useForm<{
   note_date: string;
   title: string;
   body: string;
-  type: NoteType;
+  type: 'note';
 
   due_date: string;
   due_time: string;
@@ -47,24 +48,58 @@ const form = useForm<{
 
   photos: File[];
 }>({
-  note_date: props.note?.note_date ?? new Date().toISOString().slice(0, 10),
+  note_date: props.note?.note_date ?? props.initialDate ?? new Date().toISOString().slice(0, 10),
   title: props.note?.title ?? '',
   body: props.note?.body ?? '',
-  type: (props.note?.type === 'task' ? 'task' : 'note') as NoteType,
+  type: 'note',
 
   due_date: props.note?.due_date ?? new Date().toISOString().slice(0, 10),
   due_time: props.note?.due_time ?? '09:00',
 
-  bed_id: props.note?.bed_id ?? null,
+  bed_id: props.note?.bed_id ?? props.initialBedId ?? null,
   plant_id: props.note?.plant_id ?? null,
 
   photos: [],
 });
 
-const typeOptions: { value: NoteType; label: string; icon: string }[] = [
-  { value: 'note', label: 'Märge', icon: 'edit_note' },
-  { value: 'task', label: 'Ülesanne', icon: 'check_circle' },
+const reminderPreset = ref<ReminderPreset>(
+  props.note?.due_date || props.note?.due_time ? 'custom' : 'none',
+);
+
+const reminderOptions: { value: ReminderPreset; label: string }[] = [
+  { value: 'none', label: 'Ei soovi meeldetuletust' },
+  { value: 'same_day_morning', label: 'Sama päeva hommikul (09:00)' },
+  { value: 'day_before_evening', label: 'Eelmisel õhtul (18:00)' },
+  { value: 'custom', label: 'Määra ise' },
 ];
+
+const showCustomReminderFields = computed(() => reminderPreset.value === 'custom');
+
+function shiftDays(isoDate: string, delta: number): string {
+  const d = new Date(`${isoDate}T00:00:00`);
+  d.setDate(d.getDate() + delta);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function applyReminderPreset() {
+  if (reminderPreset.value === 'none') {
+    form.due_date = '';
+    form.due_time = '';
+    return;
+  }
+  if (reminderPreset.value === 'same_day_morning') {
+    form.due_date = form.note_date;
+    form.due_time = '09:00';
+    return;
+  }
+  if (reminderPreset.value === 'day_before_evening') {
+    form.due_date = shiftDays(form.note_date, -1);
+    form.due_time = '18:00';
+  }
+}
 
 const photoPreviews = ref<string[]>([]);
 
@@ -82,6 +117,7 @@ function removePhoto(index: number) {
 }
 
 function submit() {
+  applyReminderPreset();
   const onSuccess = () => {
     form.reset('title', 'body', 'photos');
     photoPreviews.value = [];
@@ -127,7 +163,7 @@ function cancel() {
               <div>
                 <h3 class="text-lg font-semibold text-foreground">{{ props.editMode ? 'Muuda märget' : 'Lisa märge' }}</h3>
                 <p class="mt-1 text-sm text-foreground/70">
-                  {{ props.editMode ? 'Uuenda märkme sisu.' : 'Lisa märkus, ülesanne või meeldetuletus.' }}
+                  {{ props.editMode ? 'Uuenda märkme sisu.' : 'Lisa märkus või meeldetuletus.' }}
                 </p>
               </div>
               <button
@@ -141,27 +177,6 @@ function cancel() {
             </div>
 
             <form class="mt-5 space-y-6" @submit.prevent="submit">
-                <div>
-                  <label class="mb-2 block text-sm font-semibold tracking-widest text-foreground/70 uppercase">Mida lisad?</label>
-                  <div class="flex gap-2 p-1 rounded-xl bg-muted/60">
-                    <button
-                      v-for="opt in typeOptions"
-                      :key="opt.value"
-                      type="button"
-                      :class="[
-                        'flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-sm font-medium transition cursor-pointer',
-                        form.type === opt.value
-                          ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground',
-                      ]"
-                      @click="form.type = opt.value"
-                    >
-                      <span class="material-symbols-outlined text-lg">{{ opt.icon }}</span>
-                      {{ opt.label }}
-                    </button>
-                  </div>
-                </div>
-
                 <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <div>
                     <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase" for="note_date">Kuupäev</label>
@@ -214,10 +229,26 @@ function cancel() {
                   </p>
                 </div>
 
-                <!-- Ülesande tähtaeg ja meeldetuletus (ainult ülesandel) -->
-                <div v-if="form.type === 'task'" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase" for="reminder_preset">Meeldetuletus</label>
+                  <select
+                    id="reminder_preset"
+                    v-model="reminderPreset"
+                    class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option
+                      v-for="opt in reminderOptions"
+                      :key="opt.value"
+                      :value="opt.value"
+                    >
+                      {{ opt.label }}
+                    </option>
+                  </select>
+                </div>
+
+                <div v-if="showCustomReminderFields" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase" for="due_date">Tähtaeg</label>
+                    <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase" for="due_date">Meeldetuletuse kuupäev</label>
                     <input
                       id="due_date"
                       v-model="form.due_date"

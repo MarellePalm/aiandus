@@ -7,8 +7,8 @@ import DiaryHeader from '@/components/DiaryHeader.vue'
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue'
 import BottomNav from '@/pages/BottomNav.vue'
 
-type ChipKey = 'all' | 'month' | 'undone'
-type NoteKind = 'task' | 'reminder' | 'journal'
+type ChipKey = 'all' | 'month' | 'reminders'
+type NoteKind = 'reminder' | 'journal'
 
 type Note = {
   id: string
@@ -48,12 +48,12 @@ const items = computed<Note[]>(() =>
   (props.notes ?? []).map((n) => ({
     id: String(n.id),
     dateISO: n.note_date,
-    kind: (n.type === 'task' ? 'task' : n.type === 'reminder' ? 'reminder' : 'journal') as NoteKind,
+    kind: (n.due_at ? 'reminder' : 'journal') as NoteKind,
     title: n.title ?? '',
     body: n.body ?? null,
     time: n.due_at ? new Date(n.due_at).toLocaleTimeString('et-EE', { hour: '2-digit', minute: '2-digit' }) : null,
-    tag: n.type === 'task' ? 'Ülesanne' : n.type === 'reminder' ? 'Meeldetuletus' : 'Märge',
-    tagStyle: (n.type === 'task' ? 'neutral' : 'primary') as 'primary' | 'neutral',
+    tag: n.due_at ? 'Meeldetuletus' : 'Märge',
+    tagStyle: (n.due_at ? 'neutral' : 'primary') as 'primary' | 'neutral',
     done: n.done ?? null,
     favorite: false,
     images: n.media_urls ?? [],
@@ -63,7 +63,7 @@ const items = computed<Note[]>(() =>
 const chips: { key: ChipKey; label: string }[] = [
   { key: 'all', label: 'Kõik' },
   { key: 'month', label: 'Sel kuul' },
-  { key: 'undone', label: 'Tegemata tööd' },
+  { key: 'reminders', label: 'Meeldetuletused' },
 ]
 
 const query = ref(props.filters?.q ?? '')
@@ -111,6 +111,7 @@ const filteredGroups = computed<Group[]>(() => {
       activeChip.value === 'month' &&
       (dayOnly.getMonth() !== now.getMonth() || dayOnly.getFullYear() !== now.getFullYear())
     ) continue
+    if (activeChip.value === 'reminders' && n.kind !== 'reminder') continue
     byISO.set(n.dateISO, [...(byISO.get(n.dateISO) ?? []), n])
   }
 
@@ -145,10 +146,6 @@ function refresh() {
 function clearQuery() {
   query.value = ''
   refresh()
-}
-
-function toggleDone(noteId: string) {
-  router.post(`/calendar/notes/${noteId}/toggle-done`, {}, { preserveScroll: true, onSuccess: () => refresh() })
 }
 
 function onAdd() {
@@ -265,18 +262,10 @@ watch(query, () => {
                   :class="note.kind === 'journal' ? 'bg-primary/10 text-primary' : 'bg-secondary text-muted-foreground'"
                 >
                   <span class="material-symbols-outlined text-[13px]">
-                    {{ note.kind === 'task' ? 'checklist' : note.kind === 'reminder' ? 'notifications_active' : 'description' }}
+                    {{ note.kind === 'reminder' ? 'notifications_active' : 'description' }}
                   </span>
                   {{ note.tag }}
                 </span>
-                <input
-                  v-if="note.kind === 'task'"
-                  class="size-4 rounded border-input text-primary focus:ring-ring"
-                  type="checkbox"
-                  :checked="!!note.done"
-                  @click.stop
-                  @change="toggleDone(note.id)"
-                />
               </div>
 
               <h4 class="font-semibold text-base leading-snug line-clamp-2" :class="note.done ? 'line-through opacity-60' : ''">

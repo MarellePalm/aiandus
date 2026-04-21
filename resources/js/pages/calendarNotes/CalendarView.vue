@@ -109,42 +109,25 @@ const selectedWeekday = computed(() =>
 );
 
 const selectedNotes = computed<Note[]>(() => notesByDate?.[selectedISO.value] ?? []);
-const selectedTasks = computed<Note[]>(() =>
-  selectedNotes.value.filter((n) => n.type === 'task'),
-);
-const selectedReminders = computed<Note[]>(() =>
-  selectedNotes.value.filter((n) => n.type === 'reminder' || !!n.reminder_enabled),
-);
-const selectedDiaryNotes = computed<Note[]>(() =>
-  selectedNotes.value.filter((n) => !n.type || n.type === 'note'),
-);
 type DayFeedItem = {
   key: string;
-  kind: 'action' | 'note';
+  kind: 'reminder' | 'note';
   note: Note;
 };
-const dayFeedItems = computed<DayFeedItem[]>(() => [
-  ...selectedTasks.value.map((note, index) => ({ key: `task-${String(note.id ?? index)}`, kind: 'action' as const, note })),
-  ...selectedReminders.value.map((note, index) => ({
-    key: `reminder-${String(note.id ?? index)}`,
-    kind: 'action' as const,
+const dayFeedItems = computed<DayFeedItem[]>(() =>
+  selectedNotes.value.map((note, index) => ({
+    key: `note-${String(note.id ?? index)}`,
+    kind: note.due_at || note.reminder_enabled || note.reminder_time ? 'reminder' : 'note',
     note,
   })),
-  ...selectedDiaryNotes.value.map((note, index) => ({ key: `note-${String(note.id ?? index)}`, kind: 'note' as const, note })),
-]);
-const selectedSummary = computed(() => ({
-  actions: selectedTasks.value.length + selectedReminders.value.length,
-  notes: selectedDiaryNotes.value.length,
-}));
-const selectedTotal = computed(
-  () => selectedSummary.value.actions + selectedSummary.value.notes,
 );
+const selectedTotal = computed(() => dayFeedItems.value.length);
 const showCalendarEmptyHint = ref(false);
 const CALENDAR_EMPTY_HINT_SEEN_KEY = 'calendarEmptyHintSeen';
 
-function toggleTaskDone(n: Note) {
+function openNoteEdit(n: Note) {
   if (n.id == null) return;
-  router.post(`/calendar/notes/${n.id}/toggle-done`, {}, { preserveScroll: true });
+  router.visit(`/calendar/notes/${n.id}/edit`);
 }
 
 function formatDueAt(iso: string) {
@@ -264,37 +247,34 @@ onMounted(() => {
               <article
                 v-for="item in dayFeedItems"
                 :key="item.key"
-                class="basis-[calc((100%-0.75rem)/2)] min-w-[calc((100%-0.75rem)/2)] shrink-0 rounded-xl border border-border/60 bg-card p-2.5 shadow-soft"
+                class="basis-[calc((100%-0.75rem)/2)] min-w-[calc((100%-0.75rem)/2)] shrink-0 rounded-xl border border-border/60 bg-card p-2.5 shadow-soft cursor-pointer hover:border-primary/30"
+                role="button"
+                tabindex="0"
+                @click="openNoteEdit(item.note)"
+                @keydown.enter="openNoteEdit(item.note)"
               >
                 <div class="mb-2 flex items-start justify-between gap-2">
                   <span class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary">
                     <span class="material-symbols-outlined text-[12px]">
-                      {{ item.kind === 'action' ? 'checklist' : 'description' }}
+                      {{ item.kind === 'reminder' ? 'notifications_active' : 'description' }}
                     </span>
-                    {{ item.kind === 'action' ? 'Töö' : 'Märge' }}
+                    {{ item.kind === 'reminder' ? 'Meeldetuletus' : 'Märge' }}
                   </span>
-                  <input
-                    v-if="item.kind === 'action'"
-                    type="checkbox"
-                    :checked="!!item.note.done"
-                    class="journal-check accent-primary mt-0.5"
-                    @change="toggleTaskDone(item.note)"
-                  />
                 </div>
-                <p :class="['text-base leading-snug font-bold line-clamp-2', item.kind === 'action' && item.note.done ? 'line-through opacity-70' : '']">
+                <p class="text-base leading-snug font-bold line-clamp-2">
                   {{ item.note.title || item.note.body || 'Kirje' }}
                 </p>
                 <p v-if="item.note.body && item.note.title" class="mt-1 text-xs text-muted-foreground line-clamp-2">
                   {{ previewText(item.note.body, 90) }}
                 </p>
-                <p v-if="item.kind === 'action' && item.note.due_at" class="mt-1.5 text-[11px] font-semibold text-primary line-clamp-1">
+                <p v-if="item.note.due_at" class="mt-1.5 text-[11px] font-semibold text-primary line-clamp-1">
                   {{ formatDueAt(item.note.due_at) }}
                 </p>
-                <p v-else-if="item.kind === 'action' && item.note.reminder_time" class="mt-1.5 text-[11px] font-semibold text-primary line-clamp-1">
+                <p v-else-if="item.note.reminder_time" class="mt-1.5 text-[11px] font-semibold text-primary line-clamp-1">
                   {{ item.note.reminder_time }}
                 </p>
                 <img
-                  v-else-if="item.kind === 'note' && item.note.media_urls?.[0]"
+                  v-else-if="item.note.media_urls?.[0]"
                   :src="item.note.media_urls[0]"
                   alt="Märkme foto"
                   class="mt-2 h-14 w-14 rounded-lg border border-border/60 object-cover"

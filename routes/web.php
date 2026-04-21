@@ -151,6 +151,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         $bed->load(['plants' => fn ($q) => $q->select('id', 'name', 'image_url', 'bed_id', 'position_in_bed')]);
 
+        $bedNotes = CalendarNote::query()
+            ->where('user_id', $request->user()->id)
+            ->where('bed_id', $bed->id)
+            ->orderByDesc('note_date')
+            ->orderByDesc('id')
+            ->limit(40)
+            ->get(['id', 'note_date', 'title', 'body', 'type', 'done'])
+            ->map(fn ($n) => [
+                'id' => $n->id,
+                'note_date' => $n->note_date?->format('Y-m-d'),
+                'title' => $n->title,
+                'body' => $n->body,
+                'type' => $n->type,
+                'done' => $n->done,
+            ]);
+
         return Inertia::render('map/BedView', [
             'bed' => [
                 'id' => $bed->id,
@@ -168,6 +184,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 ]),
             ],
             'plantsWithoutBed' => $plantsWithoutBed,
+            'bedNotes' => $bedNotes,
         ]);
     })->name('beds.show');
 
