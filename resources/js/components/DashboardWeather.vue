@@ -109,10 +109,7 @@ const todayWeatherLabel = computed(() => q.data.value?.openWeatherLabel ?? null)
 const sunrise = computed(() => q.data.value?.sunrise ?? null);
 const sunset = computed(() => q.data.value?.sunset ?? null);
 
-// Eelistame päris ilmaikooni API-st (värviline, ilmale vastav)
 const todayWeatherIconUrl = computed(() => {
-  const weatherapi = q.data.value?.weatherapiIcon;
-  if (weatherapi) return weatherapi;
   const icon = q.data.value?.openWeatherIcon;
   if (!icon) return null;
   return `https://openweathermap.org/img/wn/${icon}@2x.png`;
@@ -191,14 +188,13 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
       </div>
 
       <div v-if="q.isSuccess.value" class="mt-1 rounded-lg bg-muted/30 p-2 ring-1 ring-border/60 text-sm text-muted-foreground dark:bg-card/70">
-        <div class="flex flex-wrap items-center gap-2">
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span class="inline-flex items-center gap-1.5">
           <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">device_thermostat</span>
           <span class="text-foreground/85 font-medium">
             Max {{ Math.round(tMax ?? 0) }}° / Min {{ Math.round(tMin ?? 0) }}°
           </span>
         </span>
-          <span class="text-foreground/40">•</span>
           <span class="inline-flex items-center gap-1.5">
           <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">partly_cloudy_day</span>
           <span class="text-foreground/85 font-semibold truncate max-w-40">
@@ -206,23 +202,21 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
           </span>
         </span>
         </div>
-        <div class="mt-1.5 flex flex-wrap items-center gap-2">
+        <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
           <span class="inline-flex items-center gap-1.5">
           <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">air</span>
           <span class="text-foreground/80">{{ windSpeed != null ? `${windSpeed.toFixed(1)} m/s` : '—' }}</span>
         </span>
-          <span class="text-foreground/40">•</span>
           <span class="inline-flex items-center gap-1.5">
           <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">water_drop</span>
           <span class="text-foreground/80">{{ humidity != null ? `${humidity}%` : '—' }}</span>
         </span>
         </div>
-        <div v-if="q.isSuccess.value && (sunrise || sunset)" class="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
+        <div v-if="q.isSuccess.value && (sunrise || sunset)" class="mt-1.5 flex items-center gap-2 text-xs sm:text-sm">
           <span class="inline-flex items-center gap-1.5 text-foreground/80">
             <span class="material-symbols-outlined text-base text-amber-400" aria-hidden="true">light_mode</span>
           <span class="text-foreground/80">{{ sunrise ? `Tõuseb ${sunrise}` : '—' }}</span>
           </span>
-          <span class="text-foreground/40">•</span>
           <span class="inline-flex items-center gap-1.5 text-foreground/80">
             <span class="material-symbols-outlined text-base text-amber-500" aria-hidden="true">wb_twilight</span>
           <span class="text-foreground/80">{{ sunset ? `Loojub ${sunset}` : '—' }}</span>
