@@ -1,143 +1,144 @@
-# Aiapäevik
+# 🌱 Aiapäevik
 
-Veebipõhine aiandusrakendus taimede, peenarde, kalendrimärkmete, ülesannete ja varude haldamiseks.  
-Projekt on ehitatud Laravel + Vue + Inertia tehnoloogiapakiga ning toetab PWA kasutust.
+Veebipõhine aiandusrakendus taimede, peenarde, kalendrimärkmete, ülesannete ja varude haldamiseks.
 
-## Tehnoloogiad
+Ehitatud **Laravel + Vue + Inertia** tehnoloogiapakiga, PWA-toega.
 
-- PHP `^8.2` (CI kasutab 8.4/8.5)
-- Laravel `^13`
-- Vue `^3.5`
-- TypeScript `^5`
-- Inertia.js (`inertia-laravel` + `@inertiajs/vue3`)
-- MySQL (arenduses võib kasutada ka SQLite)
-- Vite `^7`
-- Tailwind CSS `^4`
-- Pest `^4`
+---
 
-## Eeltingimused
+## 🛠 Tehnoloogiad
 
-Enne käivitamist veendu, et masinas on:
+| Kiht | Tehnoloogia |
+|------|------------|
+| Backend | PHP `^8.2` · Laravel `^13.0` |
+| Frontend | Vue `^3.5.13` · TypeScript `^5.2.2` · Vite `^7.0.4` |
+| Routing | Inertia.js `^2.0` (Laravel) · `@inertiajs/vue3 ^2.3.7` |
+| Stiil | Tailwind CSS `^4.1.1` |
+| Testid | Pest `^4.3` · `pest-plugin-laravel ^4.0` |
+| Andmebaas | MySQL (toodang) · SQLite (arendus) |
 
-- PHP 8.2+ ja Composer
-- Node.js 22+ ja npm
-- Andmebaas (MySQL) **või** SQLite fail
+---
 
-## Esmakordne käivitamine lokaalselt
+## ✅ Eeltingimused
 
-Kiireim viis:
+- PHP 8.2+ ja Composer 2+
+- Node.js 22+ ja npm 10+
+- MySQL või SQLite
+
+---
+
+## 🚀 Kiirkäivitus
 
 ```bash
 composer run setup
 composer run dev
 ```
 
-`setup` teeb automaatselt:
-- composer install
-- `.env` loomine (`.env.example` põhjal)
-- app key genereerimine
-- migratsioonid
-- npm install
-- production build
+Rakendus avaneb aadressil **http://127.0.0.1:8000**
 
-Alternatiivina samm-sammuline paigaldus:
+`composer run setup` teeb automaatselt: `composer install` → `.env` loomine → võtme genereerimine → migratsioonid → `npm install` → frontendi build.
 
-### 1) Paigalda sõltuvused
+---
+
+## 🔧 Samm-sammuline paigaldus
+
+### 1. Paigalda sõltuvused
 
 ```bash
 composer install
 npm install
 ```
 
-### 2) Loo keskkonnafail ja rakenduse võti
+### 2. Keskkonnafail ja rakenduse võti
 
 ```bash
 cp .env.example .env
 php artisan key:generate
 ```
 
-### 3) Seadista andmebaas
+Soovituslikud `.env` väärtused:
 
-Valik A: MySQL  
-- täida `.env` failis `DB_*` väljad
+```env
+APP_NAME=Aiapäevik
+APP_URL=http://127.0.0.1:8000
+```
 
-Valik B: SQLite
+### 3. Andmebaas
+
+**Valik A — MySQL:** täida `.env` failis `DB_*` väljad.
+
+**Valik B — SQLite:**
 
 ```bash
 touch database/database.sqlite
 ```
-
-ja `.env`:
 
 ```env
 DB_CONNECTION=sqlite
 DB_DATABASE=/absoluutne/tee/database/database.sqlite
 ```
 
-### 4) Käivita migratsioonid
+### 4. Migratsioonid
 
 ```bash
 php artisan migrate
 ```
 
-### 5) Käivita arendusserverid
-
-Lihtsaim variant:
+### 5. Arendusserverid
 
 ```bash
 composer run dev
 ```
 
-See käivitab korraga:
-- Laravel serveri
-- queue listeneri
-- logi jälgimise
-- Vite dev serveri
+Käivitab korraga: Laravel server · queue listener · logi jälgimine · Vite dev server.
 
-## Kasulikud käsud
+---
 
-### Frontend
+## 🧰 Kasulikud käsud
 
 ```bash
-npm run dev
-npm run build
-npm run lint
-npm run format
+# Frontend
+npm run dev        # arendusserver
+npm run build      # toodangubuildi
+npm run lint       # linti kontroll
+npm run format     # koodi formaatimine
+
+# Backend / testid
+composer lint      # PHP linti kontroll
+php artisan test   # testide käivitamine
+./vendor/bin/pest  # Pest otse
 ```
 
-### Backend / testid
+---
 
-```bash
-composer lint
-php artisan test
-./vendor/bin/pest
-```
+## 🔄 CI/CD
 
-## CI/CD
+GitHub Actions tööd:
 
-GitHub Actions workflow'd:
+| Workflow | Kirjeldus |
+|----------|-----------|
+| `linter` | Koodistiili ja frontendi linti kontroll |
+| `tests` | Build + Pest testid |
+| `Production deploy` | Käsitsi käivitatav deploy (`workflow_dispatch`) |
 
-- `linter` – koodistiili ja frontendi linti kontroll
-- `tests` – build + Pest testid
-- `Production deploy` – käsitsi käivitatav deploy (`workflow_dispatch`)
+---
 
-## Deploy test-/tootmiskeskkonda
+## 🚢 Deploy
 
 Deploy käib GitHub Actions workflow kaudu (`Production deploy`) ja kasutab Deployerit (`deploy.yaml`).
+Test-keskkonna paigalduse sammud on kirjeldatud failis [`DEPLOY.md`](./DEPLOY.md).
 
 ### Soovituslik voog
 
 1. Loo branch `main` pealt
 2. Tee muudatused ja commit
-3. Ava PR `main`i
-4. Veendu, et `linter` ja `tests` on rohelised
+3. Ava PR → `main`
+4. Veendu, et `linter` ja `tests` on ✅ rohelised
 5. Merge PR
-6. Käivita GitHub Actionsis `Production deploy` (`Run workflow`)
+6. Käivita GitHub Actionsis **`Production deploy`** → `Run workflow`
 7. Kontrolli live keskkonnas põhifunktsionaalsused üle
 
-### Rollback (kui vaja kiiresti tagasi minna)
-
-Kui viimane merge commit põhjustab vea:
+### ⏪ Rollback
 
 ```bash
 git checkout main
@@ -148,8 +149,9 @@ git push origin main
 
 Seejärel käivita deploy uuesti.
 
-## Projekti dokumentatsioon
+---
 
-Lisadokumentatsioon (tööde planeerimine, roadmap, jms) asub Confluence'is.  
-Deploy juhend reposti sees: `DEPLOY.md`.
+## 📚 Dokumentatsioon
 
+- **Lisadokumentatsioon** (tööde planeerimine, roadmap): Confluence
+- **Deploy juhend**: [`DEPLOY.md`](./DEPLOY.md)
