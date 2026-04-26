@@ -126,6 +126,7 @@ GitHub Actions tööd:
 ## 🚢 Deploy
 
 Deploy käib GitHub Actions workflow kaudu (`Production deploy`) ja kasutab Deployerit (`deploy.yaml`).
+Test-keskkonna paigalduse sammud on kirjeldatud failis [`DEPLOY.md`](./DEPLOY.md).
 
 ### Soovituslik voog
 

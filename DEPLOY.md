@@ -1,6 +1,24 @@
 # Deploy juhend
 
-See fail kirjeldab, kuidas uus versioon liigub `main` harust live keskkonda.
+See fail kirjeldab, kuidas uus versioon liigub `main` harust test- ja live-keskkonda.
+
+## Test-keskkonna paigaldus (praegune protsess)
+
+Hetkel käib test-keskkonna uuendamine läbi GitHub Actions workflow `Production deploy`.
+Praktiline voog on järgmine:
+
+1. Veendu, et vajalikud muudatused on merge'itud harusse `main`.
+2. Ava GitHub repos **Actions** vaade.
+3. Vali workflow **Production deploy**.
+4. Vajuta **Run workflow** ja vali branch `main`.
+5. Oota, kuni `deploy` job lõpeb edukalt.
+6. Kontrolli test-keskkonnas põhilised funktsioonid:
+   - autentimine;
+   - taimede/peenarde vaated;
+   - kalendri vaade;
+   - viimase muudatusega seotud vood.
+
+Märkus: test-keskkonda paigaldamisel tuleb alati fikseerida, milline commit SHA keskkonda jõudis.
 
 ## Eeltingimused
 
