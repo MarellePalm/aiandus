@@ -1,7 +1,7 @@
 {
     "openapi": "3.1.0",
     "info": {
-        "title": "Laravel",
+        "title": "Aiandus API",
         "version": "0.0.1",
         "description": "OpenAPI documentation for Aiandus backend endpoints."
     },
@@ -14,6 +14,10 @@
         {
             "name": "System",
             "description": "System health and availability endpoints"
+        },
+        {
+            "name": "Weather",
+            "description": "Ilmaandmed (OpenWeather + valikuline WeatherAPI). N\u00f5uab sisselogimist (sessioon)."
         }
     ],
     "paths": {
@@ -54,7 +58,9 @@
         },
         "/weather": {
             "get": {
-                "operationId": "weather",
+                "operationId": "apiWeather",
+                "description": "Tagastab vahem\u00e4lust (1 h) kogutud ilma: temperatuur, niiskus, tuul, asukoht, p\u00e4evane max/min, iga p\u00e4eva kokkuv\u00f5te, p\u00e4ike/kuu. Kasutab OpenWeatherMap API-t; WeatherAPI v\u00f5ti annab t\u00e4psema kuu faasi ja ikooni URL-i.",
+                "summary": "Praegune ilm ja l\u00fchike prognoos",
                 "tags": [
                     "Weather"
                 ],
@@ -62,21 +68,25 @@
                     {
                         "name": "lat",
                         "in": "query",
+                        "required": true,
+                        "description": "Laiuskraad (WGS84), numbriline.",
                         "schema": {
-                            "type": "string"
+                            "type": "number"
                         }
                     },
                     {
                         "name": "lon",
                         "in": "query",
+                        "required": true,
+                        "description": "Pikkuskraad (WGS84), numbriline.",
                         "schema": {
-                            "type": "string"
+                            "type": "number"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "Ilmaandmed edukalt koostatud.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -85,13 +95,100 @@
                                         "useOpenWeather": {
                                             "type": "boolean"
                                         },
-                                        "": {
+                                        "temp": {
+                                            "type": [
+                                                "number",
+                                                "null"
+                                            ]
+                                        },
+                                        "humidity": {
+                                            "type": [
+                                                "integer",
+                                                "null"
+                                            ]
+                                        },
+                                        "windSpeed": {
+                                            "type": [
+                                                "number",
+                                                "null"
+                                            ]
+                                        },
+                                        "locationName": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "tMax": {
+                                            "type": [
+                                                "number",
+                                                "null"
+                                            ]
+                                        },
+                                        "tMin": {
+                                            "type": [
+                                                "number",
+                                                "null"
+                                            ]
+                                        },
+                                        "daily": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": {}
+                                            }
+                                        },
+                                        "updatedAt": {
                                             "type": "string"
+                                        },
+                                        "openWeatherIcon": {
+                                            "type": "string"
+                                        },
+                                        "openWeatherLabel": {
+                                            "type": "string"
+                                        },
+                                        "sunrise": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "sunset": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "astronomy": {
+                                            "type": [
+                                                "object",
+                                                "null"
+                                            ],
+                                            "additionalProperties": {}
+                                        },
+                                        "weatherapiIcon": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
                                         }
                                     },
                                     "required": [
                                         "useOpenWeather",
-                                        null
+                                        "temp",
+                                        "humidity",
+                                        "windSpeed",
+                                        "locationName",
+                                        "tMax",
+                                        "tMin",
+                                        "daily",
+                                        "updatedAt",
+                                        "openWeatherIcon",
+                                        "openWeatherLabel",
+                                        "sunrise",
+                                        "sunset",
+                                        "astronomy",
+                                        "weatherapiIcon"
                                     ]
                                 }
                             }

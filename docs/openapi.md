@@ -30,6 +30,11 @@ php artisan scramble:export
 Kasuta controlleris Scramble attribute'e:
 
 - `#[Group('Nimi', 'Kirjeldus')]` endpointide grupiks
-- `#[Endpoint(title: '...', description: '...')]` endpointi kirjelduseks
+- `#[Endpoint(operationId: '...', title: '...', description: '...')]` endpointi kirjelduseks
+- `#[QueryParameter(name: 'lat', description: '...', required: true, type: 'float', infer: false)]` käsitsi query parameetriteks (soovitav `infer: false`, et skeem ei seguneks automaatse tuvastusega)
+- `#[Response(status: 200, description: '...', type: 'array{foo: string, bar: int|null}')]` JSON vastuse skeemi jaoks PHPStan-sõbraliku array-shape stringiga (kui `response()->json([...spread])` tekitab muidu vigase skeemi)
 
-Näide olemasolevast endpointist: `app/Http/Controllers/Api/HealthCheckController.php`.
+Näited:
+
+- `app/Http/Controllers/Api/HealthCheckController.php` — `Group` + `Endpoint`
+- `app/Http/Controllers/WeatherController.php` — `Group`, `Endpoint`, `QueryParameter`, `Response` + array-shape
