@@ -2,13 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Client\Response;
+use Dedoc\Scramble\Attributes\Endpoint;
+use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\QueryParameter;
+use Dedoc\Scramble\Attributes\Response;
+use Illuminate\Http\Client\Response as HttpClientResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+#[Group('Weather', 'Ilmaandmed (OpenWeather + valikuline WeatherAPI). Nõuab sisselogimist (sessioon).')]
 class WeatherController extends Controller
 {
     private const CACHE_TTL_SECONDS = 3600; // 1 tund – piisav, et limiiti ei täitu (vaba plaan ~1000 päringut/päevas)
@@ -17,12 +22,26 @@ class WeatherController extends Controller
     private static function openWeatherLabel(int $id, string $icon = '01d', ?bool $isNightFromSun = null): string
     {
         $isNight = $isNightFromSun ?? str_ends_with($icon, 'n');
-        if ($id === 800) return $isNight ? 'Selge öö' : 'Päikeseline';
-        if ($id >= 801 && $id <= 804) return match ($id) { 801 => 'Vähe pilvi', 802 => 'Hajusad pilved', default => 'Pilvine' };
-        if ($id >= 200 && $id < 300) return 'Äike';
-        if ($id >= 300 && $id < 400) return 'Kerge vihm';
-        if ($id >= 500 && $id < 600) return 'Vihm';
-        if ($id >= 600 && $id < 700) return 'Lumi';
+        if ($id === 800) {
+            return $isNight ? 'Selge öö' : 'Päikeseline';
+        }
+        if ($id >= 801 && $id <= 804) {
+            return match ($id) {
+                801 => 'Vähe pilvi', 802 => 'Hajusad pilved', default => 'Pilvine'
+            };
+        }
+        if ($id >= 200 && $id < 300) {
+            return 'Äike';
+        }
+        if ($id >= 300 && $id < 400) {
+            return 'Kerge vihm';
+        }
+        if ($id >= 500 && $id < 600) {
+            return 'Vihm';
+        }
+        if ($id >= 600 && $id < 700) {
+            return 'Lumi';
+        }
         if ($id >= 700 && $id < 800) {
             return match ($id) {
                 701, 741 => 'Udu',
@@ -35,9 +54,34 @@ class WeatherController extends Controller
                 default => 'Hägune',
             };
         }
+
         return 'Muutlik';
     }
 
+    #[Endpoint(
+        operationId: 'apiWeather',
+        title: 'Praegune ilm ja lühike prognoos',
+        description: 'Tagastab vahemälust (1 h) kogutud ilma: temperatuur, niiskus, tuul, asukoht, päevane max/min, iga päeva kokkuvõte, päike/kuu. Kasutab OpenWeatherMap API-t; WeatherAPI võti annab täpsema kuu faasi ja ikooni URL-i.'
+    )]
+    #[QueryParameter(
+        name: 'lat',
+        description: 'Laiuskraad (WGS84), numbriline.',
+        required: true,
+        type: 'float',
+        infer: false,
+    )]
+    #[QueryParameter(
+        name: 'lon',
+        description: 'Pikkuskraad (WGS84), numbriline.',
+        required: true,
+        type: 'float',
+        infer: false,
+    )]
+    #[Response(
+        status: 200,
+        description: 'Ilmaandmed edukalt koostatud.',
+        type: 'array{useOpenWeather: bool, temp: float|null, humidity: int|null, windSpeed: float|null, locationName: string|null, tMax: float|null, tMin: float|null, daily: list<array<string, mixed>>, updatedAt: string, openWeatherIcon: string, openWeatherLabel: string, sunrise: string|null, sunset: string|null, astronomy: array<string, mixed>|null, weatherapiIcon: string|null}',
+    )]
     public function __invoke(Request $request): JsonResponse
     {
         $key = config('services.openweather.api_key');
@@ -67,12 +111,13 @@ class WeatherController extends Controller
                 .'&appid='.urlencode($key)
                 .'&units=metric';
 
-            /** @var Response $weatherRes */
+            /** @var HttpClientResponse $weatherRes */
             $weatherRes = Http::timeout(10)->get($weatherUrl);
             if (! $weatherRes->successful()) {
                 $body = $weatherRes->json();
                 $msg = $body['message'] ?? $weatherRes->body();
                 Log::warning('OpenWeather current failed', ['status' => $weatherRes->status(), 'body' => $msg]);
+
                 return ['_error' => $msg ?: 'OpenWeather API viga'];
             }
 
@@ -98,7 +143,7 @@ class WeatherController extends Controller
                 .'&appid='.urlencode($key);
 
             $locationName = null;
-            /** @var Response $geoRes */
+            /** @var HttpClientResponse $geoRes */
             $geoRes = Http::timeout(5)->get($geoUrl);
             if ($geoRes->successful()) {
                 $geo = $geoRes->json();
@@ -117,7 +162,7 @@ class WeatherController extends Controller
             $daily = [];
             $tMax = null;
             $tMin = null;
-            /** @var Response $forecastRes */
+            /** @var HttpClientResponse $forecastRes */
             $forecastRes = Http::timeout(10)->get($forecastUrl);
             if ($forecastRes->successful()) {
                 $forecastJson = $forecastRes->json();
@@ -167,7 +212,7 @@ class WeatherController extends Controller
                     .'&q='.urlencode((string) $lat).','.urlencode((string) $lon)
                     .'&days=1'
                     .'&lang=et';
-                /** @var \Illuminate\Http\Client\Response $forecastRes */
+                /** @var HttpClientResponse $forecastRes */
                 $forecastRes = Http::timeout(8)->get($forecastUrl);
                 if ($forecastRes->successful()) {
                     $body = $forecastRes->json();

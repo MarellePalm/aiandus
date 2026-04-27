@@ -38,8 +38,9 @@ return [
     'ui' => [
         /*
          * Define the title of the documentation's website. App name is used when this config is `null`.
+         * Also used as OpenAPI `info.title` in the generated spec.
          */
-        'title' => null,
+        'title' => 'Aiandus API',
 
         /*
          * Define the theme of the documentation. Available options are `light`, `dark`, and `system`.
