@@ -9,7 +9,7 @@
     ],
     "license": "MIT",
     "require": {
-        "php": "^8.2",
+        "php": "^8.3",
         "dedoc/scramble": "^0.13.17",
         "erag/laravel-pwa": "^2.0",
         "inertiajs/inertia-laravel": "^2.0",

@@ -42,7 +42,7 @@ Kokkuvõttes on monorepo käesoleva projekti puhul praktiline vaikimisi valik. I
 
 | Kiht | Tehnoloogia |
 |------|-------------|
-| Backend | PHP `^8.2` · Laravel `^13.0` |
+| Backend | PHP `^8.3` · Laravel `^13.0` |
 | Frontend | Vue `^3.5.13` · TypeScript `^5.2.2` · Vite `^7.0.4` |
 | Routing | Inertia.js `^2.0` (Laravel) · `@inertiajs/vue3 ^2.3.7` |
 | Stiil | Tailwind CSS `^4.1.1` |
@@ -53,7 +53,7 @@ Kokkuvõttes on monorepo käesoleva projekti puhul praktiline vaikimisi valik. I
 
 ## ✅ Eeltingimused
 
-- PHP 8.2+ ja Composer 2+
+- PHP 8.3+ ja Composer 2+
 - Node.js 22+ ja npm 10+
 - MySQL või SQLite
 
