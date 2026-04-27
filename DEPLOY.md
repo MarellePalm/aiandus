@@ -1,4 +1,4 @@
-# 🚢 Deploy juhend
+# 🚢 Juurutusjuhend
 
 > Kirjeldab, kuidas uus versioon liigub `main` harust test- ja live-keskkonda.
 
@@ -7,44 +7,44 @@
 ## ✅ Eeltingimused
 
 - Muudatused on merge'itud `main` harusse
-- GitHub Actions kontrollid (`linter`, `tests`) on ✅ rohelised
+- GitHub Actionsi kontrollid (`linter`, `tests`) on ✅ rohelised
 - Vajadusel on tehtud käsitsi funktsionaalne kontroll
 
 ---
 
-## 🔄 Tavaline deploy voog
+## 🔄 Tavaline juurutusvoog
 
-1. Ava GitHub repo **Actions**
+1. Ava GitHubi repositooriumis **Actions**
 2. Vali workflow **`Production deploy`**
-3. Vajuta **Run workflow** → vali branch `main`
-4. Oota, kuni `deploy` job lõpeb edukalt
-5. Kontrolli live keskkonnas põhilised vaated ja funktsioonid üle
+3. Vajuta **Run workflow** ja vali haru `main`
+4. Oota, kuni `deploy` töö lõpeb edukalt
+5. Kontrolli live-keskkonnas põhilised vaated ja funktsioonid üle
 
 ---
 
-## 🧪 Test-keskkonna paigaldus
+## 🧪 Testkeskkonna paigaldus
 
-Hetkel käib test-keskkonna uuendamine läbi sama `Production deploy` workflow.
+Hetkel toimub testkeskkonna uuendamine sama `Production deploy` workflow kaudu.
 
 1. Veendu, et vajalikud muudatused on merge'itud `main` harusse
-2. Ava **Actions** → vali **`Production deploy`**
-3. Vajuta **Run workflow** → vali branch `main`
+2. Ava **Actions** ja vali **`Production deploy`**
+3. Vajuta **Run workflow** ja vali haru `main`
 4. Oota edukat lõppu
-5. Kontrolli test-keskkonnas:
+5. Kontrolli testkeskkonnas:
    - autentimine
-   - taimede/peenarde vaated
-   - kalendri vaade
-   - viimase muudatusega seotud vood
+   - taimede ja peenarde vaated
+   - kalendrivaade
+   - viimase muudatusega seotud kasutusvood
 
-> **Märkus:** test-keskkonda paigaldamisel tuleb alati fikseerida, milline commit SHA keskkonda jõudis.
+> **Märkus:** testkeskkonda paigaldamisel tuleb alati fikseerida, milline commit SHA keskkonda jõudis.
 
 ---
 
 ## ⚙️ Tehniline taust
 
-Deploy workflow kasutab Deployerit (`deploy.yaml`), mis käivitab järjestikku:
+Juurutuse workflow kasutab Deployerit (`deploy.yaml`), mis käivitab järjestikku järgmised sammud:
 
-```
+```text
 deploy:prepare
 deploy:vendors
 npm ci + vite build
@@ -83,14 +83,14 @@ Seejärel käivita **`Production deploy`** uuesti.
 
 | Probleem | Lahendus |
 |----------|----------|
-| Deploy läks läbi, muudatusi ei näe | Kontrolli, et deploy käis õige commit SHA pealt |
-| Actions punane | Ava logid → paranda viga → uus commit → merge → deploy uuesti |
-| Branch deploy | Ärge deployge vanu feature branch committe otse live'i |
+| Deploy läks läbi, kuid muudatusi ei ole näha | Kontrolli, et juurutus toimus õige commit SHA pealt |
+| Actions on punane | Ava logid, paranda viga, tee uus commit, merge'i see ja juuruta uuesti |
+| Branch deploy | Väldi vanade feature-branchide commit'ide juurutamist otse live-keskkonda |
 | Cache | Tee brauseris hard refresh (`Ctrl+Shift+R`) |
 
 ---
 
 ## 👤 Vastutus
 
-- Kõik live deployd peavad olema seotud commit SHA-ga
-- PR kirjeldus peab sisaldama muudatuste kokkuvõtet ja testimisinfot
+- Kõik live-juurutused peavad olema seotud commit SHA-ga
+- PR-i kirjeldus peab sisaldama muudatuste kokkuvõtet ja testimisinfot
