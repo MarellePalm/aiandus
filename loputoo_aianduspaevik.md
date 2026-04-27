@@ -294,15 +294,21 @@ Kui rakendus paigutada pilve- või serverikeskkonda, tuleb arvestada ka turvalis
 
 ## 6.1. Kasutusjuhend
 
-Kasutusjuhendi eesmärk on aidata lõppkasutajal rakendust kasutada ilma täiendava juhendamiseta. Juhendis kirjeldatakse, kuidas kasutaja loob konto, logib sisse, lisab uusi taimi, teeb päevikusissekandeid ning muudab või kustutab olemasolevaid andmeid. Samuti selgitatakse, kuidas liikuda erinevate vaadete vahel ja kust leida vajalikku infot.
+Käesolevas projektis on kasutusjuhendi rolli täitnud eelkõige `README.md`, kus on kirjeldatud rakenduse eesmärk, tehnoloogiapakk ning sammud süsteemi käivitamiseks. README sisaldab nii kiirkäivitust (`composer run setup`, `composer run dev`) kui ka detailsemat paigaldusjuhendit, mis katab keskkonnafaili loomise, andmebaasi seadistamise, migratsioonid ja arendusserverite käivitamise.
 
-Hea kasutusjuhend peab olema lihtne, selge ja samm-sammuline. Vajaduse korral saab seda täiendada ekraanipiltidega, mis muudavad juhendi veelgi arusaadavamaks. Kasutusjuhend on oluline, sest see aitab hinnata, kas lahendus on kasutajale iseseisvalt mõistetav.
+Lisaks on kasutusloogika toetatud selge kasutajaliidesega, kus põhilised tegevused (taimede haldus, päevikusissekanded, kalendrivaated) on jaotatud arusaadavatesse vaadetesse. Kuigi eraldiseisvat lõppkasutaja käsiraamatut ei koostatud, võimaldab olemasolev dokumentatsioon koos intuitiivse liidesega rakendust kasutusele võtta ilma mahuka täiendava juhendamiseta.
 
 ## 6.2. Tehniline dokumentatsioon
 
-Tehniline dokumentatsioon on suunatud arendajale või inimesele, kes soovib projekti hiljem edasi arendada. Selles kirjeldatakse süsteemi ülesehitust, kasutatud tehnoloogiaid, andmebaasi struktuuri, paigaldamise samme ning vajaduse korral ka API või olulisemate moodulite loogikat.
+Tehniline dokumentatsioon on suunatud arendajale, kes soovib projekti edasi arendada või juurutada. Põhidokumendid on `README.md`, `DEPLOY.md` ja `docs/openapi.md`. README kirjeldab tehnoloogiaid (Laravel, Vue, Inertia, TypeScript, Tailwind), lokaalse arenduskeskkonna seadistust, testimise ja lintimise käske ning CI/CD põhimõtteid. `DEPLOY.md` annab sammud live- ja testkeskkonda juurutamiseks, rollback-protsessi ning levinumate probleemide lahendused. `docs/openapi.md` kirjeldab API dokumentatsiooni kasutamist ja OpenAPI spetsifikatsiooni genereerimist.
 
-Tehniline dokumentatsioon aitab tagada, et projekt ei jääks arusaadavaks ainult selle algsetele autoritele. Hästi koostatud dokumentatsioon lihtsustab hooldust, paranduste tegemist ja uute funktsioonide lisamist. Õppeprojekti seisukohalt näitab tehnilise dokumentatsiooni olemasolu ka seda, et arendustöö on läbimõeldud ja professionaalselt vormistatud.
+Tehnilise dokumentatsiooni oluline osa on ka töövoogude kirjeldus: muudatused tehakse harudes, avatakse pull request, kontrollitakse automaatsed workflow'd (`linter`, `tests`) ning seejärel tehakse deploy. Selline dokumenteerimine tagab, et süsteemi hooldus ei sõltu ainult algsetest autoritest, vaid on korratav ka järgmistele arendajatele.
+
+## 6.3. Dokumentatsiooni roll meeskonnaprojektis
+
+Meeskonnaprojektis ei täida dokumentatsioon ainult kirjeldavat rolli, vaid toimib ka ühise töökorralduse alusena. Projekti käigus kasutati ülesannete haldamiseks Jira't ning teadmiste ja kokkulepete koondamiseks Confluence'it. Jira aitas hoida arendustööd nähtava ja jälgitavana (ülesanded, prioriteedid, tööseisud), Confluence koondas pikemaajalise teadmise (tehnilised otsused, tööprotsessid, juhendid).
+
+Selline tööjaotus vähendas kommunikatsioonivigu ja toetas meeskonna järjepidevust: iga liige nägi, mida tehakse, mis on valmis ja mis vajab täiendamist. Dokumentatsiooni roll oli seega kahekordne: ühelt poolt toetada rakenduse kasutuselevõttu ja tehnilist arusaamist, teiselt poolt tagada meeskonnatöö läbipaistvus ning projekti jätkusuutlik edasiarendus.
 
 ---
 
