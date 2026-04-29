@@ -15,6 +15,7 @@ use App\Models\Seed;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
+use Laravel\Socialite\Facades\Socialite;
 
 
 
@@ -281,5 +282,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('plants.water');
     
 });
+
+Route::get('/auth/redirect', function () {
+    return Socialite::driver('google')->redirect();
+});
+
+Route::get('/auth/callback', function () {
+    $googleUser = Socialite::driver('google')->user();
+
+    $user = \App\Models\User::updateOrCreate(
+        ['email' => $googleUser->email],
+        [
+            'google_id' => $googleUser->id,
+            'name' => $googleUser->name,
+        ]
+    );
+
+    \Illuminate\Support\Facades\Auth::login($user);
+
+    return redirect('/dashboard');
+});
+
 
 require __DIR__ . '/settings.php';
