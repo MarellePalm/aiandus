@@ -16,8 +16,10 @@
         "laravel/fortify": "^1.30",
         "laravel/framework": "^13.0",
         "laravel/nightwatch": "^1.24",
+        "laravel/socialite": "^5.27",
         "laravel/tinker": "^3.0",
-        "laravel/wayfinder": "^0.1.9"
+        "laravel/wayfinder": "^0.1.9",
+        "socialiteproviders/google": "^4.1"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
