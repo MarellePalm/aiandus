@@ -70,7 +70,7 @@ const query = ref(props.filters?.q ?? '')
 const activeChip = ref<ChipKey>(props.filters?.chip ?? 'all')
 
 function chipClass(key: ChipKey) {
-  const base = 'min-h-9 w-full rounded-full px-2 py-1 text-center text-xs leading-tight font-semibold whitespace-normal break-words transition-colors'
+  const base = 'min-h-9 w-full rounded-full px-1.5 py-1 text-center text-[11px] leading-tight font-semibold whitespace-nowrap transition-colors'
   return key === activeChip.value
     ? `${base} bg-primary text-white`
     : `${base} bg-primary/10 text-primary hover:bg-primary/15`
@@ -79,13 +79,6 @@ function chipClass(key: ChipKey) {
 function parseISODate(iso: string) {
   const [y, m, d] = iso.split('-').map(Number)
   return new Date(y, (m ?? 1) - 1, d ?? 1)
-}
-
-function toISODate(date: Date) {
-  const yyyy = date.getFullYear()
-  const mm = String(date.getMonth() + 1).padStart(2, '0')
-  const dd = String(date.getDate()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}`
 }
 
 function humanLabel(dateISO: string) {
@@ -98,10 +91,9 @@ function humanLabel(dateISO: string) {
 
 const filteredGroups = computed<Group[]>(() => {
   const now = new Date()
-  const from = new Date(now)
-  from.setDate(now.getDate() - 6)
 
   const byISO = new Map<string, Note[]>()
+  const filteredNotes: Note[] = []
   for (const n of items.value) {
     const d = parseISODate(n.dateISO)
     const dayOnly = new Date(d.getFullYear(), d.getMonth(), d.getDate())
@@ -112,22 +104,21 @@ const filteredGroups = computed<Group[]>(() => {
       (dayOnly.getMonth() !== now.getMonth() || dayOnly.getFullYear() !== now.getFullYear())
     ) continue
     if (activeChip.value === 'reminders' && n.kind !== 'reminder') continue
+    filteredNotes.push(n)
     byISO.set(n.dateISO, [...(byISO.get(n.dateISO) ?? []), n])
   }
 
-  // "Kõik" ja "Sel nädalal": näita alati viimase 7 päeva kuupäevi, ka tühje päevi.
+  // "Kõik": näita 7 viimast kirjet, mitte tühje kuupäevi.
   if (activeChip.value === 'all') {
-    const groups: Group[] = []
-    for (let i = 0; i < 7; i += 1) {
-      const d = new Date(now)
-      d.setDate(now.getDate() - i)
-      const iso = toISODate(d)
-      groups.push({
-        label: humanLabel(iso),
-        items: byISO.get(iso) ?? [],
-      })
+    const latestSeven = filteredNotes.slice(0, 7)
+    const byDate = new Map<string, Note[]>()
+    for (const note of latestSeven) {
+      byDate.set(note.dateISO, [...(byDate.get(note.dateISO) ?? []), note])
     }
-    return groups
+
+    return [...byDate.entries()]
+      .sort(([a], [b]) => (a < b ? 1 : -1))
+      .map(([iso, groupItems]) => ({ label: humanLabel(iso), items: groupItems }))
   }
 
   // Muudel filtritel näita ainult olemasolevaid kuupäevi, uusim ees.
