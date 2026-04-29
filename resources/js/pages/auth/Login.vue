@@ -130,6 +130,14 @@ defineProps<{
                             <Spinner v-if="processing" class="mr-2" />
                             Logi sisse <span aria-hidden="true">→</span>
                         </Button>
+                        <a
+                            href="/auth/redirect"
+                            class="btn-primary flex w-full items-center justify-center gap-2 bg-primary/70 hover:bg-primary/75"
+                            :tabindex="7"
+                        >
+                            <GoogleLogo />
+                            Logi sisse Google kontoga
+                        </a>
 
                         <div
                             v-if="canRegister"
@@ -144,14 +152,6 @@ defineProps<{
                                 Registreeru siin
                             </Link>
                         </div>
-                        <a
-    href="/auth/redirect"
-    class="btn-primary flex w-full items-center justify-center gap-3 bg-gray-200 text-gray-800 hover:bg-gray-300"
-    :tabindex="7"
->
-    Logi sisse Google kontoga
-    <GoogleLogo />
-</a>
                     </div>
                 </Form>
             </div>
