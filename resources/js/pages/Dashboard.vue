@@ -58,20 +58,6 @@ const nextAction = computed(() => ({
   icon: 'event_upcoming',
 }));
 
-function relativeDays(iso: string | null | undefined): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
-  if (diffDays === 0) return 'Täna';
-  if (diffDays === 1) return 'Eile';
-  if (diffDays < 7) return `${diffDays} päeva tagasi`;
-  if (diffDays < 14) return '1 nädal tagasi';
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} nädalat tagasi`;
-  return d.toLocaleDateString('et-EE', { day: 'numeric', month: 'short' });
-}
-
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Dashboard', href: dashboard().url }];
 
 const todayLabel = computed(() => {
