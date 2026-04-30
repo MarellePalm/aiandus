@@ -231,7 +231,7 @@ function bedThumbCellClass(bed: Bed, row: number, col: number): string {
                   v-for="bed in filteredBeds"
                   :key="bed.id"
                   :href="`/beds/${bed.id}`"
-                  class="group relative block overflow-hidden rounded-2xl border border-border/70 bg-card px-4 py-3 text-left shadow-soft transition-all duration-200 hover:border-primary/30 hover:bg-muted/20"
+                  class="group relative z-0 block overflow-visible rounded-2xl border border-border/70 bg-card px-4 py-3 text-left shadow-soft transition-all duration-200 hover:z-10 hover:border-primary/30 hover:bg-muted/20 focus-within:z-30"
                 >
                   <div
                     v-if="bed.image_url"
