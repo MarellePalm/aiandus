@@ -9,14 +9,10 @@ import EditCategoryModal from '@/components/EditCategoryModal.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 
-
 import CreateCategoryModal from '../../components/CreateCategoryModal.vue';
 import BottomNav from '../BottomNav.vue';
 
 import SearchModal from './SearchModal.vue';
-
-
-
 
 const breadcrumbs = [{ title: 'Aed', href: '/plants' }];
 
@@ -37,6 +33,20 @@ const props = defineProps<{
 const categoryNames = computed(() => props.categories.map((c) => c.name));
 
 type TabKey = 'all' | 'favorites' | 'recent';
+
+const fallbackLogo = '/logo.png';
+
+function categoryImage(src?: string | null) {
+    return src && src.trim() !== '' ? src : fallbackLogo;
+}
+
+function onCategoryImageError(event: Event) {
+    const img = event.target as HTMLImageElement;
+
+    if (img.src.endsWith('/logo.png')) return;
+
+    img.src = fallbackLogo;
+}
 
 const activeTab = ref<TabKey>('all');
 const showCreateCategory = ref(false);
@@ -150,14 +160,17 @@ const resetToAll = () => {
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="page page-with-bottomnav">
             <div
-                class="bg-background text-foreground font-display min-h-screen antialiased"
+                class="font-display min-h-screen bg-background text-foreground antialiased"
             >
                 <div
-                    class="bg-background border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
+                    class="border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x bg-background shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
                 >
                     <DiaryHeader title="Taimed">
                         <template #leading>
-                            <BackIconButton href="/dashboard" aria-label="Tagasi avalehele" />
+                            <BackIconButton
+                                href="/dashboard"
+                                aria-label="Tagasi avalehele"
+                            />
                         </template>
                         <template #actions>
                             <button
@@ -165,9 +178,10 @@ const resetToAll = () => {
                                 type="button"
                                 @click="showSearch = true"
                             >
-                                <span class="material-symbols-outlined text-xl">search</span>
+                                <span class="material-symbols-outlined text-xl"
+                                    >search</span
+                                >
                             </button>
-                            
                         </template>
 
                         <!-- Horizontal Quick Categories -->
@@ -215,9 +229,10 @@ const resetToAll = () => {
                                 class="group relative aspect-[1/1] overflow-hidden rounded-2xl shadow-lg"
                             >
                                 <img
-                                    alt="Tomatoes"
+                                    :alt="cat.name"
                                     class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                    :src="cat.image"
+                                    :src="categoryImage(cat.image)"
+                                    @error="onCategoryImageError"
                                 />
                                 <div
                                     class="matte-overlay absolute inset-0"
@@ -235,9 +250,9 @@ const resetToAll = () => {
                                     </h3>
                                 </div>
                                 <CardActionsMenu
-  @edit="openEditCategory(cat)"
-  @delete="openDeleteModal(cat.id)"
-/>
+                                    @edit="openEditCategory(cat)"
+                                    @delete="openDeleteModal(cat.id)"
+                                />
                                 <button
                                     type="button"
                                     class="absolute top-2 left-2 z-10 flex h-8 w-8 items-center justify-center rounded-full shadow-sm backdrop-blur-md transition hover:scale-105"
@@ -286,11 +301,11 @@ const resetToAll = () => {
                     />
 
                     <EditCategoryModal
-    v-model:open="showEditCategory"
-    :category="editingCategory"
-    submit-url-base="/plants/categories"
-    @updated="router.reload({ only: ['categories'] })"
-/>
+                        v-model:open="showEditCategory"
+                        :category="editingCategory"
+                        submit-url-base="/plants/categories"
+                        @updated="router.reload({ only: ['categories'] })"
+                    />
 
                     <transition name="fade">
                         <div
@@ -348,11 +363,11 @@ const resetToAll = () => {
                 </div>
 
                 <FloatingPlusButton
-    aria-label="Lisa kategooria"
-    :size-px="52"
-    :icon-size-px="30"
-    @click="showCreateCategory = true"
-/>
+                    aria-label="Lisa kategooria"
+                    :size-px="52"
+                    :icon-size-px="30"
+                    @click="showCreateCategory = true"
+                />
 
                 <BottomNav active="plants" />
             </div>

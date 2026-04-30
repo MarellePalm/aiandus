@@ -232,7 +232,19 @@ onBeforeUnmount(() => {
     document.removeEventListener('click', onDocClick);
 });
 
-const fallbackImage = 'https://picsum.photos/200/200';
+const fallbackImage = '/logo.png';
+
+function isFallback(src?: string | null) {
+    return !src || src === '' || src.includes('/logo.png');
+}
+
+function onPlantImageError(event: Event) {
+    const img = event.target as HTMLImageElement;
+
+    if (img.src.endsWith('/logo.png')) return;
+
+    img.src = fallbackImage;
+}
 </script>
 
 <template>
@@ -327,7 +339,9 @@ const fallbackImage = 'https://picsum.photos/200/200';
                                     </button>
                                 </div>
 
-                                <div class="ml-auto shrink-0 self-end sm:self-auto">
+                                <div
+                                    class="ml-auto shrink-0 self-end sm:self-auto"
+                                >
                                     <SortDropdown
                                         v-model="selectedSort"
                                         :options="sortOptions"
@@ -353,9 +367,15 @@ const fallbackImage = 'https://picsum.photos/200/200';
                                 >
                                     <div class="flex items-center gap-4">
                                         <img
-                                            class="h-16 w-16 shrink-0 rounded-xl border border-primary/10 object-cover"
+                                            :class="[
+                                                'h-16 w-16 shrink-0 rounded-xl border border-primary/10',
+                                                isFallback(p.image_url)
+                                                    ? 'bg-gray-100 object-contain p-2'
+                                                    : 'object-cover',
+                                            ]"
                                             :src="p.image_url || fallbackImage"
-                                            alt=""
+                                            :alt="p.subtitle"
+                                            @error="onPlantImageError"
                                         />
 
                                         <div class="min-w-0 flex-1">
