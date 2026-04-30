@@ -1,10 +1,10 @@
 {
     "name": "Aiap\u00e4evik",
     "short_name": "Aiap\u00e4evik",
-    "background_color": "##faf8f4",
+    "background_color": "#faf8f4",
     "display": "fullscreen",
     "description": "A Progressive Web Application setup for Laravel projects.",
-    "theme_color": "##679263",
+    "theme_color": "#679263",
     "start_url": "/",
     "icons": [
         {
