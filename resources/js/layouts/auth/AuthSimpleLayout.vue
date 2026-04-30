@@ -1,6 +1,7 @@
 <!-- resources/js/layouts/auth/AuthSimpleLayout.vue -->
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
+
 import BackIconButton from '@/components/BackIconButton.vue';
 
 const props = withDefaults(

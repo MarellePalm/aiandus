@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+
 import SaveButton from '@/components/SaveButton.vue';
 
 type Category = {
