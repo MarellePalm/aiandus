@@ -142,41 +142,52 @@ function formatNoteDate(iso: string | null): string {
             </template>
           </DiaryHeader>
 
-          <main class="flex-1 px-6 py-4 md:px-8 space-y-4">
-            <section class="relative overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+          <main class="flex-1 px-6 py-4 md:px-8 space-y-5">
+            <section class="relative overflow-hidden rounded-3xl border border-border/70 bg-card shadow-[0_10px_30px_rgba(16,24,40,0.08)]">
               <div
                 v-if="bed.image_url"
-                class="pointer-events-none absolute inset-0 bg-cover bg-center opacity-[0.12]"
+                class="pointer-events-none absolute inset-0 bg-cover bg-center opacity-[0.18]"
                 :style="{ backgroundImage: `url('${bed.image_url}')` }"
                 aria-hidden="true"
               />
               <div
                 v-if="bed.image_url"
-                class="pointer-events-none absolute inset-0 bg-background/70"
+                class="pointer-events-none absolute inset-0 bg-background/62"
                 aria-hidden="true"
               />
               <div
-                class="h-38 bg-cover bg-center relative overflow-hidden rounded-t-2xl z-10"
+                class="h-38 bg-cover bg-center relative overflow-hidden rounded-t-2xl z-10 ring-1 ring-black/10"
                 :style="bedCoverImage() ? { backgroundImage: `url('${bedCoverImage()}')` } : {}"
               >
-                <div v-if="!bedCoverImage()" class="absolute inset-0 bg-linear-to-br from-primary/15 via-muted/40 to-muted/20 flex items-center justify-center">
-                  <span class="material-symbols-outlined text-5xl text-primary/80">grass</span>
+                <div v-if="!bedCoverImage()" class="absolute inset-0 bg-linear-to-br from-primary/20 via-muted/30 to-primary/10 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-5xl text-primary">grass</span>
                 </div>
-                <div class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/70 via-black/30 to-transparent p-3">
-                  <h2 class="text-lg font-semibold text-white">{{ bed.name }}</h2>
+                <div class="pointer-events-none absolute inset-0 bg-linear-to-b from-black/18 via-transparent to-black/35" />
+                <div class="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full border border-white/30 bg-black/25 px-2.5 py-1 text-[11px] font-semibold text-white/95 backdrop-blur-[2px]">
+                  <span class="material-symbols-outlined text-[14px]">yard</span>
+                  Peenar
+                </div>
+                <div class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/85 via-black/52 to-transparent p-3.5">
+                  <h2 class="text-xl font-semibold tracking-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]">{{ bed.name }}</h2>
+                  <p v-if="bed.location" class="mt-1 inline-flex items-center gap-1 text-sm text-white/90">
+                    <span class="material-symbols-outlined text-[15px]">location_on</span>
+                    {{ bed.location }}
+                  </p>
                 </div>
               </div>
-              <div class="relative z-10 p-4 flex items-start justify-between gap-3">
-                <div>
-                  <p v-if="bed.location" class="text-sm text-muted-foreground">{{ bed.location }}</p>
-                </div>
-              </div>
+              <div class="relative z-10 px-4 pb-3 pt-2" />
             </section>
 
-            <section class="rounded-2xl border border-border bg-card p-3 sm:p-4 shadow-soft">
+            <section class="rounded-3xl border border-border/70 bg-card p-3 sm:p-4 shadow-[0_10px_24px_rgba(16,24,40,0.06)]">
+              <div class="mb-3 flex items-start justify-between gap-3 px-1">
+                <div>
+                  <h3 class="text-sm font-semibold text-foreground">Peenra ruudustik</h3>
+                  <p class="mt-0.5 text-xs text-muted-foreground">Puuduta ruutu, et lisada või eemaldada taim.</p>
+                </div>
+              </div>
               <div class="overflow-x-auto overflow-y-visible pb-1 -mx-1 px-1 custom-scrollbar">
                 <div
-                  class="inline-grid gap-2 sm:gap-2.5 p-3 sm:p-4 rounded-2xl border border-primary/25 bg-linear-to-br from-primary/5 to-muted/20 shadow-soft ring-1 ring-primary/10 w-max min-w-0"
+                  class="inline-grid gap-2 sm:gap-2.5 p-3 sm:p-4 rounded-2xl border border-primary/20 bg-linear-to-br from-primary/6 via-background to-muted/20 shadow-soft ring-1 ring-primary/10 w-max min-w-0"
                   :style="{
                     gridTemplateColumns: `repeat(${getBedColumns()}, ${bedCellSize}px)`,
                     gridTemplateRows: `repeat(${getBedLayout().length}, ${bedCellSize}px)`,
@@ -203,24 +214,24 @@ function formatNoteDate(iso: string | null): string {
               </div>
             </section>
 
-            <section v-if="plantsWithoutCell().length" class="rounded-2xl border border-border bg-card/90 p-4">
-              <p class="text-xs font-medium text-muted-foreground mb-2">Muud taimed peenral</p>
+            <section v-if="plantsWithoutCell().length" class="rounded-3xl border border-border/70 bg-card/95 p-4 shadow-[0_8px_20px_rgba(16,24,40,0.05)]">
+              <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Muud taimed peenral</p>
               <ul class="flex flex-wrap gap-2">
-                <li v-for="p in plantsWithoutCell()" :key="p.id" class="inline-flex items-center gap-2 rounded-full bg-muted/40 border border-border/50 py-1.5 pl-3 pr-1.5">
-                  <span class="text-sm font-medium">{{ p.name }}</span>
-                  <button type="button" class="p-1 rounded-full text-muted-foreground hover:bg-muted" @click="removePlantFromBed(p)">
+                <li v-for="p in plantsWithoutCell()" :key="p.id" class="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/35 py-1.5 pl-3 pr-1.5">
+                  <span class="text-sm font-medium text-foreground">{{ p.name }}</span>
+                  <button type="button" class="rounded-full p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground" @click="removePlantFromBed(p)">
                     <span class="material-symbols-outlined text-lg">close</span>
                   </button>
                 </li>
               </ul>
             </section>
 
-            <section class="rounded-2xl border border-border bg-card/90 p-4">
+            <section class="rounded-3xl border border-border/70 bg-card/95 p-4 shadow-[0_10px_24px_rgba(16,24,40,0.06)]">
               <div class="mb-3 flex items-center justify-between gap-2">
                 <h3 class="text-sm font-semibold text-foreground">Märkmed</h3>
                 <Link
-                  :href="`/calendar/note-form?bed_id=${bed.id}`"
-                  class="inline-flex items-center gap-1 rounded-lg border border-primary/30 bg-primary/8 px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/14 transition"
+                  :href="`/calendar/note-form?bed_id=${bed.id}&return_to=${encodeURIComponent(`/beds/${bed.id}`)}`"
+                  class="inline-flex items-center gap-1.5 rounded-xl border border-primary bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
                 >
                   <span class="material-symbols-outlined text-base">add</span>
                   Lisa
@@ -231,7 +242,7 @@ function formatNoteDate(iso: string | null): string {
                 <article
                   v-for="note in props.bedNotes"
                   :key="note.id"
-                  class="rounded-xl border border-border/60 bg-background/60 px-3 py-2.5"
+                  class="rounded-2xl border border-border/60 bg-background/70 px-3.5 py-3 shadow-[0_2px_10px_rgba(16,24,40,0.04)]"
                 >
                   <div class="flex items-start justify-between gap-2">
                     <p class="text-sm font-medium text-foreground line-clamp-1">
@@ -246,7 +257,7 @@ function formatNoteDate(iso: string | null): string {
                   </p>
                 </article>
               </div>
-              <p v-else class="text-sm text-muted-foreground">
+              <p v-else class="rounded-2xl border border-dashed border-border/60 bg-background/60 px-3.5 py-4 text-sm text-muted-foreground">
                 Selle peenra kohta märkmeid veel pole.
               </p>
             </section>
