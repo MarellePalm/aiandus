@@ -50,45 +50,13 @@ const overviewStats = computed(() => [
   },
 ]);
 
-const nextAction = computed(() => {
-  if (activeTasksCount.value > 0) {
-    return {
-      title: `${activeTasksCount.value}`,
-      body: 'Kalendris on lõpetamata tegevusi.',
-      href: '/calendar',
-      cta: 'Ava kalender',
-      icon: 'event_upcoming',
-    };
-  }
-
-  if (!recentPlants.value.length) {
-    return {
-      title: 'Alusta taimede lisamisest',
-      body: 'Kui lisad esmalt taimed, on neid hiljem lihtsam peenardesse paigutada ja kalendriga siduda.',
-      href: '/plants/create',
-      cta: 'Lisa taim',
-      icon: 'local_florist',
-    };
-  }
-
-  if (!recentSeeds.value.length) {
-    return {
-      title: 'Täienda varude vaadet',
-      body: 'Seemnete ja varude lisamine aitab kiiresti näha, mis sul juba olemas on.',
-      href: '/seeds/create',
-      cta: 'Lisa varu',
-      icon: 'shelves',
-    };
-  }
-
-  return {
-    title: 'Aiapäevik on heas seisus',
-    body: 'Sul on juba sisu olemas. Järgmise sammuna võid täiendada peenraplaani või lisada uue märkme.',
-    href: '/map',
-    cta: 'Vaata peenraid',
-    icon: 'garden_cart',
-  };
-});
+const nextAction = computed(() => ({
+  title: `${activeTasksCount.value}`,
+  body: 'Aktiivset tegevust',
+  href: '/calendar',
+  cta: 'Ava kalender',
+  icon: 'event_upcoming',
+}));
 
 function relativeDays(iso: string | null | undefined): string {
   if (!iso) return '';
@@ -420,10 +388,6 @@ function sectionAccent(id: SectionId): string {
         <div class="px-6 pt-4 pb-24 md:px-8">
           <div class="rounded-[1.75rem] border border-border/70 bg-card/55 p-3 shadow-sm">
             <div class="mb-3 flex items-center justify-between gap-3 px-2">
-              <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Sinu plokid</p>
-                <p class="mt-1 text-sm text-foreground/75">Ülemine ülevaade jääb paigale, all saad plokkide järjekorda ise kohandada.</p>
-              </div>
             </div>
 
             <div class="space-y-6">
