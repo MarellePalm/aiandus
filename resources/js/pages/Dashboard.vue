@@ -21,20 +21,74 @@ const recentPlants = computed<RecentPlant[]>(() => (page.props.recentPlants as R
 
 type RecentSeed = { id: number; name: string; image_url?: string | null; created_at?: string | null; category?: { name: string; slug: string } | null };
 const recentSeeds = computed<RecentSeed[]>(() => (page.props.recentSeeds as RecentSeed[] | undefined) ?? []);
+const activeTasksCount = computed(() => recentNotes.value.filter((note) => note.done === false).length);
 
-function relativeDays(iso: string | null | undefined): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
-  if (diffDays === 0) return 'Täna';
-  if (diffDays === 1) return 'Eile';
-  if (diffDays < 7) return `${diffDays} päeva tagasi`;
-  if (diffDays < 14) return '1 nädal tagasi';
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} nädalat tagasi`;
-  return d.toLocaleDateString('et-EE', { day: 'numeric', month: 'short' });
-}
+const overviewStats = computed(() => [
+  {
+    id: 'notes',
+    label: 'Värsked märkmed',
+    value: recentNotes.value.length,
+    hint: recentNotes.value.length ? 'Hiljuti lisatud' : 'Lisa esimene märge',
+    icon: 'edit_note',
+    href: '/calendar/overview',
+  },
+  {
+    id: 'plants',
+    label: 'Uued taimed',
+    value: recentPlants.value.length,
+    hint: recentPlants.value.length ? 'Hiljuti lisatud' : 'Aed ootab taimi',
+    icon: 'local_florist',
+    href: '/plants',
+  },
+  {
+    id: 'seeds',
+    label: 'Varud',
+    value: recentSeeds.value.length,
+    hint: recentSeeds.value.length ? 'Hiljuti lisatud' : 'Lisa seemneid või varusid',
+    icon: 'shelves',
+    href: '/seeds',
+  },
+]);
+
+const nextAction = computed(() => {
+  if (activeTasksCount.value > 0) {
+    return {
+      title: `${activeTasksCount.value} aktiivset tegevust`,
+      body: 'Kalendris on lõpetamata tegevusi.',
+      href: '/calendar',
+      cta: 'Ava kalender',
+      icon: 'event_upcoming',
+    };
+  }
+
+  if (!recentPlants.value.length) {
+    return {
+      title: 'Alusta taimede lisamisest',
+      body: 'Kui lisad esmalt taimed, on neid hiljem lihtsam peenardesse paigutada ja kalendriga siduda.',
+      href: '/plants/create',
+      cta: 'Lisa taim',
+      icon: 'local_florist',
+    };
+  }
+
+  if (!recentSeeds.value.length) {
+    return {
+      title: 'Täienda varude vaadet',
+      body: 'Seemnete ja varude lisamine aitab kiiresti näha, mis sul juba olemas on.',
+      href: '/seeds/create',
+      cta: 'Lisa varu',
+      icon: 'shelves',
+    };
+  }
+
+  return {
+    title: 'Aiapäevik on heas seisus',
+    body: 'Sul on juba sisu olemas. Järgmise sammuna võid täiendada peenraplaani või lisada uue märkme.',
+    href: '/map',
+    cta: 'Vaata peenraid',
+    icon: 'garden_cart',
+  };
+});
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Dashboard', href: dashboard().url }];
 
@@ -55,8 +109,8 @@ const todayLabel = computed(() => {
 // Järjekord: salvestatakse localStorage'i, kasutaja saab plokke üles/alla tõsta
 const STORAGE_KEY = 'dashboardSectionOrder';
 const COLLAPSED_KEY = 'dashboardSectionCollapsed';
-type SectionId = 'weather' | 'moon' | 'notes' | 'recent' | 'recentSeeds';
-const DEFAULT_ORDER: SectionId[] = ['weather', 'moon', 'notes', 'recent', 'recentSeeds'];
+type SectionId = 'weather' | 'moon';
+const DEFAULT_ORDER: SectionId[] = ['weather', 'moon'];
 
 const sectionOrder = ref<SectionId[]>([...DEFAULT_ORDER]);
 const collapsedSectionIds = ref<Set<SectionId>>(new Set());
@@ -159,9 +213,6 @@ function sectionTitle(id: SectionId): string {
   const titles: Record<SectionId, string> = {
     weather: 'Ilm',
     moon: 'Kuufaas täna',
-    notes: 'Viimased märkmed',
-    recent: 'Viimati lisatud taimed',
-    recentSeeds: 'Viimati lisatud varud',
   };
   return titles[id];
 }
@@ -224,6 +275,15 @@ function goToFabAction(href: string) {
   closeFabMenu();
   router.visit(href);
 }
+
+function sectionAccent(id: SectionId): string {
+  const map: Record<SectionId, string> = {
+    weather: 'from-sky-100 via-cyan-50 to-white',
+    moon: 'from-amber-50 via-orange-50 to-white',
+  };
+
+  return map[id];
+}
 </script>
 
 <template>
@@ -240,9 +300,70 @@ function goToFabAction(href: string) {
           top-row-class="mb-3"
           bottom-row-class="mb-2"
         >
-          <p class="mt-1 text-sm text-muted-foreground">
-            {{ todayLabel }}
-          </p>
+          <div class="space-y-4">
+            <div class="rounded-[1.75rem] border border-primary/15 bg-linear-to-br from-primary/12 via-background to-secondary/35 p-5 shadow-sm">
+              <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                  <p class="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+                    Tänane ülevaade
+                  </p>
+                  <p class="mt-3 text-sm text-muted-foreground">{{ todayLabel }}</p>
+                </div>
+                <div class="hidden shrink-0 rounded-[1.5rem] border border-primary/15 bg-card/80 p-3 shadow-sm sm:flex sm:flex-col sm:items-center sm:justify-center">
+                  <span class="material-symbols-outlined text-[2.6rem] text-primary">yard</span>
+                  <span class="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary/80">Aiapäevik</span>
+                </div>
+              </div>
+
+              <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                <Link
+                  v-for="stat in overviewStats"
+                  :key="stat.id"
+                  :href="stat.href"
+                  class="block rounded-2xl border border-border/70 bg-card/85 px-4 py-3 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"
+                >
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        {{ stat.label }}
+                      </p>
+                      <p class="mt-2 text-2xl font-bold tracking-tight text-foreground">{{ stat.value }}</p>
+                      <p class="mt-1 text-xs text-muted-foreground">{{ stat.hint }}</p>
+                    </div>
+                    <span class="material-symbols-outlined rounded-2xl bg-primary/10 p-2 text-primary">
+                      {{ stat.icon }}
+                    </span>
+                  </div>
+                </Link>
+              </div>
+
+              <Link
+                :href="nextAction.href"
+                class="mt-3 block rounded-2xl border border-border/70 bg-card/85 px-4 py-3 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Tegevused</p>
+                    <p class="mt-2 text-xl font-bold tracking-tight text-foreground">{{ nextAction.title }}</p>
+                    <p class="mt-1 text-xs text-muted-foreground">{{ nextAction.body }}</p>
+                  </div>
+                  <span class="material-symbols-outlined rounded-2xl bg-primary/10 p-2 text-primary">
+                    {{ nextAction.icon }}
+                  </span>
+                </div>
+              </Link>
+            </div>
+
+            <div v-if="!editLayout" class="flex justify-end">
+              <Link
+                href="/dashboard?layout=edit"
+                class="inline-flex items-center gap-2 rounded-full border border-border bg-card/90 px-4 py-2 text-xs font-semibold text-foreground shadow-sm transition hover:bg-muted"
+              >
+                <span class="material-symbols-outlined text-base">tune</span>
+                Kohanda avalehte
+              </Link>
+            </div>
+          </div>
         </DiaryHeader>
 
         <div v-if="editLayout" class="px-6 pt-3 md:px-8">
@@ -281,13 +402,14 @@ function goToFabAction(href: string) {
           <!-- Weather -->
           <section
             v-if="id === 'weather'"
-            class="rounded-2xl border border-border bg-card/90 shadow-sm overflow-hidden"
+            class="overflow-hidden rounded-[1.6rem] border border-border bg-card/95 shadow-sm"
             :class="editLayout ? 'ring-1 ring-primary/25' : ''"
             @dragover="editLayout ? onDragOver($event) : undefined"
             @drop="editLayout ? onDrop('weather', $event) : undefined"
           >
             <div
-              class="group flex items-center gap-2 px-3 py-2 bg-muted/40 border-b border-border cursor-pointer"
+              class="group flex cursor-pointer items-center gap-2 border-b border-border bg-linear-to-r px-4 py-3"
+              :class="sectionAccent('weather')"
               @click="toggleSectionCollapsed('weather')"
             >
               <div class="flex flex-1 min-w-0 items-center gap-2">
@@ -316,7 +438,7 @@ function goToFabAction(href: string) {
                 </span>
               </div>
             </div>
-            <div v-show="isSectionExpanded('weather')" class="p-4">
+            <div v-show="isSectionExpanded('weather')" class="p-4 sm:p-5">
               <DashboardWeather />
             </div>
           </section>
@@ -324,13 +446,14 @@ function goToFabAction(href: string) {
           <!-- Moon -->
           <section
             v-if="id === 'moon'"
-            class="rounded-2xl border border-border bg-card/90 shadow-sm overflow-hidden"
+            class="overflow-hidden rounded-[1.6rem] border border-border bg-card/95 shadow-sm"
             :class="editLayout ? 'ring-1 ring-primary/25' : ''"
             @dragover="editLayout ? onDragOver($event) : undefined"
             @drop="editLayout ? onDrop('moon', $event) : undefined"
           >
             <div
-              class="group flex items-center gap-2 px-3 py-2 bg-muted/40 border-b border-border cursor-pointer"
+              class="group flex cursor-pointer items-center gap-2 border-b border-border bg-linear-to-r px-4 py-3"
+              :class="sectionAccent('moon')"
               @click="toggleSectionCollapsed('moon')"
             >
               <div class="flex flex-1 min-w-0 items-center gap-2">
@@ -359,235 +482,11 @@ function goToFabAction(href: string) {
                 </span>
               </div>
             </div>
-            <div v-show="isSectionExpanded('moon')" class="p-4">
+            <div v-show="isSectionExpanded('moon')" class="p-4 sm:p-5">
               <Moon />
             </div>
           </section>
 
-          <!-- Viimased märkmed -->
-          <section
-            v-if="id === 'notes'"
-            class="rounded-2xl border border-border bg-card/90 shadow-sm overflow-hidden"
-            :class="editLayout ? 'ring-1 ring-primary/25' : ''"
-            @dragover="editLayout ? onDragOver($event) : undefined"
-            @drop="editLayout ? onDrop('notes', $event) : undefined"
-          >
-            <div
-              class="group flex items-center gap-2 px-3 py-2 bg-muted/40 border-b border-border cursor-pointer"
-              @click="toggleSectionCollapsed('notes')"
-            >
-              <div class="flex flex-1 min-w-0 items-center gap-2">
-                <button
-                  v-if="editLayout"
-                  type="button"
-                  class="inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground active:scale-95 transition cursor-grab"
-                  draggable="true"
-                  aria-label="Lohista plokki"
-                  @dragstart="onDragStart('notes', $event)"
-                  @dragend="onDragEnd"
-                  @click.stop
-                >
-                  <span class="material-symbols-outlined text-lg">drag_indicator</span>
-                </button>
-                <h3 class="font-semibold text-foreground text-sm">{{ sectionTitle('notes') }}</h3>
-                <span
-                  class="material-symbols-outlined text-lg text-muted-foreground shrink-0 transition"
-                  :class="[
-                    'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
-                    { 'rotate-180': isSectionExpanded('notes') },
-                  ]"
-                  aria-hidden="true"
-                >
-                  expand_more
-                </span>
-              </div>
-            </div>
-            <div v-show="isSectionExpanded('notes')" class="p-4">
-            <div class="dashboard-panel border-0 shadow-none p-0">
-              <div class="flex overflow-x-auto gap-4 pb-2 no-scrollbar">
-                <Link
-                  v-for="n in recentNotes"
-                  :key="n.id"
-                  :href="`/calendar/notes/${n.id}/edit`"
-                  class="activity-card min-w-[160px] shrink-0"
-                >
-                  <div
-                    class="w-20 h-20 rounded-full mb-3 ring-4 ring-primary/10 bg-secondary flex items-center justify-center bg-cover bg-center"
-                    :style="n.media_urls?.length ? { backgroundImage: `url('${n.media_urls[0]}')` } : {}"
-                  >
-                    <span v-if="!n.media_urls?.length" class="material-symbols-outlined text-3xl text-primary">description</span>
-                  </div>
-                  <p class="font-bold text-sm truncate">{{ n.title || 'Märge' }}</p>
-                  <p class="text-[10px] uppercase tracking-tighter text-primary font-bold mt-1 italic">
-                    {{ relativeDays(n.note_date) }}
-                  </p>
-                  <div class="flex gap-1 mt-2">
-                    <span class="material-symbols-outlined text-xs">edit_note</span>
-                  </div>
-                </Link>
-              </div>
-              <p v-if="recentNotes.length === 0" class="text-sm text-muted-foreground py-4">
-                Viimaseid märkmeid pole. Lisa märkmed kalendrist.
-              </p>
-              <Link
-                href="/calendar/overview"
-                class="btn-panel-link"
-              >
-                <span class="material-symbols-outlined text-lg">description</span>
-                <span class="font-semibold text-sm">Vaata kõiki märkmeid</span>
-                <span class="material-symbols-outlined text-lg ml-auto">chevron_right</span>
-              </Link>
-            </div>
-            </div>
-          </section>
-
-          <!-- Viimati lisatud taimed -->
-          <section
-            v-if="id === 'recent'"
-            class="rounded-2xl border border-border bg-card/90 shadow-sm overflow-hidden"
-            :class="editLayout ? 'ring-1 ring-primary/25' : ''"
-            @dragover="editLayout ? onDragOver($event) : undefined"
-            @drop="editLayout ? onDrop('recent', $event) : undefined"
-          >
-            <button
-              type="button"
-              class="group relative z-10 flex w-full items-center gap-2 border-b border-border bg-muted/40 px-3 py-2 text-left cursor-pointer"
-              @click.stop="toggleSectionCollapsed('recent')"
-            >
-              <div class="flex flex-1 min-w-0 items-center gap-2">
-                <span
-                  v-if="editLayout"
-                  class="inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground active:scale-95 transition cursor-grab"
-                  draggable="true"
-                  role="button"
-                  tabindex="0"
-                  aria-label="Lohista plokki"
-                  @dragstart="onDragStart('recent', $event)"
-                  @dragend="onDragEnd"
-                  @click.stop
-                >
-                  <span class="material-symbols-outlined text-lg">drag_indicator</span>
-                </span>
-                <h3 class="font-semibold text-foreground text-sm">{{ sectionTitle('recent') }}</h3>
-                <span
-                  class="material-symbols-outlined text-lg text-muted-foreground shrink-0 transition"
-                  :class="[
-                    'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
-                    { 'rotate-180': isSectionExpanded('recent') },
-                  ]"
-                  aria-hidden="true"
-                >
-                  expand_more
-                </span>
-              </div>
-            </button>
-            <div v-show="isSectionExpanded('recent')" class="p-4">
-            <div class="dashboard-panel border-0 shadow-none p-0">
-              <div class="flex overflow-x-auto gap-4 pb-2 no-scrollbar">
-                <Link
-                  v-for="p in recentPlants"
-                  :key="p.id"
-                  :href="`/plants/${p.id}`"
-                  class="activity-card min-w-[160px] shrink-0"
-                >
-                  <div
-                    class="w-20 h-20 bg-cover bg-center rounded-full mb-3 ring-4 ring-primary/10 bg-muted"
-                    :style="p.image_url ? { backgroundImage: `url('${p.image_url}')` } : {}"
-                  />
-                  <p class="font-bold text-sm">{{ p.name }}</p>
-                  <p class="text-[10px] uppercase tracking-tighter text-primary font-bold mt-1 italic">
-                    {{ relativeDays(p.created_at) }}
-                  </p>
-                </Link>
-              </div>
-              <p v-if="recentPlants.length === 0" class="text-sm text-muted-foreground py-4">
-                Viimati lisatud taimi pole. Lisa taime aia vaatest.
-              </p>
-              <Link
-                href="/plants"
-                class="btn-panel-link"
-              >
-                <span class="material-symbols-outlined text-lg">local_florist</span>
-                <span class="font-semibold text-sm">Vaata kõiki taimi</span>
-                <span class="material-symbols-outlined text-lg ml-auto">chevron_right</span>
-              </Link>
-            </div>
-            </div>
-          </section>
-
-          <!-- Viimati lisatud varud -->
-          <section
-            v-if="id === 'recentSeeds'"
-            class="rounded-2xl border border-border bg-card/90 shadow-sm overflow-hidden last:mb-0"
-            :class="editLayout ? 'ring-1 ring-primary/25' : ''"
-            @dragover="editLayout ? onDragOver($event) : undefined"
-            @drop="editLayout ? onDrop('recentSeeds', $event) : undefined"
-          >
-            <button
-              type="button"
-              class="group relative z-10 flex w-full items-center gap-2 border-b border-border bg-muted/40 px-3 py-2 text-left cursor-pointer"
-              @click.stop="toggleSectionCollapsed('recentSeeds')"
-            >
-              <div class="flex flex-1 min-w-0 items-center gap-2">
-                <span
-                  v-if="editLayout"
-                  class="inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground active:scale-95 transition cursor-grab"
-                  draggable="true"
-                  role="button"
-                  tabindex="0"
-                  aria-label="Lohista plokki"
-                  @dragstart="onDragStart('recentSeeds', $event)"
-                  @dragend="onDragEnd"
-                  @click.stop
-                >
-                  <span class="material-symbols-outlined text-lg">drag_indicator</span>
-                </span>
-                <h3 class="font-semibold text-foreground text-sm">{{ sectionTitle('recentSeeds') }}</h3>
-                <span
-                  class="material-symbols-outlined text-lg text-muted-foreground shrink-0 transition"
-                  :class="[
-                    'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
-                    { 'rotate-180': isSectionExpanded('recentSeeds') },
-                  ]"
-                  aria-hidden="true"
-                >
-                  expand_more
-                </span>
-              </div>
-            </button>
-            <div v-show="isSectionExpanded('recentSeeds')" class="p-4">
-              <div class="dashboard-panel border-0 shadow-none p-0">
-                <div class="flex overflow-x-auto gap-4 pb-2 no-scrollbar">
-                  <Link
-                    v-for="s in recentSeeds"
-                    :key="s.id"
-                    :href="`/seeds/${s.id}`"
-                    class="activity-card min-w-[160px] shrink-0"
-                  >
-                    <div
-                      class="w-20 h-20 bg-cover bg-center rounded-full mb-3 ring-4 ring-primary/10 bg-muted"
-                      :style="s.image_url ? { backgroundImage: `url('${s.image_url}')` } : {}"
-                    />
-                    <p class="font-bold text-sm truncate">{{ s.name }}</p>
-                    <p class="text-[10px] uppercase tracking-tighter text-primary font-bold mt-1 italic">
-                      {{ relativeDays(s.created_at) }}
-                    </p>
-                  </Link>
-                </div>
-                <p v-if="recentSeeds.length === 0" class="text-sm text-muted-foreground py-4">
-                  Viimati lisatud varusid pole. Lisa varusid varude vaatest.
-                </p>
-                <Link
-                  href="/seeds"
-                  class="btn-panel-link"
-                >
-                  <span class="material-symbols-outlined text-lg">shelves</span>
-                  <span class="font-semibold text-sm">Vaata kõiki varusid</span>
-                  <span class="material-symbols-outlined text-lg ml-auto">chevron_right</span>
-                </Link>
-              </div>
-            </div>
-          </section>
         </template>
         </div>
       </div>
