@@ -40,6 +40,45 @@ test('authenticated user can create a bed', function () {
     $response->assertRedirect(route('beds.show', $bed));
 });
 
+test('bed creation requires at least one active cell', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->post(route('beds.store'), [
+        'name' => 'Tühi peenar',
+        'layout' => [
+            [-1, -1],
+            [-1, -1],
+        ],
+    ])->assertSessionHasErrors('layout');
+
+    expect(Bed::query()->where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+test('authenticated user can create a bed from coordinate cells payload', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->post(route('beds.store'), [
+        'name' => 'L-kujuline peenar',
+        'cells' => [
+            ['x' => 0, 'y' => 0, 'plants' => []],
+            ['x' => 1, 'y' => 0, 'plants' => []],
+            ['x' => 0, 'y' => 1, 'plants' => []],
+        ],
+    ]);
+
+    $bed = Bed::query()->where('user_id', $user->id)->latest('id')->first();
+
+    expect($bed)->not()->toBeNull();
+    expect($bed->rows)->toBe(2);
+    expect($bed->columns)->toBe(2);
+    expect($bed->layout)->toBe([
+        [1, 1],
+        [1, -1],
+    ]);
+
+    $response->assertRedirect(route('beds.show', $bed));
+});
+
 test('authenticated user can create a plant in own category', function () {
     $user = User::factory()->create();
     $category = Category::query()->create([
@@ -221,6 +260,87 @@ test('user cannot assign plant to another users bed', function () {
             'bed_id' => $otherUsersBed->id,
         ])
         ->assertForbidden();
+});
+
+test('user cannot update bed layout to remove planted cell', function () {
+    $user = User::factory()->create();
+
+    $bed = Bed::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Peenar taimega',
+        'location' => null,
+        'sort_order' => 1,
+        'rows' => 2,
+        'columns' => 2,
+        'layout' => [
+            [1, 1],
+            [1, 1],
+        ],
+    ]);
+
+    Plant::query()->create([
+        'user_id' => $user->id,
+        'bed_id' => $bed->id,
+        'position_in_bed' => '0,0',
+        'name' => 'Tomat',
+        'subtitle' => 'Tomat',
+    ]);
+
+    $this->actingAs($user)
+        ->put(route('beds.update', $bed), [
+            'layout' => [
+                [-1, 1],
+                [1, 1],
+            ],
+        ])
+        ->assertSessionHasErrors('layout');
+
+    expect($bed->fresh()->layout)->toBe([
+        [1, 1],
+        [1, 1],
+    ]);
+});
+
+test('user can update bed with cells payload and plant position is preserved', function () {
+    $user = User::factory()->create();
+
+    $bed = Bed::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Muudetav peenar',
+        'location' => null,
+        'sort_order' => 1,
+        'rows' => 1,
+        'columns' => 2,
+        'layout' => [
+            [1, 1],
+        ],
+    ]);
+
+    $plant = Plant::query()->create([
+        'user_id' => $user->id,
+        'bed_id' => $bed->id,
+        'position_in_bed' => '0,1',
+        'name' => 'Basiilik',
+        'subtitle' => 'Basiilik',
+    ]);
+
+    $this->actingAs($user)
+        ->put(route('beds.update', $bed), [
+            'cells' => [
+                ['x' => 0, 'y' => 0, 'plants' => []],
+                ['x' => 1, 'y' => 0, 'plants' => [['plant_id' => $plant->id, 'quantity' => 1, 'size' => null, 'note' => null]]],
+                ['x' => 2, 'y' => 0, 'plants' => []],
+            ],
+        ])
+        ->assertSessionHasNoErrors();
+
+    $bed->refresh();
+    $plant->refresh();
+
+    expect($bed->layout)->toBe([
+        [1, 1, 1],
+    ]);
+    expect($plant->position_in_bed)->toBe('0,1');
 });
 
 test('user can update own calendar note', function () {

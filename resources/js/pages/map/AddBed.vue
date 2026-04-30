@@ -1,6 +1,34 @@
 <script setup lang="ts">
-import { router } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { router, useForm } from '@inertiajs/vue3';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+
+type BedPlant = {
+  id: number;
+  name: string;
+  image_url: string | null;
+  position_in_bed: string | null;
+};
+
+type CellPlant = {
+  plant_id: number;
+  quantity: number;
+  size: string | null;
+  note: string | null;
+};
+
+type BedCell = {
+  id: string;
+  x: number;
+  y: number;
+  active: boolean;
+  plants: CellPlant[];
+};
+
+type SubmitCell = {
+  x: number;
+  y: number;
+  plants: CellPlant[];
+};
 
 const props = withDefaults(
   defineProps<{
@@ -11,7 +39,7 @@ const props = withDefaults(
       location: string | null;
       image_url?: string | null;
       layout?: number[][] | null;
-      plants?: { id: number; name: string; image_url: string | null; position_in_bed: string | null }[];
+      plants?: BedPlant[];
     };
   }>(),
   {
@@ -20,277 +48,292 @@ const props = withDefaults(
   },
 );
 
-function initialLayout(): number[][] {
-  const layout = props.bed?.layout;
-  if (layout && Array.isArray(layout) && layout.length && layout.some((row) => Array.isArray(row) && row.length)) {
-    return layout.map((row) =>
-      Array.isArray(row)
-        ? row.map((cell) => {
-            const n = Number(cell);
-            if (n === 1 || n === 0 || n === -1) return n;
-            return 0;
-          })
-        : [],
-    );
-  }
-  return [[1]];
-}
-
-const newBedName = ref(props.mode === 'edit' ? props.bed?.name ?? '' : '');
-const newBedLocation = ref(props.mode === 'edit' ? props.bed?.location ?? '' : '');
 const existingImageUrl = ref(props.mode === 'edit' ? props.bed?.image_url ?? null : null);
-const newBedImage = ref<File | null>(null);
 const newBedImagePreview = ref<string | null>(null);
-const HIDDEN_FILLER = -2;
+const insertionMode = ref<'adjacent' | 'between'>('adjacent');
+const gridScroller = ref<HTMLElement | null>(null);
+const selectedCellElement = ref<HTMLElement | null>(null);
+const highlightedCellId = ref<string | null>(null);
+let highlightTimeout: ReturnType<typeof setTimeout> | null = null;
 
-//  1  = peenraruut
-//  0  = tühi / määramata
-// -1  = vahekäik / kivi / multš (teadlikult mitte-peenar)
-const newBedLayout = ref<number[][]>(initialLayout());
-
-// -----------------------------
-// Layout helpers
-// -----------------------------
-function normalizeRectLayout() {
-  const maxLen = Math.max(...newBedLayout.value.map((r) => r.length), 1);
-  const needsNormalize = newBedLayout.value.some((r) => r.length !== maxLen);
-  if (!needsNormalize) return;
-
-  newBedLayout.value = newBedLayout.value.map((r) =>
-    r.length < maxLen ? [...r, ...Array.from({ length: maxLen - r.length }, () => HIDDEN_FILLER)] : [...r],
-  );
+function makeCellId(x: number, y: number): string {
+  return `cell-${x}-${y}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function compactLayout() {
-  if (!newBedLayout.value.length) {
-    newBedLayout.value = [[1]];
-    return;
+function createInitialCells(): BedCell[] {
+  const layout = props.bed?.layout;
+  const plants = props.bed?.plants ?? [];
+  const plantMap = new Map<string, CellPlant[]>();
+
+  plants.forEach((plant) => {
+    if (!plant.position_in_bed || !/^\d+,\d+$/.test(plant.position_in_bed)) return;
+    const entries = plantMap.get(plant.position_in_bed) ?? [];
+    entries.push({
+      plant_id: plant.id,
+      quantity: 1,
+      size: null,
+      note: null,
+    });
+    plantMap.set(plant.position_in_bed, entries);
+  });
+
+  if (!layout || !Array.isArray(layout) || layout.length === 0) {
+    return [{ id: makeCellId(0, 0), x: 0, y: 0, active: true, plants: [] }];
   }
 
-  let layout = newBedLayout.value.map((r) => [...r]);
+  const cells: BedCell[] = [];
+  layout.forEach((row, y) => {
+    if (!Array.isArray(row)) return;
+    row.forEach((rawCell, x) => {
+      if (Number(rawCell) !== 1) return;
+      cells.push({
+        id: makeCellId(x, y),
+        x,
+        y,
+        active: true,
+        plants: [...(plantMap.get(`${y},${x}`) ?? [])],
+      });
+    });
+  });
 
-  const isEmptyRow = (row: number[]) => row.every((v) => v === 0) || row.every((v) => v === HIDDEN_FILLER);
-  const isEmptyCol = (idx: number) => {
-    const col = layout.map((r) => r[idx] ?? HIDDEN_FILLER);
-    return col.every((v) => v === 0) || col.every((v) => v === HIDDEN_FILLER);
-  };
-
-  while (layout.length > 1 && isEmptyRow(layout[0])) layout.shift();
-  while (layout.length > 1 && isEmptyRow(layout[layout.length - 1])) layout.pop();
-
-  const colCount = () => Math.max(...layout.map((r) => r.length), 1);
-  while (colCount() > 1 && isEmptyCol(0)) layout = layout.map((r) => r.slice(1));
-  while (colCount() > 1 && isEmptyCol(colCount() - 1)) layout = layout.map((r) => r.slice(0, -1));
-
-  if (!layout.length || !layout.some((row) => row.length)) layout = [[1]];
-
-  newBedLayout.value = layout;
-  normalizeRectLayout();
+  return cells.length ? cells : [{ id: makeCellId(0, 0), x: 0, y: 0, active: true, plants: [] }];
 }
 
-function expandUp(row: number, col: number) {
-  normalizeRectLayout();
-  const cols = newBedLayout.value[0]?.length ?? 1;
-  const safeRow = Math.max(0, Math.min(row, newBedLayout.value.length - 1));
-  const safeCol = Math.max(0, Math.min(col, cols - 1));
+const cells = ref<BedCell[]>(createInitialCells());
+const selectedCellId = ref<string>(cells.value[0]?.id ?? '');
 
-  if (safeRow > 0 && cellValueAt(safeRow - 1, safeCol) <= -1) {
-    newBedLayout.value[safeRow - 1][safeCol] = 0;
-    return;
-  }
-
-  const newRow = Array.from({ length: cols }, (_, i) => (i === safeCol ? 0 : HIDDEN_FILLER));
-  newBedLayout.value = [newRow, ...newBedLayout.value];
-}
-
-function expandDown(row: number, col: number) {
-  normalizeRectLayout();
-  const safeRow = Math.max(0, Math.min(row, newBedLayout.value.length - 1));
-  const cols = newBedLayout.value[0]?.length ?? 1;
-  const safeCol = Math.max(0, Math.min(col, cols - 1));
-
-  if (safeRow < newBedLayout.value.length - 1 && cellValueAt(safeRow + 1, safeCol) <= -1) {
-    newBedLayout.value[safeRow + 1][safeCol] = 0;
-    return;
-  }
-
-  const newRow = Array.from({ length: cols }, (_, i) => (i === safeCol ? 0 : HIDDEN_FILLER));
-  newBedLayout.value = [...newBedLayout.value, newRow];
-}
-
-function expandLeft(row: number, col: number) {
-  normalizeRectLayout();
-  const safeRow = Math.max(0, Math.min(row, newBedLayout.value.length - 1));
-  const rowLen = newBedLayout.value[safeRow]?.length ?? 1;
-  const safeCol = Math.max(0, Math.min(col, rowLen - 1));
-
-  if (safeCol > 0 && cellValueAt(safeRow, safeCol - 1) <= -1) {
-    newBedLayout.value[safeRow][safeCol - 1] = 0;
-    return;
-  }
-
-  newBedLayout.value[safeRow] = [0, ...newBedLayout.value[safeRow]];
-  normalizeRectLayout();
-}
-
-function expandRight(row: number, col: number) {
-  normalizeRectLayout();
-  const safeRow = Math.max(0, Math.min(row, newBedLayout.value.length - 1));
-  const rowLen = newBedLayout.value[safeRow]?.length ?? 1;
-  const safeCol = Math.max(0, Math.min(col, rowLen - 1));
-
-  if (safeCol < rowLen - 1 && cellValueAt(safeRow, safeCol + 1) <= -1) {
-    newBedLayout.value[safeRow][safeCol + 1] = 0;
-    return;
-  }
-
-  newBedLayout.value[safeRow] = [...newBedLayout.value[safeRow], 0];
-  normalizeRectLayout();
-}
-
-function insertColumnAt(index: number, row: number) {
-  normalizeRectLayout();
-  const cols = newBedLayout.value[0]?.length ?? 1;
-  const safe = Math.max(0, Math.min(index, cols));
-  const safeRow = Math.max(0, Math.min(row, newBedLayout.value.length - 1));
-  newBedLayout.value = newBedLayout.value.map((row) => [
-    ...row.slice(0, safe),
-    HIDDEN_FILLER,
-    ...row.slice(safe),
-  ]);
-  newBedLayout.value[safeRow][safe] = 0;
-}
-
-function insertRowAt(index: number, col: number) {
-  normalizeRectLayout();
-  const rows = newBedLayout.value.length;
-  const cols = newBedLayout.value[0]?.length ?? 1;
-  const safe = Math.max(0, Math.min(index, rows));
-  const safeCol = Math.max(0, Math.min(col, cols - 1));
-  const newRow = Array.from({ length: cols }, (_, i) => (i === safeCol ? 0 : HIDDEN_FILLER));
-  newBedLayout.value = [
-    ...newBedLayout.value.slice(0, safe),
-    newRow,
-    ...newBedLayout.value.slice(safe),
-  ];
-}
-
-function canExpandTop(row: number, col: number): boolean {
-  if (cellValueAt(row, col) <= -1) return false;
-  for (let r = 0; r < newBedLayout.value.length; r += 1) {
-    if (cellValueAt(r, col) > -1) return row === r;
-  }
-  return row === 0;
-}
-
-function canExpandBottom(row: number, col: number): boolean {
-  if (cellValueAt(row, col) <= -1) return false;
-  for (let r = newBedLayout.value.length - 1; r >= 0; r -= 1) {
-    if (cellValueAt(r, col) > -1) return row === r;
-  }
-  return row === newBedLayout.value.length - 1;
-}
-
-function canExpandLeft(row: number, col: number): boolean {
-  if (cellValueAt(row, col) <= -1) return false;
-  return cellValueAt(row, col - 1) <= -1;
-}
-
-function canExpandRight(row: number, col: number): boolean {
-  if (cellValueAt(row, col) <= -1) return false;
-  return cellValueAt(row, col + 1) <= -1;
-}
-
-function canInsertBetweenRight(col: number): boolean {
-  return col < (newBedLayout.value[0]?.length ?? 1) - 1;
-}
-
-function canInsertBetweenBottom(row: number): boolean {
-  return row < newBedLayout.value.length - 1;
-}
-
-function cellValueAt(row: number, col: number): number {
-  return newBedLayout.value[row]?.[col] ?? -1;
-}
-
-function canShowArrowAt(row: number, col: number): boolean {
-  return cellValueAt(row, col) > -1;
-}
-
-function canInsertBetweenRightAt(row: number, col: number): boolean {
-  if (!canInsertBetweenRight(col)) return false;
-  return cellValueAt(row, col) > -1 && cellValueAt(row, col + 1) > -1;
-}
-
-function canInsertBetweenBottomAt(row: number, col: number): boolean {
-  if (!canInsertBetweenBottom(row)) return false;
-  return cellValueAt(row, col) > -1 && cellValueAt(row + 1, col) > -1;
-}
-
-// -----------------------------
-// Validation
-// -----------------------------
-function hasAnyPlantCell(): boolean {
-  return newBedLayout.value.some((row) => row.some((v) => v === 1));
-}
-
-// -----------------------------
-// Tooling
-// -----------------------------
-type Cell = 1 | 0 | -1;
-const activeTool = ref<Cell>(1);
-
-function setInternalCell(displayR: number, displayC: number, value: Cell) {
-  const r = displayR;
-  const c = displayC;
-  if (r < 0 || c < 0) return;
-  if (r >= newBedLayout.value.length) return;
-  if (c >= (newBedLayout.value[0]?.length ?? 0)) return;
-  newBedLayout.value[r][c] = value;
-  compactLayout();
-}
-
-function plantAtInternal(internalR: number, internalC: number) {
-  const key = `${internalR},${internalC}`;
-  return props.bed?.plants?.find((p) => p.position_in_bed === key);
-}
-
-const displayLayout = computed<number[][]>(() => {
-  return newBedLayout.value;
+const form = useForm<{
+  name: string;
+  location: string;
+  image: File | null;
+  cells: SubmitCell[];
+}>({
+  name: props.mode === 'edit' ? props.bed?.name ?? '' : '',
+  location: props.mode === 'edit' ? props.bed?.location ?? '' : '',
+  image: null,
+  cells: [],
 });
 
-// Hoia algne layout ristkülikuna, kuid väldi reaktiivse state muutmist computed sees.
-normalizeRectLayout();
-compactLayout();
+const selectedCell = computed(() => cells.value.find((cell) => cell.id === selectedCellId.value) ?? null);
+const activeCells = computed(() => cells.value.filter((cell) => cell.active));
 
-// -----------------------------
-// Form actions
-// -----------------------------
+const bounds = computed(() => {
+  const source = activeCells.value.length ? activeCells.value : [{ x: 0, y: 0 }];
+  const xs = source.map((cell) => cell.x);
+  const ys = source.map((cell) => cell.y);
+
+  return {
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minY: Math.min(...ys),
+    maxY: Math.max(...ys),
+  };
+});
+
+const displayBounds = computed(() => ({
+  minX: bounds.value.minX,
+  maxX: bounds.value.maxX,
+  minY: bounds.value.minY,
+  maxY: bounds.value.maxY,
+}));
+
+const displayRows = computed(() =>
+  Array.from({ length: displayBounds.value.maxY - displayBounds.value.minY + 1 }, (_, index) => displayBounds.value.minY + index),
+);
+const displayColumns = computed(() =>
+  Array.from({ length: displayBounds.value.maxX - displayBounds.value.minX + 1 }, (_, index) => displayBounds.value.minX + index),
+);
+
+function occupiedKey(x: number, y: number): string {
+  return `${x}:${y}`;
+}
+
+const occupiedCellMap = computed(() => {
+  const map = new Map<string, BedCell>();
+  activeCells.value.forEach((cell) => {
+    map.set(occupiedKey(cell.x, cell.y), cell);
+  });
+  return map;
+});
+
+function getCellAt(x: number, y: number): BedCell | null {
+  return occupiedCellMap.value.get(occupiedKey(x, y)) ?? null;
+}
+
+function getPlantNames(cell: BedCell): string[] {
+  const plantIds = cell.plants.map((plant) => plant.plant_id);
+  return plantIds
+    .map((id) => props.bed?.plants?.find((plant) => plant.id === id)?.name ?? 'Taim')
+    .slice(0, 3);
+}
+
+function selectCell(cell: BedCell) {
+  selectedCellId.value = cell.id;
+  highlightedCellId.value = cell.id;
+
+  if (highlightTimeout) clearTimeout(highlightTimeout);
+  highlightTimeout = setTimeout(() => {
+    if (highlightedCellId.value === cell.id) highlightedCellId.value = null;
+  }, 900);
+}
+
+function setSelectedCellElement(el: Element | null, cellId: string) {
+  if (!(el instanceof HTMLElement)) return;
+  if (cellId === selectedCellId.value) {
+    selectedCellElement.value = el;
+  }
+}
+
+function addCellAt(x: number, y: number) {
+  const existing = getCellAt(x, y);
+  if (existing) {
+    selectCell(existing);
+    return;
+  }
+
+  const newCell: BedCell = {
+    id: makeCellId(x, y),
+    x,
+    y,
+    active: true,
+    plants: [],
+  };
+
+  cells.value = [...cells.value, newCell];
+  selectCell(newCell);
+}
+
+function shiftCells(axis: 'x' | 'y', comparison: (cell: BedCell) => boolean, delta: number) {
+  cells.value = cells.value.map((cell) => (comparison(cell) ? { ...cell, [axis]: cell[axis] + delta } : cell));
+}
+
+function addRelative(direction: 'up' | 'down' | 'left' | 'right') {
+  if (!selectedCell.value) return;
+  const cell = selectedCell.value;
+
+  if (direction === 'up') addCellAt(cell.x, cell.y - 1);
+  if (direction === 'down') addCellAt(cell.x, cell.y + 1);
+  if (direction === 'left') addCellAt(cell.x - 1, cell.y);
+  if (direction === 'right') addCellAt(cell.x + 1, cell.y);
+}
+
+function addBetween(direction: 'up' | 'down' | 'left' | 'right') {
+  if (!selectedCell.value) return;
+  const cell = selectedCell.value;
+
+  if (direction === 'right') {
+    const targetX = cell.x + 1;
+    const occupied = getCellAt(targetX, cell.y);
+    if (occupied) {
+      shiftCells('x', (item) => item.x > cell.x, 1);
+    }
+    addCellAt(targetX, cell.y);
+  }
+
+  if (direction === 'left') {
+    const targetX = cell.x - 1;
+    const occupied = getCellAt(targetX, cell.y);
+    if (occupied) {
+      shiftCells('x', (item) => item.x < cell.x, -1);
+    }
+    addCellAt(targetX, cell.y);
+  }
+
+  if (direction === 'down') {
+    const targetY = cell.y + 1;
+    const occupied = getCellAt(cell.x, targetY);
+    if (occupied) {
+      shiftCells('y', (item) => item.y > cell.y, 1);
+    }
+    addCellAt(cell.x, targetY);
+  }
+
+  if (direction === 'up') {
+    const targetY = cell.y - 1;
+    const occupied = getCellAt(cell.x, targetY);
+    if (occupied) {
+      shiftCells('y', (item) => item.y < cell.y, -1);
+    }
+    addCellAt(cell.x, targetY);
+  }
+}
+
+function handleDirectionalAdd(direction: 'up' | 'down' | 'left' | 'right') {
+  if (insertionMode.value === 'between') {
+    addBetween(direction);
+  } else {
+    addRelative(direction);
+  }
+}
+
+const selectedHasPlants = computed(() => Boolean(selectedCell.value?.plants.length));
+
+function removeSelectedCell() {
+  if (!selectedCell.value || selectedHasPlants.value) return;
+  if (activeCells.value.length <= 1) return;
+
+  const current = selectedCell.value;
+  cells.value = cells.value.filter((cell) => cell.id !== current.id);
+  selectedCellId.value = cells.value[0]?.id ?? '';
+}
+
+function addCellFromPlaceholder(x: number, y: number) {
+  addCellAt(x, y);
+}
+
+function syncCellsToForm() {
+  form.cells = activeCells.value.map((cell) => ({
+    x: cell.x,
+    y: cell.y,
+    plants: cell.plants.map((plant) => ({
+      plant_id: plant.plant_id,
+      quantity: plant.quantity,
+      size: plant.size,
+      note: plant.note,
+    })),
+  }));
+}
+
 function resetForm() {
-  router.get('/map', { preserveScroll: true });
+  if (props.mode === 'edit' && props.bed) {
+    router.get(`/beds/${props.bed.id}`, {}, { preserveScroll: true });
+    return;
+  }
+
+  router.get('/map', {}, { preserveScroll: true });
 }
 
 function submit() {
-  if (!newBedName.value.trim() || !hasAnyPlantCell()) return;
+  if (!form.name.trim()) {
+    form.setError('name', 'Peenra nimi on kohustuslik.');
+    return;
+  }
 
-  const payload = {
-    name: newBedName.value.trim(),
-    location: newBedLocation.value.trim() || undefined,
-    layout: newBedLayout.value.map((row) => row.map((cell) => (cell === HIDDEN_FILLER ? -1 : cell))),
-    image: newBedImage.value ?? undefined,
-  };
+  if (!activeCells.value.length) {
+    form.setError('cells', 'Peenras peab olema vähemalt üks ruut.');
+    return;
+  }
+
+  syncCellsToForm();
+  form.clearErrors('name');
+  form.clearErrors('cells');
+
+  form.transform((data) => ({
+    ...data,
+    name: data.name.trim(),
+    location: data.location.trim(),
+    cells: form.cells,
+  }));
 
   if (props.mode === 'edit' && props.bed) {
-    router.put(`/beds/${props.bed.id}`, payload, {
+    form.put(`/beds/${props.bed.id}`, {
       forceFormData: true,
       preserveScroll: true,
-      onSuccess: () => resetForm(),
     });
   } else {
-    router.post('/beds', payload, {
+    form.post('/beds', {
       forceFormData: true,
       preserveScroll: true,
-      onSuccess: () => resetForm(),
     });
   }
 }
@@ -298,7 +341,7 @@ function submit() {
 function onImageChange(event: Event) {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0] ?? null;
-  newBedImage.value = file;
+  form.image = file;
 
   if (newBedImagePreview.value) {
     URL.revokeObjectURL(newBedImagePreview.value);
@@ -314,241 +357,247 @@ onBeforeUnmount(() => {
   if (newBedImagePreview.value) {
     URL.revokeObjectURL(newBedImagePreview.value);
   }
+  if (highlightTimeout) clearTimeout(highlightTimeout);
 });
 
-const addTileClass =
-  'w-12 h-12 rounded-lg border-2 border-dashed border-primary/55 bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/18 transition';
-
+watch(selectedCellId, async () => {
+  await nextTick();
+  selectedCellElement.value?.scrollIntoView({
+    block: 'nearest',
+    inline: 'nearest',
+    behavior: 'smooth',
+  });
+});
 </script>
 
 <template>
   <section class="mb-8">
-    <form
-      class="rounded-xl border border-border bg-card p-4 space-y-4"
-      @submit.prevent="submit"
-    >
-      <div>
-        <label class="block text-sm font-medium text-foreground mb-1">Peenra nimi</label>
-        <input
-          v-model="newBedName"
-          type="text"
-          class="form-input w-full"
-          placeholder="nt Kõrvitsapeenar"
-          maxlength="120"
-        />
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-foreground mb-1">
-          Asukoht (valikuline)
-        </label>
-        <input
-          v-model="newBedLocation"
-          type="text"
-          class="form-input w-full"
-          placeholder="nt Tagaaed, esiuksest paremal"
-          maxlength="255"
-        />
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-foreground mb-1">Peenra pilt (valikuline)</label>
-        <input
-          type="file"
-          accept="image/*"
-          class="form-input w-full file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary hover:file:bg-primary/20"
-          @change="onImageChange"
-        />
-        <div v-if="newBedImagePreview || existingImageUrl" class="mt-3">
-          <div
-            class="h-28 w-full rounded-xl border border-border bg-cover bg-center"
-            :style="{ backgroundImage: `url('${newBedImagePreview ?? existingImageUrl}')` }"
+    <form class="rounded-3xl border border-border bg-card p-4 shadow-soft space-y-5 sm:p-5" @submit.prevent="submit">
+      <div class="space-y-4">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-foreground">Peenra nimi</label>
+          <input
+            v-model="form.name"
+            type="text"
+            class="w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            placeholder="Nt Ürdipeenar"
+            maxlength="120"
           />
+          <p v-if="form.errors.name" class="mt-1 text-sm text-red-600">{{ form.errors.name }}</p>
+        </div>
+
+        <div>
+          <label class="mb-1 block text-sm font-medium text-foreground">Asukoht</label>
+          <input
+            v-model="form.location"
+            type="text"
+            class="w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            placeholder="Nt Kasvuhoone kõrval"
+            maxlength="255"
+          />
+          <p v-if="form.errors.location" class="mt-1 text-sm text-red-600">{{ form.errors.location }}</p>
+        </div>
+
+        <div>
+          <label class="mb-1 block text-sm font-medium text-foreground">Peenra pilt</label>
+          <input
+            type="file"
+            accept="image/*"
+            class="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground file:mr-3 file:rounded-xl file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:font-medium file:text-primary hover:file:bg-primary/20"
+            @change="onImageChange"
+          />
+          <div v-if="newBedImagePreview || existingImageUrl" class="mt-3 overflow-hidden rounded-2xl border border-border">
+            <div class="h-32 w-full bg-cover bg-center" :style="{ backgroundImage: `url('${newBedImagePreview ?? existingImageUrl}')` }" />
+          </div>
+          <p v-if="form.errors.image" class="mt-1 text-sm text-red-600">{{ form.errors.image }}</p>
         </div>
       </div>
 
-      <!-- AKTIIVNE LEGEND = tööriistavalik -->
-      <div class="rounded-xl border border-border bg-secondary/40 p-3">
-        <div class="font-semibold text-foreground mb-2">Legend (vajuta, et valida)</div>
+      <section class="rounded-2xl border border-border bg-background/60 p-4">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 class="text-base font-semibold text-foreground">Peenra kaart</h3>
+            <p class="mt-1 text-sm text-muted-foreground">
+              Vali ruut ja lisa uus ruut selle kõrvale või vajadusel olemasolevate ruutude vahele.
+            </p>
+          </div>
 
-        <div class="grid grid-cols-3 gap-2 text-xs">
-          <button
-            type="button"
-            class="flex items-center gap-2 rounded-lg border px-2 py-2"
-            :class="activeTool === 1 ? 'border-primary bg-primary/10 text-primary font-semibold' : 'text-muted-foreground'"
-            @click="activeTool = 1"
-          >
-            <span class="inline-block w-5 h-5 rounded-md border-2 border-primary/60 bg-primary/15" />
-            Peenar
-          </button>
-
-          <button
-            type="button"
-            class="flex items-center gap-2 rounded-lg border px-2 py-2"
-            :class="activeTool === -1 ? 'border-primary bg-primary/10 text-primary font-semibold' : 'text-muted-foreground'"
-            @click="activeTool = -1"
-          >
-            <span class="inline-block w-5 h-5 rounded-md border border-border bg-muted/60 relative overflow-hidden">
-              <span
-                class="absolute inset-0 opacity-40 pointer-events-none text-muted-foreground"
-                style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 10px 10px;"
-              />
-            </span>
-            Vahekäik/kivi või tühi ruut
-          </button>
-
-          <button
-            type="button"
-            class="flex items-center gap-2 rounded-lg border px-2 py-2"
-            :class="activeTool === 0 ? 'border-primary bg-primary/10 text-primary font-semibold' : 'text-muted-foreground'"
-            @click="activeTool = 0"
-          >
-            <span class="inline-flex w-5 h-5 rounded-md border border-dashed border-muted-foreground/40 bg-muted/30 items-center justify-center">
-              ⌀
-            </span>
-            Kustuta
-          </button>
-        </div>
-
-      </div>
-
-      <!-- GRID (CSS grid, mobiilis stabiilne) -->
-      <div class="space-y-2 flex flex-col items-center">
-        <div class="flex w-full flex-col items-center">
-          <div
-            class="mx-auto grid gap-2 justify-center"
-            :style="{ gridTemplateColumns: `repeat(${displayLayout[0]?.length ?? 1}, 3rem)` }"
-          >
-            <template v-for="(row, dri) in displayLayout" :key="dri">
-              <template v-for="(cell, dci) in row" :key="`${dri}-${dci}`">
-                <div class="group/cell relative w-12 h-12">
-                  <button
-                    v-if="canExpandTop(dri, dci) && canShowArrowAt(dri, dci)"
-                    type="button"
-                    class="pointer-events-auto absolute -top-3 left-1/2 z-20 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full border border-black/45 bg-background text-black opacity-100 shadow-sm transition sm:pointer-events-none sm:opacity-0 sm:group-hover/cell:pointer-events-auto sm:group-hover/cell:opacity-100 sm:group-focus-within/cell:pointer-events-auto sm:group-focus-within/cell:opacity-100 hover:bg-black/10"
-                    title="Laienda üles"
-                    @click.stop="expandUp(dri, dci)"
-                  >
-                    <span class="material-symbols-outlined text-[11px] leading-none">keyboard_arrow_up</span>
-                  </button>
-                  <button
-                    v-if="canExpandBottom(dri, dci) && canShowArrowAt(dri, dci)"
-                    type="button"
-                    class="pointer-events-auto absolute -bottom-3 left-1/2 z-20 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full border border-black/45 bg-background text-black opacity-100 shadow-sm transition sm:pointer-events-none sm:opacity-0 sm:group-hover/cell:pointer-events-auto sm:group-hover/cell:opacity-100 sm:group-focus-within/cell:pointer-events-auto sm:group-focus-within/cell:opacity-100 hover:bg-black/10"
-                    title="Laienda alla"
-                    @click.stop="expandDown(dri, dci)"
-                  >
-                    <span class="material-symbols-outlined text-[11px] leading-none">keyboard_arrow_down</span>
-                  </button>
-                  <button
-                    v-if="canExpandLeft(dri, dci) && canShowArrowAt(dri, dci)"
-                    type="button"
-                    class="pointer-events-auto absolute -left-3 top-1/2 z-20 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full border border-black/45 bg-background text-black opacity-100 shadow-sm transition sm:pointer-events-none sm:opacity-0 sm:group-hover/cell:pointer-events-auto sm:group-hover/cell:opacity-100 sm:group-focus-within/cell:pointer-events-auto sm:group-focus-within/cell:opacity-100 hover:bg-black/10"
-                    title="Laienda vasakule"
-                    @click.stop="expandLeft(dri, dci)"
-                  >
-                    <span class="material-symbols-outlined text-[11px] leading-none">keyboard_arrow_left</span>
-                  </button>
-                  <button
-                    v-if="canExpandRight(dri, dci) && canShowArrowAt(dri, dci)"
-                    type="button"
-                    class="pointer-events-auto absolute -right-3 top-1/2 z-20 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full border border-black/45 bg-background text-black opacity-100 shadow-sm transition sm:pointer-events-none sm:opacity-0 sm:group-hover/cell:pointer-events-auto sm:group-hover/cell:opacity-100 sm:group-focus-within/cell:pointer-events-auto sm:group-focus-within/cell:opacity-100 hover:bg-black/10"
-                    title="Laienda paremale"
-                    @click.stop="expandRight(dri, dci)"
-                  >
-                    <span class="material-symbols-outlined text-[11px] leading-none">keyboard_arrow_right</span>
-                  </button>
-
-                  <button
-                    v-if="canInsertBetweenRightAt(dri, dci)"
-                    type="button"
-                    class="pointer-events-auto absolute -right-3 top-[28%] z-10 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-md border border-black/45 bg-background text-black opacity-100 shadow-sm transition sm:pointer-events-none sm:opacity-0 sm:group-hover/cell:pointer-events-auto sm:group-hover/cell:opacity-100 sm:group-focus-within/cell:pointer-events-auto sm:group-focus-within/cell:opacity-100 hover:bg-black/10"
-                    title="Lisa veerg kahe ruudu vahele"
-                    @click.stop="insertColumnAt(dci + 1, dri)"
-                  >
-                    <span class="material-symbols-outlined text-[10px] leading-none">add</span>
-                  </button>
-                  <button
-                    v-if="canInsertBetweenBottomAt(dri, dci)"
-                    type="button"
-                    class="pointer-events-auto absolute -bottom-3 left-[28%] z-10 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-md border border-black/45 bg-background text-black opacity-100 shadow-sm transition sm:pointer-events-none sm:opacity-0 sm:group-hover/cell:pointer-events-auto sm:group-hover/cell:opacity-100 sm:group-focus-within/cell:pointer-events-auto sm:group-focus-within/cell:opacity-100 hover:bg-black/10"
-                    title="Lisa rida kahe ruudu vahele"
-                    @click.stop="insertRowAt(dri + 1, dci)"
-                  >
-                    <span class="material-symbols-outlined text-[10px] leading-none">add</span>
-                  </button>
-
-                  <!-- 1 = peenraruut -->
-                  <button
-                    v-if="cell === 1"
-                    type="button"
-                    class="relative w-full h-full overflow-hidden rounded-lg border-2 border-primary/45 bg-primary/10"
-                    :title="plantAtInternal(dri, dci) ? `Siin on taim: ${plantAtInternal(dri, dci)?.name}` : 'Peenra ruut'"
-                    @click="setInternalCell(dri, dci, activeTool)"
-                  >
-                <span
-                  v-if="!plantAtInternal(dri, dci)"
-                  class="material-symbols-outlined absolute inset-0 m-auto h-5 w-5 text-primary/65"
-                >
-                  add
-                </span>
-                    <div v-if="plantAtInternal(dri, dci)" class="absolute inset-0 bg-primary/25" />
-                    <div
-                      v-if="plantAtInternal(dri, dci)?.image_url"
-                      class="absolute inset-0 bg-cover bg-center opacity-90"
-                      :style="{ backgroundImage: `url('${plantAtInternal(dri, dci)?.image_url}')` }"
-                    />
-                    <div v-if="plantAtInternal(dri, dci)" class="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
-                    <span
-                      v-if="plantAtInternal(dri, dci)"
-                      class="absolute bottom-1 left-1 right-1 truncate text-[10px] font-semibold text-white"
-                    >
-                      {{ plantAtInternal(dri, dci)?.name }}
-                    </span>
-                  </button>
-
-                  <!-- -1 = vahekäik/kivi -->
-                  <button
-                    v-else-if="cell === -1"
-                    type="button"
-                    class="w-full h-full rounded-lg border border-border bg-muted/60 relative overflow-hidden"
-                    title="Vahekäik / kivi"
-                    @click="setInternalCell(dri, dci, activeTool)"
-                  >
-                    <span
-                      class="absolute inset-0 opacity-40 pointer-events-none text-muted-foreground"
-                      style="background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 10px 10px;"
-                    />
-                  </button>
-
-                  <div
-                    v-else-if="cell === HIDDEN_FILLER"
-                    class="w-full h-full pointer-events-none opacity-0"
-                    aria-hidden="true"
-                  />
-
-                  <!-- 0 = tühi / lisatav ruut -->
-                  <button
-                    v-else
-                    type="button"
-                    :class="cell === 0 ? addTileClass : 'w-full h-full rounded-lg border border-dashed border-muted-foreground/40 bg-muted/30'"
-                    title="Lisa ruut"
-                    @click="setInternalCell(dri, dci, activeTool)"
-                  >
-                    <span class="material-symbols-outlined text-lg leading-none">add</span>
-                  </button>
-                </div>
-              </template>
-            </template>
+          <div class="inline-flex rounded-2xl border border-border bg-card p-1">
+            <button
+              type="button"
+              class="rounded-xl px-3 py-2 text-sm font-medium transition"
+              :class="insertionMode === 'adjacent' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/60'"
+              @click="insertionMode = 'adjacent'"
+            >
+              Vabale kohale
+            </button>
+            <button
+              type="button"
+              class="rounded-xl px-3 py-2 text-sm font-medium transition"
+              :class="insertionMode === 'between' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/60'"
+              @click="insertionMode = 'between'"
+            >
+              Vahele nihutades
+            </button>
           </div>
         </div>
-      </div>
 
-      <div class="flex gap-2 pt-2">
-        <button type="submit" class="btn-primary" :disabled="!hasAnyPlantCell()">
+        <div class="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_17rem]">
+          <div ref="gridScroller" class="overflow-x-auto rounded-2xl border border-border bg-card p-3 sm:p-4">
+            <div class="inline-grid gap-2" :style="{ gridTemplateColumns: `repeat(${displayColumns.length}, minmax(0, 3.2rem))` }">
+              <template v-for="y in displayRows" :key="`row-${y}`">
+                <template v-for="x in displayColumns" :key="`cell-${x}-${y}`">
+                  <div
+                    class="relative h-13 w-13 sm:h-14 sm:w-14"
+                    :ref="(el) => {
+                      const cell = getCellAt(x, y);
+                      if (cell) setSelectedCellElement(el, cell.id);
+                    }"
+                  >
+                    <template v-if="getCellAt(x, y)">
+                      <button
+                        type="button"
+                        class="relative h-full w-full overflow-hidden rounded-2xl border transition"
+                        :class="[
+                          selectedCell?.id === getCellAt(x, y)?.id
+                            ? 'border-primary bg-primary/12 ring-2 ring-primary/35 ring-offset-2 ring-offset-background shadow-md'
+                            : 'border-primary/30 bg-primary/8 hover:bg-primary/14',
+                          highlightedCellId === getCellAt(x, y)?.id
+                            ? 'scale-[1.04] shadow-lg shadow-primary/20'
+                            : '',
+                        ]"
+                        @click="getCellAt(x, y) && selectCell(getCellAt(x, y)!)"
+                      >
+                        <div v-if="getCellAt(x, y)?.plants.length" class="absolute inset-0 bg-linear-to-t from-black/45 to-black/10" />
+                        <div class="relative z-10 flex h-full w-full flex-col items-center justify-center px-1 text-center">
+                          <span class="material-symbols-outlined text-lg text-primary">grid_view</span>
+                          <span
+                            v-if="getCellAt(x, y)?.plants.length"
+                            class="mt-1 line-clamp-2 text-[9px] font-semibold leading-tight text-foreground"
+                          >
+                            {{ getPlantNames(getCellAt(x, y)!).join(', ') }}
+                          </span>
+                        </div>
+                      </button>
+
+                      <template v-if="selectedCell?.id === getCellAt(x, y)?.id">
+                        <button
+                          type="button"
+                          class="absolute -top-3 left-1/2 z-20 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border border-primary/30 bg-card text-primary shadow-sm hover:bg-primary/10"
+                          @click.stop="handleDirectionalAdd('up')"
+                        >
+                          <span class="material-symbols-outlined text-sm">arrow_upward</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="absolute -bottom-3 left-1/2 z-20 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border border-primary/30 bg-card text-primary shadow-sm hover:bg-primary/10"
+                          @click.stop="handleDirectionalAdd('down')"
+                        >
+                          <span class="material-symbols-outlined text-sm">arrow_downward</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="absolute top-1/2 -left-3 z-20 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-primary/30 bg-card text-primary shadow-sm hover:bg-primary/10"
+                          @click.stop="handleDirectionalAdd('left')"
+                        >
+                          <span class="material-symbols-outlined text-sm">arrow_back</span>
+                        </button>
+                        <button
+                          type="button"
+                          class="absolute top-1/2 -right-3 z-20 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-primary/30 bg-card text-primary shadow-sm hover:bg-primary/10"
+                          @click.stop="handleDirectionalAdd('right')"
+                        >
+                          <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                        </button>
+                      </template>
+                    </template>
+
+                    <button
+                      v-else
+                      type="button"
+                      class="h-full w-full rounded-2xl border border-dashed border-border bg-muted/20 text-muted-foreground transition hover:border-primary/30 hover:bg-primary/6 hover:text-primary"
+                      @click="addCellFromPlaceholder(x, y)"
+                    >
+                      <span class="material-symbols-outlined text-lg">add</span>
+                    </button>
+                  </div>
+                </template>
+              </template>
+            </div>
+          </div>
+
+          <aside class="rounded-2xl border border-border bg-card p-4 space-y-4">
+            <div class="rounded-2xl border border-border bg-background/70 p-3">
+              <p class="text-sm font-semibold text-foreground">Valitud ruudu toimingud</p>
+              <div class="mt-3 grid place-items-center">
+                <button
+                  type="button"
+                  class="mb-2 flex h-10 w-10 items-center justify-center rounded-full border border-primary/30 bg-card text-primary shadow-sm hover:bg-primary/10"
+                  @click="handleDirectionalAdd('up')"
+                >
+                  <span class="material-symbols-outlined text-base">arrow_upward</span>
+                </button>
+
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    class="flex h-10 w-10 items-center justify-center rounded-full border border-primary/30 bg-card text-primary shadow-sm hover:bg-primary/10"
+                    @click="handleDirectionalAdd('left')"
+                  >
+                    <span class="material-symbols-outlined text-base">arrow_back</span>
+                  </button>
+
+                  <div class="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                    <span class="material-symbols-outlined text-base">grid_view</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    class="flex h-10 w-10 items-center justify-center rounded-full border border-primary/30 bg-card text-primary shadow-sm hover:bg-primary/10"
+                    @click="handleDirectionalAdd('right')"
+                  >
+                    <span class="material-symbols-outlined text-base">arrow_forward</span>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  class="mt-2 flex h-10 w-10 items-center justify-center rounded-full border border-primary/30 bg-card text-primary shadow-sm hover:bg-primary/10"
+                  @click="handleDirectionalAdd('down')"
+                >
+                  <span class="material-symbols-outlined text-base">arrow_downward</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="rounded-2xl bg-primary/8 p-3 text-sm text-primary">
+              <p>Aktiivseid ruute kokku: <strong>{{ activeCells.length }}</strong></p>
+            </div>
+
+            <div v-if="selectedHasPlants" class="rounded-2xl border border-primary/20 bg-primary/8 p-3 text-sm text-primary">
+              Valitud ruudus on taim(ed). Seda ruutu ei saa eemaldada enne, kui taimed on ümber paigutatud.
+            </div>
+
+            <button
+              type="button"
+              class="w-full rounded-2xl border px-3 py-2.5 text-sm font-medium"
+              :class="selectedHasPlants || activeCells.length <= 1 ? 'border-border/60 bg-muted/30 text-muted-foreground cursor-not-allowed' : 'border-border bg-background text-foreground hover:bg-muted/50'"
+              :disabled="selectedHasPlants || activeCells.length <= 1"
+              @click="removeSelectedCell"
+            >
+              Eemalda valitud ruut
+            </button>
+          </aside>
+        </div>
+
+        <p v-if="form.errors.cells" class="mt-3 text-sm text-red-600">{{ form.errors.cells }}</p>
+      </section>
+
+      <div class="flex flex-wrap gap-2">
+        <button type="submit" class="btn-primary" :disabled="form.processing">
           {{ mode === 'edit' ? 'Salvesta muudatused' : 'Loo peenar' }}
         </button>
-        <button type="button" class="btn-primary-outline" @click="resetForm">
+        <button type="button" class="btn-primary-outline" :disabled="form.processing" @click="resetForm">
           {{ mode === 'edit' ? 'Tagasi' : 'Tühista' }}
         </button>
       </div>

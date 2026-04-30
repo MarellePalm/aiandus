@@ -16,7 +16,7 @@ const root = ref<HTMLElement | null>(null);
 
 const rootClass = computed(() =>
   props.placement === 'inline'
-    ? 'relative'
+    ? 'relative z-20'
     : 'absolute top-2 right-2 z-20'
 );
 
@@ -24,6 +24,12 @@ const buttonClass = computed(() =>
   props.placement === 'inline'
     ? 'flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10'
     : 'flex h-8 w-8 items-center justify-center rounded-full bg-card/80 text-primary shadow-sm backdrop-blur-md transition hover:scale-105 hover:bg-card'
+);
+
+const menuClass = computed(() =>
+  props.placement === 'inline'
+    ? 'absolute bottom-10 right-0 z-30 min-w-[140px] overflow-hidden rounded-2xl border border-border bg-card shadow-lg'
+    : 'absolute top-10 right-0 z-30 min-w-[140px] overflow-hidden rounded-2xl border border-border bg-card shadow-lg'
 );
 
 const toggle = () => {
@@ -74,7 +80,7 @@ const onDelete = () => {
     <transition name="menu">
       <div
         v-if="open"
-        class="absolute top-10 right-0 min-w-[140px] overflow-hidden rounded-2xl border border-border bg-card shadow-lg"
+        :class="menuClass"
         @click.stop
       >
         <button
