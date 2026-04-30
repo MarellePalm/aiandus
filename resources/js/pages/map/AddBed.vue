@@ -50,7 +50,6 @@ const props = withDefaults(
 
 const existingImageUrl = ref(props.mode === 'edit' ? props.bed?.image_url ?? null : null);
 const newBedImagePreview = ref<string | null>(null);
-const insertionMode = ref<'adjacent' | 'between'>('adjacent');
 const gridScroller = ref<HTMLElement | null>(null);
 const selectedCellElement = ref<HTMLElement | null>(null);
 const highlightedCellId = ref<string | null>(null);
@@ -203,10 +202,6 @@ function addCellAt(x: number, y: number) {
   selectCell(newCell);
 }
 
-function shiftCells(axis: 'x' | 'y', comparison: (cell: BedCell) => boolean, delta: number) {
-  cells.value = cells.value.map((cell) => (comparison(cell) ? { ...cell, [axis]: cell[axis] + delta } : cell));
-}
-
 function addRelative(direction: 'up' | 'down' | 'left' | 'right') {
   if (!selectedCell.value) return;
   const cell = selectedCell.value;
@@ -217,14 +212,17 @@ function addRelative(direction: 'up' | 'down' | 'left' | 'right') {
   if (direction === 'right') addCellAt(cell.x + 1, cell.y);
 }
 
+function shiftCells(axis: 'x' | 'y', comparison: (cell: BedCell) => boolean, delta: number) {
+  cells.value = cells.value.map((cell) => (comparison(cell) ? { ...cell, [axis]: cell[axis] + delta } : cell));
+}
+
 function addBetween(direction: 'up' | 'down' | 'left' | 'right') {
   if (!selectedCell.value) return;
   const cell = selectedCell.value;
 
   if (direction === 'right') {
     const targetX = cell.x + 1;
-    const occupied = getCellAt(targetX, cell.y);
-    if (occupied) {
+    if (getCellAt(targetX, cell.y)) {
       shiftCells('x', (item) => item.x > cell.x, 1);
     }
     addCellAt(targetX, cell.y);
@@ -232,8 +230,7 @@ function addBetween(direction: 'up' | 'down' | 'left' | 'right') {
 
   if (direction === 'left') {
     const targetX = cell.x - 1;
-    const occupied = getCellAt(targetX, cell.y);
-    if (occupied) {
+    if (getCellAt(targetX, cell.y)) {
       shiftCells('x', (item) => item.x < cell.x, -1);
     }
     addCellAt(targetX, cell.y);
@@ -241,8 +238,7 @@ function addBetween(direction: 'up' | 'down' | 'left' | 'right') {
 
   if (direction === 'down') {
     const targetY = cell.y + 1;
-    const occupied = getCellAt(cell.x, targetY);
-    if (occupied) {
+    if (getCellAt(cell.x, targetY)) {
       shiftCells('y', (item) => item.y > cell.y, 1);
     }
     addCellAt(cell.x, targetY);
@@ -250,8 +246,7 @@ function addBetween(direction: 'up' | 'down' | 'left' | 'right') {
 
   if (direction === 'up') {
     const targetY = cell.y - 1;
-    const occupied = getCellAt(cell.x, targetY);
-    if (occupied) {
+    if (getCellAt(cell.x, targetY)) {
       shiftCells('y', (item) => item.y < cell.y, -1);
     }
     addCellAt(cell.x, targetY);
@@ -259,11 +254,22 @@ function addBetween(direction: 'up' | 'down' | 'left' | 'right') {
 }
 
 function handleDirectionalAdd(direction: 'up' | 'down' | 'left' | 'right') {
-  if (insertionMode.value === 'between') {
+  if (!selectedCell.value) return;
+  const cell = selectedCell.value;
+
+  const target = {
+    up: { x: cell.x, y: cell.y - 1 },
+    down: { x: cell.x, y: cell.y + 1 },
+    left: { x: cell.x - 1, y: cell.y },
+    right: { x: cell.x + 1, y: cell.y },
+  }[direction];
+
+  if (getCellAt(target.x, target.y)) {
     addBetween(direction);
-  } else {
-    addRelative(direction);
+    return;
   }
+
+  addRelative(direction);
 }
 
 const selectedHasPlants = computed(() => Boolean(selectedCell.value?.plants.length));
@@ -417,28 +423,6 @@ watch(selectedCellId, async () => {
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h3 class="text-base font-semibold text-foreground">Peenra kaart</h3>
-            <p class="mt-1 text-sm text-muted-foreground">
-              Vali ruut ja lisa uus ruut selle kõrvale või vajadusel olemasolevate ruutude vahele.
-            </p>
-          </div>
-
-          <div class="inline-flex rounded-2xl border border-border bg-card p-1">
-            <button
-              type="button"
-              class="rounded-xl px-3 py-2 text-sm font-medium transition"
-              :class="insertionMode === 'adjacent' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/60'"
-              @click="insertionMode = 'adjacent'"
-            >
-              Vabale kohale
-            </button>
-            <button
-              type="button"
-              class="rounded-xl px-3 py-2 text-sm font-medium transition"
-              :class="insertionMode === 'between' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/60'"
-              @click="insertionMode = 'between'"
-            >
-              Vahele nihutades
-            </button>
           </div>
         </div>
 
@@ -570,10 +554,6 @@ watch(selectedCellId, async () => {
               </div>
             </div>
 
-            <div class="rounded-2xl bg-primary/8 p-3 text-sm text-primary">
-              <p>Aktiivseid ruute kokku: <strong>{{ activeCells.length }}</strong></p>
-            </div>
-
             <div v-if="selectedHasPlants" class="rounded-2xl border border-primary/20 bg-primary/8 p-3 text-sm text-primary">
               Valitud ruudus on taim(ed). Seda ruutu ei saa eemaldada enne, kui taimed on ümber paigutatud.
             </div>
@@ -590,7 +570,6 @@ watch(selectedCellId, async () => {
           </aside>
         </div>
 
-        <p v-if="form.errors.cells" class="mt-3 text-sm text-red-600">{{ form.errors.cells }}</p>
       </section>
 
       <div class="flex flex-wrap gap-2">

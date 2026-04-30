@@ -26,6 +26,7 @@ const props = defineProps<{
   editMode?: boolean;
   initialBedId?: number | null;
   initialDate?: string | null;
+  returnTo?: string | null;
 }>();
 
 const calendarUrl = calendar().url;
@@ -121,7 +122,8 @@ function submit() {
   const onSuccess = () => {
     form.reset('title', 'body', 'photos');
     photoPreviews.value = [];
-    router.visit(`/calendar?month=${new Date(form.note_date).getMonth() + 1}&year=${new Date(form.note_date).getFullYear()}`);
+    const fallback = `/calendar?month=${new Date(form.note_date).getMonth() + 1}&year=${new Date(form.note_date).getFullYear()}`;
+    router.visit(props.returnTo || fallback);
   };
   if (props.editMode && props.note) {
     form.transform((data) => ({ ...data, _method: 'PUT' }));
@@ -140,7 +142,7 @@ function submit() {
 }
 
 function cancel() {
-  router.visit('/calendar');
+  router.visit(props.returnTo || '/calendar');
 }
 </script>
 

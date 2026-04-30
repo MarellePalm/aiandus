@@ -31,15 +31,6 @@ class BedController extends Controller
             ]);
         }
 
-        $rowCount = count($layout);
-        $columnCount = max(array_map('count', $layout));
-
-        if ($rowCount > 20 || $columnCount > 20) {
-            throw ValidationException::withMessages([
-                'layout' => 'Peenra maksimaalne suurus on 20 x 20 ruutu.',
-            ]);
-        }
-
         $hasActiveCell = collect($layout)->flatten()->contains(fn ($cell) => (int) $cell === 1);
 
         if (! $hasActiveCell) {
@@ -87,12 +78,6 @@ class BedController extends Controller
 
         $rows = ($maxY - $minY) + 1;
         $columns = ($maxX - $minX) + 1;
-
-        if ($rows > 20 || $columns > 20) {
-            throw ValidationException::withMessages([
-                'cells' => 'Peenra maksimaalne suurus on 20 x 20 ruutu.',
-            ]);
-        }
 
         $layout = array_fill(0, $rows, array_fill(0, $columns, -1));
         $plantPositions = [];
@@ -195,8 +180,8 @@ class BedController extends Controller
             'cells.*.plants.*.quantity' => ['nullable', 'integer', 'min:1'],
             'cells.*.plants.*.size' => ['nullable', 'string', 'max:20'],
             'cells.*.plants.*.note' => ['nullable', 'string', 'max:255'],
-            'rows' => ['sometimes', 'integer', 'min:1', 'max:12'],
-            'columns' => ['sometimes', 'integer', 'min:1', 'max:12'],
+            'rows' => ['sometimes', 'integer', 'min:1'],
+            'columns' => ['sometimes', 'integer', 'min:1'],
             'layout' => ['nullable', 'array'],
             'layout.*' => ['array'],
             // -1 = vahekäik / tee / kivi, 0 = tühi, 1 = peenraruut

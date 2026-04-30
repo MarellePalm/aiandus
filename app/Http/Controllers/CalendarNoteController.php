@@ -17,6 +17,7 @@ class CalendarNoteController extends Controller
         $user = $request->user();
         $requestedBedId = $request->integer('bed_id');
         $requestedDate = $request->string('date')->toString();
+        $requestedReturnTo = $request->string('return_to')->toString();
 
         $beds = Bed::query()
             ->where('user_id', $user->id)
@@ -45,12 +46,18 @@ class CalendarNoteController extends Controller
             }
         }
 
+        $returnTo = null;
+        if ($requestedReturnTo !== '' && str_starts_with($requestedReturnTo, '/')) {
+            $returnTo = $requestedReturnTo;
+        }
+
         return Inertia::render('calendarNotes/NoteForm', [
             'editMode' => false,
             'beds' => $beds,
             'plants' => $plants,
             'initialBedId' => $initialBedId,
             'initialDate' => $initialDate,
+            'returnTo' => $returnTo,
         ]);
     }
 
