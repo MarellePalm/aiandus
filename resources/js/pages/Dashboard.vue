@@ -53,7 +53,7 @@ const overviewStats = computed(() => [
 const nextAction = computed(() => {
   if (activeTasksCount.value > 0) {
     return {
-      title: `${activeTasksCount.value} aktiivset tegevust`,
+      title: `${activeTasksCount.value}`,
       body: 'Kalendris on lõpetamata tegevusi.',
       href: '/calendar',
       cta: 'Ava kalender',
@@ -89,6 +89,20 @@ const nextAction = computed(() => {
     icon: 'garden_cart',
   };
 });
+
+function relativeDays(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+  if (diffDays === 0) return 'Täna';
+  if (diffDays === 1) return 'Eile';
+  if (diffDays < 7) return `${diffDays} päeva tagasi`;
+  if (diffDays < 14) return '1 nädal tagasi';
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} nädalat tagasi`;
+  return d.toLocaleDateString('et-EE', { day: 'numeric', month: 'short' });
+}
 
 const breadcrumbs: BreadcrumbItem[] = [{ title: 'Dashboard', href: dashboard().url }];
 
@@ -162,6 +176,25 @@ function arrayMove<T>(arr: T[], from: number, to: number) {
   const [item] = copy.splice(from, 1);
   copy.splice(to, 0, item);
   return copy;
+}
+
+function canMoveSectionUp(id: SectionId): boolean {
+  return sectionOrder.value.indexOf(id) > 0;
+}
+
+function canMoveSectionDown(id: SectionId): boolean {
+  const index = sectionOrder.value.indexOf(id);
+  return index !== -1 && index < sectionOrder.value.length - 1;
+}
+
+function moveSection(id: SectionId, direction: 'up' | 'down') {
+  const from = sectionOrder.value.indexOf(id);
+  if (from === -1) return;
+
+  const to = direction === 'up' ? from - 1 : from + 1;
+  if (to < 0 || to >= sectionOrder.value.length) return;
+
+  persistOrder(arrayMove(sectionOrder.value, from, to));
 }
 
 function onDragStart(id: SectionId, e: DragEvent) {
@@ -290,8 +323,8 @@ function sectionAccent(id: SectionId): string {
   <Head title="Dashboard" />
 
   <AppLayout :breadcrumbs="breadcrumbs">
-    <div class="page page-with-bottomnav bg-background min-h-0 flex flex-col">
-      <div class="bg-background border-beige/50 relative mx-auto w-full max-w-[480px] overflow-x-clip border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
+    <div class="page page-with-bottomnav bg-muted/30 min-h-0 flex flex-col">
+      <div class="bg-muted/20 border-beige/50 relative mx-auto w-full max-w-[480px] overflow-x-clip border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
         <DiaryHeader
           title="Minu Aiapäevik"
           :diary-label="todayLabel"
@@ -309,32 +342,29 @@ function sectionAccent(id: SectionId): string {
                   </p>
                   <p class="mt-3 text-sm text-muted-foreground">{{ todayLabel }}</p>
                 </div>
-                <div class="hidden shrink-0 rounded-[1.5rem] border border-primary/15 bg-card/80 p-3 shadow-sm sm:flex sm:flex-col sm:items-center sm:justify-center">
-                  <span class="material-symbols-outlined text-[2.6rem] text-primary">yard</span>
-                  <span class="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-primary/80">Aiapäevik</span>
-                </div>
               </div>
 
               <div class="mt-4 grid gap-3 sm:grid-cols-3">
-                <Link
+                <div
                   v-for="stat in overviewStats"
                   :key="stat.id"
-                  :href="stat.href"
-                  class="block rounded-2xl border border-border/70 bg-card/85 px-4 py-3 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"
+                  class="rounded-2xl border border-border/70 bg-card/85 px-4 py-3 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"
                 >
-                  <div class="flex items-start justify-between gap-3">
-                    <div>
-                      <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                        {{ stat.label }}
-                      </p>
-                      <p class="mt-2 text-2xl font-bold tracking-tight text-foreground">{{ stat.value }}</p>
-                      <p class="mt-1 text-xs text-muted-foreground">{{ stat.hint }}</p>
+                  <Link :href="stat.href" class="block">
+                    <div class="flex items-start justify-between gap-3">
+                      <div>
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                          {{ stat.label }}
+                        </p>
+                        <p class="mt-2 text-2xl font-bold tracking-tight text-foreground">{{ stat.value }}</p>
+                        <p class="mt-1 text-xs text-muted-foreground">{{ stat.hint }}</p>
+                      </div>
+                      <span class="material-symbols-outlined rounded-2xl bg-primary/10 p-2 text-primary">
+                        {{ stat.icon }}
+                      </span>
                     </div>
-                    <span class="material-symbols-outlined rounded-2xl bg-primary/10 p-2 text-primary">
-                      {{ stat.icon }}
-                    </span>
-                  </div>
-                </Link>
+                  </Link>
+                </div>
               </div>
 
               <Link
@@ -354,23 +384,14 @@ function sectionAccent(id: SectionId): string {
               </Link>
             </div>
 
-            <div v-if="!editLayout" class="flex justify-end">
-              <Link
-                href="/dashboard?layout=edit"
-                class="inline-flex items-center gap-2 rounded-full border border-border bg-card/90 px-4 py-2 text-xs font-semibold text-foreground shadow-sm transition hover:bg-muted"
-              >
-                <span class="material-symbols-outlined text-base">tune</span>
-                Kohanda avalehte
-              </Link>
-            </div>
           </div>
         </DiaryHeader>
 
         <div v-if="editLayout" class="px-6 pt-3 md:px-8">
           <div class="rounded-2xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
             <p class="min-w-0">
-              <span class="font-semibold text-foreground/90">Muuda avalehte:</span>
-              võta ploki ees olevatest täppidest kinni ja lohista järjekorda.
+              <span class="font-semibold text-foreground/90">Muuda alumiste plokkide järjekorda:</span>
+              tõsta `Ilm` ja `Kuufaas täna` endale sobivasse järjestusse.
             </p>
 
             <div class="mt-3 flex flex-wrap items-center gap-2">
@@ -396,7 +417,16 @@ function sectionAccent(id: SectionId): string {
           </div>
         </div>
 
-        <div class="px-6 pt-4 pb-24 space-y-8 md:px-8">
+        <div class="px-6 pt-4 pb-24 md:px-8">
+          <div class="rounded-[1.75rem] border border-border/70 bg-card/55 p-3 shadow-sm">
+            <div class="mb-3 flex items-center justify-between gap-3 px-2">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Sinu plokid</p>
+                <p class="mt-1 text-sm text-foreground/75">Ülemine ülevaade jääb paigale, all saad plokkide järjekorda ise kohandada.</p>
+              </div>
+            </div>
+
+            <div class="space-y-6">
           <!-- Järjestatavad plokid -->
         <template v-for="id in sectionOrder" :key="id">
           <!-- Weather -->
@@ -426,6 +456,24 @@ function sectionAccent(id: SectionId): string {
                   <span class="material-symbols-outlined text-lg">drag_indicator</span>
                 </button>
                 <h3 class="font-semibold text-foreground text-sm">{{ sectionTitle('weather') }}</h3>
+                <div v-if="editLayout" class="ml-auto flex items-center gap-1">
+                  <button
+                    type="button"
+                    class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+                    :disabled="!canMoveSectionUp('weather')"
+                    @click.stop="moveSection('weather', 'up')"
+                  >
+                    <span class="material-symbols-outlined text-sm">arrow_upward</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+                    :disabled="!canMoveSectionDown('weather')"
+                    @click.stop="moveSection('weather', 'down')"
+                  >
+                    <span class="material-symbols-outlined text-sm">arrow_downward</span>
+                  </button>
+                </div>
                 <span
                   class="material-symbols-outlined text-lg text-muted-foreground shrink-0 transition"
                   :class="[
@@ -470,6 +518,24 @@ function sectionAccent(id: SectionId): string {
                   <span class="material-symbols-outlined text-lg">drag_indicator</span>
                 </button>
                 <h3 class="font-semibold text-foreground text-sm">{{ sectionTitle('moon') }}</h3>
+                <div v-if="editLayout" class="ml-auto flex items-center gap-1">
+                  <button
+                    type="button"
+                    class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+                    :disabled="!canMoveSectionUp('moon')"
+                    @click.stop="moveSection('moon', 'up')"
+                  >
+                    <span class="material-symbols-outlined text-sm">arrow_upward</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+                    :disabled="!canMoveSectionDown('moon')"
+                    @click.stop="moveSection('moon', 'down')"
+                  >
+                    <span class="material-symbols-outlined text-sm">arrow_downward</span>
+                  </button>
+                </div>
                 <span
                   class="material-symbols-outlined text-lg text-muted-foreground shrink-0 transition"
                   :class="[
@@ -488,6 +554,8 @@ function sectionAccent(id: SectionId): string {
           </section>
 
         </template>
+            </div>
+          </div>
         </div>
       </div>
 
