@@ -28,7 +28,7 @@ const props = withDefaults(
     },
 );
 
-const fallbackImage = 'https://picsum.photos/900/1200';
+const fallbackImage = '/logo.png';
 
 function goBack() {
     if (props.plant.category_slug) {
@@ -220,6 +220,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                             alt="Taime pilt"
                             class="absolute inset-0 h-full w-full object-contain"
                             loading="lazy"
+                            @error="($event.target as HTMLImageElement).src = fallbackImage"
                         />
                         <div class="matte-overlay absolute inset-0"></div>
                     </div>
