@@ -19,12 +19,14 @@ class Bed extends Model
         'sort_order',
         'garden_x',
         'garden_y',
+        'cell_size_cm',
     ];
 
     protected $casts = [
         'layout' => 'array',
         'garden_x' => 'integer',
         'garden_y' => 'integer',
+        'cell_size_cm' => 'integer',
     ];
 
     public function user(): BelongsTo

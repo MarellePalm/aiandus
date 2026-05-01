@@ -12,6 +12,7 @@ type Bed = {
   name: string;
   location: string | null;
   image_url?: string | null;
+  cell_size_cm?: number;
   layout?: number[][] | null;
   plants?: { id: number; name: string; image_url: string | null; position_in_bed: string | null }[];
 };
@@ -54,4 +55,3 @@ const breadcrumbs = [
     </div>
   </AppLayout>
 </template>
-

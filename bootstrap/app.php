@@ -15,6 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Ajutine ülespanek tunneli/pilve taga (ngrok, Railway, Render): .env-is APP_BEHIND_PROXY=true
+        if (filter_var(env('APP_BEHIND_PROXY', false), FILTER_VALIDATE_BOOLEAN)) {
+            $middleware->trustProxies(at: '*');
+        }
+
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
         $middleware->web(append: [
