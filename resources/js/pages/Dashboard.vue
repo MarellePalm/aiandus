@@ -266,10 +266,6 @@ function goToFabAction(href: string) {
 /** Ühine päiseriba: ilm + kuu (sama primary/muted gradient). */
 const dashboardSectionHeaderStrip =
   'from-primary/22 via-primary/10 to-muted/50 dark:from-primary/18 dark:via-muted/25 dark:to-card/95';
-
-function sectionAccent(_id: SectionId): string {
-  return dashboardSectionHeaderStrip;
-}
 </script>
 
 <template>
@@ -388,7 +384,7 @@ function sectionAccent(_id: SectionId): string {
           >
             <div
               class="group flex cursor-pointer items-center gap-2 border-b border-border bg-linear-to-r px-4 py-3"
-              :class="sectionAccent('weather')"
+              :class="dashboardSectionHeaderStrip"
               @click="toggleSectionCollapsed('weather')"
             >
               <div class="flex flex-1 min-w-0 items-center gap-2">
@@ -450,7 +446,7 @@ function sectionAccent(_id: SectionId): string {
           >
             <div
               class="group flex cursor-pointer items-center gap-2 border-b border-border bg-linear-to-r px-4 py-3"
-              :class="sectionAccent('moon')"
+              :class="dashboardSectionHeaderStrip"
               @click="toggleSectionCollapsed('moon')"
             >
               <div class="flex flex-1 min-w-0 items-center gap-2">
