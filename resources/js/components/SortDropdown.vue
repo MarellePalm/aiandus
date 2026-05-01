@@ -1,23 +1,26 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref } from "vue";
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 
 type SortOption = {
-  label: string;
-  value: string;
+    label: string;
+    value: string;
 };
 
-withDefaults(defineProps<{
-  options: SortOption[];
-  modelValue: string;
-  iconOnly?: boolean;
-  compact?: boolean;
-}>(), {
-  iconOnly: false,
-  compact: false,
-});
+withDefaults(
+    defineProps<{
+        options: SortOption[];
+        modelValue: string;
+        iconOnly?: boolean;
+        compact?: boolean;
+    }>(),
+    {
+        iconOnly: false,
+        compact: false,
+    },
+);
 
 const emit = defineEmits<{
-  (e: "update:modelValue", value: string): void;
+    (e: 'update:modelValue', value: string): void;
 }>();
 
 const open = ref(false);
@@ -25,77 +28,77 @@ const triggerRef = ref<HTMLElement | null>(null);
 const menuStyle = ref<Record<string, string>>({});
 
 function toggleDropdown() {
-  open.value = !open.value;
-  if (open.value) {
-    nextTick(() => updateMenuPosition());
-  }
+    open.value = !open.value;
+    if (open.value) {
+        nextTick(() => updateMenuPosition());
+    }
 }
 
 function selectOption(value: string) {
-  emit("update:modelValue", value);
-  open.value = false;
+    emit('update:modelValue', value);
+    open.value = false;
 }
 
 function onDocClick(e: MouseEvent) {
-  const target = e.target as HTMLElement | null;
-  if (target?.closest?.("[data-sort-dropdown]")) return;
-  open.value = false;
+    const target = e.target as HTMLElement | null;
+    if (target?.closest?.('[data-sort-dropdown]')) return;
+    open.value = false;
 }
 
 function updateMenuPosition() {
-  const el = triggerRef.value;
-  if (!el) return;
-  const rect = el.getBoundingClientRect();
-  menuStyle.value = {
-    top: `${rect.bottom + 8}px`,
-    left: `${Math.max(8, rect.right - 220)}px`,
-    width: "220px",
-  };
+    const el = triggerRef.value;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    menuStyle.value = {
+        top: `${rect.bottom + 8}px`,
+        left: `${Math.max(8, rect.right - 220)}px`,
+        width: '220px',
+    };
 }
 
 onMounted(() => {
-  document.addEventListener("click", onDocClick);
-  window.addEventListener("resize", updateMenuPosition);
-  window.addEventListener("scroll", updateMenuPosition, true);
+    document.addEventListener('click', onDocClick);
+    window.addEventListener('resize', updateMenuPosition);
+    window.addEventListener('scroll', updateMenuPosition, true);
 });
 onBeforeUnmount(() => {
-  document.removeEventListener("click", onDocClick);
-  window.removeEventListener("resize", updateMenuPosition);
-  window.removeEventListener("scroll", updateMenuPosition, true);
+    document.removeEventListener('click', onDocClick);
+    window.removeEventListener('resize', updateMenuPosition);
+    window.removeEventListener('scroll', updateMenuPosition, true);
 });
 </script>
 
 <template>
-  <div class="ml-auto flex justify-end" data-sort-dropdown>
-    <button
-      ref="triggerRef"
-      type="button"
-      class="flex h-9 w-9 items-center justify-center rounded-full border border-primary/30 bg-primary/5 text-primary shadow-sm transition hover:bg-primary/10"
-      :class="[
-        iconOnly ? 'h-9 w-9' : '',
-        compact && !iconOnly ? 'h-9 w-9' : '',
-      ]"
-      @click.stop="toggleDropdown"
-    >
-      <span class="material-symbols-outlined text-[20px]">sort</span>
-    </button>
-
-    <Teleport to="body">
-      <div
-        v-if="open"
-        class="fixed z-[120] overflow-hidden rounded-xl border border-primary/20 bg-card shadow-xl ring-1 ring-primary/10"
-        :style="menuStyle"
-      >
+    <div class="ml-auto flex justify-end" data-sort-dropdown>
         <button
-          v-for="option in options"
-          :key="option.value"
-          type="button"
-          class="block w-full px-4 py-3 text-left text-sm text-foreground transition hover:bg-primary/10"
-          @click="selectOption(option.value)"
+            ref="triggerRef"
+            type="button"
+            class="flex h-9 w-9 items-center justify-center rounded-full border border-primary/30 bg-primary/5 text-primary shadow-sm transition hover:bg-primary/10"
+            :class="[
+                iconOnly ? 'h-9 w-9' : '',
+                compact && !iconOnly ? 'h-9 w-9' : '',
+            ]"
+            @click.stop="toggleDropdown"
         >
-          {{ option.label }}
+            <span class="material-symbols-outlined text-[20px]">sort</span>
         </button>
-      </div>
-    </Teleport>
-  </div>
+
+        <Teleport to="body">
+            <div
+                v-if="open"
+                class="fixed z-[120] overflow-hidden rounded-xl border border-primary/20 bg-card shadow-xl ring-1 ring-primary/10"
+                :style="menuStyle"
+            >
+                <button
+                    v-for="option in options"
+                    :key="option.value"
+                    type="button"
+                    class="block w-full px-4 py-3 text-left text-sm text-foreground transition hover:bg-primary/10"
+                    @click="selectOption(option.value)"
+                >
+                    {{ option.label }}
+                </button>
+            </div>
+        </Teleport>
+    </div>
 </template>

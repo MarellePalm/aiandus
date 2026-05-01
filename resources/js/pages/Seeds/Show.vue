@@ -66,9 +66,11 @@ const deleteSeed = () => {
 <template>
     <Head :title="props.seed.name" />
 
-    <div class="bg-background text-foreground font-display min-h-screen antialiased">
+    <div
+        class="font-display min-h-screen bg-background text-foreground antialiased"
+    >
         <div
-            class="bg-background border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
+            class="border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x bg-background shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
         >
             <DiaryHeader :title="props.seed.name">
                 <template #leading>
@@ -94,27 +96,48 @@ const deleteSeed = () => {
                     v-else
                     class="mb-6 flex h-56 w-full items-center justify-center rounded-2xl bg-primary/10 text-primary"
                 >
-                    <span class="material-symbols-outlined text-5xl">potted_plant</span>
+                    <span class="material-symbols-outlined text-5xl"
+                        >potted_plant</span
+                    >
                 </div>
 
                 <h2 class="text-2xl font-bold">{{ props.seed.name }}</h2>
 
                 <div
-                    v-if="props.seed.amount_text || props.seed.year || props.seed.expires_at"
+                    v-if="
+                        props.seed.amount_text ||
+                        props.seed.year ||
+                        props.seed.expires_at
+                    "
                     class="mt-4 space-y-2 text-sm text-foreground/80"
                 >
-                    <p v-if="props.seed.amount_text">Kogus: <strong>{{ props.seed.amount_text }}</strong></p>
-                    <p v-if="props.seed.year">Ostmise aasta: <strong>{{ props.seed.year }}</strong></p>
-                    <p v-if="props.seed.expires_at">Aegub: <strong>{{ formatDateEE(props.seed.expires_at) }}</strong></p>
+                    <p v-if="props.seed.amount_text">
+                        Kogus: <strong>{{ props.seed.amount_text }}</strong>
+                    </p>
+                    <p v-if="props.seed.year">
+                        Ostmise aasta: <strong>{{ props.seed.year }}</strong>
+                    </p>
+                    <p v-if="props.seed.expires_at">
+                        Aegub:
+                        <strong>{{
+                            formatDateEE(props.seed.expires_at)
+                        }}</strong>
+                    </p>
                 </div>
 
                 <div class="mt-8">
                     <div class="mb-4 flex items-center justify-between">
-                        <h3 class="text-lg font-bold tracking-tight">Märkmed</h3>
+                        <h3 class="text-lg font-bold tracking-tight">
+                            Märkmed
+                        </h3>
                     </div>
 
-                    <div class="rounded-2xl border border-border/70 bg-card/70 p-6">
-                        <p class="font-body text-sm leading-relaxed text-foreground/85">
+                    <div
+                        class="rounded-2xl border border-border/70 bg-card/70 p-6"
+                    >
+                        <p
+                            class="font-body text-sm leading-relaxed text-foreground/85"
+                        >
                             {{ props.seed.notes || 'Märkmeid veel pole.' }}
                         </p>
                     </div>

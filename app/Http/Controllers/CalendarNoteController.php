@@ -7,7 +7,6 @@ use App\Models\CalendarNote;
 use App\Models\Plant;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class CalendarNoteController extends Controller
@@ -66,10 +65,10 @@ class CalendarNoteController extends Controller
         $user = $request->user();
 
         $month = (int) $request->get('month', now()->month);
-        $year  = (int) $request->get('year', now()->year);
+        $year = (int) $request->get('year', now()->year);
 
         $start = now()->setYear($year)->setMonth($month)->startOfMonth()->toDateString();
-        $end   = now()->setYear($year)->setMonth($month)->endOfMonth()->toDateString();
+        $end = now()->setYear($year)->setMonth($month)->endOfMonth()->toDateString();
 
         $notesByDate = CalendarNote::query()
             ->where('user_id', $user->id)
@@ -313,7 +312,7 @@ class CalendarNoteController extends Controller
     {
         abort_unless($note->user_id === $request->user()->id, 403);
 
-        $note->update(['done' => !$note->done]);
+        $note->update(['done' => ! $note->done]);
 
         return redirect()->back();
     }

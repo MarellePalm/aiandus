@@ -87,11 +87,7 @@ const parseExpiresAt = (value?: string | null) => {
         const [day, month, year] = dotParts.map((part) =>
             Number.parseInt(part, 10),
         );
-        if (
-            !Number.isNaN(day) &&
-            !Number.isNaN(month) &&
-            !Number.isNaN(year)
-        ) {
+        if (!Number.isNaN(day) && !Number.isNaN(month) && !Number.isNaN(year)) {
             return new Date(year, month - 1, day).getTime();
         }
     }
@@ -114,11 +110,7 @@ const formatDateEE = (value?: string | null) => {
         const [day, month, year] = dotParts.map((part) =>
             Number.parseInt(part, 10),
         );
-        if (
-            !Number.isNaN(day) &&
-            !Number.isNaN(month) &&
-            !Number.isNaN(year)
-        ) {
+        if (!Number.isNaN(day) && !Number.isNaN(month) && !Number.isNaN(year)) {
             const dd = String(day).padStart(2, '0');
             const mm = String(month).padStart(2, '0');
             return `${dd}.${mm}.${year}`;
@@ -147,13 +139,23 @@ const baseSeeds = computed(() => {
                 }),
             );
         case 'year_desc':
-            return [...list].sort((a, b) => parseYear(b.year) - parseYear(a.year));
+            return [...list].sort(
+                (a, b) => parseYear(b.year) - parseYear(a.year),
+            );
         case 'year_asc':
-            return [...list].sort((a, b) => parseYear(a.year) - parseYear(b.year));
+            return [...list].sort(
+                (a, b) => parseYear(a.year) - parseYear(b.year),
+            );
         case 'expires_desc':
-            return [...list].sort((a, b) => parseExpiresAt(b.expires_at) - parseExpiresAt(a.expires_at));
+            return [...list].sort(
+                (a, b) =>
+                    parseExpiresAt(b.expires_at) - parseExpiresAt(a.expires_at),
+            );
         case 'expires_asc':
-            return [...list].sort((a, b) => parseExpiresAt(a.expires_at) - parseExpiresAt(b.expires_at));
+            return [...list].sort(
+                (a, b) =>
+                    parseExpiresAt(a.expires_at) - parseExpiresAt(b.expires_at),
+            );
         case 'name_asc':
         default:
             return [...list].sort((a, b) =>
@@ -187,13 +189,20 @@ const toggleFavorite = (id: number) => {
     const prev = localSeeds.value[idx].is_favorite === true;
     localSeeds.value[idx] = { ...localSeeds.value[idx], is_favorite: !prev };
 
-    router.patch(`/seeds/${id}/favorite`, {}, {
-        preserveScroll: true,
-        preserveState: true,
-        onError: () => {
-            localSeeds.value[idx] = { ...localSeeds.value[idx], is_favorite: prev };
+    router.patch(
+        `/seeds/${id}/favorite`,
+        {},
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onError: () => {
+                localSeeds.value[idx] = {
+                    ...localSeeds.value[idx],
+                    is_favorite: prev,
+                };
+            },
         },
-    });
+    );
 };
 
 const openDeleteSeed = (seed: SeedItem) => {
@@ -213,7 +222,9 @@ const confirmDeleteSeed = () => {
     router.delete(`/seeds/${deletingSeed.value.id}`, {
         preserveScroll: true,
         onSuccess: () => {
-            localSeeds.value = localSeeds.value.filter((seed) => seed.id !== deletingSeed.value?.id);
+            localSeeds.value = localSeeds.value.filter(
+                (seed) => seed.id !== deletingSeed.value?.id,
+            );
             closeDeleteSeed();
         },
         onFinish: () => {
@@ -255,40 +266,92 @@ onBeforeUnmount(() => {
 <template>
     <Head :title="`Varud - ${props.category.name}`" />
 
-    <AppLayout :breadcrumbs="[{ title: 'Aed', href: '/seeds' }, { title: props.category.name, href: `/seeds/category/${props.category.slug}` }]">
+    <AppLayout
+        :breadcrumbs="[
+            { title: 'Aed', href: '/seeds' },
+            {
+                title: props.category.name,
+                href: `/seeds/category/${props.category.slug}`,
+            },
+        ]"
+    >
         <div class="page page-with-bottomnav">
-            <div class="bg-background text-foreground font-display min-h-screen antialiased">
-                <div class="bg-background border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
+            <div
+                class="font-display min-h-screen bg-background text-foreground antialiased"
+            >
+                <div
+                    class="border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x bg-background shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
+                >
                     <DiaryHeader
                         :title="props.category.name"
                         title-class="text-foreground text-3xl font-bold tracking-tight max-w-[12rem] truncate sm:max-w-none"
                         header-class="pt-6"
                     >
                         <template #leading>
-                            <BackIconButton href="/seeds" aria-label="Tagasi kategooriatesse" />
+                            <BackIconButton
+                                href="/seeds"
+                                aria-label="Tagasi kategooriatesse"
+                            />
                         </template>
                         <template #actions>
-                                <button class="flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10" type="button" @click="showSearch = true">
-                                    <span class="material-symbols-outlined text-[24px]">search</span>
-                                </button>
+                            <button
+                                class="flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10"
+                                type="button"
+                                @click="showSearch = true"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-[24px]"
+                                    >search</span
+                                >
+                            </button>
                         </template>
 
-                        <div class="no-scrollbar flex items-center gap-2 overflow-x-auto overflow-y-visible pb-2">
-                            <button type="button" :class="tabClass('all')" @click="activeTab = 'all'">Kõik</button>
-                            <button type="button" :class="tabClass('favorites')" @click="activeTab = 'favorites'">Lemmikud</button>
+                        <div
+                            class="no-scrollbar flex items-center gap-2 overflow-x-auto overflow-y-visible pb-2"
+                        >
+                            <button
+                                type="button"
+                                :class="tabClass('all')"
+                                @click="activeTab = 'all'"
+                            >
+                                Kõik
+                            </button>
+                            <button
+                                type="button"
+                                :class="tabClass('favorites')"
+                                @click="activeTab = 'favorites'"
+                            >
+                                Lemmikud
+                            </button>
                             <div class="ml-auto shrink-0">
-                                <SortDropdown v-model="selectedSort" :options="sortOptions" compact />
+                                <SortDropdown
+                                    v-model="selectedSort"
+                                    :options="sortOptions"
+                                    compact
+                                />
                             </div>
                         </div>
                     </DiaryHeader>
 
                     <main class="flex-1 px-6 py-6 md:px-8">
-                        <div v-if="filteredSeeds.length === 0" class="rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-6 py-12 text-center">
-                            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-                                <span class="material-symbols-outlined text-primary">potted_plant</span>
+                        <div
+                            v-if="filteredSeeds.length === 0"
+                            class="rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-6 py-12 text-center"
+                        >
+                            <div
+                                class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-primary"
+                                    >potted_plant</span
+                                >
                             </div>
-                            <h2 class="text-lg font-semibold text-foreground">Selles kategoorias varusi ei ole</h2>
-                            <p class="mt-2 text-sm text-muted-foreground">Vajuta plussi, et lisada uus varu.</p>
+                            <h2 class="text-lg font-semibold text-foreground">
+                                Selles kategoorias varusi ei ole
+                            </h2>
+                            <p class="mt-2 text-sm text-muted-foreground">
+                                Vajuta plussi, et lisada uus varu.
+                            </p>
                         </div>
 
                         <div v-else class="space-y-4">
@@ -302,27 +365,52 @@ onBeforeUnmount(() => {
                                 @keydown.enter.prevent="openSeed(seed.id)"
                             >
                                 <div class="flex items-center gap-4">
-                                    <div class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-primary/10 bg-muted/40">
+                                    <div
+                                        class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-primary/10 bg-muted/40"
+                                    >
                                         <img
                                             v-if="seed.image_url"
                                             :src="seed.image_url"
                                             alt=""
                                             class="h-full w-full object-cover"
                                         />
-                                        <div v-else class="flex h-full w-full items-center justify-center text-primary/70">
-                                            <span class="material-symbols-outlined text-2xl">potted_plant</span>
+                                        <div
+                                            v-else
+                                            class="flex h-full w-full items-center justify-center text-primary/70"
+                                        >
+                                            <span
+                                                class="material-symbols-outlined text-2xl"
+                                                >potted_plant</span
+                                            >
                                         </div>
                                     </div>
 
                                     <div class="min-w-0 flex-1">
-                                        <h3 class="truncate text-lg font-semibold">{{ seed.name }}</h3>
-                                        <p v-if="seed.year" class="mt-1 text-sm text-muted-foreground">Ostetud: {{ seed.year }}</p>
-                                        <p v-if="seed.expires_at" class="mt-1 text-sm text-muted-foreground">
-                                            Aegub: {{ formatDateEE(seed.expires_at) }}
+                                        <h3
+                                            class="truncate text-lg font-semibold"
+                                        >
+                                            {{ seed.name }}
+                                        </h3>
+                                        <p
+                                            v-if="seed.year"
+                                            class="mt-1 text-sm text-muted-foreground"
+                                        >
+                                            Ostetud: {{ seed.year }}
+                                        </p>
+                                        <p
+                                            v-if="seed.expires_at"
+                                            class="mt-1 text-sm text-muted-foreground"
+                                        >
+                                            Aegub:
+                                            {{ formatDateEE(seed.expires_at) }}
                                         </p>
                                     </div>
 
-                                    <div class="ml-2 flex shrink-0 items-center gap-2" data-seed-menu @click.stop>
+                                    <div
+                                        class="ml-2 flex shrink-0 items-center gap-2"
+                                        data-seed-menu
+                                        @click.stop
+                                    >
                                         <button
                                             type="button"
                                             class="flex h-9 w-9 items-center justify-center rounded-full border border-primary/10 bg-white transition hover:scale-105 hover:bg-primary/5"
@@ -331,7 +419,9 @@ onBeforeUnmount(() => {
                                                     ? 'text-rose-600 shadow-sm'
                                                     : 'text-[#2E2E2E]/45'
                                             "
-                                            @click.prevent.stop="toggleFavorite(seed.id)"
+                                            @click.prevent.stop="
+                                                toggleFavorite(seed.id)
+                                            "
                                             aria-label="Lisa lemmikuks"
                                             :title="
                                                 seed.is_favorite
@@ -360,27 +450,37 @@ onBeforeUnmount(() => {
                                                 type="button"
                                                 class="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition hover:bg-primary/10"
                                                 aria-label="Menüü"
-                                                @click.stop.prevent="toggleMenu(seed.id)"
+                                                @click.stop.prevent="
+                                                    toggleMenu(seed.id)
+                                                "
                                             >
-                                                <span class="material-symbols-outlined text-[22px]">more_horiz</span>
+                                                <span
+                                                    class="material-symbols-outlined text-[22px]"
+                                                    >more_horiz</span
+                                                >
                                             </button>
 
                                             <div
                                                 v-if="menuOpenForId === seed.id"
-                                                class="absolute right-0 top-12 z-20 w-48 overflow-hidden rounded-xl border border-primary/10 bg-card shadow-lg"
+                                                class="absolute top-12 right-0 z-20 w-48 overflow-hidden rounded-xl border border-primary/10 bg-card shadow-lg"
                                                 @click.stop
                                             >
                                                 <button
                                                     type="button"
                                                     class="w-full px-4 py-3 text-left text-sm hover:bg-primary/5"
-                                                    @click.stop="openSeedEdit(seed)"
+                                                    @click.stop="
+                                                        openSeedEdit(seed)
+                                                    "
                                                 >
                                                     Muuda
                                                 </button>
                                                 <button
                                                     type="button"
                                                     class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-500/10"
-                                                    @click.stop="openDeleteSeed(seed); menuOpenForId = null"
+                                                    @click.stop="
+                                                        openDeleteSeed(seed);
+                                                        menuOpenForId = null;
+                                                    "
                                                 >
                                                     Kustuta
                                                 </button>
@@ -420,7 +520,12 @@ onBeforeUnmount(() => {
                     @close="closeDeleteSeed"
                     @confirm="confirmDeleteSeed"
                 />
-                <FloatingPlusButton aria-label="Lisa varu" :size-px="52" :icon-size-px="30" @click="showAddSeed = true" />
+                <FloatingPlusButton
+                    aria-label="Lisa varu"
+                    :size-px="52"
+                    :icon-size-px="30"
+                    @click="showAddSeed = true"
+                />
                 <BottomNav active="seeds" />
             </div>
         </div>

@@ -220,7 +220,10 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                             alt="Taime pilt"
                             class="absolute inset-0 h-full w-full object-contain"
                             loading="lazy"
-                            @error="($event.target as HTMLImageElement).src = fallbackImage"
+                            @error="
+                                ($event.target as HTMLImageElement).src =
+                                    fallbackImage
+                            "
                         />
                         <div class="matte-overlay absolute inset-0"></div>
                     </div>

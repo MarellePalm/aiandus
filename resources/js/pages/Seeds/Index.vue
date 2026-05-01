@@ -11,7 +11,6 @@ import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 
-
 import DeleteConfirmModal from './DeleteConfirmModal.vue';
 import SearchModal from './SearchModal.vue';
 
@@ -59,7 +58,6 @@ const filteredCategories = computed(() => {
         list = list.filter((c) => c.is_favorite === true);
     }
 
-
     if (searchQuery.value.trim()) {
         const q = searchQuery.value.toLowerCase();
         list = list.filter((c) => c.name.toLowerCase().includes(q));
@@ -101,15 +99,25 @@ const toggleFavorite = (id: number) => {
     if (idx === -1) return;
 
     const prev = localCategories.value[idx].is_favorite === true;
-    localCategories.value[idx] = { ...localCategories.value[idx], is_favorite: !prev };
+    localCategories.value[idx] = {
+        ...localCategories.value[idx],
+        is_favorite: !prev,
+    };
 
-    router.patch(`/seeds/categories/${id}/favorite`, {}, {
-        preserveScroll: true,
-        preserveState: true,
-        onError: () => {
-            localCategories.value[idx] = { ...localCategories.value[idx], is_favorite: prev };
+    router.patch(
+        `/seeds/categories/${id}/favorite`,
+        {},
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onError: () => {
+                localCategories.value[idx] = {
+                    ...localCategories.value[idx],
+                    is_favorite: prev,
+                };
+            },
         },
-    });
+    );
 };
 
 const tabClass = (key: TabKey) => {
@@ -137,8 +145,12 @@ const openEditCategory = (category: Category) => {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="page page-with-bottomnav">
-            <div class="bg-background text-foreground font-display min-h-screen antialiased">
-                <div class="bg-background border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none">
+            <div
+                class="font-display min-h-screen bg-background text-foreground antialiased"
+            >
+                <div
+                    class="border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x bg-background shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
+                >
                     <DiaryHeader
                         title="Varud"
                         header-class="pt-6"
@@ -146,36 +158,68 @@ const openEditCategory = (category: Category) => {
                         bottom-row-class="mb-4"
                     >
                         <template #leading>
-                            <BackIconButton href="/dashboard" aria-label="Tagasi avalehele" />
+                            <BackIconButton
+                                href="/dashboard"
+                                aria-label="Tagasi avalehele"
+                            />
                         </template>
                         <template #actions>
-                                <button type="button" class="flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10" @click="showSearch = true">
-                                    <span class="material-symbols-outlined text-xl">search</span>
-                                </button>
+                            <button
+                                type="button"
+                                class="flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10"
+                                @click="showSearch = true"
+                            >
+                                <span class="material-symbols-outlined text-xl"
+                                    >search</span
+                                >
+                            </button>
                         </template>
 
-                        <div class="no-scrollbar flex gap-2 overflow-x-auto pb-2">
-                            <button :class="tabClass('all')" type="button" @click="resetToAll">
+                        <div
+                            class="no-scrollbar flex gap-2 overflow-x-auto pb-2"
+                        >
+                            <button
+                                :class="tabClass('all')"
+                                type="button"
+                                @click="resetToAll"
+                            >
                                 Kõik
                             </button>
-                            <button :class="tabClass('favorites')" type="button" @click="activeTab = 'favorites'">
+                            <button
+                                :class="tabClass('favorites')"
+                                type="button"
+                                @click="activeTab = 'favorites'"
+                            >
                                 Lemmikud
                             </button>
                         </div>
                     </DiaryHeader>
 
                     <main class="flex-1 px-6 py-4 md:px-8">
-                        <div v-if="filteredCategories.length === 0" class="rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-6 py-12 text-center">
-                            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-                                <span class="material-symbols-outlined text-primary">category</span>
+                        <div
+                            v-if="filteredCategories.length === 0"
+                            class="rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-6 py-12 text-center"
+                        >
+                            <div
+                                class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-primary"
+                                    >category</span
+                                >
                             </div>
-                            <h2 class="text-lg font-semibold text-foreground">Varud puuduvad</h2>
+                            <h2 class="text-lg font-semibold text-foreground">
+                                Varud puuduvad
+                            </h2>
                             <p class="mt-2 text-sm text-muted-foreground">
                                 Vajuta plussi, et lisada uus varu.
                             </p>
                         </div>
 
-                        <div v-else class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+                        <div
+                            v-else
+                            class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
+                        >
                             <Link
                                 v-for="cat in filteredCategories"
                                 :key="cat.id"
@@ -192,9 +236,14 @@ const openEditCategory = (category: Category) => {
                                     v-else
                                     class="absolute inset-0 flex h-full w-full items-center justify-center bg-primary/10 text-primary"
                                 >
-                                    <span class="material-symbols-outlined text-4xl">category</span>
+                                    <span
+                                        class="material-symbols-outlined text-4xl"
+                                        >category</span
+                                    >
                                 </div>
-                                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                                <div
+                                    class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"
+                                />
 
                                 <CardActionsMenu
                                     @edit="openEditCategory(cat)"
@@ -220,19 +269,29 @@ const openEditCategory = (category: Category) => {
                                         "
                                         :style="
                                             cat.is_favorite === true
-                                                ? { fontVariationSettings: `'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24` }
-                                                : { fontVariationSettings: `'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24` }
+                                                ? {
+                                                      fontVariationSettings: `'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24`,
+                                                  }
+                                                : {
+                                                      fontVariationSettings: `'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
+                                                  }
                                         "
                                     >
                                         favorite
                                     </span>
                                 </button>
 
-                                <div class="absolute bottom-0 left-0 w-full p-4 text-white">
-                                    <span class="mb-1 inline-block rounded-md bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase backdrop-blur-md">
+                                <div
+                                    class="absolute bottom-0 left-0 w-full p-4 text-white"
+                                >
+                                    <span
+                                        class="mb-1 inline-block rounded-md bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase backdrop-blur-md"
+                                    >
                                         {{ cat.count }} seemet
                                     </span>
-                                    <h3 class="text-lg font-bold">{{ cat.name }}</h3>
+                                    <h3 class="text-lg font-bold">
+                                        {{ cat.name }}
+                                    </h3>
                                 </div>
                             </Link>
                         </div>
@@ -266,7 +325,12 @@ const openEditCategory = (category: Category) => {
                     @close="closeDeleteCategory"
                     @confirm="confirmDeleteCategory"
                 />
-                <FloatingPlusButton aria-label="Lisa varu" :size-px="52" :icon-size-px="30" @click="showCreateCategory = true" />
+                <FloatingPlusButton
+                    aria-label="Lisa varu"
+                    :size-px="52"
+                    :icon-size-px="30"
+                    @click="showCreateCategory = true"
+                />
                 <BottomNav active="seeds" />
             </div>
         </div>
@@ -276,7 +340,7 @@ const openEditCategory = (category: Category) => {
 <style scoped>
 .no-scrollbar::-webkit-scrollbar {
     display: none;
-}      
+}
 .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;

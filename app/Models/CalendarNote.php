@@ -4,8 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
-use App\Models\Bed;
-use App\Models\Plant;
 
 class CalendarNote extends Model
 {
@@ -34,6 +32,7 @@ class CalendarNote extends Model
     public function getMediaUrlsAttribute(): array
     {
         $paths = $this->media ?? [];
+
         return array_map(fn (string $path) => Storage::url($path), $paths);
     }
 

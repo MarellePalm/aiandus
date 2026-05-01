@@ -14,6 +14,7 @@ import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { disable, enable, show } from '@/routes/two-factor';
 import { BreadcrumbItem } from '@/types';
 
+
 interface Props {
     requiresConfirmation?: boolean;
     twoFactorEnabled?: boolean;
@@ -59,7 +60,9 @@ onUnmounted(() => {
                     <Badge variant="destructive">Välja lülitatud</Badge>
 
                     <p class="text-muted-foreground">
-                        Kui lülitad kaheastmelise autentimise sisse, küsitakse sisselogimisel turvalist PIN-koodi. Selle saad TOTP-rakendusest telefonis.
+                        Kui lülitad kaheastmelise autentimise sisse, küsitakse
+                        sisselogimisel turvalist PIN-koodi. Selle saad
+                        TOTP-rakendusest telefonis.
                     </p>
 
                     <div>
@@ -89,7 +92,9 @@ onUnmounted(() => {
                     <Badge variant="default">Sisse lülitatud</Badge>
 
                     <p class="text-muted-foreground">
-                        Kaheastmeline autentimine on sisse lülitatud. Sisselogimisel küsitakse turvalist juhuslikku PIN-koodi, mille saad telefoni TOTP-rakendusest.
+                        Kaheastmeline autentimine on sisse lülitatud.
+                        Sisselogimisel küsitakse turvalist juhuslikku PIN-koodi,
+                        mille saad telefoni TOTP-rakendusest.
                     </p>
 
                     <TwoFactorRecoveryCodes />

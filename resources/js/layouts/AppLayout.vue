@@ -5,15 +5,13 @@ interface Props {
     breadcrumbs?: BreadcrumbItemType[];
 }
 
-
 withDefaults(defineProps<Props>(), {
     breadcrumbs: () => [],
 });
 </script>
 
 <template>
-    <div class="min-h-screen bg-background relative">
-      <slot />
+    <div class="relative min-h-screen bg-background">
+        <slot />
     </div>
-  </template>
-  
+</template>

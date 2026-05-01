@@ -19,7 +19,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (!Schema::hasColumn('beds', 'image_url')) {
+        if (! Schema::hasColumn('beds', 'image_url')) {
             return;
         }
 
@@ -28,4 +28,3 @@ return new class extends Migration
         });
     }
 };
-

@@ -124,15 +124,33 @@ onBeforeUnmount(() => {
 <template>
     <Teleport to="body">
         <transition name="fade">
-            <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center p-4" aria-modal="true" role="dialog">
-                <button type="button" class="absolute inset-0 bg-black/30 backdrop-blur-[2px]" aria-label="Sulge" @click="close" />
+            <div
+                v-if="open"
+                class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                aria-modal="true"
+                role="dialog"
+            >
+                <button
+                    type="button"
+                    class="absolute inset-0 bg-black/30 backdrop-blur-[2px]"
+                    aria-label="Sulge"
+                    @click="close"
+                />
 
-                <div class="relative w-full max-w-lg rounded-3xl bg-card shadow-xl ring-1 ring-border">
+                <div
+                    class="relative w-full max-w-lg rounded-3xl bg-card shadow-xl ring-1 ring-border"
+                >
                     <div class="p-5 sm:p-6">
                         <div class="flex items-start justify-between gap-3">
                             <div>
-                                <h3 class="text-lg font-semibold text-foreground">Muuda kategooriat</h3>
-                                <p class="mt-1 text-sm text-foreground/70">Muuda nime ja pilti.</p>
+                                <h3
+                                    class="text-lg font-semibold text-foreground"
+                                >
+                                    Muuda kategooriat
+                                </h3>
+                                <p class="mt-1 text-sm text-foreground/70">
+                                    Muuda nime ja pilti.
+                                </p>
                             </div>
                             <button
                                 type="button"
@@ -145,7 +163,10 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div class="mt-5">
-                            <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">Kategooria nimi</label>
+                            <label
+                                class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
+                                >Kategooria nimi</label
+                            >
                             <input
                                 ref="nameInputRef"
                                 v-model="form.name"
@@ -154,11 +175,19 @@ onBeforeUnmount(() => {
                                 class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 @keydown.enter.prevent="submit"
                             />
-                            <p v-if="form.errors.name" class="mt-2 text-sm text-red-600">{{ form.errors.name }}</p>
+                            <p
+                                v-if="form.errors.name"
+                                class="mt-2 text-sm text-red-600"
+                            >
+                                {{ form.errors.name }}
+                            </p>
                         </div>
 
                         <div class="mt-5">
-                            <label class="text-sm font-semibold tracking-widest text-foreground/70 uppercase">Pilt</label>
+                            <label
+                                class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
+                                >Pilt</label
+                            >
                             <input
                                 ref="fileInputRef"
                                 type="file"
@@ -172,15 +201,31 @@ onBeforeUnmount(() => {
                                 @click="openPicker"
                             >
                                 <template v-if="hasImage && previewUrl">
-                                    <img :src="previewUrl" alt="Eelvaade" class="mx-auto max-h-40 rounded-xl object-cover" />
-                                    <p class="mt-2 text-sm text-foreground/60">Vajuta, et pilti vahetada</p>
+                                    <img
+                                        :src="previewUrl"
+                                        alt="Eelvaade"
+                                        class="mx-auto max-h-40 rounded-xl object-cover"
+                                    />
+                                    <p class="mt-2 text-sm text-foreground/60">
+                                        Vajuta, et pilti vahetada
+                                    </p>
                                 </template>
                                 <template v-else>
-                                    <span class="material-symbols-outlined text-5xl text-primary">add_a_photo</span>
-                                    <p class="mt-2 text-sm text-foreground/70">Lisa kategooria pilt</p>
+                                    <span
+                                        class="material-symbols-outlined text-5xl text-primary"
+                                        >add_a_photo</span
+                                    >
+                                    <p class="mt-2 text-sm text-foreground/70">
+                                        Lisa kategooria pilt
+                                    </p>
                                 </template>
                             </button>
-                            <p v-if="form.errors.image" class="mt-2 text-sm text-red-600">{{ form.errors.image }}</p>
+                            <p
+                                v-if="form.errors.image"
+                                class="mt-2 text-sm text-red-600"
+                            >
+                                {{ form.errors.image }}
+                            </p>
                         </div>
 
                         <div class="mt-6 flex flex-col gap-3">
@@ -190,7 +235,11 @@ onBeforeUnmount(() => {
                                 :disabled="form.processing || !form.name.trim()"
                                 @click="submit"
                             >
-                                {{ form.processing ? 'Salvestan...' : 'Salvesta muudatused' }}
+                                {{
+                                    form.processing
+                                        ? 'Salvestan...'
+                                        : 'Salvesta muudatused'
+                                }}
                             </button>
                             <button
                                 type="button"

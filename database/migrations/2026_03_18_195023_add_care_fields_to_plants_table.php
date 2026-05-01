@@ -12,19 +12,19 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('plants', function (Blueprint $table) {
-            if (!Schema::hasColumn('plants', 'planted_at')) {
+            if (! Schema::hasColumn('plants', 'planted_at')) {
                 $table->date('planted_at')->nullable();
             }
 
-            if (!Schema::hasColumn('plants', 'notes')) {
+            if (! Schema::hasColumn('plants', 'notes')) {
                 $table->text('notes')->nullable();
             }
 
-            if (!Schema::hasColumn('plants', 'watering_in_days')) {
+            if (! Schema::hasColumn('plants', 'watering_in_days')) {
                 $table->integer('watering_in_days')->nullable();
             }
 
-            if (!Schema::hasColumn('plants', 'fertilizing_frequency')) {
+            if (! Schema::hasColumn('plants', 'fertilizing_frequency')) {
                 $table->string('fertilizing_frequency')->nullable();
             }
         });
@@ -54,7 +54,7 @@ return new class extends Migration
                 $columnsToDrop[] = 'planted_at';
             }
 
-            if (!empty($columnsToDrop)) {
+            if (! empty($columnsToDrop)) {
                 $table->dropColumn($columnsToDrop);
             }
         });
