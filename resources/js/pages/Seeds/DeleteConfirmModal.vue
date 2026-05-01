@@ -14,15 +14,32 @@ defineEmits<{
 
 <template>
     <transition name="fade">
-        <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center p-4" aria-modal="true" role="dialog">
-            <div class="absolute inset-0 bg-black/30 backdrop-blur-[2px]" @click="$emit('close')" />
+        <div
+            v-if="open"
+            class="fixed inset-0 z-50 flex items-center justify-center p-4"
+            aria-modal="true"
+            role="dialog"
+        >
+            <div
+                class="absolute inset-0 bg-black/30 backdrop-blur-[2px]"
+                @click="$emit('close')"
+            />
 
-            <div class="relative w-full max-w-sm rounded-3xl bg-[#FAF8F4] p-6 text-center shadow-xl ring-1 ring-black/5">
-                <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#E6E2D5]">
-                    <span class="material-symbols-outlined text-2xl text-[#6B8C68]">delete</span>
+            <div
+                class="relative w-full max-w-sm rounded-3xl bg-[#FAF8F4] p-6 text-center shadow-xl ring-1 ring-black/5"
+            >
+                <div
+                    class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#E6E2D5]"
+                >
+                    <span
+                        class="material-symbols-outlined text-2xl text-[#6B8C68]"
+                        >delete</span
+                    >
                 </div>
 
-                <h3 class="text-lg font-semibold text-[#2E2E2E]">{{ title }}</h3>
+                <h3 class="text-lg font-semibold text-[#2E2E2E]">
+                    {{ title }}
+                </h3>
                 <p class="mt-2 text-sm text-[#2E2E2E]/70">{{ message }}</p>
 
                 <div class="mt-6 flex flex-col gap-3">

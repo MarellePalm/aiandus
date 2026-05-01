@@ -27,23 +27,26 @@ const props = withDefaults(
     },
 );
 
-const wrapperClass = computed(
-    () =>
-        `bg-background-light/80 sticky top-0 z-20 px-6 pb-4 backdrop-blur-md md:px-8 ${props.headerClass}`.trim(),
+const wrapperClass = computed(() =>
+    `bg-background-light/80 sticky top-0 z-20 px-6 pb-4 backdrop-blur-md md:px-8 ${props.headerClass}`.trim(),
 );
 </script>
 
 <template>
     <header :class="wrapperClass">
-        <div :class="`flex items-center justify-between gap-3 ${topRowClass} ${bottomRowClass}`">
+        <div
+            :class="`flex items-center justify-between gap-3 ${topRowClass} ${bottomRowClass}`"
+        >
             <div class="flex min-w-0 items-center gap-3">
                 <Link
                     v-if="backHref"
                     :href="backHref"
-                    class="icon-btn size-9 shrink-0 rounded-full flex items-center justify-center text-foreground hover:bg-muted"
+                    class="icon-btn flex size-9 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted"
                     aria-label="Tagasi"
                 >
-                    <span class="material-symbols-outlined text-xl">arrow_back</span>
+                    <span class="material-symbols-outlined text-xl"
+                        >arrow_back</span
+                    >
                 </Link>
                 <slot name="leading" />
                 <h1 :class="titleClass">{{ title }}</h1>

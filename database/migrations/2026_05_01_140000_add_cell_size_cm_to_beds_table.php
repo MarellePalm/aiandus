@@ -8,23 +8,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (Schema::hasColumn('beds', 'image_url')) {
-            return;
-        }
-
         Schema::table('beds', function (Blueprint $table) {
-            $table->string('image_url')->nullable()->after('location');
+            $table->unsignedSmallInteger('cell_size_cm')
+                ->default(30)
+                ->after('garden_y');
         });
     }
 
     public function down(): void
     {
-        if (! Schema::hasColumn('beds', 'image_url')) {
-            return;
-        }
-
         Schema::table('beds', function (Blueprint $table) {
-            $table->dropColumn('image_url');
+            $table->dropColumn('cell_size_cm');
         });
     }
 };

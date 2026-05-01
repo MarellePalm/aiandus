@@ -33,9 +33,7 @@ const passwordInput = useTemplateRef('passwordInput');
         >
             <div class="relative space-y-0.5 text-red-600 dark:text-red-100">
                 <p class="font-medium">Hoiatus</p>
-                <p class="text-sm">
-                    See toiming on pöördumatu. Olete kindel?
-                </p>
+                <p class="text-sm">See toiming on pöördumatu. Olete kindel?</p>
             </div>
             <Dialog>
                 <DialogTrigger as-child>
@@ -56,17 +54,18 @@ const passwordInput = useTemplateRef('passwordInput');
                     >
                         <DialogHeader class="space-y-3">
                             <DialogTitle
-                                >Kas olete kindel, et soovite konto kustutada?</DialogTitle
+                                >Kas olete kindel, et soovite konto
+                                kustutada?</DialogTitle
                             >
                             <DialogDescription>
-                                Pärast konto kustutamist kustutatakse jäädavalt ka kõik selle andmed. Sisestage parool kinnituseks.
+                                Pärast konto kustutamist kustutatakse jäädavalt
+                                ka kõik selle andmed. Sisestage parool
+                                kinnituseks.
                             </DialogDescription>
                         </DialogHeader>
 
                         <div class="grid gap-2">
-                            <Label for="password" class="sr-only"
-                                >Parool</Label
-                            >
+                            <Label for="password" class="sr-only">Parool</Label>
                             <Input
                                 id="password"
                                 type="password"

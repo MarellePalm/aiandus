@@ -1,23 +1,29 @@
 <?php
+
 // FILE: routes/web.php
 
 use App\Http\Controllers\BedController;
 use App\Http\Controllers\CalendarNoteController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\GardenObjectController;
+use App\Http\Controllers\GardenPlanController;
 use App\Http\Controllers\PlantController;
-use App\Http\Controllers\SeedController;
 use App\Http\Controllers\SeedCategoryController;
+use App\Http\Controllers\SeedController;
 use App\Http\Controllers\WeatherController;
 use App\Models\Bed;
 use App\Models\CalendarNote;
+use App\Models\GardenObject;
+use App\Models\GardenPlan;
 use App\Models\Plant;
 use App\Models\Seed;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use Laravel\Socialite\Facades\Socialite;
-
-
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -29,7 +35,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('api/weather', WeatherController::class)->name('api.weather');
 
-    Route::get('dashboard', function (\Illuminate\Http\Request $request) {
+    Route::get('dashboard', function (Request $request) {
         $user = $request->user();
 
         $recentNotes = CalendarNote::query()
@@ -78,15 +84,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ]);
     })->name('dashboard');
 
-    Route::get('map', function (\Illuminate\Http\Request $request) {
+    Route::get('map', function (Request $request) {
         $user = $request->user();
+        $gardenPlan = GardenPlan::firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'name' => 'Minu aed',
+                'width' => 1200,
+                'height' => 800,
+                'unit' => 'cm',
+            ],
+        );
 
         $beds = Bed::query()
             ->where('user_id', $user->id)
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->with(['plants' => fn ($q) =>
-                $q->select('id', 'name', 'image_url', 'bed_id', 'position_in_bed')
+            ->with(['plants' => fn ($q) => $q->select('id', 'name', 'image_url', 'bed_id', 'position_in_bed'),
             ])
             ->get()
             ->map(fn ($b) => [
@@ -98,6 +112,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'columns' => (int) ($b->columns ?? 3),
                 'garden_x' => (int) ($b->garden_x ?? 0),
                 'garden_y' => (int) ($b->garden_y ?? 0),
+                'cell_size_cm' => (int) ($b->cell_size_cm ?? 30),
                 'layout' => $b->layout,
                 'plants' => $b->plants->map(fn ($p) => [
                     'id' => $p->id,
@@ -120,14 +135,38 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'category' => $p->category ? ['name' => $p->category->name, 'slug' => $p->category->slug] : null,
             ]);
 
+        $gardenObjects = GardenObject::query()
+            ->where('garden_plan_id', $gardenPlan->id)
+            ->orderBy('type')
+            ->orderBy('id')
+            ->get()
+            ->map(fn ($object) => [
+                'id' => $object->id,
+                'type' => $object->type,
+                'name' => $object->name,
+                'x' => (int) $object->x,
+                'y' => (int) $object->y,
+                'width' => (int) $object->width,
+                'height' => (int) $object->height,
+                'meta' => $object->meta,
+            ]);
+
         return Inertia::render('map/MapView', [
+            'gardenPlan' => [
+                'id' => $gardenPlan->id,
+                'name' => $gardenPlan->name,
+                'width' => (int) $gardenPlan->width,
+                'height' => (int) $gardenPlan->height,
+                'unit' => $gardenPlan->unit,
+            ],
             'beds' => $beds,
+            'gardenObjects' => $gardenObjects,
             'plantsWithoutBed' => $plantsWithoutBed,
         ]);
     })->name('map');
 
-    Route::get('map/beds/new', function (\Illuminate\Http\Request $request) {
-        $isFirstBed = !Bed::query()
+    Route::get('map/beds/new', function (Request $request) {
+        $isFirstBed = ! Bed::query()
             ->where('user_id', $request->user()->id)
             ->exists();
 
@@ -136,7 +175,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ]);
     })->name('map.beds.create');
 
-    Route::get('beds/{bed}', function (\Illuminate\Http\Request $request, Bed $bed) {
+    Route::get('beds/{bed}', function (Request $request, Bed $bed) {
         abort_unless($bed->user_id === $request->user()->id, 403);
 
         $plantsWithoutBed = Plant::query()
@@ -178,6 +217,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'image_url' => $bed->image_url,
                 'rows' => (int) ($bed->rows ?? 3),
                 'columns' => (int) ($bed->columns ?? 3),
+                'cell_size_cm' => (int) ($bed->cell_size_cm ?? 30),
                 'layout' => $bed->layout,
                 'plants' => $bed->plants->map(fn ($p) => [
                     'id' => $p->id,
@@ -191,7 +231,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ]);
     })->name('beds.show');
 
-    Route::get('beds/{bed}/edit', function (\Illuminate\Http\Request $request, Bed $bed) {
+    Route::get('beds/{bed}/edit', function (Request $request, Bed $bed) {
         abort_unless($bed->user_id === $request->user()->id, 403);
         $bed->load(['plants' => fn ($q) => $q->select('id', 'name', 'image_url', 'bed_id', 'position_in_bed')]);
 
@@ -201,6 +241,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'name' => $bed->name,
                 'location' => $bed->location,
                 'image_url' => $bed->image_url,
+                'rows' => (int) ($bed->rows ?? 3),
+                'columns' => (int) ($bed->columns ?? 3),
+                'cell_size_cm' => (int) ($bed->cell_size_cm ?? 30),
                 'layout' => $bed->layout,
                 'plants' => $bed->plants->map(fn ($p) => [
                     'id' => $p->id,
@@ -215,6 +258,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('beds', [BedController::class, 'store'])->name('beds.store');
     Route::put('beds/{bed}', [BedController::class, 'update'])->name('beds.update');
     Route::delete('beds/{bed}', [BedController::class, 'destroy'])->name('beds.destroy');
+    Route::post('garden-objects', [GardenObjectController::class, 'store'])->name('garden-objects.store');
+    Route::put('garden-objects/{gardenObject}', [GardenObjectController::class, 'update'])->name('garden-objects.update');
+    Route::post('garden-objects/{gardenObject}/duplicate', [GardenObjectController::class, 'duplicate'])->name('garden-objects.duplicate');
+    Route::post('garden-objects/{gardenObject}/rotate', [GardenObjectController::class, 'rotate'])->name('garden-objects.rotate');
+    Route::delete('garden-objects/{gardenObject}', [GardenObjectController::class, 'destroy'])->name('garden-objects.destroy');
+    Route::put('garden-plan', [GardenPlanController::class, 'update'])->name('garden-plan.update');
 
     // ✅ SEEDS — ainult resource
     Route::resource('seeds', SeedController::class);
@@ -279,10 +328,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('plants/create', fn () => Inertia::render('AddPlant'))->name('plants.create');
     Route::resource('plants', PlantController::class)->except(['create']);
     Route::patch('/plants/{plant}/favorite', [PlantController::class, 'toggleFavorite'])
-    ->name('plants.favorite');
+        ->name('plants.favorite');
     Route::post('/plants/{plant}/waterings', [PlantController::class, 'water'])
         ->name('plants.water');
-    
+
 });
 
 Route::get('/auth/redirect', function () {
@@ -292,7 +341,7 @@ Route::get('/auth/redirect', function () {
 Route::get('/auth/callback', function () {
     $googleUser = Socialite::driver('google')->user();
 
-    $user = \App\Models\User::updateOrCreate(
+    $user = User::updateOrCreate(
         ['email' => $googleUser->email],
         [
             'google_id' => $googleUser->id,
@@ -300,10 +349,9 @@ Route::get('/auth/callback', function () {
         ]
     );
 
-    \Illuminate\Support\Facades\Auth::login($user);
+    Auth::login($user);
 
     return redirect('/dashboard');
 });
 
-
-require __DIR__ . '/settings.php';
+require __DIR__.'/settings.php';

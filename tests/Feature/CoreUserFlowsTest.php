@@ -3,6 +3,8 @@
 use App\Models\Bed;
 use App\Models\CalendarNote;
 use App\Models\Category;
+use App\Models\GardenObject;
+use App\Models\GardenPlan;
 use App\Models\Plant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -20,6 +22,7 @@ test('authenticated user can create a bed', function () {
     $response = $this->actingAs($user)->post(route('beds.store'), [
         'name' => 'Tagaaia peenar',
         'location' => 'Kasvuhoone taga',
+        'cell_size_cm' => 50,
         'layout' => [
             [1, 1, 0],
             [1, -1, 1],
@@ -34,6 +37,7 @@ test('authenticated user can create a bed', function () {
     expect($bed->columns)->toBe(3);
     expect($bed->garden_x)->toBeGreaterThanOrEqual(0);
     expect($bed->garden_y)->toBeGreaterThanOrEqual(0);
+    expect($bed->cell_size_cm)->toBe(50);
     expect($bed->layout)->toBe([
         [1, 1, 0],
         [1, -1, 1],
@@ -63,6 +67,26 @@ test('user can update bed garden position', function () {
 
     expect($bed->fresh()->garden_x)->toBe(220);
     expect($bed->fresh()->garden_y)->toBe(140);
+});
+
+test('user can update bed cell size', function () {
+    $user = User::factory()->create();
+
+    $bed = Bed::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Mõõtkavaga peenar',
+        'location' => 'Aianurk',
+        'sort_order' => 1,
+        'cell_size_cm' => 30,
+    ]);
+
+    $this->actingAs($user)
+        ->put(route('beds.update', $bed), [
+            'cell_size_cm' => 50,
+        ])
+        ->assertRedirect();
+
+    expect($bed->fresh()->cell_size_cm)->toBe(50);
 });
 
 test('bed creation requires at least one active cell', function () {
@@ -417,6 +441,20 @@ test('user can toggle calendar note done status', function () {
 test('map view returns only users beds and unassigned plants', function () {
     $user = User::factory()->create();
     $otherUser = User::factory()->create();
+    $plan = GardenPlan::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Minu aed',
+        'width' => 1200,
+        'height' => 800,
+        'unit' => 'cm',
+    ]);
+    $otherPlan = GardenPlan::query()->create([
+        'user_id' => $otherUser->id,
+        'name' => 'Võõras aed',
+        'width' => 1400,
+        'height' => 900,
+        'unit' => 'cm',
+    ]);
 
     $usersBed = Bed::query()->create([
         'user_id' => $user->id,
@@ -450,16 +488,205 @@ test('map view returns only users beds and unassigned plants', function () {
         'bed_id' => null,
     ]);
 
+    $usersObject = GardenObject::query()->create([
+        'garden_plan_id' => $plan->id,
+        'type' => 'greenhouse',
+        'name' => 'Minu kasvuhoone',
+        'x' => 120,
+        'y' => 80,
+        'width' => 300,
+        'height' => 200,
+    ]);
+
+    GardenObject::query()->create([
+        'garden_plan_id' => $otherPlan->id,
+        'type' => 'pond',
+        'name' => 'Võõras tiik',
+        'x' => 90,
+        'y' => 90,
+        'width' => 250,
+        'height' => 180,
+    ]);
+
     $response = $this->actingAs($user)->get(route('map'));
     $response->assertOk();
 
     $response->assertInertia(fn ($page) => $page
         ->component('map/MapView')
+        ->has('gardenPlan')
         ->where('beds.0.id', $usersBed->id)
+        ->where('beds.0.cell_size_cm', 30)
         ->missing('beds.1')
+        ->where('gardenObjects.0.id', $usersObject->id)
+        ->where('gardenObjects.0.type', 'greenhouse')
+        ->missing('gardenObjects.1')
         ->where('plantsWithoutBed.0.id', $usersUnassignedPlant->id)
         ->missing('plantsWithoutBed.1')
     );
 
     expect($otherUsersBed->user_id)->toBe($otherUser->id);
+    expect(GardenPlan::query()->where('user_id', $user->id)->exists())->toBeTrue();
+});
+
+test('user can update garden plan dimensions', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->put(route('garden-plan.update'), [
+            'name' => 'Tagaaed',
+            'width' => 100000,
+            'height' => 50000,
+        ])
+        ->assertSessionHas('success', 'Aia mõõdud uuendatud.');
+
+    $plan = GardenPlan::query()->where('user_id', $user->id)->first();
+    expect($plan)->not()->toBeNull();
+    expect($plan->name)->toBe('Tagaaed');
+    expect($plan->width)->toBe(100000);
+    expect($plan->height)->toBe(50000);
+});
+
+test('user can create and move a garden object', function () {
+    $user = User::factory()->create();
+    $plan = GardenPlan::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Minu aed',
+        'width' => 1200,
+        'height' => 800,
+        'unit' => 'cm',
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('garden-objects.store'), [
+            'garden_plan_id' => $plan->id,
+            'type' => 'greenhouse',
+            'name' => 'Uus kasvuhoone',
+            'x' => 150,
+            'y' => 120,
+            'width' => 300,
+            'height' => 200,
+        ])
+        ->assertSessionHas('success', 'Aiaelement lisatud.');
+
+    $object = GardenObject::query()->where('garden_plan_id', $plan->id)->first();
+    expect($object)->not()->toBeNull();
+    expect($object->type)->toBe('greenhouse');
+    expect($object->name)->toBe('Uus kasvuhoone');
+
+    $this->actingAs($user)
+        ->put(route('garden-objects.update', $object), [
+            'x' => 240,
+            'y' => 180,
+        ])
+        ->assertSessionHas('success', 'Aiaelement uuendatud.');
+
+    expect($object->fresh()->x)->toBe(240);
+    expect($object->fresh()->y)->toBe(180);
+});
+
+test('user can create shed and compost garden objects', function () {
+    $user = User::factory()->create();
+    $plan = GardenPlan::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Minu aed',
+        'width' => 1200,
+        'height' => 800,
+        'unit' => 'cm',
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('garden-objects.store'), [
+            'garden_plan_id' => $plan->id,
+            'type' => 'shed',
+            'name' => 'Aiakuur',
+            'x' => 200,
+            'y' => 120,
+            'width' => 220,
+            'height' => 180,
+        ])
+        ->assertSessionHas('success', 'Aiaelement lisatud.');
+
+    $this->actingAs($user)
+        ->post(route('garden-objects.store'), [
+            'garden_plan_id' => $plan->id,
+            'type' => 'compost',
+            'name' => 'Kompostikast',
+            'x' => 320,
+            'y' => 200,
+            'width' => 140,
+            'height' => 140,
+        ])
+        ->assertSessionHas('success', 'Aiaelement lisatud.');
+
+    expect(GardenObject::query()->where('garden_plan_id', $plan->id)->where('type', 'shed')->exists())->toBeTrue();
+    expect(GardenObject::query()->where('garden_plan_id', $plan->id)->where('type', 'compost')->exists())->toBeTrue();
+});
+
+test('user can duplicate a garden object', function () {
+    $user = User::factory()->create();
+    $plan = GardenPlan::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Minu aed',
+        'width' => 1200,
+        'height' => 800,
+        'unit' => 'cm',
+    ]);
+
+    $object = GardenObject::query()->create([
+        'garden_plan_id' => $plan->id,
+        'type' => 'greenhouse',
+        'name' => 'Põhikasvuhoone',
+        'x' => 160,
+        'y' => 120,
+        'width' => 300,
+        'height' => 200,
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('garden-objects.duplicate', $object))
+        ->assertSessionHas('success', 'Aiaelement dubleeritud.');
+
+    $copies = GardenObject::query()
+        ->where('garden_plan_id', $plan->id)
+        ->orderBy('id')
+        ->get();
+
+    expect($copies)->toHaveCount(2);
+    expect($copies[1]->name)->toBe('Põhikasvuhoone koopia');
+    expect($copies[1]->x)->toBe(205);
+    expect($copies[1]->y)->toBe(165);
+    expect($copies[1]->width)->toBe(300);
+    expect($copies[1]->height)->toBe(200);
+});
+
+test('user can rotate a garden object', function () {
+    $user = User::factory()->create();
+    $plan = GardenPlan::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Minu aed',
+        'width' => 1200,
+        'height' => 800,
+        'unit' => 'cm',
+    ]);
+
+    $object = GardenObject::query()->create([
+        'garden_plan_id' => $plan->id,
+        'type' => 'shed',
+        'name' => 'Aiakuur',
+        'x' => 220,
+        'y' => 140,
+        'width' => 220,
+        'height' => 180,
+        'meta' => ['rotation' => 0],
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('garden-objects.rotate', $object))
+        ->assertSessionHas('success', 'Aiaelement pööratud.');
+
+    $object->refresh();
+
+    expect($object->width)->toBe(180);
+    expect($object->height)->toBe(220);
+    expect($object->meta['rotation'])->toBe(90);
 });

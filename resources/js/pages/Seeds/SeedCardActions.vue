@@ -28,11 +28,17 @@ const emit = defineEmits<{
     >
         <span
             class="material-symbols-outlined text-[18px] transition"
-            :class="isFavorite ? 'text-rose-600 drop-shadow-sm' : 'text-[#6B8C68]'"
+            :class="
+                isFavorite ? 'text-rose-600 drop-shadow-sm' : 'text-[#6B8C68]'
+            "
             :style="
                 isFavorite
-                    ? { fontVariationSettings: `'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24` }
-                    : { fontVariationSettings: `'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24` }
+                    ? {
+                          fontVariationSettings: `'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24`,
+                      }
+                    : {
+                          fontVariationSettings: `'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
+                      }
             "
         >
             favorite

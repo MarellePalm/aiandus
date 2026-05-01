@@ -118,7 +118,7 @@ class SeedController extends Controller
         ]);
 
         $category = null;
-        if (!empty($data['category_id'])) {
+        if (! empty($data['category_id'])) {
             $category = Category::query()
                 ->where('id', $data['category_id'])
                 ->where('user_id', $user->id)
@@ -142,17 +142,17 @@ class SeedController extends Controller
         }
 
         Seed::create([
-            'user_id'     => $user->id,
+            'user_id' => $user->id,
             'category_id' => $category->id,
-            'name'        => $data['name'],
-            'subtitle'    => null,
-            'amount'      => 1,
+            'name' => $data['name'],
+            'subtitle' => null,
+            'amount' => 1,
             'amount_text' => $data['amount_text'] ?? null,
-            'year'        => $data['year'] ?? null,
-            'expires_at'  => $data['expires_at'] ?? null,
-            'image_url'   => $imageUrl,
+            'year' => $data['year'] ?? null,
+            'expires_at' => $data['expires_at'] ?? null,
+            'image_url' => $imageUrl,
             'is_favorite' => false,
-            'notes'       => $data['notes'] ?? null,
+            'notes' => $data['notes'] ?? null,
         ]);
 
         return redirect()->route('seeds.category', ['slug' => $category->slug])
@@ -218,7 +218,7 @@ class SeedController extends Controller
     {
         abort_unless($seed->user_id === $request->user()->id, 403);
 
-        $seed->is_favorite = !$seed->is_favorite;
+        $seed->is_favorite = ! $seed->is_favorite;
         $seed->save();
 
         return back();
@@ -232,5 +232,4 @@ class SeedController extends Controller
 
         return redirect()->route('seeds.index');
     }
-
 }

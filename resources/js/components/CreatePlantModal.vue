@@ -405,7 +405,9 @@ onBeforeUnmount(() => {
                             </div>
 
                             <div class="border-t border-border pt-1">
-                                <p class="text-xs font-semibold tracking-widest text-foreground/50 uppercase">
+                                <p
+                                    class="text-xs font-semibold tracking-widest text-foreground/50 uppercase"
+                                >
                                     Valikuline
                                 </p>
                             </div>
@@ -502,7 +504,9 @@ onBeforeUnmount(() => {
                             <div class="mt-1 flex flex-col gap-3">
                                 <SaveButton
                                     type="button"
-                                    :disabled="form.processing || !form.category_id"
+                                    :disabled="
+                                        form.processing || !form.category_id
+                                    "
                                     :class="
                                         form.category_id
                                             ? ''

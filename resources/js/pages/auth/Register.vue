@@ -187,13 +187,13 @@ const showPasswordConfirmation = ref(false);
                             Loo konto
                         </Button>
                         <a
-                        href="/auth/redirect"
-                        class="btn-primary flex w-full items-center justify-center gap-2 bg-primary/70 hover:bg-primary/75"
-                        :tabindex="7"
-                    >
-                        <GoogleLogo />
-                        Logi sisse Google kontoga
-                    </a>
+                            href="/auth/redirect"
+                            class="btn-primary flex w-full items-center justify-center gap-2 bg-primary/70 hover:bg-primary/75"
+                            :tabindex="7"
+                        >
+                            <GoogleLogo />
+                            Logi sisse Google kontoga
+                        </a>
 
                         <p class="text-center text-sm text-muted-foreground">
                             On juba konto?

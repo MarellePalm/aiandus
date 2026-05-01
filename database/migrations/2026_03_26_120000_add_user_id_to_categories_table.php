@@ -73,7 +73,7 @@ return new class extends Migration
                     'updated_at' => Carbon::now(),
                 ]);
 
-                $map[$category->id . '_' . $userId] = $newId;
+                $map[$category->id.'_'.$userId] = $newId;
             }
         }
 

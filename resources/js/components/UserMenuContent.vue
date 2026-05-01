@@ -13,6 +13,7 @@ import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
 import type { User } from '@/types';
 
+
 interface Props {
     user: User;
 }

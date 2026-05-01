@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Plant;
+use App\Models\Bed;
 use App\Models\Category;
+use App\Models\Plant;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
-use Carbon\Carbon;
 
 class PlantController extends Controller
 {
@@ -21,7 +21,7 @@ class PlantController extends Controller
             ->withCount([
                 'plants as count' => function ($query) {
                     $query->where('user_id', request()->user()->id);
-                }
+                },
             ])
             ->orderBy('name')
             ->get();
@@ -195,8 +195,8 @@ class PlantController extends Controller
             'quantity' => ['nullable', 'integer', 'min:1'],
         ]);
 
-        if (!empty($data['bed_id'])) {
-            $bed = \App\Models\Bed::find($data['bed_id']);
+        if (! empty($data['bed_id'])) {
+            $bed = Bed::find($data['bed_id']);
             if ($bed && $bed->user_id !== $request->user()->id) {
                 abort(403);
             }
@@ -247,19 +247,20 @@ class PlantController extends Controller
         return redirect()->route('plants.show', $plant->id)->with('success', 'Taim uuendatud!');
     }
 
-   public function toggleFavorite(Plant $plant)
-{
-    $plant->update([
-        'is_favorite' => ! $plant->is_favorite,
-    ]);
+    public function toggleFavorite(Plant $plant)
+    {
+        $plant->update([
+            'is_favorite' => ! $plant->is_favorite,
+        ]);
 
-    return back();
-}
+        return back();
+    }
 
     public function destroy(Request $request, Plant $plant)
     {
         abort_unless($plant->user_id === $request->user()->id, 403);
         $plant->delete();
+
         return redirect('/dashboard');
     }
 }

@@ -112,7 +112,9 @@ const resetFromSeed = () => {
     form.name = props.seed?.name ?? '';
     form.amount_text = props.seed?.amount_text ?? '';
     form.year = props.seed?.year ? String(props.seed.year) : '';
-    form.expires_at = props.seed?.expires_at ? props.seed.expires_at.slice(0, 10) : '';
+    form.expires_at = props.seed?.expires_at
+        ? props.seed.expires_at.slice(0, 10)
+        : '';
     form.notes = props.seed?.notes ?? '';
     form.image = null;
     revokePreview();
@@ -149,11 +151,14 @@ const shouldNormalizeTo2020 = (v: unknown) => {
     return Number.isFinite(n) && (n === 1 || n === 0 || n === -1);
 };
 
-watch(() => form.year, (value, previous) => {
-    if (isEmptyValue(previous) && shouldNormalizeTo2020(value)) {
-        form.year = '2020';
-    }
-});
+watch(
+    () => form.year,
+    (value, previous) => {
+        if (isEmptyValue(previous) && shouldNormalizeTo2020(value)) {
+            form.year = '2020';
+        }
+    },
+);
 
 const submit = () => {
     if (!props.seed) return;
@@ -195,13 +200,20 @@ onBeforeUnmount(() => {
                     @click="close"
                 />
 
-                <div class="relative w-full max-w-lg max-h-[92vh] overflow-hidden rounded-3xl bg-[#FAF8F4] shadow-xl ring-1 ring-black/5">
+                <div
+                    class="relative max-h-[92vh] w-full max-w-lg overflow-hidden rounded-3xl bg-[#FAF8F4] shadow-xl ring-1 ring-black/5"
+                >
                     <div class="max-h-[92vh] overflow-y-auto p-5 sm:p-6">
                         <div class="flex items-start justify-between gap-3">
                             <div>
-                                <h3 class="text-lg font-semibold text-[#2E2E2E]">Muuda seemet</h3>
+                                <h3
+                                    class="text-lg font-semibold text-[#2E2E2E]"
+                                >
+                                    Muuda seemet
+                                </h3>
                                 <p class="mt-1 text-sm text-[#2E2E2E]/70">
-                                    Muuda nime, ostuaastat, aegumist ja märkuseid.
+                                    Muuda nime, ostuaastat, aegumist ja
+                                    märkuseid.
                                 </p>
                             </div>
                             <button
@@ -215,8 +227,10 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div class="mt-5">
-                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
-                                    Nimi
+                            <label
+                                class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase"
+                            >
+                                Nimi
                             </label>
                             <input
                                 ref="nameInputRef"
@@ -224,11 +238,18 @@ onBeforeUnmount(() => {
                                 type="text"
                                 class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
                             />
-                            <p v-if="form.errors.name" class="mt-2 text-sm text-red-600">{{ form.errors.name }}</p>
+                            <p
+                                v-if="form.errors.name"
+                                class="mt-2 text-sm text-red-600"
+                            >
+                                {{ form.errors.name }}
+                            </p>
                         </div>
 
                         <div class="mt-5">
-                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                            <label
+                                class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase"
+                            >
                                 Kogus
                             </label>
                             <input
@@ -237,12 +258,19 @@ onBeforeUnmount(() => {
                                 placeholder="nt 1 tk või 2 liitrit"
                                 class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
                             />
-                            <p v-if="form.errors.amount_text" class="mt-2 text-sm text-red-600">{{ form.errors.amount_text }}</p>
+                            <p
+                                v-if="form.errors.amount_text"
+                                class="mt-2 text-sm text-red-600"
+                            >
+                                {{ form.errors.amount_text }}
+                            </p>
                         </div>
 
                         <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
-                                <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                                <label
+                                    class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase"
+                                >
                                     Ostmise aasta
                                 </label>
                                 <input
@@ -255,10 +283,17 @@ onBeforeUnmount(() => {
                                     @keydown.up="startYearFrom2020('year')"
                                     @keydown.down="startYearFrom2020('year')"
                                 />
-                                <p v-if="form.errors.year" class="mt-2 text-sm text-red-600">{{ form.errors.year }}</p>
+                                <p
+                                    v-if="form.errors.year"
+                                    class="mt-2 text-sm text-red-600"
+                                >
+                                    {{ form.errors.year }}
+                                </p>
                             </div>
                             <div>
-                                <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                                <label
+                                    class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase"
+                                >
                                     Aegub
                                 </label>
                                 <input
@@ -267,14 +302,25 @@ onBeforeUnmount(() => {
                                     lang="et-EE"
                                     class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
                                     @change="form.clearErrors('expires_at')"
-                                    @click="($event.target as HTMLInputElement).showPicker?.()"
+                                    @click="
+                                        (
+                                            $event.target as HTMLInputElement
+                                        ).showPicker?.()
+                                    "
                                 />
-                                <p v-if="form.errors.expires_at" class="mt-2 text-sm text-red-600">{{ form.errors.expires_at }}</p>
+                                <p
+                                    v-if="form.errors.expires_at"
+                                    class="mt-2 text-sm text-red-600"
+                                >
+                                    {{ form.errors.expires_at }}
+                                </p>
                             </div>
                         </div>
 
                         <div class="mt-5">
-                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">
+                            <label
+                                class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase"
+                            >
                                 Märkused
                             </label>
                             <textarea
@@ -282,11 +328,19 @@ onBeforeUnmount(() => {
                                 rows="4"
                                 class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
                             />
-                            <p v-if="form.errors.notes" class="mt-2 text-sm text-red-600">{{ form.errors.notes }}</p>
+                            <p
+                                v-if="form.errors.notes"
+                                class="mt-2 text-sm text-red-600"
+                            >
+                                {{ form.errors.notes }}
+                            </p>
                         </div>
 
                         <div class="mt-5">
-                            <label class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase">Pilt</label>
+                            <label
+                                class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase"
+                                >Pilt</label
+                            >
                             <input
                                 ref="fileInputRef"
                                 type="file"
@@ -300,25 +354,47 @@ onBeforeUnmount(() => {
                                 @click="openPicker"
                             >
                                 <template v-if="hasImage && previewUrl">
-                                    <img :src="previewUrl" alt="Eelvaade" class="mx-auto max-h-40 rounded-xl object-cover" />
-                                    <p class="mt-2 text-sm text-[#2E2E2E]/60">Vajuta, et pilti vahetada</p>
+                                    <img
+                                        :src="previewUrl"
+                                        alt="Eelvaade"
+                                        class="mx-auto max-h-40 rounded-xl object-cover"
+                                    />
+                                    <p class="mt-2 text-sm text-[#2E2E2E]/60">
+                                        Vajuta, et pilti vahetada
+                                    </p>
                                 </template>
                                 <template v-else>
-                                    <span class="material-symbols-outlined text-5xl text-[#6B8C68]">add_a_photo</span>
-                                    <p class="mt-2 text-sm text-[#2E2E2E]/70">Lisa seemne pilt</p>
+                                    <span
+                                        class="material-symbols-outlined text-5xl text-[#6B8C68]"
+                                        >add_a_photo</span
+                                    >
+                                    <p class="mt-2 text-sm text-[#2E2E2E]/70">
+                                        Lisa seemne pilt
+                                    </p>
                                 </template>
                             </button>
-                            <p v-if="form.errors.image" class="mt-2 text-sm text-red-600">{{ form.errors.image }}</p>
+                            <p
+                                v-if="form.errors.image"
+                                class="mt-2 text-sm text-red-600"
+                            >
+                                {{ form.errors.image }}
+                            </p>
                         </div>
 
-                        <div class="sticky bottom-0 mt-6 flex flex-col gap-3 bg-[#FAF8F4] pt-4 pb-1">
+                        <div
+                            class="sticky bottom-0 mt-6 flex flex-col gap-3 bg-[#FAF8F4] pt-4 pb-1"
+                        >
                             <button
                                 type="button"
                                 class="rounded-2xl bg-[#6B8C68] px-4 py-3 font-medium text-white transition hover:bg-[#4F6A52] disabled:opacity-60"
                                 :disabled="form.processing || !form.name.trim()"
                                 @click="submit"
                             >
-                                {{ form.processing ? 'Salvestan...' : 'Salvesta muudatused' }}
+                                {{
+                                    form.processing
+                                        ? 'Salvestan...'
+                                        : 'Salvesta muudatused'
+                                }}
                             </button>
                             <button
                                 type="button"

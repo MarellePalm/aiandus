@@ -1,7 +1,7 @@
 /* resources/css/app.css */
 
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @source "../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php";
 @source "../../storage/framework/views/*.php";
@@ -12,42 +12,42 @@
    Minimal tokens this app uses
 ================================ */
 @theme inline {
-  --font-sans:
-    Instrument Sans, ui-sans-serif, system-ui, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
-    "Noto Color Emoji";
+    --font-sans:
+        Instrument Sans, ui-sans-serif, system-ui, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        'Noto Color Emoji';
 
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
+    --radius-lg: var(--radius);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-sm: calc(var(--radius) - 4px);
 
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
 
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
 
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
 
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
 
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
 
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
 
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
 
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
 
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
 }
 
 /*
@@ -55,94 +55,94 @@
   Keep v3-ish look for components relying on defaults.
 */
 @layer base {
-  *,
-  ::after,
-  ::before,
-  ::backdrop,
-  ::file-selector-button {
-    border-color: var(--color-gray-200, currentColor);
-  }
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--color-gray-200, currentColor);
+    }
 }
 
 @layer base {
-  html,
-  body {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
-    overscroll-behavior-x: none;
-  }
+    html,
+    body {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+        overscroll-behavior-x: none;
+    }
 
-  * {
-    @apply border-border outline-ring/50;
-  }
+    * {
+        @apply border-border outline-ring/50;
+    }
 
-  body {
-    @apply bg-background text-foreground;
-    font-family: var(--font-sans);
-  }
+    body {
+        @apply bg-background text-foreground;
+        font-family: var(--font-sans);
+    }
 }
 
 /* ==============================
    Color system (your palette)
 ================================ */
 :root {
-  --background: hsl(40 37.5% 96.86%); /* #faf8f4 */
-  --foreground: hsl(120 2.44% 8.04%); /* #141514 */
+    --background: hsl(40 37.5% 96.86%); /* #faf8f4 */
+    --foreground: hsl(120 2.44% 8.04%); /* #141514 */
 
-  --card: hsl(0 0% 100%);
-  --card-foreground: hsl(120 2.44% 8.04%);
+    --card: hsl(0 0% 100%);
+    --card-foreground: hsl(120 2.44% 8.04%);
 
-  --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(120 2.44% 8.04%);
+    --popover: hsl(0 0% 100%);
+    --popover-foreground: hsl(120 2.44% 8.04%);
 
-  --primary: hsl(114.89 19.18% 48.04%); /* #679263 */
-  --primary-foreground: hsl(0 0% 100%);
+    --primary: hsl(114.89 19.18% 48.04%); /* #679263 */
+    --primary-foreground: hsl(0 0% 100%);
 
-  --secondary: hsl(43.64 31.43% 93.14%); /* #F3F0E8 */
-  --secondary-foreground: hsl(120 2.44% 8.04%);
+    --secondary: hsl(43.64 31.43% 93.14%); /* #F3F0E8 */
+    --secondary-foreground: hsl(120 2.44% 8.04%);
 
-  --muted: hsl(45.88 25.37% 86.86%); /* #E6E2D5 */
-  --muted-foreground: hsl(120 2.98% 46.08%); /* #727972 */
+    --muted: hsl(45.88 25.37% 86.86%); /* #E6E2D5 */
+    --muted-foreground: hsl(120 2.98% 46.08%); /* #727972 */
 
-  --accent: hsl(43.64 31.43% 93.14%);
-  --accent-foreground: hsl(120 2.44% 8.04%);
+    --accent: hsl(43.64 31.43% 93.14%);
+    --accent-foreground: hsl(120 2.44% 8.04%);
 
-  --destructive: hsl(0 84.2% 60.2%);
-  --destructive-foreground: hsl(0 0% 98%);
+    --destructive: hsl(0 84.2% 60.2%);
+    --destructive-foreground: hsl(0 0% 98%);
 
-  --border: hsl(45.88 25.37% 86.86%);
-  --input: hsl(45.88 25.37% 86.86%);
-  --ring: hsl(114.89 19.18% 48.04%);
+    --border: hsl(45.88 25.37% 86.86%);
+    --input: hsl(45.88 25.37% 86.86%);
+    --ring: hsl(114.89 19.18% 48.04%);
 
-  --radius: 1rem;
+    --radius: 1rem;
 }
 
 .dark {
-  --background: hsl(105 10.53% 14.90%); /* #242a22 */
-  --foreground: hsl(40 37.5% 96.86%); /* #faf8f4 */
+    --background: hsl(105 10.53% 14.9%); /* #242a22 */
+    --foreground: hsl(40 37.5% 96.86%); /* #faf8f4 */
 
-  --card: hsl(108 4.85% 20.20%); /* #323631 */
-  --card-foreground: hsl(40 37.5% 96.86%);
+    --card: hsl(108 4.85% 20.2%); /* #323631 */
+    --card-foreground: hsl(40 37.5% 96.86%);
 
-  --popover: hsl(108 4.85% 20.20%);
-  --popover-foreground: hsl(40 37.5% 96.86%);
+    --popover: hsl(108 4.85% 20.2%);
+    --popover-foreground: hsl(40 37.5% 96.86%);
 
-  --primary: hsl(114.89 19.18% 48.04%);
-  --primary-foreground: hsl(0 0% 100%);
+    --primary: hsl(114.89 19.18% 48.04%);
+    --primary-foreground: hsl(0 0% 100%);
 
-  --secondary: hsl(102.86 12.73% 10.78%); /* #1a1f18 */
-  --secondary-foreground: hsl(40 37.5% 96.86%);
+    --secondary: hsl(102.86 12.73% 10.78%); /* #1a1f18 */
+    --secondary-foreground: hsl(40 37.5% 96.86%);
 
-  --muted: hsl(102.86 12.73% 10.78%);
-  --muted-foreground: hsl(120 5.56% 64.71%); /* #a0aaa0 */
+    --muted: hsl(102.86 12.73% 10.78%);
+    --muted-foreground: hsl(120 5.56% 64.71%); /* #a0aaa0 */
 
-  --accent: hsl(102.86 12.73% 10.78%);
-  --accent-foreground: hsl(40 37.5% 96.86%);
+    --accent: hsl(102.86 12.73% 10.78%);
+    --accent-foreground: hsl(40 37.5% 96.86%);
 
-  --border: hsl(108 4.85% 20.20%);
-  --input: hsl(108 4.85% 20.20%);
-  --ring: hsl(114.89 19.18% 48.04%);
+    --border: hsl(108 4.85% 20.2%);
+    --input: hsl(108 4.85% 20.2%);
+    --ring: hsl(114.89 19.18% 48.04%);
 }
 
 /* ==============================
@@ -151,712 +151,613 @@
 
 /* Tailwind v4: allow @apply card */
 @utility card {
-  @apply bg-card text-card-foreground rounded-lg
-         border border-border shadow-sm;
+    @apply rounded-lg border border-border bg-card text-card-foreground shadow-sm;
 }
 
 @utility leaf-shape {
-  border-top-left-radius: 2rem;
-  border-bottom-right-radius: 2rem;
+    border-top-left-radius: 2rem;
+    border-bottom-right-radius: 2rem;
 }
 
 @utility soft-shadow {
-  box-shadow: 0 10px 25px -5px rgba(107, 141, 104, 0.1),
-    0 8px 10px -6px rgba(107, 141, 104, 0.1);
+    box-shadow:
+        0 10px 25px -5px rgba(107, 141, 104, 0.1),
+        0 8px 10px -6px rgba(107, 141, 104, 0.1);
 }
 
 @utility shadow-soft {
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
 }
 
 @layer utilities {
-  /* Hide scrollbar but keep scrolling */
-  .no-scrollbar {
-    -ms-overflow-style: none; /* IE/Edge */
-    scrollbar-width: none; /* Firefox */
-  }
-  .no-scrollbar::-webkit-scrollbar {
-    display: none; /* Chrome/Safari */
-  }
+    /* Hide scrollbar but keep scrolling */
+    .no-scrollbar {
+        -ms-overflow-style: none; /* IE/Edge */
+        scrollbar-width: none; /* Firefox */
+    }
+    .no-scrollbar::-webkit-scrollbar {
+        display: none; /* Chrome/Safari */
+    }
 
-  /* Thin custom scrollbar */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(107, 141, 104, 0.2);
-    border-radius: 10px;
-  }
-  .custom-scrollbar {
-    scrollbar-width: thin; /* Firefox */
-    scrollbar-color: rgba(107, 141, 104, 0.2) transparent;
-  }
+    /* Thin custom scrollbar */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(107, 141, 104, 0.2);
+        border-radius: 10px;
+    }
+    .custom-scrollbar {
+        scrollbar-width: thin; /* Firefox */
+        scrollbar-color: rgba(107, 141, 104, 0.2) transparent;
+    }
 }
 
 /* ==============================
    Components (design system)
 ================================ */
 @layer components {
-  /* Layout */
-  .page {
-    @apply min-h-screen bg-background text-foreground overflow-x-hidden;
-  }
+    /* Layout */
+    .page {
+        @apply min-h-screen overflow-x-hidden bg-background text-foreground;
+    }
 
-  .page-with-bottomnav {
-    @apply bg-background pb-20 lg:pb-10;
-  }
+    .page-with-bottomnav {
+        @apply bg-background pb-20 lg:pb-10;
+    }
 
-  .page-container {
-    @apply mx-auto w-full
-           max-w-md
-           sm:max-w-lg
-           md:max-w-2xl
-           lg:max-w-5xl
-           xl:max-w-6xl
-           px-4 sm:px-6 lg:px-8;
-  }
+    .page-container {
+        @apply mx-auto w-full max-w-md px-4 sm:max-w-lg sm:px-6 md:max-w-2xl lg:max-w-5xl lg:px-8 xl:max-w-6xl;
+    }
 
-  .page-container-wide {
-    @apply mx-auto w-full max-w-none
-           px-4 sm:px-6 lg:px-10 xl:px-12;
-  }
+    .page-container-wide {
+        @apply mx-auto w-full max-w-none px-4 sm:px-6 lg:px-10 xl:px-12;
+    }
 
-  .topappbar {
-    @apply sticky top-0 z-20 backdrop-blur-sm
-           flex items-center justify-between
-           px-4 pt-3 pb-2;
-  }
+    .topappbar {
+        @apply sticky top-0 z-20 flex items-center justify-between px-4 pt-3 pb-2 backdrop-blur-sm;
+    }
 
-  .panel {
-    @apply card p-6;
-  }
+    .panel {
+        @apply card p-6;
+    }
 
-  /* Buttons */
-  .btn-primary {
-    @apply h-14 px-6 rounded-full
-           bg-primary text-primary-foreground
-           font-semibold shadow
-           hover:bg-primary/90
-           active:scale-[0.99]
-           transition cursor-pointer
-           inline-flex items-center justify-center gap-2;
-  }
+    /* Buttons */
+    .btn-primary {
+        @apply inline-flex h-14 cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-6 font-semibold text-primary-foreground shadow transition hover:bg-primary/90 active:scale-[0.99];
+    }
 
-  .btn-outline {
-    @apply h-14 px-6 rounded-full
-           border border-border
-           bg-transparent text-foreground
-           font-semibold
-           hover:bg-secondary/60
-           active:scale-[0.99]
-           transition cursor-pointer
-           inline-flex items-center justify-center gap-2;
-  }
+    .btn-outline {
+        @apply inline-flex h-14 cursor-pointer items-center justify-center gap-2 rounded-full border border-border bg-transparent px-6 font-semibold text-foreground transition hover:bg-secondary/60 active:scale-[0.99];
+    }
 
-  /* Vastupidine btn-primary-le: sama kuju, roheline ääris ja tekst, täitmata taust */
-  .btn-primary-outline {
-    @apply h-14 px-6 rounded-full
-           border-2 border-primary bg-transparent text-primary
-           font-semibold
-           hover:bg-primary/10
-           active:scale-[0.99]
-           transition cursor-pointer
-           inline-flex items-center justify-center gap-2;
-  }
+    /* Vastupidine btn-primary-le: sama kuju, roheline ääris ja tekst, täitmata taust */
+    .btn-primary-outline {
+        @apply inline-flex h-14 cursor-pointer items-center justify-center gap-2 rounded-full border-2 border-primary bg-transparent px-6 font-semibold text-primary transition hover:bg-primary/10 active:scale-[0.99];
+    }
 
-  .btn-ghost {
-    @apply h-12 px-4 rounded-full
-           text-muted-foreground
-           hover:bg-secondary/60
-           transition cursor-pointer
-           inline-flex items-center justify-center;
-  }
+    .btn-ghost {
+        @apply inline-flex h-12 cursor-pointer items-center justify-center rounded-full px-4 text-muted-foreground transition hover:bg-secondary/60;
+    }
 
-  .btn-lg {
-    @apply h-16 text-lg;
-  }
+    .btn-lg {
+        @apply h-16 text-lg;
+    }
 
-  .icon-btn {
-    @apply size-10 flex items-center justify-center
-           rounded-full bg-secondary text-primary
-           hover:bg-secondary/80 transition
-           cursor-pointer;
-  }
+    .icon-btn {
+        @apply flex size-10 cursor-pointer items-center justify-center rounded-full bg-secondary text-primary transition hover:bg-secondary/80;
+    }
 
-  /* Forms */
-  .form-label {
-    @apply block text-sm font-medium text-muted-foreground mb-1;
-  }
+    /* Forms */
+    .form-label {
+        @apply mb-1 block text-sm font-medium text-muted-foreground;
+    }
 
-  .form-input {
-    @apply w-full h-12 px-4 rounded-lg
-           bg-background text-foreground
-           border border-input
-           focus-visible:outline-none
-           focus-visible:ring-2 focus-visible:ring-ring
-           transition;
-  }
+    .form-input {
+        @apply h-12 w-full rounded-lg border border-input bg-background px-4 text-foreground transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none;
+    }
 
-  .form-textarea {
-    @apply w-full px-4 py-3 rounded-lg
-           bg-background text-foreground
-           border border-input
-           focus-visible:outline-none
-           focus-visible:ring-2 focus-visible:ring-ring
-           transition resize-none;
-  }
+    .form-textarea {
+        @apply w-full resize-none rounded-lg border border-input bg-background px-4 py-3 text-foreground transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none;
+    }
 
     /* Auth (Register/Login) */
     .auth-shell {
-      @apply w-full;
-    }
-  
-    .auth-header {
-      @apply flex flex-col items-center pt-4 pb-10 text-center;
-    }
-  
-    .auth-icon {
-      @apply mb-6 flex h-16 w-16 items-center justify-center
-             rounded-full bg-primary/10 dark:bg-primary/20;
-    }
-  
-    .auth-title {
-      @apply pb-2 text-center text-3xl leading-tight font-bold tracking-tight
-             text-foreground;
-    }
-  
-    .auth-subtitle {
-      @apply text-center text-base leading-normal font-normal text-muted-foreground;
-    }
-  
-    .auth-form {
-      @apply space-y-4;
-    }
-  
-    .auth-field {
-      @apply flex flex-col rounded-xl border border-border bg-secondary/40 p-1
-             transition-shadow focus-within:shadow-md dark:bg-white/5;
-    }
-  
-    .auth-label {
-      @apply px-4 pt-3 text-xs font-semibold tracking-wider text-foreground/80 uppercase;
-    }
-  
-    .auth-input {
-      @apply h-12 w-full border-none bg-transparent px-4 text-base font-normal
-             text-foreground placeholder:text-muted-foreground/60 focus:ring-0;
-    }
-  
-    .auth-eye {
-      @apply absolute right-4 bottom-3 cursor-pointer
-             text-muted-foreground hover:text-foreground transition;
-    }
-  
-    .auth-actions {
-      @apply mt-12 mb-8 space-y-4;
-    }
-  
-    .auth-link {
-      @apply ml-1 font-bold text-primary hover:underline;
+        @apply w-full;
     }
 
-    
+    .auth-header {
+        @apply flex flex-col items-center pt-4 pb-10 text-center;
+    }
+
+    .auth-icon {
+        @apply mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 dark:bg-primary/20;
+    }
+
+    .auth-title {
+        @apply pb-2 text-center text-3xl leading-tight font-bold tracking-tight text-foreground;
+    }
+
+    .auth-subtitle {
+        @apply text-center text-base leading-normal font-normal text-muted-foreground;
+    }
+
+    .auth-form {
+        @apply space-y-4;
+    }
+
+    .auth-field {
+        @apply flex flex-col rounded-xl border border-border bg-secondary/40 p-1 transition-shadow focus-within:shadow-md dark:bg-white/5;
+    }
+
+    .auth-label {
+        @apply px-4 pt-3 text-xs font-semibold tracking-wider text-foreground/80 uppercase;
+    }
+
+    .auth-input {
+        @apply h-12 w-full border-none bg-transparent px-4 text-base font-normal text-foreground placeholder:text-muted-foreground/60 focus:ring-0;
+    }
+
+    .auth-eye {
+        @apply absolute right-4 bottom-3 cursor-pointer text-muted-foreground transition hover:text-foreground;
+    }
+
+    .auth-actions {
+        @apply mt-12 mb-8 space-y-4;
+    }
+
+    .auth-link {
+        @apply ml-1 font-bold text-primary hover:underline;
+    }
+
     .menu {
-      @apply rounded-xl border border-border bg-card shadow-lg overflow-hidden;
+        @apply overflow-hidden rounded-xl border border-border bg-card shadow-lg;
     }
 
     .menu-item {
-      @apply block w-full px-4 py-2 text-left text-sm hover:bg-secondary/60 cursor-pointer;
+        @apply block w-full cursor-pointer px-4 py-2 text-left text-sm hover:bg-secondary/60;
     }
-  
+
     .menu-seperator {
-      @apply h-px bg-border;
+        @apply h-px bg-border;
     }
-    
 
-  /* Dashboard cards */
-  .weather-card {
-    /* Dashboardi "kast" stiil tuleb wrapper-sectionist; ilmablokk ise on vaid layout */
-    @apply relative overflow-hidden;
-  }
+    /* Dashboard cards */
+    .weather-card {
+        /* Dashboardi "kast" stiil tuleb wrapper-sectionist; ilmablokk ise on vaid layout */
+        @apply relative overflow-hidden;
+    }
 
-  /* Weather V2 (Dashboard) – lisaklassid olemasoleva .weather-card kõrvale */
+    /* Weather V2 (Dashboard) – lisaklassid olemasoleva .weather-card kõrvale */
     .weather-deco {
-      @apply absolute -top-4 -right-4 text-[120px] opacity-[0.04] pointer-events-none rotate-12;
+        @apply pointer-events-none absolute -top-4 -right-4 rotate-12 text-[120px] opacity-[0.04];
     }
-  
+
     .weather-top {
-      @apply flex items-start justify-between gap-4 mb-6;
+        @apply mb-6 flex items-start justify-between gap-4;
     }
-  
+
     .weather-today-chip {
-      @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold
-             bg-primary/15 text-primary;
+        @apply inline-flex items-center rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-primary;
     }
-  
+
     .weather-temp {
-      @apply text-[44px] font-bold leading-none;
+        @apply text-[44px] leading-none font-bold;
     }
-  
+
     .weather-meta {
-      @apply text-sm text-muted-foreground font-medium;
+        @apply text-sm font-medium text-muted-foreground;
     }
-  
+
     .weather-icon {
-      @apply text-6xl text-primary drop-shadow-sm;
+        @apply text-6xl text-primary drop-shadow-sm;
     }
-  
+
     .weather-divider {
-      @apply h-px w-full my-5 bg-border;
+        @apply my-5 h-px w-full bg-border;
     }
-  
+
     .weather-forecast-grid {
-      @apply grid gap-3;
+        @apply grid gap-3;
     }
-  
+
     .weather-forecast-grid-2 {
-      @apply grid-cols-2;
+        @apply grid-cols-2;
     }
-  
+
     .weather-forecast-grid-3 {
-      @apply grid-cols-3;
+        @apply grid-cols-3;
     }
-  
+
     .weather-forecast-item {
-      @apply flex flex-col items-center p-3 rounded-2xl
-             bg-secondary/40 dark:bg-black/10 backdrop-blur-sm;
+        @apply flex flex-col items-center rounded-2xl bg-secondary/40 p-3 backdrop-blur-sm dark:bg-black/10;
     }
-  
+
     .weather-forecast-day {
-      @apply text-[11px] font-bold uppercase tracking-wide text-muted-foreground;
+        @apply text-[11px] font-bold tracking-wide text-muted-foreground uppercase;
     }
-  
+
     .weather-forecast-item-icon {
-      @apply my-2 text-primary;
+        @apply my-2 text-primary;
     }
-  
+
     .weather-forecast-max {
-      @apply text-sm font-bold;
+        @apply text-sm font-bold;
     }
-  
+
     .weather-forecast-min {
-      @apply text-xs text-muted-foreground;
+        @apply text-xs text-muted-foreground;
     }
-  
 
     /* Moon / rhythms panel (shared) */
     .rhythm-card {
-      /* Dashboardi "kast" stiil tuleb wrapper-sectionist; kuukomponent on vaid layout */
-      @apply flex flex-col overflow-hidden;
+        /* Dashboardi "kast" stiil tuleb wrapper-sectionist; kuukomponent on vaid layout */
+        @apply flex flex-col overflow-hidden;
     }
-  
+
     .rhythm-icon {
-      /* Ühtne "chip" välimus dashboardi sees (mitte eraldi valge kaart) */
-      @apply size-16 rounded-full flex items-center justify-center
-             bg-muted/40 ring-1 ring-border;
+        /* Ühtne "chip" välimus dashboardi sees (mitte eraldi valge kaart) */
+        @apply flex size-16 items-center justify-center rounded-full bg-muted/40 ring-1 ring-border;
     }
-  
+
     .rhythm-icon-symbol {
-      @apply text-primary text-4xl;
-      font-variation-settings: 'FILL' 1;
+        @apply text-4xl text-primary;
+        font-variation-settings: 'FILL' 1;
     }
-  
+
     .rhythm-title {
-      @apply font-bold text-primary;
+        @apply font-bold text-primary;
     }
-  
+
     .rhythm-body {
-      @apply text-sm text-muted-foreground leading-relaxed;
+        @apply text-sm leading-relaxed text-muted-foreground;
     }
-  
+
     /* optional: small badge (e.g. illumination %) */
     .rhythm-badge {
-      @apply inline-flex items-center rounded-full px-2 py-0.5
-             text-[11px] font-semibold
-             bg-primary/15 text-primary;
+        @apply inline-flex items-center rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary;
     }
 
-  /* Moon Zodiac Badge */
-  .mzBadge {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .mzBadge.split .mzSeg { flex: 1 1 0; }
-  
-  .mzSeg{
-    background: var(--seg-bg);
-    display: grid;
-    grid-template-columns: 44px 1fr;
-    align-items: center;
-    padding: 12px 14px;
-    border: 1px solid var(--app-border, rgba(0,0,0,.12));
-    border-radius: 1rem;
-  }
-  
-  /* Dashboardis tahame vähem "kastikat" badge'i */
-  .mzSeg--dashboard{
-    background: color-mix(in oklab, var(--seg-bg) 55%, transparent);
-    border-color: color-mix(in oklab, var(--app-border) 70%, transparent);
-  }
+    /* Moon Zodiac Badge */
+    .mzBadge {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
 
-  .mzSeg--stacked {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
+    .mzBadge.split .mzSeg {
+        flex: 1 1 0;
+    }
 
-  .mzSeg--stacked .mzSeg-icon {
-    display: flex;
-    justify-content: center;
-  }
+    .mzSeg {
+        background: var(--seg-bg);
+        display: grid;
+        grid-template-columns: 44px 1fr;
+        align-items: center;
+        padding: 12px 14px;
+        border: 1px solid var(--app-border, rgba(0, 0, 0, 0.12));
+        border-radius: 1rem;
+    }
 
-  .mzSeg--stacked .content {
-    width: 100%;
-    text-align: center;
-  }
+    /* Dashboardis tahame vähem "kastikat" badge'i */
+    .mzSeg--dashboard {
+        background: color-mix(in oklab, var(--seg-bg) 55%, transparent);
+        border-color: color-mix(in oklab, var(--app-border) 70%, transparent);
+    }
 
-  .mzSeg--stacked .signRow {
-    justify-content: center;
-  }
+    .mzSeg--stacked {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
 
-  .mzSeg--stacked .signText {
-    align-items: center;
-  }
-  
-  .left{
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  
-  .icon{
-    font-size: 22px;
-    line-height: 1;
-    opacity: .9;
-  }
-  
-  .vline{
-    width: 1px;
-    height: 26px;
-    background: var(--app-border, rgba(0,0,0,.25));
-  }
-  
-  .content{
-    text-align: left;   /* oluline: muidu kõik center */
-    line-height: 1.1;
-  }
-  
-  .signRow{
-    display: flex;
-    align-items: center;  /* mitte baseline */
-    gap: 8px;
-    font-weight: 600;
-  }
-  
-  .signText{
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .meta{
-    margin-top: 2px;     /* väiksem kui 4px */
-    font-size: 12px;
-    opacity: .75;
-    font-weight: 500;    /* meta natuke pehmem */
-  }
+    .mzSeg--stacked .mzSeg-icon {
+        display: flex;
+        justify-content: center;
+    }
 
-  :root{
-    /* võta otse sinu süsteemi tokenitest */
-    --app-border: var(--border);
-    --app-text: var(--foreground);
-  
-    /* pehmed “tint” taustad (kasutavad sinu palette'i) */
-    --bio-leaf-bg: color-mix(in oklab, var(--primary) 14%, transparent);
-    --bio-leaf-accent: var(--primary);
-  
-    /* fruit – natuke soojem (primary + secondary) */
-    --bio-fruit-bg: color-mix(in oklab, var(--primary) 10%, var(--secondary));
-    --bio-fruit-accent: var(--primary);
-  
-    /* root – neutraalsem (muted) */
-    --bio-root-bg: color-mix(in oklab, var(--muted) 70%, transparent);
-    --bio-root-accent: var(--muted-foreground);
-  
-    /* flower – väga õrn (secondary/accent) */
-    --bio-flower-bg: color-mix(in oklab, var(--secondary) 85%, transparent);
-    --bio-flower-accent: var(--primary);
-  }
-  
+    .mzSeg--stacked .content {
+        width: 100%;
+        text-align: center;
+    }
 
-  .activity-card {
-    @apply rounded-2xl border border-border bg-card/90 backdrop-blur-md p-4
-           flex flex-col items-center text-center shadow-sm
-           hover:bg-card/95 hover:shadow-md hover:-translate-y-0.5
-           active:translate-y-0 transition;
-  }
+    .mzSeg--stacked .signRow {
+        justify-content: center;
+    }
 
-  /* Dashboard: plokitaust (märkmed, taimed – nagu kuufaas) */
-  .dashboard-panel {
-    @apply card bg-secondary/60 p-5;
-  }
+    .mzSeg--stacked .signText {
+        align-items: center;
+    }
 
-  /* Dashboard: ploki üles/alla nupp */
-  .section-reorder-btn {
-    @apply p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground
-           disabled:opacity-30 disabled:pointer-events-none;
-  }
+    .left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
 
-  /* Täislaius “Vaata kõiki” / “Vaata kõiki märkmeid” – nupp kaardi all */
-  .btn-panel-link {
-    @apply mt-3 w-full h-14 px-5 rounded-2xl shadow-soft
-           bg-card text-primary border border-border
-           inline-flex items-center justify-start gap-2
-           hover:bg-card/90 transition;
-  }
-  
-  /* Kuubloki "Vaata kuukalendrit" – vähem button, rohkem pill */
-  .moon-link{
-    /* Ühtlustame kuufaaside CTA värvi teiste `btn-panel-link` nuppudega */
-    @apply shadow-none bg-card hover:bg-card/90;
-  }
+    .icon {
+        font-size: 22px;
+        line-height: 1;
+        opacity: 0.9;
+    }
 
-  .tip-card {
-    @apply bg-secondary/40 border-2 border-dashed border-border
-           rounded-lg p-6 relative;
-  }
+    .vline {
+        width: 1px;
+        height: 26px;
+        background: var(--app-border, rgba(0, 0, 0, 0.25));
+    }
 
-  .fab {
-    @apply fixed size-16 rounded-full flex items-center justify-center
-           bg-primary text-primary-foreground shadow-lg
-           transition active:scale-95 z-50 pointer-events-auto;
+    .content {
+        text-align: left; /* oluline: muidu kõik center */
+        line-height: 1.1;
+    }
 
-    right: 1.25rem !important; /* right-5 */
-    bottom: calc(5rem + 1rem + env(safe-area-inset-bottom)) !important; /* nav(h-20) + gap + safe-area */
-  }
+    .signRow {
+        display: flex;
+        align-items: center; /* mitte baseline */
+        gap: 8px;
+        font-weight: 600;
+    }
 
-  /* Calendar/Tasks */
-  .calendar-card {
-    @apply card leaf-shape soft-shadow
-           bg-card/70 backdrop-blur-md
-           p-4;
-  }
+    .signText {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+    }
 
-  .section-title {
-    @apply text-[22px] font-bold leading-tight tracking-[-0.015em];
-  }
+    .meta {
+        margin-top: 2px; /* väiksem kui 4px */
+        font-size: 12px;
+        opacity: 0.75;
+        font-weight: 500; /* meta natuke pehmem */
+    }
 
-  .badge-date {
-    @apply text-xs bg-primary/20 text-primary font-bold
-           px-2 py-1 rounded-full uppercase tracking-tighter;
-  }
+    :root {
+        /* võta otse sinu süsteemi tokenitest */
+        --app-border: var(--border);
+        --app-text: var(--foreground);
 
-  .task-card {
-    @apply card leaf-shape soft-shadow
-           p-4 border-l-4;
-  }
+        /* pehmed “tint” taustad (kasutavad sinu palette'i) */
+        --bio-leaf-bg: color-mix(in oklab, var(--primary) 14%, transparent);
+        --bio-leaf-accent: var(--primary);
 
-  .task-meta {
-    @apply flex items-center gap-2 text-xs text-muted-foreground;
-  }
+        /* fruit – natuke soojem (primary + secondary) */
+        --bio-fruit-bg: color-mix(
+            in oklab,
+            var(--primary) 10%,
+            var(--secondary)
+        );
+        --bio-fruit-accent: var(--primary);
 
-  /* Bottom navigation (pill + plus) */
-  .bottom-floatbar {
-    @apply fixed bottom-4 left-1/2 -translate-x-1/2
-           w-full max-w-md px-4
-           flex justify-between items-center
-           z-50 pointer-events-none;
-  }
+        /* root – neutraalsem (muted) */
+        --bio-root-bg: color-mix(in oklab, var(--muted) 70%, transparent);
+        --bio-root-accent: var(--muted-foreground);
 
-  .pill-nav {
-    @apply pointer-events-auto
-           flex gap-6
-           rounded-full px-5 py-2
-           bg-card/80 backdrop-blur-lg
-           border border-border
-           shadow-xl;
-  }
+        /* flower – väga õrn (secondary/accent) */
+        --bio-flower-bg: color-mix(in oklab, var(--secondary) 85%, transparent);
+        --bio-flower-accent: var(--primary);
+    }
 
-  .nav-item {
-    @apply flex flex-col items-center
-           text-muted-foreground;
-  }
+    .activity-card {
+        @apply flex flex-col items-center rounded-2xl border border-border bg-card/90 p-4 text-center shadow-sm backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-card/95 hover:shadow-md active:translate-y-0;
+    }
 
-  .nav-item-active {
-    @apply text-primary;
-  }
+    /* Dashboard: plokitaust (märkmed, taimed – nagu kuufaas) */
+    .dashboard-panel {
+        @apply card bg-secondary/60 p-5;
+    }
 
-  .nav-label {
-    @apply text-[10px] font-bold mt-1;
-  }
+    /* Dashboard: ploki üles/alla nupp */
+    .section-reorder-btn {
+        @apply rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-30;
+    }
 
-  .fab-plus {
-    @apply pointer-events-auto
-           size-14 rounded-full
-           bg-primary text-primary-foreground
-           flex items-center justify-center
-           shadow-lg active:scale-95 transition;
-  }
+    /* Täislaius “Vaata kõiki” / “Vaata kõiki märkmeid” – nupp kaardi all */
+    .btn-panel-link {
+        @apply mt-3 inline-flex h-14 w-full items-center justify-start gap-2 rounded-2xl border border-border bg-card px-5 text-primary shadow-soft transition hover:bg-card/90;
+    }
 
-  /* Note form */
-  .note-card {
-    @apply bg-card/80 backdrop-blur-md border border-border;
-    box-shadow: 0 10px 30px -10px rgba(107, 141, 104, 0.12);
-  }
+    /* Kuubloki "Vaata kuukalendrit" – vähem button, rohkem pill */
+    .moon-link {
+        /* Ühtlustame kuufaaside CTA värvi teiste `btn-panel-link` nuppudega */
+        @apply bg-card shadow-none hover:bg-card/90;
+    }
 
-  .note-label {
-    @apply text-xs font-semibold uppercase tracking-wider text-primary mb-2;
-  }
+    .tip-card {
+        @apply relative rounded-lg border-2 border-dashed border-border bg-secondary/40 p-6;
+    }
 
-  .note-sub-label {
-    @apply text-[10px] font-bold uppercase text-muted-foreground mb-2 block;
-  }
+    .fab {
+        @apply pointer-events-auto fixed z-50 flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition active:scale-95;
 
-  .note-input {
-    @apply bg-background;
-  }
+        right: 1.25rem !important; /* right-5 */
+        bottom: calc(
+            5rem + 1rem + env(safe-area-inset-bottom)
+        ) !important; /* nav(h-20) + gap + safe-area */
+    }
 
-  .note-input--compact {
-    @apply h-10;
-  }
+    /* Calendar/Tasks */
+    .calendar-card {
+        @apply card leaf-shape bg-card/70 p-4 soft-shadow backdrop-blur-md;
+    }
 
-  .note-decor {
-    @apply absolute pointer-events-none opacity-10 text-primary;
-  }
+    .section-title {
+        @apply text-[22px] leading-tight font-bold tracking-[-0.015em];
+    }
 
-  .note-decor--tr {
-    @apply -top-10 -right-10;
-  }
+    .badge-date {
+        @apply rounded-full bg-primary/20 px-2 py-1 text-xs font-bold tracking-tighter text-primary uppercase;
+    }
 
-  .note-decor--bl {
-    @apply -bottom-20 -left-10 rotate-45;
-  }
+    .task-card {
+        @apply card leaf-shape border-l-4 p-4 soft-shadow;
+    }
 
-  .icon-btn-primary {
-    @apply size-10 flex items-center justify-center
-           rounded-full bg-primary text-primary-foreground
-           hover:bg-primary/90 transition
-           disabled:opacity-60 disabled:cursor-not-allowed;
-  }
+    .task-meta {
+        @apply flex items-center gap-2 text-xs text-muted-foreground;
+    }
 
-  .toggle {
-    @apply relative inline-flex h-6 w-11 items-center;
-  }
+    /* Bottom navigation (pill + plus) */
+    .bottom-floatbar {
+        @apply pointer-events-none fixed bottom-4 left-1/2 z-50 flex w-full max-w-md -translate-x-1/2 items-center justify-between px-4;
+    }
 
-  .toggle__input {
-    @apply sr-only;
-  }
+    .pill-nav {
+        @apply pointer-events-auto flex gap-6 rounded-full border border-border bg-card/80 px-5 py-2 shadow-xl backdrop-blur-lg;
+    }
 
-  .toggle__track {
-    @apply absolute inset-0 rounded-full bg-secondary border border-border transition;
-  }
+    .nav-item {
+        @apply flex flex-col items-center text-muted-foreground;
+    }
 
-  .toggle__thumb {
-    @apply absolute left-0.5 top-0.5 size-5 rounded-full bg-card shadow transition;
-  }
+    .nav-item-active {
+        @apply text-primary;
+    }
 
-  .toggle__input:checked + .toggle__track {
-    @apply bg-primary/90 border-primary/30;
-  }
+    .nav-label {
+        @apply mt-1 text-[10px] font-bold;
+    }
 
-  .toggle__input:checked + .toggle__track + .toggle__thumb {
-    transform: translateX(20px);
-  }
+    .fab-plus {
+        @apply pointer-events-auto flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition active:scale-95;
+    }
 
-  /* User menu */
-  .icon-btn {
-    @apply inline-flex items-center justify-center rounded-full border border-border bg-card transition hover:bg-card/90;
-  }
+    /* Note form */
+    .note-card {
+        @apply border border-border bg-card/80 backdrop-blur-md;
+        box-shadow: 0 10px 30px -10px rgba(107, 141, 104, 0.12);
+    }
 
-  .dropdown {
-    @apply absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-border bg-card shadow-lg;
-  }
+    .note-label {
+        @apply mb-2 text-xs font-semibold tracking-wider text-primary uppercase;
+    }
 
-  .menu-item {
-    @apply flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm transition hover:bg-muted/40;
-  }
+    .note-sub-label {
+        @apply mb-2 block text-[10px] font-bold text-muted-foreground uppercase;
+    }
 
-  .menu-item-danger {
-    @apply text-destructive;
-  }
+    .note-input {
+        @apply bg-background;
+    }
 
-  /* Journal panel for Calendar view – vasak ja parem nurk kandilised */
-  .journal-panel {
-    @apply soft-shadow
-           bg-muted/25 text-foreground
-           dark:bg-card/70 dark:backdrop-blur-md
-           p-6 rounded-lg border border-border/60
-           backdrop-blur-sm;
-  }
+    .note-input--compact {
+        @apply h-10;
+    }
 
-  .journal-subtitle {
-    @apply text-sm font-medium text-foreground/70 leading-none mb-1;
-  }
+    .note-decor {
+        @apply pointer-events-none absolute text-primary opacity-10;
+    }
 
-  .journal-title {
-    @apply text-[22px] font-semibold;
-  }
+    .note-decor--tr {
+        @apply -top-10 -right-10;
+    }
 
-  .journal-section-title {
-    @apply text-[12px] font-bold uppercase tracking-widest
-           text-primary/80 dark:text-primary/80 mb-3;
-  }
+    .note-decor--bl {
+        @apply -bottom-20 -left-10 rotate-45;
+    }
 
-  .journal-check-row {
-    @apply flex items-start gap-3 rounded-xl p-3
-           bg-card/15 border border-border/60
-           transition hover:bg-card/25 hover:border-primary/25;
-  }
+    .icon-btn-primary {
+        @apply flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60;
+    }
 
-  .journal-check {
-    @apply w-5 h-5 rounded-md border-2 border-primary/30 bg-card/20 shrink-0
-           checked:bg-primary/90 checked:border-primary/50;
-  }
+    .toggle {
+        @apply relative inline-flex h-6 w-11 items-center;
+    }
 
-  .journal-row-text {
-    @apply text-[15px] font-normal text-foreground/90;
-  }
+    .toggle__input {
+        @apply sr-only;
+    }
 
-  .journal-reminder {
-    @apply rounded-xl p-3
-           bg-card/15 border border-border/60
-           transition hover:bg-card/25 hover:border-primary/25;
-  }
+    .toggle__track {
+        @apply absolute inset-0 rounded-full border border-border bg-secondary transition;
+    }
 
-  .journal-note {
-    @apply rounded-xl p-4
-           bg-card/25 border border-border/60
-           dark:bg-black/5
-           transition hover:bg-card/35 hover:border-primary/25;
-  }
+    .toggle__thumb {
+        @apply absolute top-0.5 left-0.5 size-5 rounded-full bg-card shadow transition;
+    }
 
-  .journal-note-title {
-    @apply text-sm font-semibold mb-1;
-  }
+    .toggle__input:checked + .toggle__track {
+        @apply border-primary/30 bg-primary/90;
+    }
 
-  .journal-note-body {
-    @apply text-[15px] leading-[1.6] font-normal opacity-75;
-  }
+    .toggle__input:checked + .toggle__track + .toggle__thumb {
+        transform: translateX(20px);
+    }
 
-  .journal-time {
-    @apply inline-flex items-center
-           text-[12px] font-semibold
-           text-foreground/70
-           bg-card/15 border border-border/60
-           rounded-full px-2 py-0.5;
-  }
+    /* User menu */
+    .icon-btn {
+        @apply inline-flex items-center justify-center rounded-full border border-border bg-card transition hover:bg-card/90;
+    }
 
-  .journal-time--placeholder {
-    @apply opacity-0 pointer-events-none;
-  }
+    .dropdown {
+        @apply absolute top-full right-0 z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-border bg-card shadow-lg;
+    }
 
-  .journal-empty {
-    @apply text-sm text-foreground/85 font-medium opacity-90;
-  }
+    .menu-item {
+        @apply flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm transition hover:bg-muted/40;
+    }
 
+    .menu-item-danger {
+        @apply text-destructive;
+    }
+
+    /* Journal panel for Calendar view – vasak ja parem nurk kandilised */
+    .journal-panel {
+        @apply rounded-lg border border-border/60 bg-muted/25 p-6 text-foreground soft-shadow backdrop-blur-sm dark:bg-card/70 dark:backdrop-blur-md;
+    }
+
+    .journal-subtitle {
+        @apply mb-1 text-sm leading-none font-medium text-foreground/70;
+    }
+
+    .journal-title {
+        @apply text-[22px] font-semibold;
+    }
+
+    .journal-section-title {
+        @apply mb-3 text-[12px] font-bold tracking-widest text-primary/80 uppercase dark:text-primary/80;
+    }
+
+    .journal-check-row {
+        @apply flex items-start gap-3 rounded-xl border border-border/60 bg-card/15 p-3 transition hover:border-primary/25 hover:bg-card/25;
+    }
+
+    .journal-check {
+        @apply h-5 w-5 shrink-0 rounded-md border-2 border-primary/30 bg-card/20 checked:border-primary/50 checked:bg-primary/90;
+    }
+
+    .journal-row-text {
+        @apply text-[15px] font-normal text-foreground/90;
+    }
+
+    .journal-reminder {
+        @apply rounded-xl border border-border/60 bg-card/15 p-3 transition hover:border-primary/25 hover:bg-card/25;
+    }
+
+    .journal-note {
+        @apply rounded-xl border border-border/60 bg-card/25 p-4 transition hover:border-primary/25 hover:bg-card/35 dark:bg-black/5;
+    }
+
+    .journal-note-title {
+        @apply mb-1 text-sm font-semibold;
+    }
+
+    .journal-note-body {
+        @apply text-[15px] leading-[1.6] font-normal opacity-75;
+    }
+
+    .journal-time {
+        @apply inline-flex items-center rounded-full border border-border/60 bg-card/15 px-2 py-0.5 text-[12px] font-semibold text-foreground/70;
+    }
+
+    .journal-time--placeholder {
+        @apply pointer-events-none opacity-0;
+    }
+
+    .journal-empty {
+        @apply text-sm font-medium text-foreground/85 opacity-90;
+    }
 }

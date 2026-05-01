@@ -91,7 +91,11 @@ const days = computed(() => {
 
 function openCalendar() {
     if (selectedDate.value) {
-        monthCursor.value = new Date(selectedDate.value.getFullYear(), selectedDate.value.getMonth(), 1);
+        monthCursor.value = new Date(
+            selectedDate.value.getFullYear(),
+            selectedDate.value.getMonth(),
+            1,
+        );
     } else {
         const now = new Date();
         monthCursor.value = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -104,11 +108,19 @@ function closeCalendar() {
 }
 
 function previousMonth() {
-    monthCursor.value = new Date(monthCursor.value.getFullYear(), monthCursor.value.getMonth() - 1, 1);
+    monthCursor.value = new Date(
+        monthCursor.value.getFullYear(),
+        monthCursor.value.getMonth() - 1,
+        1,
+    );
 }
 
 function nextMonth() {
-    monthCursor.value = new Date(monthCursor.value.getFullYear(), monthCursor.value.getMonth() + 1, 1);
+    monthCursor.value = new Date(
+        monthCursor.value.getFullYear(),
+        monthCursor.value.getMonth() + 1,
+        1,
+    );
 }
 
 function selectDate(date: Date) {
@@ -180,12 +192,28 @@ onBeforeUnmount(() => {
             class="absolute z-50 mt-2 w-full rounded-2xl border border-black/10 bg-white p-3 shadow-xl"
         >
             <div class="mb-2 flex items-center justify-between">
-                <button type="button" class="rounded-lg px-2 py-1 hover:bg-black/5" @click="previousMonth">‹</button>
-                <p class="text-sm font-semibold capitalize">{{ currentMonthLabel }}</p>
-                <button type="button" class="rounded-lg px-2 py-1 hover:bg-black/5" @click="nextMonth">›</button>
+                <button
+                    type="button"
+                    class="rounded-lg px-2 py-1 hover:bg-black/5"
+                    @click="previousMonth"
+                >
+                    ‹
+                </button>
+                <p class="text-sm font-semibold capitalize">
+                    {{ currentMonthLabel }}
+                </p>
+                <button
+                    type="button"
+                    class="rounded-lg px-2 py-1 hover:bg-black/5"
+                    @click="nextMonth"
+                >
+                    ›
+                </button>
             </div>
 
-            <div class="mb-1 grid grid-cols-7 gap-1 text-center text-xs font-medium text-[#2E2E2E]/60">
+            <div
+                class="mb-1 grid grid-cols-7 gap-1 text-center text-xs font-medium text-[#2E2E2E]/60"
+            >
                 <span v-for="wd in weekDays" :key="wd">{{ wd }}</span>
             </div>
 
@@ -197,8 +225,12 @@ onBeforeUnmount(() => {
                     class="h-8 rounded-lg text-sm transition"
                     :class="[
                         day.inMonth ? 'text-[#2E2E2E]' : 'text-[#2E2E2E]/30',
-                        isSelected(day.date) ? 'bg-[#6B8C68] text-white' : 'hover:bg-black/5',
-                        !isSelected(day.date) && isToday(day.date) ? 'ring-1 ring-[#6B8C68]/40' : '',
+                        isSelected(day.date)
+                            ? 'bg-[#6B8C68] text-white'
+                            : 'hover:bg-black/5',
+                        !isSelected(day.date) && isToday(day.date)
+                            ? 'ring-1 ring-[#6B8C68]/40'
+                            : '',
                     ]"
                     @click="selectDate(day.date)"
                 >

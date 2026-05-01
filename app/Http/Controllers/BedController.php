@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Bed;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
 
 class BedController extends Controller
 {
+    private const DEFAULT_CELL_SIZE_CM = 30;
+
     private function defaultGardenPosition(int $bedCount): array
     {
         $columns = 3;
@@ -28,6 +30,7 @@ class BedController extends Controller
             fn ($row) => is_array($row)
                 ? array_map(function ($cell) {
                     $v = (int) $cell;
+
                     return in_array($v, [-1, 0, 1], true) ? $v : 0;
                 }, $row)
                 : [],
@@ -122,6 +125,7 @@ class BedController extends Controller
             'image' => ['nullable', 'image', 'max:4096'],
             'garden_x' => ['nullable', 'integer', 'min:0', 'max:5000'],
             'garden_y' => ['nullable', 'integer', 'min:0', 'max:5000'],
+            'cell_size_cm' => ['nullable', 'integer', 'min:10', 'max:200'],
             'cells' => ['nullable', 'array'],
             'cells.*.x' => ['required_with:cells', 'integer'],
             'cells.*.y' => ['required_with:cells', 'integer'],
@@ -140,7 +144,7 @@ class BedController extends Controller
         $rows = 1;
         $columns = 1;
 
-        if (!empty($data['cells']) && is_array($data['cells'])) {
+        if (! empty($data['cells']) && is_array($data['cells'])) {
             $converted = $this->convertCellsToLayout($data['cells']);
             $layout = $converted['layout'];
             $rows = $converted['rows'];
@@ -173,6 +177,7 @@ class BedController extends Controller
         );
         $payload['garden_x'] = (int) ($data['garden_x'] ?? $defaultPosition['garden_x']);
         $payload['garden_y'] = (int) ($data['garden_y'] ?? $defaultPosition['garden_y']);
+        $payload['cell_size_cm'] = (int) ($data['cell_size_cm'] ?? self::DEFAULT_CELL_SIZE_CM);
 
         if ($canStoreBedImage) {
             $payload['image_url'] = $imagePath ? "/storage/{$imagePath}" : null;
@@ -195,6 +200,7 @@ class BedController extends Controller
             'image' => ['nullable', 'image', 'max:4096'],
             'garden_x' => ['sometimes', 'integer', 'min:0', 'max:5000'],
             'garden_y' => ['sometimes', 'integer', 'min:0', 'max:5000'],
+            'cell_size_cm' => ['sometimes', 'integer', 'min:10', 'max:200'],
             'cells' => ['nullable', 'array'],
             'cells.*.x' => ['required_with:cells', 'integer'],
             'cells.*.y' => ['required_with:cells', 'integer'],
@@ -219,13 +225,13 @@ class BedController extends Controller
 
         $plantPositions = null;
 
-        if (!empty($data['cells']) && is_array($data['cells'])) {
+        if (! empty($data['cells']) && is_array($data['cells'])) {
             $converted = $this->convertCellsToLayout($data['cells']);
             $payload['rows'] = $converted['rows'];
             $payload['columns'] = $converted['columns'];
             $payload['layout'] = $converted['layout'];
             $plantPositions = $converted['plant_positions'];
-        } elseif (isset($data['layout']) && is_array($data['layout']) && !empty($data['layout'])) {
+        } elseif (isset($data['layout']) && is_array($data['layout']) && ! empty($data['layout'])) {
             $normalizedLayout = $this->normalizeLayout($data['layout']);
             $this->validateNormalizedLayout($normalizedLayout);
             $rowCount = count($normalizedLayout);
@@ -233,7 +239,7 @@ class BedController extends Controller
 
             foreach ($bed->plants()->select('id', 'position_in_bed')->get() as $plant) {
                 $pos = $plant->position_in_bed;
-                if (!is_string($pos) || !preg_match('/^\d+,\d+$/', $pos)) {
+                if (! is_string($pos) || ! preg_match('/^\d+,\d+$/', $pos)) {
                     continue;
                 }
 
@@ -263,12 +269,13 @@ class BedController extends Controller
             $bedPlants = $bed->plants()->select('id', 'position_in_bed')->get()->keyBy('id');
 
             foreach ($bedPlants as $plantId => $plant) {
-                if (!array_key_exists($plantId, $plantPositions)) {
+                if (! array_key_exists($plantId, $plantPositions)) {
                     if (is_string($plant->position_in_bed) && preg_match('/^\d+,\d+$/', $plant->position_in_bed)) {
                         throw ValidationException::withMessages([
                             'cells' => 'Peenart ei saa salvestada nii, et olemasolev taim kaotab oma ruudu.',
                         ]);
                     }
+
                     continue;
                 }
             }
@@ -290,7 +297,7 @@ class BedController extends Controller
         abort_unless($bed->user_id === $request->user()->id, 403);
         $bed->plants()->update(['bed_id' => null, 'position_in_bed' => null]);
         $bed->delete();
+
         return back()->with('success', 'Peenar eemaldatud.');
     }
-
 }

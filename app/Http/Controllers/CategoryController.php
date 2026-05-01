@@ -11,7 +11,7 @@ class CategoryController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'  => ['required', 'string', 'max:80'],
+            'name' => ['required', 'string', 'max:80'],
             'image' => ['nullable', 'image', 'max:4096'], // 4MB
         ]);
 
@@ -42,7 +42,7 @@ class CategoryController extends Controller
         abort_unless($category->user_id === $request->user()->id, 403);
 
         $data = $request->validate([
-            'name'  => ['required', 'string', 'max:80'],
+            'name' => ['required', 'string', 'max:80'],
             'image' => ['nullable', 'image', 'max:4096'],
         ]);
 

@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Category extends Model
 {
     public const SCOPE_PLANT = 'plant';
+
     public const SCOPE_SEED = 'seed';
 
     protected $fillable = [
@@ -31,7 +32,7 @@ class Category extends Model
     }
 
     public function plants()
-{
-    return $this->hasMany(\App\Models\Plant::class);
-}
+    {
+        return $this->hasMany(Plant::class);
+    }
 }
