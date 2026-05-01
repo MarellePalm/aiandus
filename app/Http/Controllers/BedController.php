@@ -10,6 +10,18 @@ use Illuminate\Validation\ValidationException;
 
 class BedController extends Controller
 {
+    private function defaultGardenPosition(int $bedCount): array
+    {
+        $columns = 3;
+        $column = $bedCount % $columns;
+        $row = intdiv($bedCount, $columns);
+
+        return [
+            'garden_x' => 48 + ($column * 220),
+            'garden_y' => 48 + ($row * 180),
+        ];
+    }
+
     private function normalizeLayout(array $layout): array
     {
         return array_map(
@@ -108,6 +120,8 @@ class BedController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'location' => ['nullable', 'string', 'max:255'],
             'image' => ['nullable', 'image', 'max:4096'],
+            'garden_x' => ['nullable', 'integer', 'min:0', 'max:5000'],
+            'garden_y' => ['nullable', 'integer', 'min:0', 'max:5000'],
             'cells' => ['nullable', 'array'],
             'cells.*.x' => ['required_with:cells', 'integer'],
             'cells.*.y' => ['required_with:cells', 'integer'],
@@ -153,6 +167,13 @@ class BedController extends Controller
             'layout' => $layout,
             'sort_order' => Bed::where('user_id', $request->user()->id)->max('sort_order') + 1,
         ];
+
+        $defaultPosition = $this->defaultGardenPosition(
+            Bed::where('user_id', $request->user()->id)->count()
+        );
+        $payload['garden_x'] = (int) ($data['garden_x'] ?? $defaultPosition['garden_x']);
+        $payload['garden_y'] = (int) ($data['garden_y'] ?? $defaultPosition['garden_y']);
+
         if ($canStoreBedImage) {
             $payload['image_url'] = $imagePath ? "/storage/{$imagePath}" : null;
         }
@@ -172,6 +193,8 @@ class BedController extends Controller
             'name' => ['sometimes', 'string', 'max:120'],
             'location' => ['nullable', 'string', 'max:255'],
             'image' => ['nullable', 'image', 'max:4096'],
+            'garden_x' => ['sometimes', 'integer', 'min:0', 'max:5000'],
+            'garden_y' => ['sometimes', 'integer', 'min:0', 'max:5000'],
             'cells' => ['nullable', 'array'],
             'cells.*.x' => ['required_with:cells', 'integer'],
             'cells.*.y' => ['required_with:cells', 'integer'],

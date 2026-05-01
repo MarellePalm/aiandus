@@ -27,7 +27,9 @@ class WeatherController extends Controller
         }
         if ($id >= 801 && $id <= 804) {
             return match ($id) {
-                801 => 'Vähe pilvi', 802 => 'Hajusad pilved', default => 'Pilvine'
+                801 => 'Vähe pilvi',
+                802 => 'Hajusad pilved',
+                default => 'Pilvine',
             };
         }
         if ($id >= 200 && $id < 300) {
@@ -266,6 +268,11 @@ class WeatherController extends Controller
                 'sunsetUnix' => $sunset,
                 'astronomy' => $astronomy,
                 'weatherapiIcon' => $weatherapiIcon,
+                'weatherConditionSource' => 'OpenWeatherMap',
+                'coordinatesUsed' => [
+                    'lat' => round($lat, 4),
+                    'lon' => round($lon, 4),
+                ],
             ];
         });
 
@@ -291,6 +298,8 @@ class WeatherController extends Controller
             (string) ($data['openWeatherIcon'] ?? '01d'),
             $isNight
         );
+        $data['openWeatherConditionId'] = (int) ($data['weatherId'] ?? 800);
+        $data['weatherIconSource'] = ! empty($data['weatherapiIcon']) ? 'WeatherAPI' : 'OpenWeatherMap';
         unset($data['sunriseUnix'], $data['sunsetUnix'], $data['weatherId']);
 
         return response()->json([

@@ -32,12 +32,37 @@ test('authenticated user can create a bed', function () {
     expect($bed->name)->toBe('Tagaaia peenar');
     expect($bed->rows)->toBe(2);
     expect($bed->columns)->toBe(3);
+    expect($bed->garden_x)->toBeGreaterThanOrEqual(0);
+    expect($bed->garden_y)->toBeGreaterThanOrEqual(0);
     expect($bed->layout)->toBe([
         [1, 1, 0],
         [1, -1, 1],
     ]);
 
     $response->assertRedirect(route('beds.show', $bed));
+});
+
+test('user can update bed garden position', function () {
+    $user = User::factory()->create();
+
+    $bed = Bed::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Plaanitav peenar',
+        'location' => 'Aia keskel',
+        'sort_order' => 1,
+        'garden_x' => 48,
+        'garden_y' => 48,
+    ]);
+
+    $this->actingAs($user)
+        ->put(route('beds.update', $bed), [
+            'garden_x' => 220,
+            'garden_y' => 140,
+        ])
+        ->assertRedirect();
+
+    expect($bed->fresh()->garden_x)->toBe(220);
+    expect($bed->fresh()->garden_y)->toBe(140);
 });
 
 test('bed creation requires at least one active cell', function () {

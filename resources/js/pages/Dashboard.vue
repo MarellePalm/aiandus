@@ -263,13 +263,12 @@ function goToFabAction(href: string) {
   router.visit(href);
 }
 
-function sectionAccent(id: SectionId): string {
-  const map: Record<SectionId, string> = {
-    weather: 'from-sky-100 via-cyan-50 to-white',
-    moon: 'from-amber-50 via-orange-50 to-white',
-  };
+/** Ühine päiseriba: ilm + kuu (sama primary/muted gradient). */
+const dashboardSectionHeaderStrip =
+  'from-primary/22 via-primary/10 to-muted/50 dark:from-primary/18 dark:via-muted/25 dark:to-card/95';
 
-  return map[id];
+function sectionAccent(_id: SectionId): string {
+  return dashboardSectionHeaderStrip;
 }
 </script>
 
