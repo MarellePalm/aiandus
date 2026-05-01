@@ -24,9 +24,13 @@ type WeatherSnapshotFromServer = {
   updatedAt: string;
   openWeatherIcon: string | null;
   openWeatherLabel: string | null;
+  openWeatherConditionId?: number | null;
   sunrise: string | null;
   sunset: string | null;
   weatherapiIcon?: string | null;
+  weatherConditionSource?: string | null;
+  coordinatesUsed?: { lat: number; lon: number } | null;
+  weatherIconSource?: string | null;
 };
 
 const { coords, loading: geoLoading, error: geoError } = useGeolocation();
@@ -63,9 +67,13 @@ const q = useQuery<WeatherSnapshotFromServer>({
         updatedAt?: string;
         openWeatherIcon?: string | null;
         openWeatherLabel?: string | null;
+        openWeatherConditionId?: number | null;
         sunrise?: string | null;
         sunset?: string | null;
         weatherapiIcon?: string | null;
+        weatherConditionSource?: string | null;
+        coordinatesUsed?: { lat: number; lon: number } | null;
+        weatherIconSource?: string | null;
       };
       if (!res.ok) {
         throw new Error(data.message ?? `Ilmapäring ebaõnnestus (${res.status})`);
@@ -81,9 +89,13 @@ const q = useQuery<WeatherSnapshotFromServer>({
         updatedAt: data.updatedAt ?? new Date().toLocaleString('et-EE'),
         openWeatherIcon: data.openWeatherIcon ?? null,
         openWeatherLabel: data.openWeatherLabel ?? null,
+        openWeatherConditionId: data.openWeatherConditionId ?? null,
         sunrise: data.sunrise ?? null,
         sunset: data.sunset ?? null,
         weatherapiIcon: data.weatherapiIcon ?? null,
+        weatherConditionSource: data.weatherConditionSource ?? null,
+        coordinatesUsed: data.coordinatesUsed ?? null,
+        weatherIconSource: data.weatherIconSource ?? null,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Ilmapäring ebaõnnestus';
@@ -109,17 +121,80 @@ const todayWeatherLabel = computed(() => q.data.value?.openWeatherLabel ?? null)
 const sunrise = computed(() => q.data.value?.sunrise ?? null);
 const sunset = computed(() => q.data.value?.sunset ?? null);
 
-const todayWeatherIconUrl = computed(() => {
+/** Kust kirjeldus tuleb + mis GPS punkt + OWM geokoodeeringu nimi; suur ikoon võib olla WeatherAPI. */
+const weatherDataCaption = computed(() => {
+  const src = q.data.value?.weatherConditionSource ?? 'OpenWeatherMap';
+  const loc = q.data.value?.locationName;
+  const c = q.data.value?.coordinatesUsed;
+  const iconSrc = q.data.value?.weatherIconSource;
+  const bits: string[] = [`Ilmateade: ${src}`];
+  if (loc) bits.push(loc);
+  if (c && typeof c.lat === 'number' && typeof c.lon === 'number') {
+    bits.push(
+      `${c.lat.toFixed(2).replace('.', ',')}° N, ${c.lon.toFixed(2).replace('.', ',')}° E`,
+    );
+  }
+  let s = bits.join(' · ');
+  if (iconSrc && iconSrc !== src) {
+    s += ` · suur ikoon: ${iconSrc}`;
+  }
+  return s;
+});
+
+/** Suur ikoon: WeatherAPI (täpsem „tänane“ tunne), muidu OpenWeather PNG. */
+const todayHeroIconUrl = computed(() => {
+  const w = q.data.value?.weatherapiIcon;
+  if (w) return w;
   const icon = q.data.value?.openWeatherIcon;
   if (!icon) return null;
   return `https://openweathermap.org/img/wn/${icon}@2x.png`;
+});
+
+const openWeatherConditionId = computed(() => q.data.value?.openWeatherConditionId ?? null);
+const openWeatherIconCode = computed(() => q.data.value?.openWeatherIcon ?? '');
+
+/** Kirjelduse kõrval: tingimuse ID + öö/päev, mitte alati „pool pilves“. */
+const detailConditionMaterialIcon = computed(() => {
+  const id = openWeatherConditionId.value;
+  const ow = openWeatherIconCode.value;
+  const day = ow.endsWith('d');
+  if (id === 800) return day ? 'sunny' : 'nightlight';
+  if (id === 801 || id === 802) return day ? 'partly_cloudy_day' : 'partly_cloudy_night';
+  if (id !== null && id >= 803 && id <= 804) return 'cloud';
+  if (id !== null && id >= 200 && id < 300) return 'thunderstorm';
+  if (id !== null && id >= 300 && id < 600) return 'rainy';
+  if (id !== null && id >= 600 && id < 700) return 'weather_snowy';
+  if (id !== null && id >= 700 && id < 800) return 'foggy';
+
+  const base = ow.length >= 2 ? ow.slice(0, 2) : '';
+  switch (base) {
+    case '01':
+      return day ? 'sunny' : 'nightlight';
+    case '02':
+      return day ? 'partly_cloudy_day' : 'partly_cloudy_night';
+    case '03':
+    case '04':
+      return 'cloud';
+    case '09':
+      return 'rainy';
+    case '10':
+      return 'rainy';
+    case '11':
+      return 'thunderstorm';
+    case '13':
+      return 'weather_snowy';
+    case '50':
+      return 'foggy';
+    default:
+      return 'wb_cloudy';
+  }
 });
 
 const weatherLabelNormalized = computed(() => (todayWeatherLabel.value ?? '').toLowerCase());
 
 const fallbackWeatherSymbol = computed(() => {
   const label = weatherLabelNormalized.value;
-  if (label.includes('päike') || label.includes('selge')) return 'light_mode';
+  if (label.includes('päike') || label.includes('päikeseline') || label.includes('selge')) return 'light_mode';
   if (label.includes('äike')) return 'thunderstorm';
   if (label.includes('vihm')) return 'rainy';
   if (label.includes('lumi')) return 'weather_snowy';
@@ -129,7 +204,7 @@ const fallbackWeatherSymbol = computed(() => {
 
 const fallbackWeatherColorClass = computed(() => {
   const label = weatherLabelNormalized.value;
-  if (label.includes('päike') || label.includes('selge')) return 'text-amber-400';
+  if (label.includes('päike') || label.includes('päikeseline') || label.includes('selge')) return 'text-amber-400';
   if (label.includes('äike')) return 'text-violet-400';
   if (label.includes('vihm')) return 'text-sky-400';
   if (label.includes('lumi')) return 'text-cyan-200';
@@ -168,8 +243,8 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
         </div>
         <div class="shrink-0 pt-1">
         <img
-          v-if="q.isSuccess.value && todayWeatherIconUrl"
-          :src="todayWeatherIconUrl"
+          v-if="q.isSuccess.value && todayHeroIconUrl"
+          :src="todayHeroIconUrl"
           alt=""
           class="w-28 h-28 sm:w-32 sm:h-32 object-contain drop-shadow-sm block opacity-95"
           width="112"
@@ -188,20 +263,23 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
       </div>
 
       <div v-if="q.isSuccess.value" class="mt-1 rounded-lg bg-muted/30 p-2 ring-1 ring-border/60 text-sm text-muted-foreground dark:bg-card/70">
-        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span class="inline-flex items-center gap-1.5">
+        <div class="flex flex-wrap items-start gap-x-3 gap-y-2">
+          <span class="inline-flex shrink-0 items-center gap-1.5">
           <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">device_thermostat</span>
           <span class="text-foreground/85 font-medium">
             Max {{ Math.round(tMax ?? 0) }}° / Min {{ Math.round(tMin ?? 0) }}°
           </span>
         </span>
-          <span class="inline-flex items-center gap-1.5">
-          <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">partly_cloudy_day</span>
-          <span class="text-foreground/85 font-semibold truncate max-w-40">
+          <span class="inline-flex min-w-0 flex-1 items-start gap-1.5 basis-full sm:basis-auto">
+          <span class="material-symbols-outlined mt-0.5 shrink-0 text-base text-foreground/80" aria-hidden="true">{{ detailConditionMaterialIcon }}</span>
+          <span class="min-w-0 break-words text-foreground/85 font-semibold leading-snug">
             {{ todayWeatherLabel ?? '—' }}
           </span>
         </span>
         </div>
+        <p class="mt-1.5 text-[11px] leading-snug text-muted-foreground">
+          {{ weatherDataCaption }}
+        </p>
         <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
           <span class="inline-flex items-center gap-1.5">
           <span class="material-symbols-outlined text-base text-foreground/80" aria-hidden="true">air</span>

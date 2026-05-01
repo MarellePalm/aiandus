@@ -263,14 +263,9 @@ function goToFabAction(href: string) {
   router.visit(href);
 }
 
-function sectionAccent(id: SectionId): string {
-  const map: Record<SectionId, string> = {
-    weather: 'from-sky-100 via-cyan-50 to-white',
-    moon: 'from-amber-50 via-orange-50 to-white',
-  };
-
-  return map[id];
-}
+/** Ühine päiseriba: ilm + kuu (sama primary/muted gradient). */
+const dashboardSectionHeaderStrip =
+  'from-primary/22 via-primary/10 to-muted/50 dark:from-primary/18 dark:via-muted/25 dark:to-card/95';
 </script>
 
 <template>
@@ -389,7 +384,7 @@ function sectionAccent(id: SectionId): string {
           >
             <div
               class="group flex cursor-pointer items-center gap-2 border-b border-border bg-linear-to-r px-4 py-3"
-              :class="sectionAccent('weather')"
+              :class="dashboardSectionHeaderStrip"
               @click="toggleSectionCollapsed('weather')"
             >
               <div class="flex flex-1 min-w-0 items-center gap-2">
@@ -451,7 +446,7 @@ function sectionAccent(id: SectionId): string {
           >
             <div
               class="group flex cursor-pointer items-center gap-2 border-b border-border bg-linear-to-r px-4 py-3"
-              :class="sectionAccent('moon')"
+              :class="dashboardSectionHeaderStrip"
               @click="toggleSectionCollapsed('moon')"
             >
               <div class="flex flex-1 min-w-0 items-center gap-2">

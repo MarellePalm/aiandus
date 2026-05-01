@@ -96,6 +96,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'image_url' => $b->image_url,
                 'rows' => (int) ($b->rows ?? 3),
                 'columns' => (int) ($b->columns ?? 3),
+                'garden_x' => (int) ($b->garden_x ?? 0),
+                'garden_y' => (int) ($b->garden_y ?? 0),
                 'layout' => $b->layout,
                 'plants' => $b->plants->map(fn ($p) => [
                     'id' => $p->id,
