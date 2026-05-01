@@ -14,5 +14,7 @@ jobs:
         uses: deployphp/action@v1
         with:
           deployer-version: "7.5.12"
-          dep: deploy
+          # Hostinimi peab ühtima deploy.yaml hosts: võtmega (stage)
+          dep: deploy stage
           private-key: ${{ secrets.PRIVATE_KEY }}
+          verbosity: -vv

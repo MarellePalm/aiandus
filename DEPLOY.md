@@ -83,6 +83,9 @@ Seejärel käivita **`Production deploy`** uuesti.
 
 | Probleem | Lahendus |
 |----------|----------|
+| `deploy:info` või `deploy:unlock` kukub GitHub Actionsis läbi | **SSH võti:** repodes `Settings → Secrets` → `PRIVATE_KEY` peab olema terve PEM (sh `-----BEGIN ... KEY-----` ja reavahetused). Võti peab vastama serveri `~/.ssh/authorized_keys` kirje avalikule osale. **Tulemüür:** server `ta24palm.itmajakas.ee` peab lubama väljast SSH ühendusi (GitHub runneri IP-d muutuvad). Proovi kohapealt: `ssh -i ~/.ssh/sinu_võti virt137762@ta24palm.itmajakas.ee`. |
+| `deploy:unlock` pärast ebaõnnestunud juurutust | Eelmisest jooksust võis jääda lukk. Kui sul on Deployer kohapeal: `php deployer.phar deploy:unlock stage` (sama `deploy.yaml` ja SSH). |
+| `deploy.yaml` YAML viga | Kohalik kontroll: lae `deployer.phar`, seejärel `php deployer.phar tree deploy -f deploy.yaml` (ei ühendu serverisse; näitab, kas retsept laeb). |
 | Deploy läks läbi, kuid muudatusi ei ole näha | Kontrolli, et juurutus toimus õige commit SHA pealt |
 | Actions on punane | Ava logid, paranda viga, tee uus commit, merge'i see ja juuruta uuesti |
 | Branch deploy | Väldi vanade feature-branchide commit'ide juurutamist otse live-keskkonda |
