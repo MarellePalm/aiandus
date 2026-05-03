@@ -33,8 +33,11 @@ type SubmitCell = {
 const props = withDefaults(
     defineProps<{
         mode?: 'create' | 'edit';
+        /** Praegune aiaplaan (ainult looja režiimis). */
+        gardenPlanId?: number;
         bed?: {
             id: number;
+            garden_plan_id?: number;
             name: string;
             location: string | null;
             image_url?: string | null;
@@ -45,6 +48,7 @@ const props = withDefaults(
     }>(),
     {
         mode: 'create',
+        gardenPlanId: undefined,
         bed: undefined,
     },
 );
@@ -320,6 +324,29 @@ function handleDirectionalAdd(direction: 'up' | 'down' | 'left' | 'right') {
 const selectedHasPlants = computed(() =>
     Boolean(selectedCell.value?.plants.length),
 );
+const formFeedback = computed(() => {
+    if (form.errors.cells || form.errors.layout) {
+        return {
+            tone: 'error' as const,
+            message:
+                form.errors.cells ??
+                form.errors.layout ??
+                'Peenart ei saanud salvestada.',
+        };
+    }
+
+    if (form.recentlySuccessful) {
+        return {
+            tone: 'success' as const,
+            message:
+                props.mode === 'edit'
+                    ? 'Peenra muudatused on salvestatud.'
+                    : 'Peenar on loodud.',
+        };
+    }
+
+    return null;
+});
 
 function removeSelectedCell() {
     if (!selectedCell.value || selectedHasPlants.value) return;
@@ -353,6 +380,11 @@ function resetForm() {
         return;
     }
 
+    const planId = props.gardenPlanId ?? props.bed?.garden_plan_id;
+    if (planId != null) {
+        router.get(`/map/${planId}`, {}, { preserveScroll: true });
+        return;
+    }
     router.get('/map', {}, { preserveScroll: true });
 }
 
@@ -371,16 +403,30 @@ function submit() {
     form.clearErrors('name');
     form.clearErrors('cells');
 
-    form.transform((data) => ({
-        ...data,
-        name: data.name.trim(),
-        location: data.location.trim(),
-        cell_size_cm: Math.max(
-            10,
-            Math.min(200, Math.round(Number(data.cell_size_cm || 30))),
-        ),
-        cells: form.cells,
-    }));
+    if (props.mode !== 'edit' && props.gardenPlanId == null) {
+        form.setError(
+            'name',
+            'Aiaplaan puudub. Ava kaart uuesti ja proovi uuesti.',
+        );
+        return;
+    }
+
+    form.transform((data) => {
+        const base = {
+            ...data,
+            name: data.name.trim(),
+            location: data.location.trim(),
+            cell_size_cm: Math.max(
+                10,
+                Math.min(200, Math.round(Number(data.cell_size_cm || 30))),
+            ),
+            cells: form.cells,
+        };
+        if (props.mode !== 'edit' && props.gardenPlanId != null) {
+            return { ...base, garden_plan_id: props.gardenPlanId };
+        }
+        return base;
+    });
 
     if (props.mode === 'edit' && props.bed) {
         form.put(`/beds/${props.bed.id}`, {
@@ -1136,6 +1182,20 @@ watch(selectedCellId, async () => {
             </section>
 
             <div
+                v-if="formFeedback"
+                class="rounded-[1.5rem] border px-4 py-3 shadow-sm"
+                :class="
+                    formFeedback.tone === 'error'
+                        ? 'border-rose-200 bg-rose-50 text-rose-700'
+                        : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                "
+            >
+                <p class="text-sm font-medium">
+                    {{ formFeedback.message }}
+                </p>
+            </div>
+
+            <div
                 class="sm:backdrop-blur-0 sticky bottom-3 z-10 -mx-1 rounded-[1.75rem] border border-border/70 bg-card/95 p-3 shadow-soft backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
             >
                 <div class="flex flex-col gap-2 sm:flex-row">
@@ -1145,9 +1205,11 @@ watch(selectedCellId, async () => {
                         :disabled="form.processing"
                     >
                         {{
-                            mode === 'edit'
-                                ? 'Salvesta muudatused'
-                                : 'Loo peenar'
+                            form.processing
+                                ? 'Salvestan...'
+                                : mode === 'edit'
+                                  ? 'Salvesta muudatused'
+                                  : 'Loo peenar'
                         }}
                     </button>
                     <button

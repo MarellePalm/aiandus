@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import BackIconButton from '@/components/BackIconButton.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
@@ -12,9 +12,11 @@ type PlantInBed = {
     name: string;
     image_url: string | null;
     position_in_bed: string | null;
+    quantity: number;
 };
 type Bed = {
     id: number;
+    garden_plan_id: number;
     name: string;
     location: string | null;
     image_url?: string | null;
@@ -27,6 +29,7 @@ type PlantWithoutBed = {
     id: number;
     name: string;
     image_url: string | null;
+    quantity: number;
     category?: { name: string; slug: string } | null;
 };
 type BedNote = {
@@ -44,14 +47,28 @@ const props = defineProps<{
     bedNotes?: BedNote[];
 }>();
 
+const page = usePage<{
+    flash?: {
+        success?: string | null;
+        error?: string | null;
+    };
+}>();
+const mapHref = `/map/${props.bed.garden_plan_id}`;
+
 const breadcrumbs = [
-    { title: 'Aiaplaan', href: '/map' },
+    { title: 'Aiaplaan', href: mapHref },
     { title: props.bed.name, href: `/beds/${props.bed.id}` },
 ];
 
 const cellModal = ref<{ row: number; col: number } | null>(null);
+const selectedPlantQuantity = ref(1);
 const coverTick = ref(0);
+const inlineFeedback = ref<{
+    tone: 'success' | 'error';
+    message: string;
+} | null>(null);
 let coverTimer: ReturnType<typeof setInterval> | null = null;
+let inlineFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
 
 onMounted(() => {
     coverTimer = setInterval(() => {
@@ -61,6 +78,13 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     if (coverTimer) clearInterval(coverTimer);
+    if (inlineFeedbackTimer) clearTimeout(inlineFeedbackTimer);
+});
+
+watch(cellModal, (value) => {
+    if (value) {
+        selectedPlantQuantity.value = 1;
+    }
 });
 
 function bedCoverImage(): string | null {
@@ -120,7 +144,18 @@ function removePlantFromBed(plant: PlantInBed) {
     router.put(
         `/plants/${plant.id}`,
         { bed_id: null, position_in_bed: null },
-        { preserveScroll: true },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                setInlineFeedback('success', 'Taim eemaldati peenralt.');
+            },
+            onError: () => {
+                setInlineFeedback(
+                    'error',
+                    'Taime eemaldamine ei õnnestunud. Proovi uuesti.',
+                );
+            },
+        },
     );
 }
 
@@ -128,11 +163,52 @@ function assignPlantToCell(plantId: number, row: number, col: number) {
     const key = `${row},${col}`;
     router.put(
         `/plants/${plantId}`,
-        { bed_id: props.bed.id, position_in_bed: key },
+        {
+            bed_id: props.bed.id,
+            position_in_bed: key,
+            quantity: Math.max(1, Math.round(selectedPlantQuantity.value || 1)),
+        },
         {
             preserveScroll: true,
             onSuccess: () => {
                 cellModal.value = null;
+                selectedPlantQuantity.value = 1;
+                setInlineFeedback(
+                    'success',
+                    'Taim lisati valitud ruutu.',
+                );
+            },
+            onError: () => {
+                setInlineFeedback(
+                    'error',
+                    'Taime lisamine ei õnnestunud. Proovi uuesti.',
+                );
+            },
+        },
+    );
+}
+
+function updatePlantQuantityInCell(plantId: number, row: number, col: number) {
+    const key = `${row},${col}`;
+    router.put(
+        `/plants/${plantId}`,
+        {
+            bed_id: props.bed.id,
+            position_in_bed: key,
+            quantity: Math.max(1, Math.round(selectedPlantQuantity.value || 1)),
+        },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                cellModal.value = null;
+                selectedPlantQuantity.value = 1;
+                setInlineFeedback('success', 'Taime kogus uuendatud.');
+            },
+            onError: () => {
+                setInlineFeedback(
+                    'error',
+                    'Taime kogust ei õnnestunud uuendada. Proovi uuesti.',
+                );
             },
         },
     );
@@ -149,6 +225,66 @@ const plantsWithoutBedByCategory = computed(() => {
         a[0].localeCompare(b[0], 'et'),
     );
 });
+const availablePlantsCount = computed(() => props.plantsWithoutBed.length);
+const cellModalLabel = computed(() => {
+    if (!cellModal.value) return '';
+    return `Rida ${cellModal.value.row + 1}, veerg ${cellModal.value.col + 1}`;
+});
+const modalPlant = computed(() => {
+    if (!cellModal.value) return null;
+    return plantAt(cellModal.value.row, cellModal.value.col) ?? null;
+});
+const totalBedCells = computed(() =>
+    getBedLayout().reduce(
+        (sum, row) => sum + row.filter((cell) => cell === 1).length,
+        0,
+    ),
+);
+const plantedCellCount = computed(() => {
+    const positions = new Set(
+        props.bed.plants
+            .map((plant) => plant.position_in_bed)
+            .filter((position): position is string => Boolean(position)),
+    );
+
+    return positions.size;
+});
+const emptyCellCount = computed(() =>
+    Math.max(0, totalBedCells.value - plantedCellCount.value),
+);
+const bedStatus = computed(() => {
+    if (!hasPlantsInBed.value) {
+        return {
+            title: 'Alusta esimesest taimest',
+            description:
+                'Peenar on valmis. Järgmine hea samm on paigutada esimene taim sobivasse ruutu.',
+            actionLabel: availablePlantsCount.value
+                ? 'Lisa taim peenrasse'
+                : 'Loo uus taim',
+            actionType: availablePlantsCount.value ? 'add-first-plant' : 'create-plant',
+        };
+    }
+
+    if (emptyCellCount.value > 0) {
+        return {
+            title: 'Peenras on veel vaba ruumi',
+            description: `Vabu ruute on ${emptyCellCount.value}. Saad jätkata istutamist või jätta ruumi järgmise külvi jaoks.`,
+            actionLabel: availablePlantsCount.value
+                ? 'Täida järgmine ruut'
+                : 'Loo uus taim',
+            actionType: availablePlantsCount.value ? 'fill-next-cell' : 'create-plant',
+        };
+    }
+
+    return {
+        title: 'Peenar on praegu täidetud',
+        description:
+            'Järgmine mõistlik samm on lisada märge, kontrollida taimede seisu või avada kalender järgmiste tööde jaoks.',
+        actionLabel: 'Lisa märge',
+        actionType: 'create-note',
+    };
+});
+const latestBedNote = computed(() => props.bedNotes?.[0] ?? null);
 
 function formatNoteDate(iso: string | null): string {
     if (!iso) return '';
@@ -159,6 +295,80 @@ function formatNoteDate(iso: string | null): string {
         month: '2-digit',
         year: 'numeric',
     });
+}
+
+const gridLayout = computed(() => getBedLayout());
+const hasPlantsInBed = computed(() => props.bed.plants.length > 0);
+const pageFeedback = computed(() => {
+    if (inlineFeedback.value) return inlineFeedback.value;
+    if (page.props.flash?.error) {
+        return { tone: 'error' as const, message: page.props.flash.error };
+    }
+    if (page.props.flash?.success) {
+        return { tone: 'success' as const, message: page.props.flash.success };
+    }
+    return null;
+});
+
+function setInlineFeedback(
+    tone: 'success' | 'error',
+    message: string,
+) {
+    inlineFeedback.value = { tone, message };
+    if (inlineFeedbackTimer) clearTimeout(inlineFeedbackTimer);
+    inlineFeedbackTimer = setTimeout(() => {
+        inlineFeedback.value = null;
+    }, 2600);
+}
+
+function openFirstAvailableCell() {
+    const layout = getBedLayout();
+
+    for (let row = 0; row < layout.length; row += 1) {
+        for (let col = 0; col < (layout[row]?.length ?? 0); col += 1) {
+            if (
+                (layout[row]?.[col] ?? 0) === 1 &&
+                !plantAt(row, col)
+            ) {
+                cellModal.value = { row, col };
+                selectedPlantQuantity.value = 1;
+                return;
+            }
+        }
+    }
+}
+
+function openCellModal(row: number, col: number) {
+    cellModal.value = { row, col };
+    selectedPlantQuantity.value = plantAt(row, col)?.quantity ?? 1;
+}
+
+function changeSelectedPlantQuantity(delta: number) {
+    selectedPlantQuantity.value = Math.max(
+        1,
+        Math.min(99, Math.round(selectedPlantQuantity.value + delta)),
+    );
+}
+
+function handleBedStatusAction() {
+    if (bedStatus.value.actionType === 'add-first-plant') {
+        openFirstAvailableCell();
+        return;
+    }
+
+    if (bedStatus.value.actionType === 'fill-next-cell') {
+        openFirstAvailableCell();
+        return;
+    }
+
+    if (bedStatus.value.actionType === 'create-note') {
+        router.get(
+            `/calendar/note-form?bed_id=${props.bed.id}&return_to=${encodeURIComponent(`/beds/${props.bed.id}`)}`,
+        );
+        return;
+    }
+
+    router.get('/plants/create');
 }
 </script>
 
@@ -180,13 +390,42 @@ function formatNoteDate(iso: string | null): string {
                     >
                         <template #leading>
                             <BackIconButton
-                                href="/map"
+                                :href="mapHref"
                                 aria-label="Tagasi peenarde loendisse"
                             />
+                        </template>
+                        <template #actions>
+                            <Link
+                                :href="`/beds/${bed.id}/edit`"
+                                class="inline-flex h-9 max-w-full items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 text-sm font-semibold text-primary transition hover:bg-primary/15 sm:h-10 sm:gap-2 sm:px-4"
+                                aria-label="Muuda peenart"
+                            >
+                                <span
+                                    class="material-symbols-outlined shrink-0 text-xl leading-none"
+                                    >edit</span
+                                >
+                                <span class="truncate sm:inline"
+                                    >Muuda peenart</span
+                                >
+                            </Link>
                         </template>
                     </DiaryHeader>
 
                     <main class="flex-1 space-y-5 px-6 py-4 md:px-8">
+                        <div
+                            v-if="pageFeedback"
+                            class="rounded-[1.5rem] border px-4 py-3 shadow-sm"
+                            :class="
+                                pageFeedback.tone === 'error'
+                                    ? 'border-rose-200 bg-rose-50 text-rose-700'
+                                    : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                            "
+                        >
+                            <p class="text-sm font-medium">
+                                {{ pageFeedback.message }}
+                            </p>
+                        </div>
+
                         <section
                             class="relative overflow-hidden rounded-3xl border border-border/70 bg-card shadow-[0_10px_30px_rgba(16,24,40,0.08)]"
                         >
@@ -258,23 +497,197 @@ function formatNoteDate(iso: string | null): string {
                         </section>
 
                         <section
+                            v-if="!hasPlantsInBed"
+                            class="rounded-[1.75rem] border border-primary/20 bg-linear-to-r from-primary/10 via-primary/5 to-transparent p-5 shadow-sm"
+                        >
+                            <div
+                                class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+                            >
+                                <div class="max-w-2xl">
+                                    <h3
+                                        class="text-base font-semibold text-foreground"
+                                    >
+                                        Peenar on veel tühi.
+                                    </h3>
+                                    <p
+                                        class="mt-1 text-sm leading-6 text-muted-foreground"
+                                    >
+                                        Lisa esimene taim sobivasse ruutu, et
+                                        peenar hakkaks päriselt kuju võtma.
+                                    </p>
+                                </div>
+                                <button
+                                    v-if="plantsWithoutBed.length"
+                                    type="button"
+                                    class="inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+                                    @click="openFirstAvailableCell"
+                                >
+                                    Lisa esimene taim
+                                </button>
+                                <Link
+                                    v-else
+                                    href="/plants/create"
+                                    class="inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+                                >
+                                    Loo uus taim
+                                </Link>
+                            </div>
+                        </section>
+
+                        <section
+                            class="rounded-[1.75rem] border border-border/70 bg-card/95 p-4 shadow-[0_8px_20px_rgba(16,24,40,0.05)]"
+                        >
+                            <div
+                                class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"
+                            >
+                                <div class="min-w-0">
+                                    <p
+                                        class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                    >
+                                        Peenra kokkuvõte
+                                    </p>
+                                    <h3
+                                        class="mt-1 text-lg font-semibold text-foreground"
+                                    >
+                                        {{ bedStatus.title }}
+                                    </h3>
+                                    <p
+                                        class="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground"
+                                    >
+                                        {{ bedStatus.description }}
+                                    </p>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-3.5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 sm:w-auto"
+                                    @click="handleBedStatusAction"
+                                >
+                                    <span
+                                        class="material-symbols-outlined text-base"
+                                        >arrow_forward</span
+                                    >
+                                    {{ bedStatus.actionLabel }}
+                                </button>
+                            </div>
+
+                            <div
+                                class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+                            >
+                                <div
+                                    class="rounded-[1.25rem] border border-border/70 bg-background/75 px-4 py-3"
+                                >
+                                    <p
+                                        class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
+                                    >
+                                        Taimi peenras
+                                    </p>
+                                    <p class="mt-1 text-lg font-semibold text-foreground">
+                                        {{ bed.plants.length }}
+                                    </p>
+                                </div>
+
+                                <div
+                                    class="rounded-[1.25rem] border border-border/70 bg-background/75 px-4 py-3"
+                                >
+                                    <p
+                                        class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
+                                    >
+                                        Täidetud ruudud
+                                    </p>
+                                    <p class="mt-1 text-lg font-semibold text-foreground">
+                                        {{ plantedCellCount }} / {{ totalBedCells }}
+                                    </p>
+                                </div>
+
+                                <div
+                                    class="rounded-[1.25rem] border border-border/70 bg-background/75 px-4 py-3"
+                                >
+                                    <p
+                                        class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
+                                    >
+                                        Vabad ruudud
+                                    </p>
+                                    <p class="mt-1 text-lg font-semibold text-foreground">
+                                        {{ emptyCellCount }}
+                                    </p>
+                                </div>
+
+                                <div
+                                    class="rounded-[1.25rem] border border-border/70 bg-background/75 px-4 py-3"
+                                >
+                                    <p
+                                        class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
+                                    >
+                                        Viimane märge
+                                    </p>
+                                    <p class="mt-1 text-sm font-semibold text-foreground">
+                                        {{
+                                            latestBedNote?.title ||
+                                            'Märkmeid veel ei ole'
+                                        }}
+                                    </p>
+                                    <p
+                                        v-if="latestBedNote?.note_date"
+                                        class="mt-1 text-xs text-muted-foreground"
+                                    >
+                                        {{ formatNoteDate(latestBedNote.note_date) }}
+                                    </p>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section
                             class="rounded-3xl border border-border/70 bg-card p-3 shadow-[0_10px_24px_rgba(16,24,40,0.06)] sm:p-4"
                         >
                             <div
-                                class="mb-3 flex items-start justify-between gap-3 px-1"
+                                class="mb-3 flex flex-col gap-3 px-1 sm:flex-row sm:items-start sm:justify-between"
                             >
-                                <div>
+                                <div class="min-w-0">
                                     <h3
                                         class="text-sm font-semibold text-foreground"
                                     >
                                         Peenra ruudustik
                                     </h3>
                                     <p
-                                        class="mt-0.5 text-xs text-muted-foreground"
+                                        class="mt-0.5 text-xs leading-relaxed text-muted-foreground"
                                     >
                                         Puuduta ruutu, et lisada või eemaldada
-                                        taim.
+                                        taim. Nime, asukohta, ruudu suurust ja
+                                        kuju saad muuta nupust
+                                        <span class="font-medium text-foreground"
+                                            >„Muuda peenart”</span
+                                        >
+                                        (üks vaade).
                                     </p>
+                                </div>
+                                <div
+                                    class="flex flex-col items-stretch gap-2 sm:shrink-0 sm:flex-row sm:items-center"
+                                >
+                                    <Link
+                                        :href="`/beds/${bed.id}/edit`"
+                                        class="inline-flex items-center justify-center gap-2 rounded-2xl border border-primary/35 bg-linear-to-r from-primary/15 via-primary/8 to-primary/5 px-4 py-2.5 text-sm font-semibold text-primary shadow-sm ring-1 ring-primary/15 transition hover:border-primary/45 hover:from-primary/22 hover:shadow-md sm:px-5"
+                                    >
+                                        <span
+                                            class="material-symbols-outlined text-[22px] leading-none"
+                                            >edit_square</span
+                                        >
+                                        Muuda peenart
+                                    </Link>
+                                    <div
+                                        class="rounded-2xl border border-border/70 bg-background/75 px-3 py-2 text-center shadow-xs sm:min-w-[5.5rem] sm:text-right"
+                                    >
+                                        <p
+                                            class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
+                                        >
+                                            Vabu taimi
+                                        </p>
+                                        <p
+                                            class="mt-1 text-sm font-semibold text-foreground"
+                                        >
+                                            {{ availablePlantsCount }}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                             <div
@@ -284,26 +697,26 @@ function formatNoteDate(iso: string | null): string {
                                     class="inline-grid w-max min-w-0 gap-2 rounded-2xl border border-primary/20 bg-linear-to-br from-primary/6 via-background to-muted/20 p-3 ring-1 shadow-soft ring-primary/10 sm:gap-2.5 sm:p-4"
                                     :style="{
                                         gridTemplateColumns: `repeat(${getBedColumns()}, ${bedCellSize}px)`,
-                                        gridTemplateRows: `repeat(${getBedLayout().length}, ${bedCellSize}px)`,
+                                        gridTemplateRows: `repeat(${gridLayout.length}, ${bedCellSize}px)`,
                                     }"
                                 >
                                     <template
-                                        v-for="r in range(
-                                            getBedLayout().length,
-                                        )"
+                                        v-for="r in range(gridLayout.length)"
                                         :key="r"
                                     >
                                         <template
                                             v-for="c in range(getBedColumns())"
                                             :key="`${r}-${c}`"
                                         >
-                                            <div
+                                            <button
                                                 v-if="plantAt(r, c)"
-                                                class="group relative overflow-hidden rounded-xl border-2 border-primary/35 bg-card"
+                                                type="button"
+                                                class="group relative overflow-hidden rounded-xl border-2 border-primary/35 bg-card text-left"
                                                 :style="{
                                                     width: `${bedCellSize}px`,
                                                     height: `${bedCellSize}px`,
                                                 }"
+                                                @click="openCellModal(r, c)"
                                             >
                                                 <div
                                                     class="absolute inset-0 bg-cover bg-center"
@@ -318,12 +731,17 @@ function formatNoteDate(iso: string | null): string {
                                                 <div
                                                     class="absolute inset-0 bg-linear-to-t from-black/75 via-black/20 to-transparent"
                                                 />
-                                                <span
-                                                    class="absolute right-1.5 bottom-1.5 left-1.5 truncate text-[11px] font-semibold text-white"
+                                                        <span
+                                                            class="absolute right-1.5 bottom-1.5 left-1.5 truncate text-[11px] font-semibold text-white"
                                                     >{{
                                                         plantAt(r, c)?.name
                                                     }}</span
                                                 >
+                                                <span
+                                                    class="absolute top-1.5 left-1.5 rounded-full bg-white/92 px-1.5 py-0.5 text-[10px] font-semibold text-foreground shadow-sm"
+                                                >
+                                                    {{ plantAt(r, c)?.quantity ?? 1 }} tk
+                                                </span>
                                                 <button
                                                     type="button"
                                                     class="absolute top-1 right-1 rounded-full bg-black/60 p-1 text-white opacity-0 group-hover:opacity-100"
@@ -338,11 +756,11 @@ function formatNoteDate(iso: string | null): string {
                                                         >close</span
                                                     >
                                                 </button>
-                                            </div>
+                                            </button>
                                             <div
                                                 v-else-if="
-                                                    (getBedLayout()[r]?.[c] ??
-                                                        0) === -1
+                                                    (gridLayout[r]?.[c] ?? 0) ===
+                                                    -1
                                                 "
                                                 class="rounded-xl border border-border/70 bg-muted/35"
                                                 :style="{
@@ -352,8 +770,8 @@ function formatNoteDate(iso: string | null): string {
                                             />
                                             <div
                                                 v-else-if="
-                                                    (getBedLayout()[r]?.[c] ??
-                                                        1) === 0
+                                                    (gridLayout[r]?.[c] ?? 1) ===
+                                                    0
                                                 "
                                                 class="pointer-events-none rounded-xl opacity-0"
                                                 :style="{
@@ -371,10 +789,7 @@ function formatNoteDate(iso: string | null): string {
                                                 }"
                                                 title="Lisa taim sellesse ruutu"
                                                 @click="
-                                                    cellModal = {
-                                                        row: r,
-                                                        col: c,
-                                                    }
+                                                    openCellModal(r, c)
                                                 "
                                             >
                                                 <span
@@ -385,6 +800,39 @@ function formatNoteDate(iso: string | null): string {
                                         </template>
                                     </template>
                                 </div>
+                            </div>
+                        </section>
+
+                        <section
+                            v-if="!plantsWithoutBed.length"
+                            class="rounded-[1.75rem] border border-border/70 bg-card/95 p-4 shadow-[0_8px_20px_rgba(16,24,40,0.05)]"
+                        >
+                            <div
+                                class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+                            >
+                                <div class="max-w-2xl">
+                                    <h3
+                                        class="text-sm font-semibold text-foreground"
+                                    >
+                                        Praegu pole ühtegi vaba taime.
+                                    </h3>
+                                    <p
+                                        class="mt-1 text-sm leading-6 text-muted-foreground"
+                                    >
+                                        Kui soovid sellesse peenrasse midagi
+                                        lisada, loo esmalt uus taim või eemalda
+                                        taim mõnest teisest peenrast.
+                                    </p>
+                                </div>
+                                <Link
+                                    href="/plants/create"
+                                    class="inline-flex items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-3.5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+                                >
+                                    <span class="material-symbols-outlined"
+                                        >add</span
+                                    >
+                                    Loo uus taim
+                                </Link>
                             </div>
                         </section>
 
@@ -404,9 +852,14 @@ function formatNoteDate(iso: string | null): string {
                                     class="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/35 py-1.5 pr-1.5 pl-3"
                                 >
                                     <span
-                                        class="text-sm font-medium text-foreground"
+                                    class="text-sm font-medium text-foreground"
                                         >{{ p.name }}</span
                                     >
+                                    <span
+                                        class="rounded-full bg-background px-2 py-0.5 text-xs font-semibold text-muted-foreground"
+                                    >
+                                        {{ p.quantity ?? 1 }} tk
+                                    </span>
                                     <button
                                         type="button"
                                         class="rounded-full p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
@@ -500,7 +953,17 @@ function formatNoteDate(iso: string | null): string {
                         <div
                             class="flex items-center justify-between border-b border-border p-4"
                         >
-                            <h3 class="font-semibold">Vali taim ruudule</h3>
+                            <div>
+                                <h3 class="font-semibold">
+                                    Lisa taim valitud ruutu
+                                </h3>
+                                <p
+                                    v-if="cellModal"
+                                    class="mt-1 text-xs text-muted-foreground"
+                                >
+                                    {{ cellModalLabel }}
+                                </p>
+                            </div>
                             <button
                                 type="button"
                                 class="rounded-lg p-2 hover:bg-muted"
@@ -512,11 +975,123 @@ function formatNoteDate(iso: string | null): string {
                             </button>
                         </div>
                         <div class="overflow-y-auto p-2">
-                            <template v-if="!plantsWithoutBed.length">
-                                <p
-                                    class="py-3 text-center text-sm text-muted-foreground"
+                            <template v-if="modalPlant">
+                                <div
+                                    class="mb-3 rounded-2xl border border-border/60 bg-background/70 px-3.5 py-3"
                                 >
-                                    Kõik taimed on juba peenrale määratud.
+                                    <div class="flex items-center gap-3">
+                                        <span
+                                            class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-muted/40"
+                                        >
+                                            <img
+                                                v-if="modalPlant.image_url"
+                                                :src="modalPlant.image_url"
+                                                :alt="modalPlant.name"
+                                                class="h-full w-full object-cover"
+                                            />
+                                            <span
+                                                v-else
+                                                class="material-symbols-outlined text-lg text-muted-foreground"
+                                                >spa</span
+                                            >
+                                        </span>
+                                        <div class="min-w-0">
+                                            <p
+                                                class="truncate text-sm font-semibold text-foreground"
+                                            >
+                                                {{ modalPlant.name }}
+                                            </p>
+                                            <p
+                                                class="mt-1 text-xs text-muted-foreground"
+                                            >
+                                                Muuda selle ruudu kogust või
+                                                eemalda taim peenralt.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="mb-3 rounded-2xl border border-border/60 bg-background/70 px-3.5 py-3"
+                                >
+                                    <p
+                                        class="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase"
+                                    >
+                                        Kogus selles ruudus
+                                    </p>
+                                    <div
+                                        class="mt-2 flex items-center justify-between gap-3"
+                                    >
+                                        <div
+                                            class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-2 py-1"
+                                        >
+                                            <button
+                                                type="button"
+                                                class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-muted"
+                                                @click="changeSelectedPlantQuantity(-1)"
+                                            >
+                                                <span class="material-symbols-outlined text-base"
+                                                    >remove</span
+                                                >
+                                            </button>
+                                            <span
+                                                class="min-w-[3rem] text-center text-sm font-semibold text-foreground"
+                                            >
+                                                {{ selectedPlantQuantity }} tk
+                                            </span>
+                                            <button
+                                                type="button"
+                                                class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-muted"
+                                                @click="changeSelectedPlantQuantity(1)"
+                                            >
+                                                <span class="material-symbols-outlined text-base"
+                                                    >add</span
+                                                >
+                                            </button>
+                                        </div>
+                                        <p class="text-xs leading-5 text-muted-foreground">
+                                            Muuda kogust ilma taime ruudust eemaldamata.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="grid gap-2 sm:grid-cols-2">
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-3.5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+                                        @click="
+                                            cellModal &&
+                                            updatePlantQuantityInCell(
+                                                modalPlant.id,
+                                                cellModal.row,
+                                                cellModal.col,
+                                            )
+                                        "
+                                    >
+                                        <span class="material-symbols-outlined text-base"
+                                            >check</span
+                                        >
+                                        Salvesta kogus
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-3.5 py-3 text-sm font-semibold text-foreground transition hover:bg-muted"
+                                        @click="removePlantFromBed(modalPlant)"
+                                    >
+                                        <span class="material-symbols-outlined text-base"
+                                            >delete</span
+                                        >
+                                        Eemalda taim
+                                    </button>
+                                </div>
+                            </template>
+                            <template v-else-if="!plantsWithoutBed.length">
+                                <p
+                                    class="py-3 text-center text-sm leading-6 text-muted-foreground"
+                                >
+                                    Vabu taimi praegu ei ole. Kõik taimed on
+                                    juba peenardesse paigutatud või pole veel
+                                    ühtegi taime lisatud.
                                 </p>
                                 <Link
                                     href="/plants/create"
@@ -529,6 +1104,58 @@ function formatNoteDate(iso: string | null): string {
                                 </Link>
                             </template>
                             <template v-else>
+                                <div
+                                    class="mb-3 rounded-2xl border border-border/60 bg-background/70 px-3.5 py-3 text-sm text-muted-foreground"
+                                >
+                                    Vali taim, mis paigutatakse ruutu
+                                    <span class="font-semibold text-foreground">
+                                        {{ cellModalLabel }}
+                                    </span>
+                                    .
+                                </div>
+                                <div
+                                    class="mb-3 rounded-2xl border border-border/60 bg-background/70 px-3.5 py-3"
+                                >
+                                    <p
+                                        class="text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase"
+                                    >
+                                        Kogus selles ruudus
+                                    </p>
+                                    <div
+                                        class="mt-2 flex items-center justify-between gap-3"
+                                    >
+                                        <div
+                                            class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-2 py-1"
+                                        >
+                                            <button
+                                                type="button"
+                                                class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-muted"
+                                                @click="changeSelectedPlantQuantity(-1)"
+                                            >
+                                                <span class="material-symbols-outlined text-base"
+                                                    >remove</span
+                                                >
+                                            </button>
+                                            <span
+                                                class="min-w-[3rem] text-center text-sm font-semibold text-foreground"
+                                            >
+                                                {{ selectedPlantQuantity }} tk
+                                            </span>
+                                            <button
+                                                type="button"
+                                                class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-muted"
+                                                @click="changeSelectedPlantQuantity(1)"
+                                            >
+                                                <span class="material-symbols-outlined text-base"
+                                                    >add</span
+                                                >
+                                            </button>
+                                        </div>
+                                        <p class="text-xs leading-5 text-muted-foreground">
+                                            Kasuta seda, kui ühes ruudus on mitu sama taime.
+                                        </p>
+                                    </div>
+                                </div>
                                 <div
                                     v-for="[
                                         categoryName,
@@ -549,7 +1176,7 @@ function formatNoteDate(iso: string | null): string {
                                         >
                                             <button
                                                 type="button"
-                                                class="flex w-full items-center gap-3 rounded-xl border border-transparent p-3 text-left hover:bg-primary/10"
+                                                class="flex w-full items-center gap-3 rounded-xl border border-transparent p-3 text-left transition hover:bg-primary/10"
                                                 @click="
                                                     cellModal &&
                                                     assignPlantToCell(
@@ -559,9 +1186,37 @@ function formatNoteDate(iso: string | null): string {
                                                     )
                                                 "
                                             >
-                                                <span class="font-medium">{{
-                                                    plant.name
-                                                }}</span>
+                                                <span
+                                                    class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-muted/40"
+                                                >
+                                                    <img
+                                                        v-if="plant.image_url"
+                                                        :src="plant.image_url"
+                                                        :alt="plant.name"
+                                                        class="h-full w-full object-cover"
+                                                    />
+                                                    <span
+                                                        v-else
+                                                        class="material-symbols-outlined text-lg text-muted-foreground"
+                                                        >spa</span
+                                                    >
+                                                </span>
+                                                <span class="min-w-0 flex-1">
+                                                    <span
+                                                        class="block truncate font-medium text-foreground"
+                                                    >
+                                                        {{ plant.name }}
+                                                    </span>
+                                                    <span
+                                                        class="mt-0.5 block text-xs text-muted-foreground"
+                                                    >
+                                                        Praegu kokku {{ plant.quantity ?? 1 }} tk
+                                                    </span>
+                                                </span>
+                                                <span
+                                                    class="material-symbols-outlined text-base text-primary"
+                                                    >arrow_forward</span
+                                                >
                                             </button>
                                         </li>
                                     </ul>

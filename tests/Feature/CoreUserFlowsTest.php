@@ -11,6 +11,17 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+function makeGardenPlan(User $user, array $overrides = []): GardenPlan
+{
+    return GardenPlan::query()->create(array_merge([
+        'user_id' => $user->id,
+        'name' => 'Minu aed',
+        'width' => 1200,
+        'height' => 800,
+        'unit' => 'cm',
+    ], $overrides));
+}
+
 test('guest is redirected from plants create page', function () {
     $this->get(route('plants.create'))
         ->assertRedirect(route('login'));
@@ -18,8 +29,10 @@ test('guest is redirected from plants create page', function () {
 
 test('authenticated user can create a bed', function () {
     $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
 
     $response = $this->actingAs($user)->post(route('beds.store'), [
+        'garden_plan_id' => $plan->id,
         'name' => 'Tagaaia peenar',
         'location' => 'Kasvuhoone taga',
         'cell_size_cm' => 50,
@@ -32,6 +45,7 @@ test('authenticated user can create a bed', function () {
     $bed = Bed::query()->where('user_id', $user->id)->first();
 
     expect($bed)->not()->toBeNull();
+    expect($bed->garden_plan_id)->toBe($plan->id);
     expect($bed->name)->toBe('Tagaaia peenar');
     expect($bed->rows)->toBe(2);
     expect($bed->columns)->toBe(3);
@@ -43,14 +57,18 @@ test('authenticated user can create a bed', function () {
         [1, -1, 1],
     ]);
 
-    $response->assertRedirect(route('beds.show', $bed));
+    $response
+        ->assertRedirect(route('beds.show', $bed))
+        ->assertSessionHas('success', 'Peenar lisatud.');
 });
 
 test('user can update bed garden position', function () {
     $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
 
     $bed = Bed::query()->create([
         'user_id' => $user->id,
+        'garden_plan_id' => $plan->id,
         'name' => 'Plaanitav peenar',
         'location' => 'Aia keskel',
         'sort_order' => 1,
@@ -71,9 +89,11 @@ test('user can update bed garden position', function () {
 
 test('user can update bed cell size', function () {
     $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
 
     $bed = Bed::query()->create([
         'user_id' => $user->id,
+        'garden_plan_id' => $plan->id,
         'name' => 'Mõõtkavaga peenar',
         'location' => 'Aianurk',
         'sort_order' => 1,
@@ -91,8 +111,10 @@ test('user can update bed cell size', function () {
 
 test('bed creation requires at least one active cell', function () {
     $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
 
     $this->actingAs($user)->post(route('beds.store'), [
+        'garden_plan_id' => $plan->id,
         'name' => 'Tühi peenar',
         'layout' => [
             [-1, -1],
@@ -105,8 +127,10 @@ test('bed creation requires at least one active cell', function () {
 
 test('authenticated user can create a bed from coordinate cells payload', function () {
     $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
 
     $response = $this->actingAs($user)->post(route('beds.store'), [
+        'garden_plan_id' => $plan->id,
         'name' => 'L-kujuline peenar',
         'cells' => [
             ['x' => 0, 'y' => 0, 'plants' => []],
@@ -187,9 +211,12 @@ test('user cannot create plant in another users category', function () {
 test('calendar note only links to users own bed and plant', function () {
     $user = User::factory()->create();
     $otherUser = User::factory()->create();
+    $userPlan = makeGardenPlan($user);
+    $otherPlan = makeGardenPlan($otherUser);
 
     $usersBed = Bed::query()->create([
         'user_id' => $user->id,
+        'garden_plan_id' => $userPlan->id,
         'name' => 'Minu peenar',
         'location' => null,
         'sort_order' => 1,
@@ -197,6 +224,7 @@ test('calendar note only links to users own bed and plant', function () {
 
     $otherUsersBed = Bed::query()->create([
         'user_id' => $otherUser->id,
+        'garden_plan_id' => $otherPlan->id,
         'name' => 'Võõras peenar',
         'location' => null,
         'sort_order' => 1,
@@ -247,9 +275,11 @@ test('calendar note only links to users own bed and plant', function () {
 test('user cannot view another users bed page', function () {
     $user = User::factory()->create();
     $otherUser = User::factory()->create();
+    $otherPlan = makeGardenPlan($otherUser);
 
     $otherUsersBed = Bed::query()->create([
         'user_id' => $otherUser->id,
+        'garden_plan_id' => $otherPlan->id,
         'name' => 'Privaatne peenar',
         'location' => null,
         'sort_order' => 1,
@@ -262,9 +292,11 @@ test('user cannot view another users bed page', function () {
 
 test('user can delete own bed and plants are unlinked', function () {
     $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
 
     $bed = Bed::query()->create([
         'user_id' => $user->id,
+        'garden_plan_id' => $plan->id,
         'name' => 'Kustutatav peenar',
         'location' => null,
         'sort_order' => 1,
@@ -290,6 +322,7 @@ test('user can delete own bed and plants are unlinked', function () {
 test('user cannot assign plant to another users bed', function () {
     $user = User::factory()->create();
     $otherUser = User::factory()->create();
+    $otherPlan = makeGardenPlan($otherUser);
 
     $usersPlant = Plant::query()->create([
         'user_id' => $user->id,
@@ -299,6 +332,7 @@ test('user cannot assign plant to another users bed', function () {
 
     $otherUsersBed = Bed::query()->create([
         'user_id' => $otherUser->id,
+        'garden_plan_id' => $otherPlan->id,
         'name' => 'Võõras peenar',
         'location' => null,
         'sort_order' => 1,
@@ -311,11 +345,45 @@ test('user cannot assign plant to another users bed', function () {
         ->assertForbidden();
 });
 
-test('user cannot update bed layout to remove planted cell', function () {
+test('user can assign plant to bed with quantity', function () {
     $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
 
     $bed = Bed::query()->create([
         'user_id' => $user->id,
+        'garden_plan_id' => $plan->id,
+        'name' => 'Kogusega peenar',
+        'location' => null,
+        'sort_order' => 1,
+    ]);
+
+    $plant = Plant::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Redis',
+        'subtitle' => 'Redis',
+        'quantity' => 1,
+    ]);
+
+    $this->actingAs($user)
+        ->put(route('plants.update', $plant), [
+            'bed_id' => $bed->id,
+            'position_in_bed' => '0,0',
+            'quantity' => 8,
+        ])
+        ->assertSessionHas('success', 'Taim peenrale määratud.');
+
+    expect($plant->fresh()->bed_id)->toBe($bed->id);
+    expect($plant->fresh()->position_in_bed)->toBe('0,0');
+    expect($plant->fresh()->quantity)->toBe(8);
+});
+
+test('user cannot update bed layout to remove planted cell', function () {
+    $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
+
+    $bed = Bed::query()->create([
+        'user_id' => $user->id,
+        'garden_plan_id' => $plan->id,
         'name' => 'Peenar taimega',
         'location' => null,
         'sort_order' => 1,
@@ -352,9 +420,11 @@ test('user cannot update bed layout to remove planted cell', function () {
 
 test('user can update bed with cells payload and plant position is preserved', function () {
     $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
 
     $bed = Bed::query()->create([
         'user_id' => $user->id,
+        'garden_plan_id' => $plan->id,
         'name' => 'Muudetav peenar',
         'location' => null,
         'sort_order' => 1,
@@ -458,6 +528,7 @@ test('map view returns only users beds and unassigned plants', function () {
 
     $usersBed = Bed::query()->create([
         'user_id' => $user->id,
+        'garden_plan_id' => $plan->id,
         'name' => 'Minu map peenar',
         'location' => 'Tagaaed',
         'sort_order' => 1,
@@ -467,6 +538,7 @@ test('map view returns only users beds and unassigned plants', function () {
 
     $otherUsersBed = Bed::query()->create([
         'user_id' => $otherUser->id,
+        'garden_plan_id' => $otherPlan->id,
         'name' => 'Võõras map peenar',
         'location' => 'Eeshoov',
         'sort_order' => 1,
@@ -508,11 +580,16 @@ test('map view returns only users beds and unassigned plants', function () {
         'height' => 180,
     ]);
 
-    $response = $this->actingAs($user)->get(route('map'));
+    $this->actingAs($user)
+        ->get(route('map'))
+        ->assertRedirect(route('map.show', $plan));
+
+    $response = $this->actingAs($user)->get(route('map.show', $plan));
     $response->assertOk();
 
     $response->assertInertia(fn ($page) => $page
         ->component('map/MapView')
+        ->has('gardenPlans')
         ->has('gardenPlan')
         ->where('beds.0.id', $usersBed->id)
         ->where('beds.0.cell_size_cm', 30)
@@ -530,20 +607,131 @@ test('map view returns only users beds and unassigned plants', function () {
 
 test('user can update garden plan dimensions', function () {
     $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
 
     $this->actingAs($user)
-        ->put(route('garden-plan.update'), [
+        ->put(route('garden-plans.update', $plan), [
             'name' => 'Tagaaed',
             'width' => 100000,
             'height' => 50000,
         ])
         ->assertSessionHas('success', 'Aia mõõdud uuendatud.');
 
-    $plan = GardenPlan::query()->where('user_id', $user->id)->first();
-    expect($plan)->not()->toBeNull();
+    $plan->refresh();
     expect($plan->name)->toBe('Tagaaed');
     expect($plan->width)->toBe(100000);
     expect($plan->height)->toBe(50000);
+});
+
+test('user can save small balcony-sized garden plan dimensions', function () {
+    $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
+
+    $this->actingAs($user)
+        ->put(route('garden-plans.update', $plan), [
+            'name' => 'Laagri rõdu',
+            'width' => 285,
+            'height' => 150,
+        ])
+        ->assertSessionHas('success', 'Aia mõõdud uuendatud.');
+
+    $plan->refresh();
+    expect($plan->name)->toBe('Laagri rõdu');
+    expect($plan->width)->toBe(285);
+    expect($plan->height)->toBe(150);
+});
+
+test('garden plan dimensions reject zero width', function () {
+    $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
+
+    $this->actingAs($user)
+        ->put(route('garden-plans.update', $plan), [
+            'name' => 'Test',
+            'width' => 0,
+            'height' => 100,
+        ])
+        ->assertSessionHasErrors('width');
+});
+
+test('user cannot delete their only garden plan', function () {
+    $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
+
+    $this->actingAs($user)
+        ->from(route('map.show', $plan))
+        ->delete(route('garden-plans.destroy', $plan))
+        ->assertRedirect(route('map.show', $plan))
+        ->assertSessionHasErrors('garden_plan');
+
+    expect(GardenPlan::query()->whereKey($plan->id)->exists())->toBeTrue();
+});
+
+test('user can delete a secondary garden plan and objects are removed', function () {
+    $user = User::factory()->create();
+    $planA = makeGardenPlan($user, ['name' => 'A']);
+    $planB = makeGardenPlan($user, ['name' => 'B']);
+
+    $object = GardenObject::query()->create([
+        'garden_plan_id' => $planB->id,
+        'type' => 'shed',
+        'name' => 'Kuur',
+        'x' => 100,
+        'y' => 100,
+        'width' => 200,
+        'height' => 150,
+    ]);
+
+    $this->actingAs($user)
+        ->delete(route('garden-plans.destroy', $planB))
+        ->assertRedirect(route('map.show', $planA))
+        ->assertSessionHas('success', 'Aiaplaan ja selle peenrad kustutatud.');
+
+    expect(GardenPlan::query()->whereKey($planB->id)->exists())->toBeFalse();
+    expect(GardenPlan::query()->whereKey($planA->id)->exists())->toBeTrue();
+    expect(GardenObject::query()->whereKey($object->id)->exists())->toBeFalse();
+
+    $this->actingAs($user)->get(route('map'))->assertRedirect(route('map.show', $planA));
+});
+
+test('garden object type other requires name on create', function () {
+    $user = User::factory()->create();
+    $plan = GardenPlan::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Minu aed',
+        'width' => 1200,
+        'height' => 800,
+        'unit' => 'cm',
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('garden-objects.store'), [
+            'garden_plan_id' => $plan->id,
+            'type' => 'other',
+            'name' => '',
+            'x' => 100,
+            'y' => 100,
+            'width' => 200,
+            'height' => 150,
+        ])
+        ->assertSessionHasErrors('name');
+
+    $this->actingAs($user)
+        ->post(route('garden-objects.store'), [
+            'garden_plan_id' => $plan->id,
+            'type' => 'other',
+            'name' => 'Puuriit',
+            'x' => 100,
+            'y' => 100,
+            'width' => 200,
+            'height' => 150,
+        ])
+        ->assertSessionHas('success', 'Aiaelement lisatud.');
+
+    $object = GardenObject::query()->where('garden_plan_id', $plan->id)->first();
+    expect($object)->not()->toBeNull();
+    expect($object->type)->toBe('other');
+    expect($object->name)->toBe('Puuriit');
 });
 
 test('user can create and move a garden object', function () {

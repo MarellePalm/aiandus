@@ -30,4 +30,9 @@ class GardenPlan extends Model
     {
         return $this->hasMany(GardenObject::class);
     }
+
+    public function beds(): HasMany
+    {
+        return $this->hasMany(Bed::class);
+    }
 }
