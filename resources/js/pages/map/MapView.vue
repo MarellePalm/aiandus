@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import {
     computed,
     nextTick,
@@ -10,6 +10,7 @@ import {
 } from 'vue';
 
 import BackIconButton from '@/components/BackIconButton.vue';
+import CardActionsMenu from '@/components/CardActionsMenu.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -35,7 +36,12 @@ type Bed = {
     layout?: number[][] | null;
     plants: PlantInBed[];
 };
-type GardenObjectType = 'greenhouse' | 'pond' | 'shed' | 'compost';
+type GardenObjectType =
+    | 'greenhouse'
+    | 'pond'
+    | 'shed'
+    | 'compost'
+    | 'other';
 type GardenObject = {
     id: number;
     type: GardenObjectType;
@@ -59,26 +65,32 @@ type GardenPlan = {
     height: number;
     unit: string;
 };
+type GardenPlanSummary = {
+    id: number;
+    name: string;
+};
 
 const props = defineProps<{
+    gardenPlans: GardenPlanSummary[];
     gardenPlan: GardenPlan;
     beds: Bed[];
     gardenObjects: GardenObject[];
     plantsWithoutBed: PlantWithoutBed[];
 }>();
 
-const breadcrumbs = [{ title: 'Aiaplaan', href: '/map' }];
-const showOnboardingHint = computed(
-    () => props.beds.length === 0 && props.plantsWithoutBed.length === 0,
-);
+const page = usePage<{
+    flash?: {
+        success?: string | null;
+        error?: string | null;
+    };
+    errors?: Record<string, string>;
+}>();
+const breadcrumbs = computed(() => [
+    { title: 'Aiaplaan', href: `/map/${props.gardenPlan.id}` },
+]);
+const showOnboardingHint = computed(() => props.beds.length === 0);
 const showSearch = ref(false);
 const searchQuery = ref('');
-const FAVORITE_BED_IDS_KEY = 'favoriteBedIds';
-const favoriteBedIds = ref<number[]>([]);
-
-type TabKey = 'all' | 'favorites';
-const activeTab = ref<TabKey>('all');
-const recentFirst = ref(false);
 
 const GARDEN_PADDING = 24;
 const CM_TO_PX = 0.5;
@@ -102,6 +114,8 @@ const activeTool = ref<GardenObjectType | null>(null);
 const toolDrawerOpen = ref(false);
 const plannerControlsOpen = ref(false);
 const toolSearch = ref('');
+const otherObjectNameDraft = ref('');
+const otherObjectNameError = ref('');
 const showBedsLayer = ref(true);
 const showStructuresLayer = ref(true);
 const showWaterLayer = ref(true);
@@ -133,20 +147,63 @@ const objectForm = useForm({
     heightMeters: 0,
 });
 
-onMounted(() => {
-    try {
-        const raw = localStorage.getItem(FAVORITE_BED_IDS_KEY);
-        if (!raw) return;
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-            favoriteBedIds.value = parsed
-                .map((v) => Number(v))
-                .filter((v) => Number.isInteger(v));
-        }
-    } catch {
-        favoriteBedIds.value = [];
-    }
+function openGardenPlanEditor() {
+    plannerControlsOpen.value = true;
+}
 
+function deleteGardenPlan() {
+    if (
+        !confirm(
+            'Kustutada see aiaplaan koos selle peenarde ja aiaobjektidega? Sidumata taimed jäävad alles.',
+        )
+    ) {
+        return;
+    }
+    router.delete(`/garden-plans/${props.gardenPlan.id}`);
+}
+
+function onGardenPlanSelect(event: Event) {
+    const el = event.target as HTMLSelectElement;
+    const id = Number(el.value);
+    if (!id || id === props.gardenPlan.id) return;
+    router.visit(`/map/${id}`);
+}
+
+function createGardenPlan() {
+    const raw = window.prompt('Uue aiaplaani nimi (tühi = „Minu aed“):', '');
+    if (raw === null) return;
+    router.post('/garden-plans', {
+        name: raw.trim() || undefined,
+    });
+}
+
+watch(
+    () => props.gardenPlan.id,
+    (id, prev) => {
+        syncPositionsFromProps();
+        if (prev !== undefined && id !== prev) {
+            selectedBedId.value = null;
+            selectedObjectId.value = null;
+            plannerControlsOpen.value = false;
+        }
+    },
+);
+
+watch(
+    () => ({
+        name: props.gardenPlan.name,
+        width: props.gardenPlan.width,
+        height: props.gardenPlan.height,
+    }),
+    (plan) => {
+        gardenForm.name = plan.name;
+        gardenForm.widthMeters = plan.width / 100;
+        gardenForm.heightMeters = plan.height / 100;
+    },
+    { deep: true },
+);
+
+onMounted(() => {
     syncPositionsFromProps();
     nextTick(() => {
         if (plannerViewport.value) {
@@ -210,16 +267,7 @@ const bedNames = computed(() => props.beds.map((b) => b.name));
 
 const filteredBeds = computed(() => {
     let list = [...props.beds];
-
-    if (activeTab.value === 'favorites') {
-        list = list.filter((b) => favoriteBedIds.value.includes(b.id));
-    }
-
-    if (recentFirst.value) {
-        list = list.slice().sort((a, b) => b.id - a.id);
-    } else {
-        list = list.slice().sort((a, b) => a.name.localeCompare(b.name, 'et'));
-    }
+    list = list.slice().sort((a, b) => a.name.localeCompare(b.name, 'et'));
 
     if (searchQuery.value.trim()) {
         const q = searchQuery.value.toLowerCase();
@@ -232,12 +280,42 @@ const filteredBeds = computed(() => {
 
     return list;
 });
+const plannerFeedback = computed(() => {
+    const gardenPlanError = page.props.errors?.garden_plan;
+    if (gardenPlanError) {
+        return { tone: 'error' as const, message: gardenPlanError };
+    }
+
+    if (page.props.flash?.error) {
+        return { tone: 'error' as const, message: page.props.flash.error };
+    }
+
+    if (page.props.flash?.success) {
+        return { tone: 'success' as const, message: page.props.flash.success };
+    }
+
+    if (gardenForm.recentlySuccessful) {
+        return {
+            tone: 'success' as const,
+            message: 'Aia andmed on salvestatud.',
+        };
+    }
+
+    if (objectForm.recentlySuccessful) {
+        return {
+            tone: 'success' as const,
+            message: 'Aiaelement on uuendatud.',
+        };
+    }
+
+    return null;
+});
 
 const gardenWidthCm = computed(() =>
-    Math.max(200, Math.round(Number(gardenForm.widthMeters || 0) * 100)),
+    Math.max(1, Math.round(Number(gardenForm.widthMeters || 0) * 100)),
 );
 const gardenHeightCm = computed(() =>
-    Math.max(200, Math.round(Number(gardenForm.heightMeters || 0) * 100)),
+    Math.max(1, Math.round(Number(gardenForm.heightMeters || 0) * 100)),
 );
 const gardenSurfaceWidth = computed(() =>
     Math.max(320, Math.round(gardenWidthCm.value * CM_TO_PX)),
@@ -246,16 +324,27 @@ const gardenSurfaceHeight = computed(() =>
     Math.max(240, Math.round(gardenHeightCm.value * CM_TO_PX)),
 );
 const zoomPercent = computed(() => `${Math.round(zoom.value * 100)}%`);
-const gardenDimensionLabel = computed(
-    () =>
-        `${Number(gardenForm.widthMeters || 0).toFixed(1)} m × ${Number(gardenForm.heightMeters || 0).toFixed(1)} m`,
-);
+const gardenDimensionLabel = computed(() => {
+    const fmt = (v: number) => {
+        const n = Math.round(v * 100) / 100;
+        return Number.isInteger(n) ? `${n}` : n.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+    };
+    const w = Number(gardenForm.widthMeters || 0);
+    const h = Number(gardenForm.heightMeters || 0);
+    return `${fmt(w)} m × ${fmt(h)} m`;
+});
 const plannerGridSizePx = computed(() =>
     Math.max(10, Math.round(GARDEN_GRID_CELL_CM * CM_TO_PX)),
 );
 const plannerMajorGridSizePx = computed(() => plannerGridSizePx.value * 5);
 const scaleBarWidthPx = computed(() => Math.round(100 * CM_TO_PX));
-const toolTypes: GardenObjectType[] = ['greenhouse', 'pond', 'shed', 'compost'];
+const toolTypes: GardenObjectType[] = [
+    'greenhouse',
+    'pond',
+    'shed',
+    'compost',
+    'other',
+];
 const plannerBeds = computed(() =>
     showBedsLayer.value ? filteredBeds.value : [],
 );
@@ -270,9 +359,11 @@ const filteredToolTypes = computed(() => {
     const query = toolSearch.value.trim().toLowerCase();
     if (!query) return toolTypes;
 
-    return toolTypes.filter((type) =>
-        objectTypeLabel(type).toLowerCase().includes(query),
-    );
+    return toolTypes.filter((type) => {
+        const label = objectTypeLabel(type).toLowerCase();
+        const desc = objectTypeDescription(type).toLowerCase();
+        return label.includes(query) || desc.includes(query);
+    });
 });
 
 const selectedBed = computed(() => {
@@ -354,13 +445,6 @@ watch(plannerObjects, (objects) => {
     }
 });
 
-const tabClass = (active: boolean) => {
-    const base =
-        'flex h-9 shrink-0 items-center justify-center rounded-full px-4 text-sm font-medium transition-colors';
-    if (active) return `${base} bg-primary text-white`;
-    return `${base} bg-primary/10 text-primary hover:bg-primary/15`;
-};
-
 const layerButtonClass = (active: boolean) => {
     const base =
         'inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition';
@@ -381,31 +465,6 @@ const toolMenuItemClass = (type: GardenObjectType) => {
         ? 'border-primary/25 bg-primary/8 ring-2 ring-primary/15'
         : 'border-border/70 bg-background/80 hover:border-primary/20 hover:bg-muted/60';
 };
-
-function resetToAll() {
-    activeTab.value = 'all';
-    searchQuery.value = '';
-}
-
-function toggleFavoriteBed(id: number) {
-    const isFavorite = favoriteBedIds.value.includes(id);
-    favoriteBedIds.value = isFavorite
-        ? favoriteBedIds.value.filter((x) => x !== id)
-        : [...favoriteBedIds.value, id];
-
-    try {
-        localStorage.setItem(
-            FAVORITE_BED_IDS_KEY,
-            JSON.stringify(favoriteBedIds.value),
-        );
-    } catch {
-        // ignore storage failures
-    }
-}
-
-function isFavoriteBed(id: number): boolean {
-    return favoriteBedIds.value.includes(id);
-}
 
 function editBed(id: number) {
     router.get(`/beds/${id}/edit`);
@@ -857,16 +916,40 @@ function getDefaultObjectConfig(type: GardenObjectType) {
             width: 140,
             height: 140,
         },
+        other: {
+            name: '',
+            width: 200,
+            height: 150,
+        },
     }[type];
 }
 
 function chooseTool(type: GardenObjectType) {
     activeTool.value = type;
-    toolDrawerOpen.value = false;
+    otherObjectNameError.value = '';
+    if (type !== 'other') {
+        otherObjectNameDraft.value = '';
+    }
 }
 
 function clearToolSelection() {
     activeTool.value = null;
+    otherObjectNameDraft.value = '';
+    otherObjectNameError.value = '';
+    toolDrawerOpen.value = false;
+}
+
+function openCreateBed() {
+    router.get(`/map/${props.gardenPlan.id}/beds/new`);
+}
+
+function resetPlannerFilters() {
+    showBedsLayer.value = true;
+    showStructuresLayer.value = true;
+    showWaterLayer.value = true;
+    showPlannerLabels.value = true;
+    toolSearch.value = '';
+    searchQuery.value = '';
 }
 
 function applyGardenPreset(
@@ -904,6 +987,14 @@ function handlePlannerSurfaceClick(event: MouseEvent) {
     )
         return;
 
+    if (activeTool.value === 'other') {
+        if (!otherObjectNameDraft.value.trim()) {
+            otherObjectNameError.value = 'Palun sisesta objekti nimi.';
+            return;
+        }
+        otherObjectNameError.value = '';
+    }
+
     const config = getDefaultObjectConfig(activeTool.value);
     const point = getPlannerLocalPoint(event);
     const widthPx = Math.round(config.width * CM_TO_PX);
@@ -919,12 +1010,17 @@ function handlePlannerSurfaceClick(event: MouseEvent) {
         Math.min(rawY, gardenSurfaceHeight.value - heightPx - GARDEN_PADDING),
     );
 
+    const objectName =
+        activeTool.value === 'other'
+            ? otherObjectNameDraft.value.trim()
+            : config.name;
+
     router.post(
         '/garden-objects',
         {
             garden_plan_id: props.gardenPlan.id,
             type: activeTool.value,
-            name: config.name,
+            name: objectName,
             x: clampedX,
             y: clampedY,
             width: config.width,
@@ -935,6 +1031,9 @@ function handlePlannerSurfaceClick(event: MouseEvent) {
             preserveState: true,
             onSuccess: () => {
                 activeTool.value = null;
+                otherObjectNameDraft.value = '';
+                otherObjectNameError.value = '';
+                toolDrawerOpen.value = false;
             },
         },
     );
@@ -1040,6 +1139,7 @@ function objectTypeLabel(type: GardenObjectType): string {
         pond: 'Tiik',
         shed: 'Kuur',
         compost: 'Kompost',
+        other: 'Muu',
     }[type];
 }
 
@@ -1049,6 +1149,17 @@ function objectTypeIcon(type: GardenObjectType): string {
         pond: 'water',
         shed: 'warehouse',
         compost: 'compost',
+        other: 'shapes',
+    }[type];
+}
+
+function objectTypeDescription(type: GardenObjectType): string {
+    return {
+        greenhouse: 'Püsiv koht soojalembeste taimede kasvatamiseks.',
+        pond: 'Rahulik veesilm või väike tiik aia keskmesse.',
+        shed: 'Panipaik tööriistadele ja aiatarvikutele.',
+        compost: 'Kompostiala orgaanilise materjali kogumiseks.',
+        other: 'Oma nimega näiteks maja, puuriit, kiviaed või terrass.',
     }[type];
 }
 
@@ -1060,6 +1171,7 @@ function objectClass(type: GardenObjectType): string {
         shed: 'rounded-[1rem] border border-stone-700/30 bg-[linear-gradient(180deg,rgba(202,176,145,0.96),rgba(133,101,72,0.96))] shadow-md',
         compost:
             'rounded-[1rem] border border-lime-900/30 bg-[linear-gradient(180deg,rgba(130,102,64,0.96),rgba(85,65,38,0.98))] shadow-md',
+        other: 'rounded-[1rem] border border-violet-800/25 bg-[linear-gradient(180deg,rgba(226,220,251,0.96),rgba(167,139,250,0.35))] shadow-md',
     }[type];
 }
 
@@ -1144,7 +1256,7 @@ function saveGardenPlan() {
             width: Math.round(Number(data.widthMeters || 0) * 100),
             height: Math.round(Number(data.heightMeters || 0) * 100),
         }))
-        .put('/garden-plan', {
+        .put(`/garden-plans/${props.gardenPlan.id}`, {
             preserveScroll: true,
             preserveState: true,
             onSuccess: (page) => {
@@ -1193,93 +1305,55 @@ function saveGardenPlan() {
                                 >
                             </button>
                         </template>
-
-                        <div class="space-y-3">
-                            <div
-                                class="rounded-[1.75rem] border border-primary/15 bg-linear-to-br from-primary/12 via-background to-secondary/35 p-5 shadow-sm"
-                            >
-                                <div
-                                    class="flex items-start justify-between gap-4"
-                                >
-                                    <div class="min-w-0">
-                                        <p
-                                            class="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-primary uppercase"
-                                        >
-                                            Minu aed
-                                        </p>
-                                        <h2
-                                            class="mt-3 text-2xl font-bold tracking-tight text-foreground"
-                                        >
-                                            Sätti peenrad aias täpselt sinna,
-                                            kuhu need päriselt kuuluvad.
-                                        </h2>
-                                        <p
-                                            class="mt-2 max-w-2xl text-sm leading-6 text-foreground/75"
-                                        >
-                                            Lohista peenraid ringi nagu
-                                            miniatuurses aiaplaani tööriistas.
-                                            Ava peenar, et selle kuju ja taimed
-                                            täpsemalt paika panna.
-                                        </p>
-                                    </div>
-                                    <div
-                                        class="hidden shrink-0 rounded-[1.5rem] border border-primary/15 bg-card/80 p-3 shadow-sm sm:flex sm:flex-col sm:items-center sm:justify-center"
-                                    >
-                                        <span
-                                            class="material-symbols-outlined text-[2.4rem] text-primary"
-                                            >yard</span
-                                        >
-                                        <span
-                                            class="mt-1 text-xs font-semibold tracking-[0.18em] text-primary/80 uppercase"
-                                            >Planeeri</span
-                                        >
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div
-                                class="no-scrollbar flex gap-2 overflow-x-auto pb-2"
-                            >
-                                <button
-                                    :class="tabClass(activeTab === 'all')"
-                                    type="button"
-                                    @click="resetToAll"
-                                >
-                                    Kõik
-                                </button>
-                                <button
-                                    :class="tabClass(activeTab === 'favorites')"
-                                    type="button"
-                                    @click="activeTab = 'favorites'"
-                                >
-                                    Lemmikud
-                                </button>
-                                <button
-                                    :class="tabClass(recentFirst)"
-                                    type="button"
-                                    @click="recentFirst = !recentFirst"
-                                >
-                                    Hiljuti lisatud
-                                </button>
-                            </div>
-                        </div>
                     </DiaryHeader>
 
                     <main class="flex-1 px-6 py-4 md:px-8">
                         <div class="space-y-6 sm:space-y-8">
                             <section class="space-y-6">
                                 <div
-                                    v-if="showOnboardingHint"
-                                    class="rounded-2xl border border-primary/20 bg-linear-to-r from-primary/10 via-primary/5 to-transparent px-4 py-3 shadow-sm"
+                                    v-if="plannerFeedback"
+                                    class="rounded-[1.5rem] border px-4 py-3 shadow-sm"
+                                    :class="
+                                        plannerFeedback.tone === 'error'
+                                            ? 'border-rose-200 bg-rose-50 text-rose-700'
+                                            : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                    "
                                 >
-                                    <p
-                                        class="text-sm leading-relaxed text-foreground/85"
-                                    >
-                                        Lisa esmalt peenar, seejärel saad teda
-                                        aias ringi tõsta ja hiljem avada, et
-                                        ruudustik ning taimed täpsemalt paika
-                                        panna.
+                                    <p class="text-sm font-medium">
+                                        {{ plannerFeedback.message }}
                                     </p>
+                                </div>
+
+                                <div
+                                    v-if="showOnboardingHint"
+                                    class="rounded-[1.75rem] border border-primary/20 bg-linear-to-r from-primary/10 via-primary/5 to-transparent p-5 shadow-sm"
+                                >
+                                    <div
+                                        class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+                                    >
+                                        <div class="max-w-2xl">
+                                            <p
+                                                class="text-base font-semibold text-foreground"
+                                            >
+                                                Alusta esimesest peenrast.
+                                            </p>
+                                            <p
+                                                class="mt-1 text-sm leading-6 text-muted-foreground"
+                                            >
+                                                Kui peenar on loodud, saad selle
+                                                siia aeda paigutada ja hiljem
+                                                avada, et ruudustik ning taimed
+                                                täpsemalt paika panna.
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            class="inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+                                            @click="openCreateBed"
+                                        >
+                                            Loo esimene peenar
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div
@@ -1292,14 +1366,15 @@ function saveGardenPlan() {
                                             <h3
                                                 class="text-lg font-semibold text-foreground"
                                             >
-                                                Miniatuurne aiaplaan
+                                                Aiaplaan
                                             </h3>
                                             <p
                                                 class="mt-1 text-sm leading-6 text-muted-foreground"
                                             >
-                                                Lohista peenraid ja lisa aeda ka
-                                                teisi objekte. Paigutus
-                                                salvestatakse automaatselt.
+                                                Paiguta peenrad rahulikult oma
+                                                kohale. Muudatused salvestuvad
+                                                kohe ja peenra detailid avanevad
+                                                ühe vajutusega.
                                             </p>
                                         </div>
                                         <div
@@ -1385,6 +1460,44 @@ function saveGardenPlan() {
                                     </div>
 
                                     <div
+                                        class="mb-4 flex flex-col gap-2 rounded-[1.5rem] border border-border/70 bg-background/75 px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+                                    >
+                                        <div class="min-w-0 flex-1">
+                                            <label
+                                                class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                for="garden-plan-select"
+                                            >
+                                                Aiaplaan
+                                            </label>
+                                            <select
+                                                id="garden-plan-select"
+                                                class="mt-1.5 block w-full max-w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground sm:max-w-xs"
+                                                :value="gardenPlan.id"
+                                                @change="onGardenPlanSelect"
+                                            >
+                                                <option
+                                                    v-for="p in gardenPlans"
+                                                    :key="p.id"
+                                                    :value="p.id"
+                                                >
+                                                    {{ p.name }}
+                                                </option>
+                                            </select>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-4 py-2 text-xs font-semibold text-primary transition hover:bg-primary/15"
+                                            @click="createGardenPlan"
+                                        >
+                                            <span
+                                                class="material-symbols-outlined text-base"
+                                                >add</span
+                                            >
+                                            Uus plaan
+                                        </button>
+                                    </div>
+
+                                    <div
                                         class="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-[1.5rem] border border-border/70 bg-background/75 px-3 py-3"
                                     >
                                         <div class="min-w-0">
@@ -1407,34 +1520,29 @@ function saveGardenPlan() {
                                                 {{ gardenDimensionLabel }}
                                             </p>
                                         </div>
-                                        <div
-                                            class="flex flex-wrap items-center gap-2"
-                                        >
-                                            <button
-                                                type="button"
-                                                class="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted"
-                                                @click="
-                                                    plannerControlsOpen =
-                                                        !plannerControlsOpen
-                                                "
-                                            >
-                                                <span
-                                                    class="material-symbols-outlined text-sm"
-                                                    >tune</span
-                                                >
-                                                {{
-                                                    plannerControlsOpen
-                                                        ? 'Peida seaded'
-                                                        : 'Muudaaga '
-                                                }}
-                                            </button>
-                                        </div>
+                                        <CardActionsMenu
+                                            placement="inline"
+                                            @edit="openGardenPlanEditor"
+                                            @delete="deleteGardenPlan"
+                                        />
                                     </div>
 
                                     <div
                                         v-if="plannerControlsOpen"
-                                        class="mb-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto]"
+                                        class="mb-4 space-y-3"
                                     >
+                                        <div class="flex justify-end">
+                                            <button
+                                                type="button"
+                                                class="text-xs font-semibold text-muted-foreground underline-offset-2 transition hover:text-foreground hover:underline"
+                                                @click="plannerControlsOpen = false"
+                                            >
+                                                Sulge
+                                            </button>
+                                        </div>
+                                        <div
+                                            class="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto]"
+                                        >
                                         <div
                                             class="rounded-[1.5rem] border border-border/70 bg-background/75 p-3"
                                         >
@@ -1577,9 +1685,9 @@ function saveGardenPlan() {
                                                             gardenForm.widthMeters
                                                         "
                                                         type="number"
-                                                        min="2"
+                                                        min="0.01"
                                                         max="1000"
-                                                        step="0.1"
+                                                        step="0.01"
                                                         class="w-full bg-transparent text-sm font-medium text-foreground outline-none"
                                                     />
                                                 </label>
@@ -1588,16 +1696,16 @@ function saveGardenPlan() {
                                                 >
                                                     <span
                                                         class="mb-1 block text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                                                        >Kõrgus (m)</span
+                                                        >Sügavus (m)</span
                                                     >
                                                     <input
                                                         v-model="
                                                             gardenForm.heightMeters
                                                         "
                                                         type="number"
-                                                        min="2"
+                                                        min="0.01"
                                                         max="1000"
-                                                        step="0.1"
+                                                        step="0.01"
                                                         class="w-full bg-transparent text-sm font-medium text-foreground outline-none"
                                                     />
                                                 </label>
@@ -1739,6 +1847,7 @@ function saveGardenPlan() {
                                                 </button>
                                             </div>
                                         </div>
+                                        </div>
                                     </div>
 
                                     <div
@@ -1746,11 +1855,27 @@ function saveGardenPlan() {
                                             !props.beds.length &&
                                             !props.gardenObjects.length
                                         "
-                                        class="rounded-[1.75rem] border-2 border-dashed border-primary/30 bg-linear-to-br from-muted/25 to-primary/6 p-8 text-center text-muted-foreground"
+                                        class="rounded-[1.75rem] border-2 border-dashed border-primary/30 bg-linear-to-br from-muted/25 to-primary/6 p-8 text-center"
                                     >
-                                        Lisa esimene peenar või aiaelement ja
-                                        sellest saab sinu aiaplaani esimene
-                                        ehitusklots.
+                                        <p
+                                            class="text-base font-semibold text-foreground"
+                                        >
+                                            Aiaplaan on veel tühi.
+                                        </p>
+                                        <p
+                                            class="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground"
+                                        >
+                                            Loo kõigepealt peenar. Kui peenar on
+                                            olemas, saad selle siia paigutada ja
+                                            selle sees taimi hallata.
+                                        </p>
+                                        <button
+                                            type="button"
+                                            class="mt-4 inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+                                            @click="openCreateBed"
+                                        >
+                                            Loo esimene peenar
+                                        </button>
                                     </div>
 
                                     <div
@@ -1761,11 +1886,24 @@ function saveGardenPlan() {
                                         class="rounded-[1.75rem] border border-dashed border-primary/30 bg-primary/5 px-6 py-8 text-center"
                                     >
                                         <p
-                                            class="text-sm text-muted-foreground"
+                                            class="text-base font-semibold text-foreground"
                                         >
-                                            Praeguste filtrite ja kihtidega pole
-                                            aias midagi nähtaval.
+                                            Praegu ei ole midagi nähtaval.
                                         </p>
+                                        <p
+                                            class="mt-2 text-sm leading-6 text-muted-foreground"
+                                        >
+                                            Vaata üle kihid ja otsing, et näha
+                                            jälle kõiki peenraid ning
+                                            aiaelemente.
+                                        </p>
+                                        <button
+                                            type="button"
+                                            class="mt-4 inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/15"
+                                            @click="resetPlannerFilters"
+                                        >
+                                            Näita kõike
+                                        </button>
                                     </div>
 
                                     <div
@@ -1840,6 +1978,20 @@ function saveGardenPlan() {
                                                     >
                                                         Lisa aeda
                                                     </h4>
+                                                    <p
+                                                        v-if="!activeTool"
+                                                        class="mt-2 text-xs leading-relaxed text-muted-foreground"
+                                                    >
+                                                        Vali allpool tüüp, siis
+                                                        klõpsa
+                                                        <span
+                                                            class="font-medium text-foreground/85"
+                                                            >rohelisel plaanil</span
+                                                        >
+                                                        kohta. Uue peenra jaoks
+                                                        kasuta paremal all
+                                                        olevat + nuppu.
+                                                    </p>
                                                 </div>
                                                 <button
                                                     v-if="activeTool"
@@ -1864,7 +2016,7 @@ function saveGardenPlan() {
                                                         v-model="toolSearch"
                                                         type="text"
                                                         class="w-full rounded-2xl border border-border/70 bg-background px-4 py-3 pr-11 text-sm text-foreground shadow-xs transition outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                                        placeholder="Otsi: kuur, tiik..."
+                                                        placeholder="Otsi: kuur, tiik, muu..."
                                                     />
                                                     <button
                                                         v-if="toolSearch"
@@ -1885,50 +2037,21 @@ function saveGardenPlan() {
                                                     v-for="type in filteredToolTypes"
                                                     :key="type"
                                                     type="button"
-                                                    class="w-full rounded-[1.15rem] border p-3 text-left transition"
+                                                    class="w-full rounded-[1.25rem] border p-3 text-left transition"
                                                     :class="
                                                         toolMenuItemClass(type)
                                                     "
                                                     @click="chooseTool(type)"
                                                 >
-                                                    <div
-                                                        class="flex items-start justify-between gap-3"
+                                                    <span
+                                                        class="block text-sm font-semibold text-foreground"
                                                     >
-                                                        <div class="min-w-0">
-                                                            <p
-                                                                class="text-sm font-semibold text-foreground"
-                                                            >
-                                                                {{
-                                                                    objectTypeLabel(
-                                                                        type,
-                                                                    )
-                                                                }}
-                                                            </p>
-                                                        </div>
-                                                        <span
-                                                            class="material-symbols-outlined rounded-xl p-2"
-                                                            :class="{
-                                                                'bg-emerald-100 text-emerald-800':
-                                                                    type ===
-                                                                    'greenhouse',
-                                                                'bg-sky-100 text-sky-800':
-                                                                    type ===
-                                                                    'pond',
-                                                                'bg-stone-100 text-stone-700':
-                                                                    type ===
-                                                                    'shed',
-                                                                'bg-lime-100 text-lime-800':
-                                                                    type ===
-                                                                    'compost',
-                                                            }"
-                                                        >
-                                                            {{
-                                                                objectTypeIcon(
-                                                                    type,
-                                                                )
-                                                            }}
-                                                        </span>
-                                                    </div>
+                                                        {{
+                                                            objectTypeLabel(
+                                                                type,
+                                                            )
+                                                        }}
+                                                    </span>
                                                 </button>
 
                                                 <div
@@ -1944,9 +2067,11 @@ function saveGardenPlan() {
 
                                             <div
                                                 v-if="activeTool"
-                                                class="mt-4 rounded-[1.25rem] border border-primary/15 bg-primary/6 px-3 py-3 text-xs text-primary"
+                                                class="mt-4 rounded-[1.25rem] border border-primary/15 bg-primary/6 px-3 py-3 text-sm"
                                             >
-                                                <div class="font-semibold">
+                                                <div
+                                                    class="font-semibold text-primary"
+                                                >
                                                     {{
                                                         objectTypeLabel(
                                                             activeTool,
@@ -1954,11 +2079,63 @@ function saveGardenPlan() {
                                                     }}
                                                 </div>
                                                 <div
-                                                    class="mt-1 text-primary/85"
+                                                    v-if="activeTool === 'other'"
+                                                    class="mt-3 space-y-1"
                                                 >
-                                                    Klõpsa nüüd aias kohta, kuhu
-                                                    soovid selle lisada.
+                                                    <label class="block">
+                                                        <span
+                                                            class="mb-1 block text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase"
+                                                            >Objekti nimi</span
+                                                        >
+                                                        <input
+                                                            v-model="
+                                                                otherObjectNameDraft
+                                                            "
+                                                            type="text"
+                                                            maxlength="120"
+                                                            class="w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-sm text-foreground shadow-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                            placeholder="Nt maja, puuriit, kiviaed"
+                                                            @input="
+                                                                otherObjectNameError =
+                                                                    ''
+                                                            "
+                                                        />
+                                                    </label>
+                                                    <p
+                                                        v-if="otherObjectNameError"
+                                                        class="text-xs text-rose-600"
+                                                    >
+                                                        {{ otherObjectNameError }}
+                                                    </p>
                                                 </div>
+                                                <div
+                                                    class="mt-1 leading-6 text-muted-foreground"
+                                                    :class="
+                                                        activeTool === 'other'
+                                                            ? 'mt-3'
+                                                            : ''
+                                                    "
+                                                >
+                                                    <template
+                                                        v-if="activeTool === 'other'"
+                                                    >
+                                                        Seejärel klõpsa aias
+                                                        kohta, kuhu objekt
+                                                        tuleb.
+                                                    </template>
+                                                    <template v-else>
+                                                        Klõpsa nüüd aias kohta,
+                                                        kuhu soovid selle
+                                                        lisada.
+                                                    </template>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    class="mt-3 inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted"
+                                                    @click="clearToolSelection"
+                                                >
+                                                    Tühista valik
+                                                </button>
                                             </div>
 
                                             <button
@@ -1969,15 +2146,6 @@ function saveGardenPlan() {
                                                 Sulge tööriistad
                                             </button>
 
-                                            <div
-                                                class="mt-4 rounded-[1.25rem] border border-border/70 bg-background/70 px-3 py-3 text-xs text-muted-foreground"
-                                            >
-                                                Lohista peenraid või objekte
-                                                nende kuju pealt. Kui aed on
-                                                zoomitud, liiguta tühja ala
-                                                lohistades kogu vaadet või
-                                                kasuta hiireratta zoomi.
-                                            </div>
                                         </aside>
 
                                         <div
@@ -2569,7 +2737,7 @@ function saveGardenPlan() {
                                     <div
                                         v-if="selectedObject"
                                         ref="selectedObjectPanel"
-                                        class="xl:backdrop-blur-0 sticky bottom-20 z-20 mt-4 rounded-[1.5rem] border border-border/80 bg-card/95 p-4 shadow-lg backdrop-blur xl:static xl:bottom-auto xl:z-auto xl:shadow-sm"
+                                        class="xl:backdrop-blur-0 sticky bottom-20 z-20 mt-3 rounded-[1.5rem] border border-border/80 bg-card/95 p-4 shadow-lg backdrop-blur xl:static xl:bottom-auto xl:z-auto xl:shadow-sm"
                                         :class="
                                             highlightSelectedObjectPanel
                                                 ? 'ring-2 ring-primary/35 ring-offset-2 ring-offset-background transition'
@@ -2577,43 +2745,43 @@ function saveGardenPlan() {
                                         "
                                     >
                                         <div
-                                            class="mb-3 flex justify-center xl:hidden"
+                                            class="mb-2 flex justify-center xl:hidden"
                                         >
                                             <span
-                                                class="h-1.5 w-12 rounded-full bg-foreground/15"
+                                                class="h-1 w-10 rounded-full bg-foreground/15"
                                             ></span>
                                         </div>
                                         <div
-                                            class="flex flex-wrap items-start justify-between gap-3"
+                                            class="flex flex-wrap items-start justify-between gap-2"
                                         >
                                             <div class="min-w-0">
                                                 <p
-                                                    class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                    class="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                                                 >
                                                     Valitud aiaelement
                                                 </p>
                                                 <h4
-                                                    class="mt-1 text-lg font-semibold text-foreground"
+                                                    class="mt-0.5 text-base font-semibold text-foreground"
                                                 >
                                                     {{ selectedObject.name }}
                                                 </h4>
                                                 <p
-                                                    class="mt-1 text-sm text-muted-foreground"
+                                                    class="mt-1 text-xs leading-5 text-muted-foreground"
                                                 >
                                                     {{
-                                                        objectTypeLabel(
+                                                        objectTypeDescription(
                                                             selectedObject.type,
                                                         )
                                                     }}
                                                 </p>
                                             </div>
                                             <div
-                                                class="flex flex-wrap items-center gap-2"
+                                                class="flex flex-wrap items-center gap-1.5"
                                                 data-no-drag="true"
                                             >
                                                 <button
                                                     type="button"
-                                                    class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-foreground transition hover:bg-muted xl:hidden"
+                                                    class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-foreground transition hover:bg-muted xl:hidden"
                                                     @click="
                                                         clearSelectionDetails
                                                     "
@@ -2625,33 +2793,33 @@ function saveGardenPlan() {
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    class="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted"
+                                                    class="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1.5 text-[11px] font-semibold text-foreground transition hover:bg-muted"
                                                     @click="
                                                         duplicateSelectedObject
                                                     "
                                                 >
                                                     <span
-                                                        class="material-symbols-outlined text-sm"
+                                                        class="material-symbols-outlined text-base"
                                                         >content_copy</span
                                                     >
                                                     Dubleeri
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    class="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted"
+                                                    class="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1.5 text-[11px] font-semibold text-foreground transition hover:bg-muted"
                                                     @click="
                                                         rotateSelectedObject
                                                     "
                                                 >
                                                     <span
-                                                        class="material-symbols-outlined text-sm"
+                                                        class="material-symbols-outlined text-base"
                                                         >rotate_90_degrees_ccw</span
                                                     >
                                                     Pööra
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    class="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                                                    class="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100"
                                                     @click="
                                                         deleteSelectedObject
                                                     "
@@ -2662,18 +2830,18 @@ function saveGardenPlan() {
                                         </div>
 
                                         <div
-                                            class="mt-4 grid gap-3 sm:grid-cols-3"
+                                            class="mt-2.5 grid grid-cols-3 gap-2"
                                         >
                                             <div
-                                                class="rounded-2xl border border-border/70 bg-background/70 px-3 py-3"
+                                                class="min-w-0 rounded-lg border border-border/70 bg-background/70 px-2 py-2"
                                             >
                                                 <p
-                                                    class="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                    class="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                                                 >
                                                     Tüüp
                                                 </p>
                                                 <p
-                                                    class="mt-2 text-lg font-semibold text-foreground"
+                                                    class="mt-1 break-words text-xs font-semibold leading-snug text-foreground"
                                                 >
                                                     {{
                                                         objectTypeLabel(
@@ -2683,15 +2851,15 @@ function saveGardenPlan() {
                                                 </p>
                                             </div>
                                             <div
-                                                class="rounded-2xl border border-border/70 bg-background/70 px-3 py-3"
+                                                class="min-w-0 rounded-lg border border-border/70 bg-background/70 px-2 py-2"
                                             >
                                                 <p
-                                                    class="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                    class="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                                                 >
                                                     Mõõt
                                                 </p>
                                                 <p
-                                                    class="mt-2 text-lg font-semibold text-foreground"
+                                                    class="mt-1 text-xs font-semibold leading-snug text-foreground"
                                                 >
                                                     {{
                                                         formatCentimeters(
@@ -2707,15 +2875,15 @@ function saveGardenPlan() {
                                                 </p>
                                             </div>
                                             <div
-                                                class="rounded-2xl border border-border/70 bg-background/70 px-3 py-3"
+                                                class="min-w-0 rounded-lg border border-border/70 bg-background/70 px-2 py-2"
                                             >
                                                 <p
-                                                    class="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                    class="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                                                 >
                                                     Asukoht
                                                 </p>
                                                 <p
-                                                    class="mt-2 text-sm font-semibold text-foreground"
+                                                    class="mt-1 text-xs font-semibold tabular-nums text-foreground"
                                                 >
                                                     {{
                                                         getObjectPosition(
@@ -2729,51 +2897,33 @@ function saveGardenPlan() {
                                                     }}
                                                 </p>
                                             </div>
-                                            <div
-                                                class="rounded-2xl border border-border/70 bg-background/70 px-3 py-3 sm:col-span-3"
-                                            >
-                                                <p
-                                                    class="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                                                >
-                                                    Kiirtoimingud
-                                                </p>
-                                                <p
-                                                    class="mt-2 text-sm text-foreground/80"
-                                                >
-                                                    Dubleeri sarnaste objektide
-                                                    loomiseks või pööra see 90
-                                                    kraadi võrra, et paigutus
-                                                    läheks aias kiiremini paika.
-                                                </p>
-                                            </div>
                                         </div>
 
-                                        <div
-                                            class="mt-4 rounded-[1.35rem] border border-border/70 bg-background/70 p-4"
-                                        >
-                                            <div class="mb-3">
+                                            <div
+                                                class="mt-3 rounded-[1.1rem] border border-border/70 bg-background/70 p-3"
+                                            >
+                                            <div class="mb-2">
                                                 <p
-                                                    class="text-sm font-semibold text-foreground"
+                                                    class="text-xs font-semibold text-foreground"
                                                 >
                                                     Muuda mõõte
                                                 </p>
                                                 <p
-                                                    class="mt-1 text-xs text-muted-foreground"
+                                                    class="mt-0.5 text-[11px] leading-snug text-muted-foreground"
                                                 >
-                                                    Sisesta mõõdud meetrites.
-                                                    Süsteem salvestab need
-                                                    taustal sentimeetrites.
+                                                    Meetrites; salvestatakse
+                                                    sentimeetrites.
                                                 </p>
                                             </div>
 
                                             <div
-                                                class="grid gap-3 md:grid-cols-3"
+                                                class="grid gap-2 sm:grid-cols-3"
                                             >
                                                 <label
-                                                    class="rounded-2xl border border-border/70 bg-card/85 px-3 py-3 text-sm"
+                                                    class="rounded-lg border border-border/70 bg-card/85 px-2 py-2 text-sm"
                                                 >
                                                     <span
-                                                        class="mb-1 block text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                        class="mb-0.5 block text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                                                         >Nimi</span
                                                     >
                                                     <input
@@ -2781,16 +2931,16 @@ function saveGardenPlan() {
                                                             objectForm.name
                                                         "
                                                         type="text"
-                                                        class="w-full bg-transparent text-sm font-medium text-foreground outline-none"
+                                                        class="w-full bg-transparent text-xs font-medium text-foreground outline-none"
                                                         maxlength="120"
                                                     />
                                                 </label>
 
                                                 <label
-                                                    class="rounded-2xl border border-border/70 bg-card/85 px-3 py-3 text-sm"
+                                                    class="rounded-lg border border-border/70 bg-card/85 px-2 py-2 text-sm"
                                                 >
                                                     <span
-                                                        class="mb-1 block text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                        class="mb-0.5 block text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                                                         >Laius (m)</span
                                                     >
                                                     <input
@@ -2802,15 +2952,15 @@ function saveGardenPlan() {
                                                         min="0.5"
                                                         max="50"
                                                         step="0.1"
-                                                        class="w-full bg-transparent text-sm font-medium text-foreground outline-none"
+                                                        class="w-full bg-transparent text-xs font-medium text-foreground outline-none"
                                                     />
                                                 </label>
 
                                                 <label
-                                                    class="rounded-2xl border border-border/70 bg-card/85 px-3 py-3 text-sm"
+                                                    class="rounded-lg border border-border/70 bg-card/85 px-2 py-2 text-sm"
                                                 >
                                                     <span
-                                                        class="mb-1 block text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                        class="mb-0.5 block text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                                                         >Kõrgus (m)</span
                                                     >
                                                     <input
@@ -2821,17 +2971,17 @@ function saveGardenPlan() {
                                                         min="0.5"
                                                         max="50"
                                                         step="0.1"
-                                                        class="w-full bg-transparent text-sm font-medium text-foreground outline-none"
+                                                        class="w-full bg-transparent text-xs font-medium text-foreground outline-none"
                                                     />
                                                 </label>
                                             </div>
 
                                             <div
-                                                class="mt-3 flex flex-wrap items-center gap-2"
+                                                class="mt-2 flex flex-wrap items-center gap-2"
                                             >
                                                 <button
                                                     type="button"
-                                                    class="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/15"
+                                                    class="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/15"
                                                     :disabled="
                                                         objectForm.processing
                                                     "
@@ -2864,7 +3014,7 @@ function saveGardenPlan() {
                                     <div
                                         v-else-if="selectedBed"
                                         ref="selectedBedPanel"
-                                        class="xl:backdrop-blur-0 sticky bottom-20 z-20 mt-4 rounded-[1.5rem] border border-border/80 bg-card/95 p-4 shadow-lg backdrop-blur xl:static xl:bottom-auto xl:z-auto xl:shadow-sm"
+                                        class="xl:backdrop-blur-0 sticky bottom-20 z-20 mt-3 rounded-[1.5rem] border border-border/80 bg-card/95 p-4 shadow-lg backdrop-blur xl:static xl:bottom-auto xl:z-auto xl:shadow-sm"
                                         :class="
                                             highlightSelectedBedPanel
                                                 ? 'ring-2 ring-primary/35 ring-offset-2 ring-offset-background transition'
@@ -2872,42 +3022,48 @@ function saveGardenPlan() {
                                         "
                                     >
                                         <div
-                                            class="mb-3 flex justify-center xl:hidden"
+                                            class="mb-2 flex justify-center xl:hidden"
                                         >
                                             <span
-                                                class="h-1.5 w-12 rounded-full bg-foreground/15"
+                                                class="h-1 w-10 rounded-full bg-foreground/15"
                                             ></span>
                                         </div>
                                         <div
-                                            class="flex flex-wrap items-start justify-between gap-3"
+                                            class="flex flex-wrap items-start justify-between gap-2"
                                         >
                                             <div class="min-w-0">
                                                 <p
-                                                    class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                    class="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                                                 >
                                                     Valitud peenar
                                                 </p>
                                                 <h4
-                                                    class="mt-1 text-lg font-semibold text-foreground"
+                                                    class="mt-0.5 text-base font-semibold text-foreground"
                                                 >
                                                     {{ selectedBed.name }}
                                                 </h4>
                                                 <p
-                                                    class="mt-1 text-sm text-muted-foreground"
+                                                    class="mt-0.5 text-[11px] text-muted-foreground"
                                                 >
                                                     {{
                                                         selectedBed.location ||
                                                         'Asukoht lisamata'
                                                     }}
                                                 </p>
+                                                <p
+                                                    class="mt-1 text-xs leading-5 text-muted-foreground"
+                                                >
+                                                    Ava peenar, et taimi ruutudesse
+                                                    paigutada ja märkmeid hallata.
+                                                </p>
                                             </div>
                                             <div
-                                                class="flex items-center gap-2"
+                                                class="flex flex-wrap items-center gap-1.5"
                                                 data-no-drag="true"
                                             >
                                                 <button
                                                     type="button"
-                                                    class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-foreground transition hover:bg-muted xl:hidden"
+                                                    class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-foreground transition hover:bg-muted xl:hidden"
                                                     @click="
                                                         clearSelectionDetails
                                                     "
@@ -2919,40 +3075,7 @@ function saveGardenPlan() {
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    class="flex h-10 w-10 items-center justify-center rounded-full border border-primary/10 bg-white/90 transition hover:scale-105 hover:bg-primary/5"
-                                                    :class="
-                                                        isFavoriteBed(
-                                                            selectedBed.id,
-                                                        )
-                                                            ? 'text-rose-600 shadow-sm'
-                                                            : 'text-foreground/45'
-                                                    "
-                                                    @click.prevent.stop="
-                                                        toggleFavoriteBed(
-                                                            selectedBed.id,
-                                                        )
-                                                    "
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-[20px] leading-none"
-                                                        :style="
-                                                            isFavoriteBed(
-                                                                selectedBed.id,
-                                                            )
-                                                                ? {
-                                                                      fontVariationSettings: `'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24`,
-                                                                  }
-                                                                : {
-                                                                      fontVariationSettings: `'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
-                                                                  }
-                                                        "
-                                                    >
-                                                        favorite
-                                                    </span>
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/15"
+                                                    class="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1.5 text-[11px] font-semibold text-primary transition hover:bg-primary/15"
                                                     @click="goToSelectedBed"
                                                 >
                                                     Ava peenar
@@ -2963,16 +3086,16 @@ function saveGardenPlan() {
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    class="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted"
+                                                    class="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1.5 text-[11px] font-semibold text-foreground transition hover:bg-muted"
                                                     @click="
                                                         editBed(selectedBed.id)
                                                     "
                                                 >
-                                                    Muuda
+                                                    Muuda peenart
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    class="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                                                    class="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100"
                                                     @click="
                                                         deleteBed(
                                                             selectedBed.id,
@@ -2986,18 +3109,18 @@ function saveGardenPlan() {
                                         </div>
 
                                         <div
-                                            class="mt-4 grid gap-3 sm:grid-cols-3"
+                                            class="mt-2.5 grid grid-cols-3 gap-2"
                                         >
                                             <div
-                                                class="rounded-2xl border border-border/70 bg-background/70 px-3 py-3"
+                                                class="min-w-0 rounded-lg border border-border/70 bg-background/70 px-2 py-2"
                                             >
                                                 <p
-                                                    class="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                    class="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                                                 >
                                                     Kuju
                                                 </p>
                                                 <p
-                                                    class="mt-2 text-lg font-semibold text-foreground"
+                                                    class="mt-1 text-xs font-semibold leading-snug text-foreground"
                                                 >
                                                     {{
                                                         getBedHeightInCells(
@@ -3014,15 +3137,15 @@ function saveGardenPlan() {
                                                 </p>
                                             </div>
                                             <div
-                                                class="rounded-2xl border border-border/70 bg-background/70 px-3 py-3"
+                                                class="min-w-0 rounded-lg border border-border/70 bg-background/70 px-2 py-2"
                                             >
                                                 <p
-                                                    class="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                    class="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                                                 >
                                                     Päris mõõt
                                                 </p>
                                                 <p
-                                                    class="mt-2 text-lg font-semibold text-foreground"
+                                                    class="mt-1 text-xs font-semibold leading-snug text-foreground"
                                                 >
                                                     {{
                                                         formatCentimeters(
@@ -3042,38 +3165,20 @@ function saveGardenPlan() {
                                                 </p>
                                             </div>
                                             <div
-                                                class="rounded-2xl border border-border/70 bg-background/70 px-3 py-3"
+                                                class="min-w-0 rounded-lg border border-border/70 bg-background/70 px-2 py-2"
                                             >
                                                 <p
-                                                    class="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                    class="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                                                 >
                                                     Taimi
                                                 </p>
                                                 <p
-                                                    class="mt-2 text-lg font-semibold text-foreground"
+                                                    class="mt-1 text-xs font-semibold text-foreground"
                                                 >
                                                     {{
                                                         selectedBed.plants
                                                             .length
                                                     }}
-                                                </p>
-                                            </div>
-                                            <div
-                                                class="rounded-2xl border border-border/70 bg-background/70 px-3 py-3 sm:col-span-3"
-                                            >
-                                                <p
-                                                    class="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                                                >
-                                                    Järgmine samm
-                                                </p>
-                                                <p
-                                                    class="mt-2 text-sm text-foreground/80"
-                                                >
-                                                    Ava peenar ja paiguta taimed
-                                                    ruutudesse. Aiaplaanil
-                                                    kuvatakse peenar nüüd sama
-                                                    ruudu mõõdu järgi nagu selle
-                                                    tegelik kuju.
                                                 </p>
                                             </div>
                                         </div>
@@ -3089,7 +3194,11 @@ function saveGardenPlan() {
                     :size-px="52"
                     :icon-size-px="30"
                     :bottom-px="112"
-                    @click="router.visit('/map/beds/new')"
+                    @click="
+                        router.visit(
+                            `/map/${gardenPlan.id}/beds/new`,
+                        )
+                    "
                 />
 
                 <BottomNav active="map" />

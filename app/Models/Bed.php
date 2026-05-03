@@ -10,6 +10,7 @@ class Bed extends Model
 {
     protected $fillable = [
         'user_id',
+        'garden_plan_id',
         'name',
         'location',
         'image_url',
@@ -32,6 +33,11 @@ class Bed extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function gardenPlan(): BelongsTo
+    {
+        return $this->belongsTo(GardenPlan::class);
     }
 
     public function plants(): HasMany

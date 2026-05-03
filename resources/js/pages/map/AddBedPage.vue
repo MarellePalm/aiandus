@@ -9,11 +9,15 @@ import AddBed from '@/pages/map/AddBed.vue';
 
 const props = defineProps<{
     showGuide?: boolean;
+    gardenPlanId: number;
 }>();
 
+const mapHref = `/map/${props.gardenPlanId}`;
+const newBedHref = `/map/${props.gardenPlanId}/beds/new`;
+
 const breadcrumbs = [
-    { title: 'Aiaplaan', href: '/map' },
-    { title: 'Lisa peenar', href: '/map/beds/new' },
+    { title: 'Aiaplaan', href: mapHref },
+    { title: 'Lisa peenar', href: newBedHref },
 ];
 </script>
 
@@ -31,7 +35,7 @@ const breadcrumbs = [
                 >
                     <template #leading>
                         <BackIconButton
-                            href="/map"
+                            :href="mapHref"
                             aria-label="Tagasi peenarde vaatesse"
                         />
                     </template>
@@ -40,7 +44,7 @@ const breadcrumbs = [
                     Loo uus peenar ja joonista selle kuju ruutudest.
                 </p>
 
-                <AddBed />
+                <AddBed :garden-plan-id="props.gardenPlanId" />
             </main>
 
             <BottomNav active="map" />

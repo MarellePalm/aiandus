@@ -5,6 +5,7 @@
 use App\Http\Controllers\BedController;
 use App\Http\Controllers\CalendarNoteController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\GardenMapController;
 use App\Http\Controllers\GardenObjectController;
 use App\Http\Controllers\GardenPlanController;
 use App\Http\Controllers\PlantController;
@@ -13,8 +14,6 @@ use App\Http\Controllers\SeedController;
 use App\Http\Controllers\WeatherController;
 use App\Models\Bed;
 use App\Models\CalendarNote;
-use App\Models\GardenObject;
-use App\Models\GardenPlan;
 use App\Models\Plant;
 use App\Models\Seed;
 use App\Models\User;
@@ -84,96 +83,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ]);
     })->name('dashboard');
 
-    Route::get('map', function (Request $request) {
-        $user = $request->user();
-        $gardenPlan = GardenPlan::firstOrCreate(
-            ['user_id' => $user->id],
-            [
-                'name' => 'Minu aed',
-                'width' => 1200,
-                'height' => 800,
-                'unit' => 'cm',
-            ],
-        );
-
-        $beds = Bed::query()
-            ->where('user_id', $user->id)
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->with(['plants' => fn ($q) => $q->select('id', 'name', 'image_url', 'bed_id', 'position_in_bed'),
-            ])
-            ->get()
-            ->map(fn ($b) => [
-                'id' => $b->id,
-                'name' => $b->name,
-                'location' => $b->location,
-                'image_url' => $b->image_url,
-                'rows' => (int) ($b->rows ?? 3),
-                'columns' => (int) ($b->columns ?? 3),
-                'garden_x' => (int) ($b->garden_x ?? 0),
-                'garden_y' => (int) ($b->garden_y ?? 0),
-                'cell_size_cm' => (int) ($b->cell_size_cm ?? 30),
-                'layout' => $b->layout,
-                'plants' => $b->plants->map(fn ($p) => [
-                    'id' => $p->id,
-                    'name' => $p->name,
-                    'image_url' => $p->image_url,
-                    'position_in_bed' => $p->position_in_bed,
-                ]),
-            ]);
-
-        $plantsWithoutBed = Plant::query()
-            ->where('user_id', $user->id)
-            ->whereNull('bed_id')
-            ->orderBy('name')
-            ->with('category:id,name,slug')
-            ->get(['id', 'name', 'image_url', 'category_id'])
-            ->map(fn ($p) => [
-                'id' => $p->id,
-                'name' => $p->name,
-                'image_url' => $p->image_url,
-                'category' => $p->category ? ['name' => $p->category->name, 'slug' => $p->category->slug] : null,
-            ]);
-
-        $gardenObjects = GardenObject::query()
-            ->where('garden_plan_id', $gardenPlan->id)
-            ->orderBy('type')
-            ->orderBy('id')
-            ->get()
-            ->map(fn ($object) => [
-                'id' => $object->id,
-                'type' => $object->type,
-                'name' => $object->name,
-                'x' => (int) $object->x,
-                'y' => (int) $object->y,
-                'width' => (int) $object->width,
-                'height' => (int) $object->height,
-                'meta' => $object->meta,
-            ]);
-
-        return Inertia::render('map/MapView', [
-            'gardenPlan' => [
-                'id' => $gardenPlan->id,
-                'name' => $gardenPlan->name,
-                'width' => (int) $gardenPlan->width,
-                'height' => (int) $gardenPlan->height,
-                'unit' => $gardenPlan->unit,
-            ],
-            'beds' => $beds,
-            'gardenObjects' => $gardenObjects,
-            'plantsWithoutBed' => $plantsWithoutBed,
-        ]);
-    })->name('map');
-
-    Route::get('map/beds/new', function (Request $request) {
-        $isFirstBed = ! Bed::query()
-            ->where('user_id', $request->user()->id)
-            ->exists();
-
-        return Inertia::render('map/AddBedPage', [
-            'showGuide' => $isFirstBed,
-        ]);
-    })->name('map.beds.create');
+    Route::get('map', [GardenMapController::class, 'redirect'])->name('map');
+    Route::get('map/{gardenPlan}/beds/new', [GardenMapController::class, 'createBed'])
+        ->name('map.beds.create');
+    Route::get('map/{gardenPlan}', [GardenMapController::class, 'show'])->name('map.show');
 
     Route::get('beds/{bed}', function (Request $request, Bed $bed) {
         abort_unless($bed->user_id === $request->user()->id, 403);
@@ -183,15 +96,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->whereNull('bed_id')
             ->orderBy('name')
             ->with('category:id,name,slug')
-            ->get(['id', 'name', 'image_url', 'category_id'])
+            ->get(['id', 'name', 'image_url', 'category_id', 'quantity'])
             ->map(fn ($p) => [
                 'id' => $p->id,
                 'name' => $p->name,
                 'image_url' => $p->image_url,
+                'quantity' => (int) ($p->quantity ?? 1),
                 'category' => $p->category ? ['name' => $p->category->name, 'slug' => $p->category->slug] : null,
             ]);
 
-        $bed->load(['plants' => fn ($q) => $q->select('id', 'name', 'image_url', 'bed_id', 'position_in_bed')]);
+        $bed->load(['plants' => fn ($q) => $q->select('id', 'name', 'image_url', 'bed_id', 'position_in_bed', 'quantity')]);
 
         $bedNotes = CalendarNote::query()
             ->where('user_id', $request->user()->id)
@@ -212,6 +126,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('map/BedView', [
             'bed' => [
                 'id' => $bed->id,
+                'garden_plan_id' => $bed->garden_plan_id,
                 'name' => $bed->name,
                 'location' => $bed->location,
                 'image_url' => $bed->image_url,
@@ -224,6 +139,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     'name' => $p->name,
                     'image_url' => $p->image_url,
                     'position_in_bed' => $p->position_in_bed,
+                    'quantity' => (int) ($p->quantity ?? 1),
                 ]),
             ],
             'plantsWithoutBed' => $plantsWithoutBed,
@@ -238,6 +154,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('map/EditBedPage', [
             'bed' => [
                 'id' => $bed->id,
+                'garden_plan_id' => $bed->garden_plan_id,
                 'name' => $bed->name,
                 'location' => $bed->location,
                 'image_url' => $bed->image_url,
@@ -263,7 +180,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('garden-objects/{gardenObject}/duplicate', [GardenObjectController::class, 'duplicate'])->name('garden-objects.duplicate');
     Route::post('garden-objects/{gardenObject}/rotate', [GardenObjectController::class, 'rotate'])->name('garden-objects.rotate');
     Route::delete('garden-objects/{gardenObject}', [GardenObjectController::class, 'destroy'])->name('garden-objects.destroy');
-    Route::put('garden-plan', [GardenPlanController::class, 'update'])->name('garden-plan.update');
+    Route::post('garden-plans', [GardenPlanController::class, 'store'])->name('garden-plans.store');
+    Route::put('garden-plans/{gardenPlan}', [GardenPlanController::class, 'update'])->name('garden-plans.update');
+    Route::delete('garden-plans/{gardenPlan}', [GardenPlanController::class, 'destroy'])->name('garden-plans.destroy');
 
     // ✅ SEEDS — ainult resource
     Route::resource('seeds', SeedController::class);

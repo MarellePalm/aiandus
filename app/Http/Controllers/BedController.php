@@ -6,6 +6,7 @@ use App\Models\Bed;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class BedController extends Controller
@@ -120,6 +121,13 @@ class BedController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
+            'garden_plan_id' => [
+                'required',
+                'integer',
+                Rule::exists('garden_plans', 'id')->where(
+                    fn ($q) => $q->where('user_id', $request->user()->id),
+                ),
+            ],
             'name' => ['required', 'string', 'max:120'],
             'location' => ['nullable', 'string', 'max:255'],
             'image' => ['nullable', 'image', 'max:4096'],
@@ -162,18 +170,21 @@ class BedController extends Controller
             $imagePath = $request->file('image')->store('bed-images', 'public');
         }
 
+        $gardenPlanId = (int) $data['garden_plan_id'];
+
         $payload = [
             'user_id' => $request->user()->id,
+            'garden_plan_id' => $gardenPlanId,
             'name' => $data['name'],
             'location' => $data['location'] ?? null,
             'rows' => $rows,
             'columns' => $columns,
             'layout' => $layout,
-            'sort_order' => Bed::where('user_id', $request->user()->id)->max('sort_order') + 1,
+            'sort_order' => (Bed::query()->where('garden_plan_id', $gardenPlanId)->max('sort_order') ?? 0) + 1,
         ];
 
         $defaultPosition = $this->defaultGardenPosition(
-            Bed::where('user_id', $request->user()->id)->count()
+            Bed::query()->where('garden_plan_id', $gardenPlanId)->count()
         );
         $payload['garden_x'] = (int) ($data['garden_x'] ?? $defaultPosition['garden_x']);
         $payload['garden_y'] = (int) ($data['garden_y'] ?? $defaultPosition['garden_y']);

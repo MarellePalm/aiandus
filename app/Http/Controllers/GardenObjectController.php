@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\GardenObject;
 use App\Models\GardenPlan;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class GardenObjectController extends Controller
 {
@@ -12,8 +13,13 @@ class GardenObjectController extends Controller
     {
         $data = $request->validate([
             'garden_plan_id' => ['required', 'integer', 'exists:garden_plans,id'],
-            'type' => ['required', 'string', 'in:greenhouse,pond,shed,compost'],
-            'name' => ['nullable', 'string', 'max:120'],
+            'type' => ['required', 'string', 'in:greenhouse,pond,shed,compost,other'],
+            'name' => [
+                'nullable',
+                'string',
+                'max:120',
+                Rule::requiredIf($request->input('type') === 'other'),
+            ],
             'x' => ['required', 'integer', 'min:0', 'max:10000'],
             'y' => ['required', 'integer', 'min:0', 'max:10000'],
             'width' => ['required', 'integer', 'min:50', 'max:5000'],
@@ -114,6 +120,7 @@ class GardenObjectController extends Controller
             'pond' => 'Tiik',
             'shed' => 'Kuur',
             'compost' => 'Kompost',
+            'other' => 'Muu',
             default => 'Aiaelement',
         };
     }

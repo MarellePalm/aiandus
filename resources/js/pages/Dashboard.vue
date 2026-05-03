@@ -8,7 +8,7 @@ import DiaryHeader from '@/components/DiaryHeader.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 import Moon from '@/pages/calendarNotes/moon.vue';
-import { dashboard } from '@/routes';
+import { dashboard, map } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 
 const page = usePage();
@@ -310,7 +310,7 @@ const fabActions = [
     { href: '/calendar/note-form', icon: 'edit_note', label: 'Lisa märkmed' },
     { href: '/plants/create', icon: 'local_florist', label: 'Lisa taim' },
     { href: '/seeds/create', icon: 'shelves', label: 'Lisa varu' },
-    { href: '/map/beds/new', icon: 'map', label: 'Lisa peenar' },
+    { href: map().url, icon: 'map', label: 'Lisa peenar' },
 ];
 function closeFabMenu() {
     showFabMenu.value = false;
