@@ -130,26 +130,6 @@ const todayWeatherLabel = computed(
 const sunrise = computed(() => q.data.value?.sunrise ?? null);
 const sunset = computed(() => q.data.value?.sunset ?? null);
 
-/** Kust kirjeldus tuleb + mis GPS punkt + OWM geokoodeeringu nimi; suur ikoon võib olla WeatherAPI. */
-const weatherDataCaption = computed(() => {
-    const src = q.data.value?.weatherConditionSource ?? 'OpenWeatherMap';
-    const loc = q.data.value?.locationName;
-    const c = q.data.value?.coordinatesUsed;
-    const iconSrc = q.data.value?.weatherIconSource;
-    const bits: string[] = [`Ilmateade: ${src}`];
-    if (loc) bits.push(loc);
-    if (c && typeof c.lat === 'number' && typeof c.lon === 'number') {
-        bits.push(
-            `${c.lat.toFixed(2).replace('.', ',')}° N, ${c.lon.toFixed(2).replace('.', ',')}° E`,
-        );
-    }
-    let s = bits.join(' · ');
-    if (iconSrc && iconSrc !== src) {
-        s += ` · suur ikoon: ${iconSrc}`;
-    }
-    return s;
-});
-
 /** Suur ikoon: WeatherAPI (täpsem „tänane“ tunne), muidu OpenWeather PNG. */
 const todayHeroIconUrl = computed(() => {
     const w = q.data.value?.weatherapiIcon;
@@ -325,12 +305,7 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                         </span>
                     </span>
                 </div>
-                <p
-                    class="mt-1.5 text-[11px] leading-snug text-muted-foreground"
-                >
-                    {{ weatherDataCaption }}
-                </p>
-                <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                     <span class="inline-flex items-center gap-1.5">
                         <span
                             class="material-symbols-outlined text-base text-foreground/80"

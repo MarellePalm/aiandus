@@ -15,6 +15,8 @@ const props = withDefaults(
         bottomRowClass?: string;
         /** Kui antud, kuvatakse pealkirjast vasakul tagasi-nupp. */
         backHref?: string | null;
+        /** Lisa klassid päise alumisele paddingule (nt `pb-2`). */
+        footerPaddingClass?: string;
     }>(),
     {
         diaryLabel: 'Minu Aia Päevik',
@@ -24,11 +26,12 @@ const props = withDefaults(
         topRowClass: 'mb-4',
         bottomRowClass: 'mb-6',
         backHref: null,
+        footerPaddingClass: 'pb-4',
     },
 );
 
 const wrapperClass = computed(() =>
-    `bg-background-light/80 sticky top-0 z-20 px-6 pb-4 backdrop-blur-md md:px-8 ${props.headerClass}`.trim(),
+    `bg-background-light/80 sticky top-0 z-20 px-6 backdrop-blur-md md:px-8 ${props.footerPaddingClass} ${props.headerClass}`.trim(),
 );
 </script>
 

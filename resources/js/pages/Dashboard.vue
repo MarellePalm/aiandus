@@ -12,6 +12,12 @@ import { dashboard, map } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 
 const page = usePage();
+const flash = computed(
+    () =>
+        (page.props.flash as
+            | { success?: string | null; error?: string | null }
+            | undefined) ?? {},
+);
 
 type RecentNote = {
     id: number;
@@ -46,48 +52,109 @@ type RecentSeed = {
 const recentSeeds = computed<RecentSeed[]>(
     () => (page.props.recentSeeds as RecentSeed[] | undefined) ?? [],
 );
-const activeTasksCount = computed(
-    () => recentNotes.value.filter((note) => note.done === false).length,
+
+type TodayTask = {
+    id: number;
+    note_date: string;
+    title?: string | null;
+    type?: string | null;
+};
+const todayTasks = computed<TodayTask[]>(
+    () => (page.props.todayTasks as TodayTask[] | undefined) ?? [],
 );
+
+type DashboardSummary = {
+    bedsCount: number;
+    plantsCount: number;
+    seedsCount: number;
+    emptyBedsCount: number;
+    plantsWithoutBedCount: number;
+    openTasksCount: number;
+    todayTasksCount: number;
+    overdueTasksCount: number;
+    notesCount: number;
+};
+const dashboardSummary = computed<DashboardSummary>(() => {
+    const fallbackNotes = recentNotes.value.filter((note) => note.done === false)
+        .length;
+
+    return {
+        bedsCount: 0,
+        plantsCount: recentPlants.value.length,
+        seedsCount: recentSeeds.value.length,
+        emptyBedsCount: 0,
+        plantsWithoutBedCount: 0,
+        openTasksCount: fallbackNotes,
+        todayTasksCount: 0,
+        overdueTasksCount: 0,
+        notesCount: recentNotes.value.length,
+        ...(page.props.dashboardSummary as Partial<DashboardSummary> | undefined),
+    };
+});
 
 const overviewStats = computed(() => [
     {
-        id: 'notes',
-        label: 'Värsked märkmed',
-        value: recentNotes.value.length,
-        hint: recentNotes.value.length
-            ? 'Hiljuti lisatud'
-            : 'Lisa esimene märge',
-        icon: 'edit_note',
-        href: '/calendar/overview',
+        id: 'beds',
+        label: 'Peenrad',
+        value: dashboardSummary.value.bedsCount,
+        href: map().url,
     },
     {
         id: 'plants',
-        label: 'Uued taimed',
-        value: recentPlants.value.length,
-        hint: recentPlants.value.length ? 'Hiljuti lisatud' : 'Aed ootab taimi',
-        icon: 'local_florist',
+        label: 'Taimed',
+        value: dashboardSummary.value.plantsCount,
         href: '/plants',
     },
     {
         id: 'seeds',
         label: 'Varud',
-        value: recentSeeds.value.length,
-        hint: recentSeeds.value.length
-            ? 'Hiljuti lisatud'
-            : 'Lisa seemneid või varusid',
-        icon: 'shelves',
+        value: dashboardSummary.value.seedsCount,
         href: '/seeds',
     },
 ]);
 
-const nextAction = computed(() => ({
-    title: `${activeTasksCount.value}`,
-    body: 'Aktiivset tegevust',
-    href: '/calendar',
-    cta: 'Ava kalender',
-    icon: 'event_upcoming',
-}));
+const todayWorkSummary = computed(() => {
+    if (dashboardSummary.value.todayTasksCount > 0) {
+        return {
+            title: 'Tänased aiatööd',
+            value: dashboardSummary.value.todayTasksCount,
+            showValue: true,
+            body:
+                dashboardSummary.value.todayTasksCount === 1
+                    ? 'Üks tegevus ootab täna lõpetamist.'
+                    : `${dashboardSummary.value.todayTasksCount} tegevust ootab täna lõpetamist.`,
+            icon: 'today',
+            cta: 'Ava kalender',
+            href: '/calendar',
+            tone: 'primary',
+        };
+    }
+
+    if (dashboardSummary.value.overdueTasksCount > 0) {
+        return {
+            title: 'Täna saab järje peale',
+            value: dashboardSummary.value.overdueTasksCount,
+            showValue: true,
+            body:
+                dashboardSummary.value.overdueTasksCount === 1
+                    ? 'Üks varasem aiatöö on veel lõpetamata.'
+                    : `${dashboardSummary.value.overdueTasksCount} varasemat aiatööd on veel lõpetamata.`,
+            icon: 'assignment_late',
+            cta: 'Vaata tegevusi',
+            href: '/calendar',
+            tone: 'amber',
+        };
+    }
+
+    return {
+        value: 0,
+        showValue: false,
+        icon: 'eco',
+        cta: 'Lisa märge',
+        href: '/calendar/note-form',
+        tone: 'green',
+    };
+});
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: dashboard().url },
@@ -119,13 +186,19 @@ const todayLabel = computed(() => {
 // Järjekord: salvestatakse localStorage'i, kasutaja saab plokke üles/alla tõsta
 const STORAGE_KEY = 'dashboardSectionOrder';
 const COLLAPSED_KEY = 'dashboardSectionCollapsed';
-type SectionId = 'weather' | 'moon';
-const DEFAULT_ORDER: SectionId[] = ['weather', 'moon'];
+type SectionId = 'garden' | 'notes' | 'weather' | 'moon';
+const DEFAULT_ORDER: SectionId[] = [
+    'garden',
+    'notes',
+    'weather',
+    'moon',
+];
+/** Ainult need kaks on kokku-volditavad; ülejäänud plokid on alati “lahti”. */
+const COLLAPSIBLE_SECTION_IDS: SectionId[] = ['weather', 'moon'];
 
 const sectionOrder = ref<SectionId[]>([...DEFAULT_ORDER]);
 const collapsedSectionIds = ref<Set<SectionId>>(new Set());
 const editLayout = ref(false);
-const draggingId = ref<SectionId | null>(null);
 
 function persistCollapsed(next: Iterable<SectionId>) {
     const arr = [...next];
@@ -138,9 +211,9 @@ function persistCollapsed(next: Iterable<SectionId>) {
 }
 
 function applyDefaultCollapsed() {
-    // Lahti: esimesed 2 plokki (kasutaja järjekorra järgi). Kinni: ülejäänud.
+    // Lahti: esimesed 2 plokki (kasutaja järjekorra järgi). Kinni: ainult Ilm/Kuu, kui nad pole esimese kahe seas.
     const open = new Set(sectionOrder.value.slice(0, 2));
-    const collapsed = DEFAULT_ORDER.filter((id) => !open.has(id));
+    const collapsed = COLLAPSIBLE_SECTION_IDS.filter((id) => !open.has(id));
     persistCollapsed(collapsed);
 }
 
@@ -193,39 +266,6 @@ function moveSection(id: SectionId, direction: 'up' | 'down') {
     persistOrder(arrayMove(sectionOrder.value, from, to));
 }
 
-function onDragStart(id: SectionId, e: DragEvent) {
-    draggingId.value = id;
-    try {
-        e.dataTransfer?.setData('text/plain', id);
-        e.dataTransfer?.setDragImage(new Image(), 0, 0);
-        e.dataTransfer!.effectAllowed = 'move';
-    } catch {
-        /* ignore */
-    }
-}
-
-function onDragEnd() {
-    draggingId.value = null;
-}
-
-function onDrop(targetId: SectionId, e: DragEvent) {
-    e.preventDefault();
-    const sourceId =
-        (e.dataTransfer?.getData('text/plain') as SectionId) ||
-        draggingId.value;
-    if (!sourceId || sourceId === targetId) return;
-    const from = sectionOrder.value.indexOf(sourceId);
-    const to = sectionOrder.value.indexOf(targetId);
-    if (from === -1 || to === -1) return;
-    persistOrder(arrayMove(sectionOrder.value, from, to));
-    draggingId.value = null;
-}
-
-function onDragOver(e: DragEvent) {
-    e.preventDefault();
-    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-}
-
 function isSectionExpanded(id: SectionId): boolean {
     return !collapsedSectionIds.value.has(id);
 }
@@ -242,6 +282,8 @@ function toggleSectionCollapsed(id: SectionId) {
 }
 function sectionTitle(id: SectionId): string {
     const titles: Record<SectionId, string> = {
+        garden: 'Aia seis',
+        notes: 'Viimased märkmed',
         weather: 'Ilm',
         moon: 'Kuufaas täna',
     };
@@ -260,32 +302,37 @@ onMounted(() => {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
             const parsed = JSON.parse(raw) as unknown;
-            if (
-                Array.isArray(parsed) &&
-                parsed.every((id) => DEFAULT_ORDER.includes(id as SectionId))
-            ) {
-                const order = parsed as SectionId[];
-                const missing = DEFAULT_ORDER.filter(
-                    (id) => !order.includes(id),
+            if (Array.isArray(parsed)) {
+                const ordered = parsed.filter((id): id is SectionId =>
+                    DEFAULT_ORDER.includes(id as SectionId),
                 );
-                sectionOrder.value = [...order, ...missing];
+                const seen = new Set<SectionId>();
+                const unique: SectionId[] = [];
+                for (const id of ordered) {
+                    if (!seen.has(id)) {
+                        seen.add(id);
+                        unique.push(id);
+                    }
+                }
+                const missing = DEFAULT_ORDER.filter((id) => !seen.has(id));
+                sectionOrder.value = [...missing, ...unique];
             }
         }
         const collapsedRaw = localStorage.getItem(COLLAPSED_KEY);
         if (collapsedRaw) {
             const arr = JSON.parse(collapsedRaw) as unknown;
-            if (
-                Array.isArray(arr) &&
-                arr.every((id) => DEFAULT_ORDER.includes(id as SectionId))
-            ) {
-                collapsedSectionIds.value = new Set(arr as SectionId[]);
+            if (Array.isArray(arr)) {
+                const valid = arr.filter(
+                    (id): id is SectionId =>
+                        id === 'weather' || id === 'moon',
+                );
+                collapsedSectionIds.value = new Set(valid);
             }
         } else {
             // Esimesel avamisel jätame lahti 2 esimest plokki (järjekorra järgi).
             const open = new Set(sectionOrder.value.slice(0, 2));
-            const defaultCollapsed: SectionId[] = DEFAULT_ORDER.filter(
-                (id) => !open.has(id),
-            );
+            const defaultCollapsed: SectionId[] =
+                COLLAPSIBLE_SECTION_IDS.filter((id) => !open.has(id));
             collapsedSectionIds.value = new Set(defaultCollapsed);
             try {
                 localStorage.setItem(
@@ -337,97 +384,112 @@ const dashboardSectionHeaderStrip =
                     title="Minu Aiapäevik"
                     :diary-label="todayLabel"
                     :show-diary-label="false"
-                    header-class="pt-6"
-                    top-row-class="mb-3"
-                    bottom-row-class="mb-2"
+                    header-class="pt-4"
+                    top-row-class="mb-2"
+                    bottom-row-class="mb-1"
+                    footer-padding-class="pb-2"
                 >
                     <div class="space-y-4">
                         <div
-                            class="rounded-[1.75rem] border border-primary/15 bg-linear-to-br from-primary/12 via-background to-secondary/35 p-5 shadow-sm"
+                            v-if="flash.success || flash.error"
+                            class="space-y-2"
                         >
-                            <div class="flex items-start justify-between gap-4">
-                                <div class="min-w-0">
-                                    <p
-                                        class="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-primary uppercase"
-                                    >
-                                        Tänane ülevaade
-                                    </p>
-                                    <p
-                                        class="mt-3 text-sm text-muted-foreground"
-                                    >
-                                        {{ todayLabel }}
-                                    </p>
-                                </div>
+                            <div
+                                v-if="flash.success"
+                                class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+                            >
+                                {{ flash.success }}
                             </div>
+                            <div
+                                v-if="flash.error"
+                                class="rounded-2xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+                            >
+                                {{ flash.error }}
+                            </div>
+                        </div>
 
-                            <div class="mt-4 grid gap-3 sm:grid-cols-3">
-                                <div
-                                    v-for="stat in overviewStats"
-                                    :key="stat.id"
-                                    class="rounded-2xl border border-border/70 bg-card/85 px-4 py-3 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"
+                        <div
+                            class="rounded-[1.75rem] border border-primary/15 bg-linear-to-br from-primary/12 via-background to-secondary/35 px-3.5 py-2 shadow-sm sm:px-4 sm:py-2.5"
+                        >
+                            <p class="text-sm text-muted-foreground">
+                                {{ todayLabel }}
+                            </p>
+
+                            <div
+                                v-if="todayWorkSummary.showValue || todayTasks.length"
+                                class="mt-3"
+                            >
+                                <Link
+                                    :href="todayWorkSummary.href"
+                                    class="rounded-[1.5rem] border border-border/70 bg-card/90 p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"
+                                    :class="{
+                                        'ring-1 ring-primary/20': todayWorkSummary.tone === 'primary',
+                                        'ring-1 ring-amber-200/80': todayWorkSummary.tone === 'amber',
+                                        'ring-1 ring-emerald-200/80': todayWorkSummary.tone === 'green',
+                                    }"
                                 >
-                                    <Link :href="stat.href" class="block">
-                                        <div
-                                            class="flex items-start justify-between gap-3"
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="min-w-0">
+                                            <p
+                                                class="font-semibold text-foreground"
+                                                :class="
+                                                    todayWorkSummary.showValue
+                                                        ? 'text-[11px] tracking-[0.16em] text-muted-foreground uppercase'
+                                                        : 'text-base tracking-normal'
+                                                "
+                                            >
+                                                {{ todayWorkSummary.title }}
+                                            </p>
+                                            <p
+                                                v-if="todayWorkSummary.showValue"
+                                                class="mt-2 text-3xl font-bold tracking-tight text-foreground"
+                                            >
+                                                {{ todayWorkSummary.value }}
+                                            </p>
+                                            <p
+                                                class="text-sm text-muted-foreground"
+                                                :class="
+                                                    todayWorkSummary.showValue
+                                                        ? 'mt-2'
+                                                        : 'mt-3'
+                                                "
+                                            >
+                                                {{ todayWorkSummary.body }}
+                                            </p>
+                                        </div>
+                                        <span
+                                            class="material-symbols-outlined rounded-2xl bg-primary/10 p-2 text-primary"
                                         >
-                                            <div>
-                                                <p
-                                                    class="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                                                >
-                                                    {{ stat.label }}
+                                            {{ todayWorkSummary.icon }}
+                                        </span>
+                                    </div>
+
+                                    <div
+                                        v-if="todayTasks.length"
+                                        class="mt-4 space-y-2"
+                                    >
+                                        <div
+                                            v-for="task in todayTasks"
+                                            :key="task.id"
+                                            class="flex items-center justify-between gap-3 rounded-2xl bg-muted/60 px-3 py-2"
+                                        >
+                                            <div class="min-w-0">
+                                                <p class="truncate text-sm font-medium text-foreground">
+                                                    {{ task.title || 'Tänane aiatöö' }}
                                                 </p>
-                                                <p
-                                                    class="mt-2 text-2xl font-bold tracking-tight text-foreground"
-                                                >
-                                                    {{ stat.value }}
-                                                </p>
-                                                <p
-                                                    class="mt-1 text-xs text-muted-foreground"
-                                                >
-                                                    {{ stat.hint }}
+                                                <p class="text-xs text-muted-foreground">
+                                                    {{ task.note_date }}
                                                 </p>
                                             </div>
                                             <span
-                                                class="material-symbols-outlined rounded-2xl bg-primary/10 p-2 text-primary"
+                                                class="material-symbols-outlined text-base text-muted-foreground"
                                             >
-                                                {{ stat.icon }}
+                                                chevron_right
                                             </span>
                                         </div>
-                                    </Link>
-                                </div>
-                            </div>
-
-                            <Link
-                                :href="nextAction.href"
-                                class="mt-3 block rounded-2xl border border-border/70 bg-card/85 px-4 py-3 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"
-                            >
-                                <div
-                                    class="flex items-start justify-between gap-3"
-                                >
-                                    <div class="min-w-0">
-                                        <p
-                                            class="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                                        >
-                                            Tegevused
-                                        </p>
-                                        <p
-                                            class="mt-2 text-xl font-bold tracking-tight text-foreground"
-                                        >
-                                            {{ nextAction.title }}
-                                        </p>
-                                        <p
-                                            class="mt-1 text-xs text-muted-foreground"
-                                        >
-                                            {{ nextAction.body }}
-                                        </p>
                                     </div>
-                                    <span
-                                        class="material-symbols-outlined rounded-2xl bg-primary/10 p-2 text-primary"
-                                    >
-                                        {{ nextAction.icon }}
-                                    </span>
-                                </div>
-                            </Link>
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </DiaryHeader>
@@ -438,10 +500,8 @@ const dashboardSectionHeaderStrip =
                     >
                         <p class="min-w-0">
                             <span class="font-semibold text-foreground/90"
-                                >Muuda alumiste plokkide järjekorda:</span
+                                >Muuda plokkide järjekorda kasutades nooli:</span
                             >
-                            tõsta `Ilm` ja `Kuufaas täna` endale sobivasse
-                            järjestusse.
                         </p>
 
                         <div class="mt-3 flex flex-wrap items-center gap-2">
@@ -474,17 +534,203 @@ const dashboardSectionHeaderStrip =
                 </div>
 
                 <div class="px-6 pt-4 pb-24 md:px-8">
-                    <div
-                        class="rounded-[1.75rem] border border-border/70 bg-card/55 p-3 shadow-sm"
-                    >
-                        <div
-                            class="mb-3 flex items-center justify-between gap-3 px-2"
-                        ></div>
+                    <div class="space-y-4">
+                        <template v-for="id in sectionOrder" :key="id">
+                            <!-- Aia seis -->
+                            <section
+                                v-if="id === 'garden'"
+                                class="overflow-hidden rounded-[1.6rem] border border-border bg-card/90 shadow-sm"
+                                :class="
+                                    editLayout ? 'ring-1 ring-primary/25' : ''
+                                "
+                            >
+                                <div
+                                    class="flex items-center justify-between gap-3 border-b border-border bg-linear-to-r px-4 py-3"
+                                    :class="dashboardSectionHeaderStrip"
+                                >
+                                    <h3
+                                        class="min-w-0 flex-1 text-sm font-semibold text-foreground"
+                                    >
+                                        {{ sectionTitle('garden') }}
+                                    </h3>
+                                    <div
+                                        v-if="editLayout"
+                                        class="flex shrink-0 items-center gap-1"
+                                    >
+                                        <button
+                                            type="button"
+                                            class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+                                            :disabled="
+                                                !canMoveSectionUp('garden')
+                                            "
+                                            @click.stop="
+                                                moveSection('garden', 'up')
+                                            "
+                                        >
+                                            <span
+                                                class="material-symbols-outlined text-sm"
+                                                >arrow_upward</span
+                                            >
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+                                            :disabled="
+                                                !canMoveSectionDown('garden')
+                                            "
+                                            @click.stop="
+                                                moveSection('garden', 'down')
+                                            "
+                                        >
+                                            <span
+                                                class="material-symbols-outlined text-sm"
+                                                >arrow_downward</span
+                                            >
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="p-4">
+                                    <div class="grid grid-cols-3 gap-2 sm:gap-3">
+                                        <div
+                                            v-for="stat in overviewStats"
+                                            :key="stat.id"
+                                            class="aspect-square min-h-0"
+                                        >
+                                            <Link
+                                                :href="stat.href"
+                                                class="flex h-full min-h-0 flex-col rounded-2xl border border-border/70 bg-muted/25 p-2.5 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-md sm:p-3"
+                                            >
+                                                <p
+                                                    class="text-center text-[9px] font-semibold tracking-[0.12em] text-muted-foreground uppercase leading-tight sm:text-[11px] sm:tracking-[0.16em]"
+                                                >
+                                                    {{ stat.label }}
+                                                </p>
+                                                <div
+                                                    class="flex min-h-0 flex-1 items-center justify-center"
+                                                >
+                                                    <p
+                                                        class="text-center text-xl font-bold tracking-tight text-foreground tabular-nums sm:text-2xl"
+                                                    >
+                                                        {{ stat.value }}
+                                                    </p>
+                                                </div>
+                                            </Link>
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
 
-                        <div class="space-y-6">
-                            <!-- Järjestatavad plokid -->
-                            <template v-for="id in sectionOrder" :key="id">
-                                <!-- Weather -->
+                            <!-- Viimased märkmed -->
+                            <section
+                                v-if="id === 'notes'"
+                                class="overflow-hidden rounded-[1.6rem] border border-border bg-card/90 shadow-sm"
+                                :class="
+                                    editLayout ? 'ring-1 ring-primary/25' : ''
+                                "
+                            >
+                                <div
+                                    class="flex items-center justify-between gap-3 border-b border-border bg-linear-to-r px-4 py-3"
+                                    :class="dashboardSectionHeaderStrip"
+                                >
+                                    <h3
+                                        class="min-w-0 flex-1 text-sm font-semibold text-foreground"
+                                    >
+                                        {{ sectionTitle('notes') }}
+                                    </h3>
+                                    <div
+                                        class="flex shrink-0 items-center gap-1"
+                                    >
+                                        <div
+                                            v-if="editLayout"
+                                            class="flex items-center gap-1"
+                                        >
+                                            <button
+                                                type="button"
+                                                class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+                                                :disabled="
+                                                    !canMoveSectionUp('notes')
+                                                "
+                                                @click.stop="
+                                                    moveSection('notes', 'up')
+                                                "
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-sm"
+                                                    >arrow_upward</span
+                                                >
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+                                                :disabled="
+                                                    !canMoveSectionDown(
+                                                        'notes',
+                                                    )
+                                                "
+                                                @click.stop="
+                                                    moveSection(
+                                                        'notes',
+                                                        'down',
+                                                    )
+                                                "
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-sm"
+                                                    >arrow_downward</span
+                                                >
+                                            </button>
+                                        </div>
+                                        <Link
+                                            v-if="!editLayout"
+                                            href="/calendar/overview"
+                                            class="text-sm font-medium text-primary transition hover:text-primary/80"
+                                        >
+                                            Ava kõik
+                                        </Link>
+                                    </div>
+                                </div>
+
+                                <div
+                                    v-if="recentNotes.length"
+                                    class="space-y-3 p-4"
+                                >
+                                    <Link
+                                        v-for="note in recentNotes.slice(0, 3)"
+                                        :key="note.id"
+                                        href="/calendar/overview"
+                                        class="block rounded-2xl border border-border/70 bg-muted/35 px-4 py-3 transition hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card"
+                                    >
+                                        <div class="flex items-start justify-between gap-3">
+                                            <div class="min-w-0">
+                                                <p class="truncate text-sm font-semibold text-foreground">
+                                                    {{ note.title || 'Pealkirjata märge' }}
+                                                </p>
+                                                <p class="mt-1 text-xs text-muted-foreground">
+                                                    {{ note.note_date }}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                </div>
+
+                                <div
+                                    v-else
+                                    class="m-4 rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-4"
+                                >
+                                    <p class="text-sm text-muted-foreground">
+                                        Esimene märge aitab hiljem paremini meenutada, mis peenras toimus ja mida tasub järgmisel hooajal korrata.
+                                    </p>
+                                    <Link
+                                        href="/calendar/note-form"
+                                        class="mt-3 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm"
+                                    >
+                                        Lisa esimene märge
+                                        <span class="material-symbols-outlined text-base">arrow_forward</span>
+                                    </Link>
+                                </div>
+                            </section>
+
+                            <!-- Weather -->
                                 <section
                                     v-if="id === 'weather'"
                                     class="overflow-hidden rounded-[1.6rem] border border-border bg-card/95 shadow-sm"
@@ -493,55 +739,41 @@ const dashboardSectionHeaderStrip =
                                             ? 'ring-1 ring-primary/25'
                                             : ''
                                     "
-                                    @dragover="
-                                        editLayout
-                                            ? onDragOver($event)
-                                            : undefined
-                                    "
-                                    @drop="
-                                        editLayout
-                                            ? onDrop('weather', $event)
-                                            : undefined
-                                    "
                                 >
                                     <div
-                                        class="group flex cursor-pointer items-center gap-2 border-b border-border bg-linear-to-r px-4 py-3"
+                                        class="group flex cursor-pointer items-center justify-between gap-3 border-b border-border bg-linear-to-r px-4 py-3"
                                         :class="dashboardSectionHeaderStrip"
                                         @click="
                                             toggleSectionCollapsed('weather')
                                         "
                                     >
-                                        <div
-                                            class="flex min-w-0 flex-1 items-center gap-2"
+                                        <h3
+                                            class="min-w-0 flex-1 text-sm font-semibold text-foreground"
                                         >
-                                            <button
+                                            {{ sectionTitle('weather') }}
+                                        </h3>
+                                        <div
+                                            class="flex shrink-0 items-center gap-1"
+                                        >
+                                            <span
                                                 v-if="editLayout"
-                                                type="button"
-                                                class="inline-flex cursor-grab items-center justify-center rounded-md text-muted-foreground transition hover:text-foreground active:scale-95"
-                                                draggable="true"
-                                                aria-label="Lohista plokki"
-                                                @dragstart="
-                                                    onDragStart(
-                                                        'weather',
-                                                        $event,
-                                                    )
-                                                "
-                                                @dragend="onDragEnd"
-                                                @click.stop
+                                                class="material-symbols-outlined text-lg text-muted-foreground transition"
+                                                :class="[
+                                                    'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100',
+                                                    {
+                                                        'rotate-180':
+                                                            isSectionExpanded(
+                                                                'weather',
+                                                            ),
+                                                    },
+                                                ]"
+                                                aria-hidden="true"
                                             >
-                                                <span
-                                                    class="material-symbols-outlined text-lg"
-                                                    >drag_indicator</span
-                                                >
-                                            </button>
-                                            <h3
-                                                class="text-sm font-semibold text-foreground"
-                                            >
-                                                {{ sectionTitle('weather') }}
-                                            </h3>
+                                                expand_more
+                                            </span>
                                             <div
                                                 v-if="editLayout"
-                                                class="ml-auto flex items-center gap-1"
+                                                class="flex items-center gap-1"
                                             >
                                                 <button
                                                     type="button"
@@ -584,21 +816,6 @@ const dashboardSectionHeaderStrip =
                                                     >
                                                 </button>
                                             </div>
-                                            <span
-                                                class="material-symbols-outlined shrink-0 text-lg text-muted-foreground transition"
-                                                :class="[
-                                                    'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100',
-                                                    {
-                                                        'rotate-180':
-                                                            isSectionExpanded(
-                                                                'weather',
-                                                            ),
-                                                    },
-                                                ]"
-                                                aria-hidden="true"
-                                            >
-                                                expand_more
-                                            </span>
                                         </div>
                                     </div>
                                     <div
@@ -618,50 +835,39 @@ const dashboardSectionHeaderStrip =
                                             ? 'ring-1 ring-primary/25'
                                             : ''
                                     "
-                                    @dragover="
-                                        editLayout
-                                            ? onDragOver($event)
-                                            : undefined
-                                    "
-                                    @drop="
-                                        editLayout
-                                            ? onDrop('moon', $event)
-                                            : undefined
-                                    "
                                 >
                                     <div
-                                        class="group flex cursor-pointer items-center gap-2 border-b border-border bg-linear-to-r px-4 py-3"
+                                        class="group flex cursor-pointer items-center justify-between gap-3 border-b border-border bg-linear-to-r px-4 py-3"
                                         :class="dashboardSectionHeaderStrip"
                                         @click="toggleSectionCollapsed('moon')"
                                     >
-                                        <div
-                                            class="flex min-w-0 flex-1 items-center gap-2"
+                                        <h3
+                                            class="min-w-0 flex-1 text-sm font-semibold text-foreground"
                                         >
-                                            <button
+                                            {{ sectionTitle('moon') }}
+                                        </h3>
+                                        <div
+                                            class="flex shrink-0 items-center gap-1"
+                                        >
+                                            <span
                                                 v-if="editLayout"
-                                                type="button"
-                                                class="inline-flex cursor-grab items-center justify-center rounded-md text-muted-foreground transition hover:text-foreground active:scale-95"
-                                                draggable="true"
-                                                aria-label="Lohista plokki"
-                                                @dragstart="
-                                                    onDragStart('moon', $event)
-                                                "
-                                                @dragend="onDragEnd"
-                                                @click.stop
+                                                class="material-symbols-outlined text-lg text-muted-foreground transition"
+                                                :class="[
+                                                    'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100',
+                                                    {
+                                                        'rotate-180':
+                                                            isSectionExpanded(
+                                                                'moon',
+                                                            ),
+                                                    },
+                                                ]"
+                                                aria-hidden="true"
                                             >
-                                                <span
-                                                    class="material-symbols-outlined text-lg"
-                                                    >drag_indicator</span
-                                                >
-                                            </button>
-                                            <h3
-                                                class="text-sm font-semibold text-foreground"
-                                            >
-                                                {{ sectionTitle('moon') }}
-                                            </h3>
+                                                expand_more
+                                            </span>
                                             <div
                                                 v-if="editLayout"
-                                                class="ml-auto flex items-center gap-1"
+                                                class="flex items-center gap-1"
                                             >
                                                 <button
                                                     type="button"
@@ -704,21 +910,14 @@ const dashboardSectionHeaderStrip =
                                                     >
                                                 </button>
                                             </div>
-                                            <span
-                                                class="material-symbols-outlined shrink-0 text-lg text-muted-foreground transition"
-                                                :class="[
-                                                    'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100',
-                                                    {
-                                                        'rotate-180':
-                                                            isSectionExpanded(
-                                                                'moon',
-                                                            ),
-                                                    },
-                                                ]"
-                                                aria-hidden="true"
+                                            <Link
+                                                v-if="!editLayout"
+                                                href="/calendar/moon"
+                                                class="text-sm font-medium text-primary transition hover:text-primary/80"
+                                                @click.stop
                                             >
-                                                expand_more
-                                            </span>
+                                                Ava kõik
+                                            </Link>
                                         </div>
                                     </div>
                                     <div
@@ -729,7 +928,6 @@ const dashboardSectionHeaderStrip =
                                     </div>
                                 </section>
                             </template>
-                        </div>
                     </div>
                 </div>
             </div>

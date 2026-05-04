@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 import { getMoonInfo } from '@/lib/moon/moon';
@@ -96,19 +95,5 @@ const signSymbol = computed(() => SIGN_SYMBOL[zodiac.value.moonSign] ?? '☾');
             </p>
         </div>
 
-        <Link
-            href="/calendar/moon"
-            class="group flex w-full items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/8 py-3 text-sm font-semibold text-primary transition hover:border-primary/35 hover:bg-primary/12"
-        >
-            <span
-                class="material-symbols-outlined text-[20px] transition group-hover:translate-x-0.5"
-            >
-                calendar_month
-            </span>
-            <span>Kuukalender</span>
-            <span class="material-symbols-outlined text-lg opacity-70"
-                >chevron_right</span
-            >
-        </Link>
     </div>
 </template>
