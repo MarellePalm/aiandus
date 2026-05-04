@@ -44,6 +44,12 @@ const shadowOffset = computed(() => {
 const maskId = computed(
     () => `moon-mask-${t.value.toFixed(4)}-p${props.phaseIndex}-${props.size}`,
 );
+const glowId = computed(
+    () => `moon-glow-${t.value.toFixed(4)}-p${props.phaseIndex}-${props.size}`,
+);
+const discId = computed(
+    () => `moon-disc-${t.value.toFixed(4)}-p${props.phaseIndex}-${props.size}`,
+);
 </script>
 
 <template>
@@ -55,6 +61,15 @@ const maskId = computed(
         aria-hidden="true"
     >
         <defs>
+            <radialGradient :id="glowId" cx="50%" cy="50%" r="60%">
+                <stop offset="0%" stop-color="#f7f2df" stop-opacity="0.28" />
+                <stop offset="70%" stop-color="#f7f2df" stop-opacity="0.1" />
+                <stop offset="100%" stop-color="#f7f2df" stop-opacity="0" />
+            </radialGradient>
+            <linearGradient :id="discId" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#fff9ed" />
+                <stop offset="100%" stop-color="#efe7d4" />
+            </linearGradient>
             <mask :id="maskId">
                 <rect width="100%" height="100%" fill="white" />
                 <circle
@@ -66,13 +81,20 @@ const maskId = computed(
             </mask>
         </defs>
 
-        <!-- Uuskuu: ainult varjukülg (kogu ketas roheline) -->
+        <circle
+            :cx="cx"
+            :cy="cy"
+            :r="outerR + ringStroke * 0.9"
+            :fill="`url(#${glowId})`"
+        />
+
+        <!-- Uuskuu: ainult varjukülg -->
         <circle
             v-if="isNewMoonPhase"
             :cx="cx"
             :cy="cy"
             :r="innerR"
-            fill="currentColor"
+            fill="#647267"
         />
 
         <!-- Täiskuu: ainult valgus (kogu ketas valge) -->
@@ -81,28 +103,27 @@ const maskId = computed(
             :cx="cx"
             :cy="cy"
             :r="innerR"
-            fill="#ffffff"
+            :fill="`url(#${discId})`"
         />
 
-        <!-- Vahefaasid: roheline taust + valge valgustatud osa (mask) — kasvav/kahanev ei ole „üleni roheline“ -->
+        <!-- Vahefaasid: pehme varjukülg + soe valgustatud osa -->
         <g v-else>
-            <circle :cx="cx" :cy="cy" :r="innerR" fill="currentColor" />
+            <circle :cx="cx" :cy="cy" :r="innerR" fill="#6f7f72" />
             <circle
                 :cx="cx"
                 :cy="cy"
                 :r="innerR"
-                fill="#ffffff"
+                :fill="`url(#${discId})`"
                 :mask="`url(#${maskId})`"
             />
         </g>
 
-        <!-- Välisring alati -->
         <circle
             :cx="cx"
             :cy="cy"
             :r="outerR"
             fill="none"
-            stroke="currentColor"
+            stroke="#8ba38a"
             :stroke-width="ringStroke"
         />
     </svg>

@@ -74,7 +74,7 @@ const BIODYNAMIC_ET: Record<BiodynamicDayType, BiodynamicInfoEt> = {
             'väeta toataimi',
             'toeta lehemassi kasvu',
         ],
-        notes: ['Lehtköögivilju on parem koristada õie- või viljapäeval.'],
+        notes: ['Sobib lehtköögiviljade ja roheliste taimede hoolduseks.'],
     },
     fruit: {
         label: 'Viljapäev',
@@ -88,7 +88,7 @@ const BIODYNAMIC_ET: Record<BiodynamicDayType, BiodynamicInfoEt> = {
             'toeta saagi kujunemist',
             'hoolda seemnetaimi',
         ],
-        notes: ['Viljapäeval korjatud saak säilib kauem.'],
+        notes: ['Sobib viljakandvate taimede hoolduseks ja saagi korjamiseks.'],
     },
     root: {
         label: 'Juurepäev',
@@ -102,10 +102,10 @@ const BIODYNAMIC_ET: Record<BiodynamicDayType, BiodynamicInfoEt> = {
             'rohii peenraid',
             'valmista saaki säilitamiseks ette',
         ],
-        notes: ['Juurvilju on hea hoiustada juurepäeval.'],
+        notes: ['Sobib juurviljade külviks, hoolduseks ja korjeks.'],
     },
     flower: {
-        label: 'Õiepäev',
+        label: 'Lillepäev',
         element: 'õhk',
         crops: ['lilled', 'maitsetaimed'],
         tasks: [
@@ -116,7 +116,7 @@ const BIODYNAMIC_ET: Record<BiodynamicDayType, BiodynamicInfoEt> = {
             'hoolda ilutaimi',
             'tee kergemaid aiatöid',
         ],
-        notes: ['Õiepäeval lõigatud lilled püsivad kauem.'],
+        notes: ['Sobib õistaimede ja maitsetaimede hoolduseks.'],
     },
 } as const;
 
