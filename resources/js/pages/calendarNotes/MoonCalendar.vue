@@ -195,6 +195,12 @@ function isToday(d: Date): boolean {
 const selectedDateObj = computed(() =>
     selectedDay.value == null ? null : dateForDay(selectedDay.value),
 );
+const selectedInfo = computed(() =>
+    selectedDateObj.value ? dayInfoForDate(selectedDateObj.value) : null,
+);
+const selectedDateLabel = computed(() =>
+    selectedDateObj.value ? formatDateLong(selectedDateObj.value) : null,
+);
 
 type DayInfo = ReturnType<typeof dayInfoForDate>;
 
@@ -321,6 +327,61 @@ onMounted(() => scrollDescriptionToCenter('auto'));
 
                     <main class="flex-1 space-y-6 px-6 py-4 md:px-8">
                         <section
+                            v-if="selectedDateObj && selectedInfo"
+                            class="mx-auto w-full max-w-lg rounded-[1.8rem] border border-border/70 bg-linear-to-br from-stone-50 via-background to-stone-100/70 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_30px_rgba(120,110,92,0.08)]"
+                        >
+                            <div class="flex items-start gap-4">
+                                <div
+                                    class="flex h-18 w-18 shrink-0 items-center justify-center rounded-2xl border border-border/70 bg-white/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_24px_rgba(120,110,92,0.10)]"
+                                >
+                                    <MoonPhaseIcon
+                                        :lunation-t="selectedInfo.lunationT"
+                                        :phase-index="selectedInfo.phaseIndex"
+                                        :size="50"
+                                        class="drop-shadow-sm"
+                                    />
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <p
+                                        class="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                    >
+                                        Valitud päev
+                                    </p>
+                                    <p class="mt-2 text-sm text-muted-foreground">
+                                        {{ selectedDateLabel }}
+                                    </p>
+                                    <h2
+                                        class="mt-1 text-xl font-bold tracking-tight text-foreground"
+                                    >
+                                        {{ selectedInfo.phaseDisplay }}
+                                    </h2>
+                                    <p class="mt-1 text-sm text-foreground/80">
+                                        {{ selectedInfo.moodHeadline }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 flex flex-wrap gap-2">
+                                <span
+                                    class="inline-flex rounded-full border border-border/70 bg-white/80 px-3 py-1.5 text-xs font-medium text-foreground shadow-sm"
+                                >
+                                    {{ selectedInfo.biodynamicLabel }}
+                                </span>
+                                <span
+                                    class="inline-flex rounded-full border border-border/70 bg-white/80 px-3 py-1.5 text-xs font-medium text-foreground shadow-sm"
+                                >
+                                    Kuu on {{ selectedInfo.moonSignInessive }}
+                                </span>
+                                <span
+                                    v-if="bestTaskOfDay(selectedInfo.tasks)"
+                                    class="inline-flex rounded-full border border-stone-200 bg-stone-100/80 px-3 py-1.5 text-xs font-medium text-foreground/85 shadow-sm"
+                                >
+                                    {{ bestTaskOfDay(selectedInfo.tasks) }}
+                                </span>
+                            </div>
+                        </section>
+
+                        <section
                             class="mx-auto w-full max-w-lg card p-2 sm:p-3 md:p-3.5"
                         >
                             <div class="mb-3 flex items-center justify-between">
@@ -367,10 +428,10 @@ onMounted(() => scrollDescriptionToCenter('auto'));
                                         v-for="d in weekDays"
                                         :key="d.getTime()"
                                         type="button"
-                                        class="flex min-h-13 flex-col items-center justify-center gap-0 rounded-lg border border-border/60 bg-card px-0.5 py-0.5 text-left transition hover:bg-muted/45 sm:min-h-14 sm:px-1 md:min-h-15"
+                                        class="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border border-border/60 bg-card px-1 py-1 text-left transition hover:bg-muted/45 sm:min-h-15 sm:px-1.5"
                                         :class="[
                                             isSelectedDate(d)
-                                                ? 'border-primary/30 bg-primary/5 ring-2 ring-primary/40'
+                                                ? 'border-stone-300 bg-stone-100 ring-2 ring-stone-300/70'
                                                 : '',
                                             !isInViewMonth(d)
                                                 ? 'opacity-45'
@@ -400,7 +461,7 @@ onMounted(() => scrollDescriptionToCenter('auto'));
                                             class="shrink-0 text-primary"
                                         />
                                         <span
-                                            class="mt-0.5 line-clamp-2 w-full px-0.5 text-center text-[8px] leading-[1.15] font-medium text-foreground/75 sm:text-[9px]"
+                                            class="line-clamp-2 w-full px-0.5 text-center text-[8px] leading-[1.15] font-medium text-foreground/75 sm:text-[9px]"
                                             :title="
                                                 dayInfoForDate(d).phaseDisplay
                                             "
@@ -451,10 +512,10 @@ onMounted(() => scrollDescriptionToCenter('auto'));
                                     <div
                                         v-for="day in daysInMonth"
                                         :key="day"
-                                        class="flex min-h-13 cursor-pointer flex-col items-center justify-center gap-0 rounded-lg border border-border/60 bg-card px-0.5 py-0.5 text-left transition hover:bg-muted/45 sm:min-h-14 sm:px-1 md:min-h-15"
+                                        class="flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-border/60 bg-card px-1 py-1 text-left transition hover:bg-muted/45 sm:min-h-15 sm:px-1.5"
                                         :class="
                                             selectedDay === day
-                                                ? 'border-primary/30 bg-primary/5 ring-2 ring-primary/40'
+                                                ? 'border-stone-300 bg-stone-100 ring-2 ring-stone-300/70'
                                                 : ''
                                         "
                                         role="button"
@@ -476,7 +537,7 @@ onMounted(() => scrollDescriptionToCenter('auto'));
                                             class="shrink-0 text-primary"
                                         />
                                         <span
-                                            class="mt-0.5 line-clamp-2 w-full px-0.5 text-center text-[8px] leading-[1.15] font-medium text-foreground/75 sm:text-[9px]"
+                                            class="line-clamp-2 w-full px-0.5 text-center text-[8px] leading-[1.15] font-medium text-foreground/75 sm:text-[9px]"
                                             :title="dayInfo(day).phaseDisplay"
                                         >
                                             {{ dayInfo(day).phaseDisplay }}
@@ -500,10 +561,10 @@ onMounted(() => scrollDescriptionToCenter('auto'));
                                     :data-desc-offset="row.off"
                                 >
                                     <section
-                                        class="flex min-h-[180px] w-full flex-col overflow-hidden rounded-xl border border-border bg-card/60 shadow-soft backdrop-blur-md transition-shadow duration-300"
+                                        class="flex min-h-[180px] w-full flex-col overflow-hidden rounded-[1.4rem] border border-border/70 bg-card/70 shadow-soft backdrop-blur-md transition-shadow duration-300"
                                         :class="
                                             row.off === 0
-                                                ? 'border-primary/35 shadow-[0_12px_40px_-18px_rgba(34,197,94,0.22)] ring-2 ring-primary/30 dark:shadow-[0_12px_40px_-18px_rgba(34,197,94,0.12)]'
+                                                ? 'border-stone-300 shadow-[0_12px_40px_-18px_rgba(120,110,92,0.18)] ring-2 ring-stone-300/70 dark:shadow-[0_12px_40px_-18px_rgba(120,110,92,0.10)]'
                                                 : ''
                                         "
                                         aria-live="polite"
@@ -581,7 +642,7 @@ onMounted(() => scrollDescriptionToCenter('auto'));
                                                     class="flex flex-wrap items-center gap-2 pt-0.5"
                                                 >
                                                     <span
-                                                        class="inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground"
+                                                        class="inline-flex rounded-full border border-border/70 bg-white/80 px-2.5 py-1 text-xs font-medium text-foreground"
                                                     >
                                                         {{
                                                             row.info.moodHeadline.replace(
@@ -591,7 +652,7 @@ onMounted(() => scrollDescriptionToCenter('auto'));
                                                         }}
                                                     </span>
                                                     <span
-                                                        class="inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground"
+                                                        class="inline-flex rounded-full border border-border/70 bg-white/80 px-2.5 py-1 text-xs font-medium text-foreground"
                                                     >
                                                         Kuu on
                                                         {{
@@ -600,7 +661,7 @@ onMounted(() => scrollDescriptionToCenter('auto'));
                                                         }}
                                                     </span>
                                                     <span
-                                                        class="inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-foreground"
+                                                        class="inline-flex rounded-full border border-border/70 bg-white/80 px-2.5 py-1 text-xs font-medium text-foreground"
                                                     >
                                                         {{
                                                             row.info
@@ -641,15 +702,15 @@ onMounted(() => scrollDescriptionToCenter('auto'));
                                                             row.info.tasks,
                                                         )
                                                     "
-                                                    class="mb-3 rounded-lg border border-border/60 bg-muted/25 px-3 py-2"
+                                                    class="mb-3 rounded-xl border border-stone-200 bg-stone-100/70 px-3 py-2.5"
                                                 >
                                                     <p
-                                                        class="text-xs font-semibold text-foreground/70"
+                                                        class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                                                     >
                                                         Parim tegevus täna
                                                     </p>
                                                     <p
-                                                        class="text-sm font-semibold text-foreground"
+                                                        class="mt-1.5 text-sm font-medium text-foreground/90"
                                                     >
                                                         {{
                                                             bestTaskOfDay(
@@ -659,13 +720,13 @@ onMounted(() => scrollDescriptionToCenter('auto'));
                                                     </p>
                                                 </div>
                                                 <p
-                                                    class="mb-2 text-sm font-semibold text-foreground"
+                                                    class="mb-2 text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                                                 >
                                                     Täna tee
                                                 </p>
                                                 <ul
                                                     v-if="row.info.tasks.length"
-                                                    class="w-full space-y-2 text-sm text-foreground"
+                                                    class="w-full space-y-2 text-sm text-foreground/90"
                                                 >
                                                     <li
                                                         v-for="task in row.info
@@ -674,20 +735,20 @@ onMounted(() => scrollDescriptionToCenter('auto'));
                                                         class="flex items-start gap-2.5"
                                                     >
                                                         <span
-                                                            class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary"
+                                                            class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-stone-100 text-[10px] font-bold text-foreground/70"
                                                             aria-hidden="true"
                                                         >
                                                             ✓
                                                         </span>
                                                         <span
-                                                            class="min-w-0 flex-1 pt-0.5 leading-snug text-foreground"
+                                                            class="min-w-0 flex-1 pt-0.5 leading-snug text-foreground/90"
                                                             >{{ task }}</span
                                                         >
                                                     </li>
                                                 </ul>
                                                 <p
                                                     v-else
-                                                    class="text-sm text-foreground"
+                                                    class="text-sm text-foreground/85"
                                                 >
                                                     Täna ei ole erisoovitusi.
                                                 </p>
@@ -698,12 +759,12 @@ onMounted(() => scrollDescriptionToCenter('auto'));
                                                 class="border-t border-border/50 pt-3"
                                             >
                                                 <p
-                                                    class="mb-2 text-sm font-semibold text-foreground"
+                                                    class="mb-1.5 text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                                                 >
-                                                    Soovitused
+                                                    Tasub meeles pidada
                                                 </p>
                                                 <ul
-                                                    class="w-full space-y-1.5 text-sm text-foreground"
+                                                    class="w-full space-y-1.5 text-sm text-foreground/85"
                                                 >
                                                     <li
                                                         v-for="item in row.info
@@ -712,7 +773,7 @@ onMounted(() => scrollDescriptionToCenter('auto'));
                                                         class="flex items-start gap-2.5"
                                                     >
                                                         <span
-                                                            class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-muted-foreground"
+                                                            class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-stone-100 text-[11px] font-semibold text-muted-foreground"
                                                             aria-hidden="true"
                                                         >
                                                             –

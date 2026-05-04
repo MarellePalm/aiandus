@@ -761,3 +761,28 @@
         @apply text-sm font-medium text-foreground/85 opacity-90;
     }
 }
+
+/*
+  Material Symbols (Google’i link head-is): muutujafond vajab telgi väärtusi;
+  kui need pärivad html-ilt “normal”-ina, jäävad ligatuur-ikoonid tühjaks (ainult taust).
+  See plokk on @layer-väline, et alati võidaks Tailwindi base/preflight pärimise.
+*/
+.material-symbols-outlined {
+    font-family: 'Material Symbols Outlined', sans-serif;
+    font-weight: 400;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    font-feature-settings: 'liga';
+    -webkit-font-feature-settings: 'liga';
+    font-variation-settings:
+        'FILL' 0,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24;
+    -webkit-font-smoothing: antialiased;
+}

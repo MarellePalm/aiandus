@@ -1,7 +1,7 @@
 <!-- resources/js/Pages/Dashboard.vue -->
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 import DashboardWeather from '@/components/DashboardWeather.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
@@ -92,26 +92,45 @@ const dashboardSummary = computed<DashboardSummary>(() => {
     };
 });
 
-const overviewStats = computed(() => [
-    {
-        id: 'beds',
-        label: 'Peenrad',
-        value: dashboardSummary.value.bedsCount,
-        href: map().url,
-    },
-    {
-        id: 'plants',
-        label: 'Taimed',
-        value: dashboardSummary.value.plantsCount,
-        href: '/plants',
-    },
-    {
-        id: 'seeds',
-        label: 'Varud',
-        value: dashboardSummary.value.seedsCount,
-        href: '/seeds',
-    },
-]);
+const overviewStats = computed(() => {
+    const { bedsCount, plantsCount, seedsCount } = dashboardSummary.value;
+
+    return [
+        {
+            id: 'beds',
+            label: 'Peenrad',
+            value: bedsCount,
+            href: map().url,
+            icon: 'map',
+            hint:
+                bedsCount > 0
+                    ? 'Vaata peenarde kaarti'
+                    : 'Lisa esimene peenar kaardilt',
+        },
+        {
+            id: 'plants',
+            label: 'Taimed',
+            value: plantsCount,
+            href: '/plants',
+            icon: 'local_florist',
+            hint:
+                plantsCount > 0
+                    ? 'Ava taimede nimekiri'
+                    : 'Aed ootab taimi',
+        },
+        {
+            id: 'seeds',
+            label: 'Varud',
+            value: seedsCount,
+            href: '/seeds',
+            icon: 'shelves',
+            hint:
+                seedsCount > 0
+                    ? 'Vaata varusid'
+                    : 'Lisa seemneid või varusid',
+        },
+    ];
+});
 
 const todayWorkSummary = computed(() => {
     if (dashboardSummary.value.todayTasksCount > 0) {
@@ -199,6 +218,17 @@ const COLLAPSIBLE_SECTION_IDS: SectionId[] = ['weather', 'moon'];
 const sectionOrder = ref<SectionId[]>([...DEFAULT_ORDER]);
 const collapsedSectionIds = ref<Set<SectionId>>(new Set());
 const editLayout = ref(false);
+const isDesktop = ref(false);
+let desktopMediaQuery: MediaQueryList | null = null;
+let handleDesktopChange: ((event: MediaQueryListEvent) => void) | null = null;
+
+const DESKTOP_SECTION_ORDER: SectionId[] = ['weather', 'moon', 'notes', 'garden'];
+
+const displaySectionOrder = computed(() => {
+    if (editLayout.value || !isDesktop.value) return sectionOrder.value;
+
+    return DESKTOP_SECTION_ORDER.filter((id) => sectionOrder.value.includes(id));
+});
 
 function persistCollapsed(next: Iterable<SectionId>) {
     const arr = [...next];
@@ -282,7 +312,7 @@ function toggleSectionCollapsed(id: SectionId) {
 }
 function sectionTitle(id: SectionId): string {
     const titles: Record<SectionId, string> = {
-        garden: 'Aia seis',
+        garden: 'Kokkuvõte',
         notes: 'Viimased märkmed',
         weather: 'Ilm',
         moon: 'Kuufaas täna',
@@ -349,6 +379,23 @@ onMounted(() => {
     } catch {
         /* ignore */
     }
+
+    try {
+        desktopMediaQuery = window.matchMedia('(min-width: 1024px)');
+        isDesktop.value = desktopMediaQuery.matches;
+        handleDesktopChange = (event: MediaQueryListEvent) => {
+            isDesktop.value = event.matches;
+        };
+        desktopMediaQuery.addEventListener('change', handleDesktopChange);
+    } catch {
+        /* ignore */
+    }
+});
+
+onUnmounted(() => {
+    if (desktopMediaQuery && handleDesktopChange) {
+        desktopMediaQuery.removeEventListener('change', handleDesktopChange);
+    }
 });
 
 // Lumememma-stiilis + nupp: väikesed ümarad kiirtegevused selle kohal
@@ -409,26 +456,26 @@ const dashboardSectionHeaderStrip =
                         </div>
 
                         <div
-                            class="rounded-[1.75rem] border border-primary/15 bg-linear-to-br from-primary/12 via-background to-secondary/35 px-3.5 py-2 shadow-sm sm:px-4 sm:py-2.5"
+                            class="rounded-[1.75rem] border border-primary/15 bg-linear-to-br from-primary/12 via-background to-secondary/35 px-3.5 py-2 shadow-sm sm:px-4 sm:py-2.5 lg:px-5 lg:py-3"
                         >
-                            <p class="text-sm text-muted-foreground">
+                            <p class="text-sm text-muted-foreground lg:text-[13px]">
                                 {{ todayLabel }}
                             </p>
 
                             <div
                                 v-if="todayWorkSummary.showValue || todayTasks.length"
-                                class="mt-3"
+                                class="mt-3 lg:mt-2.5"
                             >
                                 <Link
                                     :href="todayWorkSummary.href"
-                                    class="rounded-[1.5rem] border border-border/70 bg-card/90 p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"
+                                    class="block rounded-[1.5rem] border border-border/70 bg-card/90 p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md lg:p-3.5"
                                     :class="{
                                         'ring-1 ring-primary/20': todayWorkSummary.tone === 'primary',
                                         'ring-1 ring-amber-200/80': todayWorkSummary.tone === 'amber',
                                         'ring-1 ring-emerald-200/80': todayWorkSummary.tone === 'green',
                                     }"
                                 >
-                                    <div class="flex items-start justify-between gap-3">
+                                    <div class="flex items-start justify-between gap-3 lg:items-center">
                                         <div class="min-w-0">
                                             <p
                                                 class="font-semibold text-foreground"
@@ -442,7 +489,7 @@ const dashboardSectionHeaderStrip =
                                             </p>
                                             <p
                                                 v-if="todayWorkSummary.showValue"
-                                                class="mt-2 text-3xl font-bold tracking-tight text-foreground"
+                                                class="mt-2 text-3xl font-bold tracking-tight text-foreground lg:text-2xl"
                                             >
                                                 {{ todayWorkSummary.value }}
                                             </p>
@@ -466,7 +513,7 @@ const dashboardSectionHeaderStrip =
 
                                     <div
                                         v-if="todayTasks.length"
-                                        class="mt-4 space-y-2"
+                                        class="mt-4 space-y-2 lg:mt-3 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0"
                                     >
                                         <div
                                             v-for="task in todayTasks"
@@ -534,15 +581,20 @@ const dashboardSectionHeaderStrip =
                 </div>
 
                 <div class="px-6 pt-4 pb-24 md:px-8">
-                    <div class="space-y-4">
-                        <template v-for="id in sectionOrder" :key="id">
+                    <div
+                        class="space-y-4"
+                        :class="
+                            editLayout
+                                ? ''
+                                : 'lg:columns-2 lg:space-y-0 lg:[column-gap:1rem]'
+                        "
+                    >
+                        <template v-for="id in displaySectionOrder" :key="id">
                             <!-- Aia seis -->
                             <section
                                 v-if="id === 'garden'"
-                                class="overflow-hidden rounded-[1.6rem] border border-border bg-card/90 shadow-sm"
-                                :class="
-                                    editLayout ? 'ring-1 ring-primary/25' : ''
-                                "
+                                class="overflow-hidden rounded-[1.6rem] border border-border bg-card/90 shadow-sm lg:mb-4 lg:break-inside-avoid"
+                                :class="editLayout ? 'ring-1 ring-primary/25' : ''"
                             >
                                 <div
                                     class="flex items-center justify-between gap-3 border-b border-border bg-linear-to-r px-4 py-3"
@@ -589,22 +641,33 @@ const dashboardSectionHeaderStrip =
                                         </button>
                                     </div>
                                 </div>
-                                <div class="p-4">
-                                    <div class="grid grid-cols-3 gap-2 sm:gap-3">
+                                <div class="p-4 lg:p-3.5">
+                                    <div class="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-2.5">
                                         <div
                                             v-for="stat in overviewStats"
                                             :key="stat.id"
-                                            class="aspect-square min-h-0"
+                                            class="aspect-square min-h-0 lg:aspect-auto lg:h-28"
                                         >
                                             <Link
                                                 :href="stat.href"
-                                                class="flex h-full min-h-0 flex-col rounded-2xl border border-border/70 bg-muted/25 p-2.5 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-md sm:p-3"
+                                                class="flex h-full min-h-0 flex-col rounded-2xl border border-border/70 bg-muted/25 p-2.5 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-md sm:p-3 lg:justify-between"
                                             >
-                                                <p
-                                                    class="text-center text-[9px] font-semibold tracking-[0.12em] text-muted-foreground uppercase leading-tight sm:text-[11px] sm:tracking-[0.16em]"
+                                                <div
+                                                    class="flex items-start justify-between gap-2"
                                                 >
-                                                    {{ stat.label }}
-                                                </p>
+                                                    <p
+                                                        class="text-center text-[9px] font-semibold tracking-[0.12em] text-muted-foreground uppercase leading-tight sm:text-[11px] sm:tracking-[0.16em] lg:text-left"
+                                                    >
+                                                        {{ stat.label }}
+                                                    </p>
+                                                    <span
+                                                        v-if="isDesktop"
+                                                        aria-hidden="true"
+                                                        class="material-symbols-outlined inline-block shrink-0 rounded-2xl bg-primary/10 p-1.5 text-[18px] leading-none text-primary"
+                                                    >
+                                                        {{ stat.icon }}
+                                                    </span>
+                                                </div>
                                                 <div
                                                     class="flex min-h-0 flex-1 items-center justify-center"
                                                 >
@@ -614,6 +677,11 @@ const dashboardSectionHeaderStrip =
                                                         {{ stat.value }}
                                                     </p>
                                                 </div>
+                                                <p
+                                                    class="hidden text-center text-[11px] leading-snug text-muted-foreground lg:block"
+                                                >
+                                                    {{ stat.hint }}
+                                                </p>
                                             </Link>
                                         </div>
                                     </div>
@@ -623,10 +691,8 @@ const dashboardSectionHeaderStrip =
                             <!-- Viimased märkmed -->
                             <section
                                 v-if="id === 'notes'"
-                                class="overflow-hidden rounded-[1.6rem] border border-border bg-card/90 shadow-sm"
-                                :class="
-                                    editLayout ? 'ring-1 ring-primary/25' : ''
-                                "
+                                class="overflow-hidden rounded-[1.6rem] border border-border bg-card/90 shadow-sm lg:mb-4 lg:break-inside-avoid"
+                                :class="editLayout ? 'ring-1 ring-primary/25' : ''"
                             >
                                 <div
                                     class="flex items-center justify-between gap-3 border-b border-border bg-linear-to-r px-4 py-3"
@@ -692,13 +758,13 @@ const dashboardSectionHeaderStrip =
 
                                 <div
                                     v-if="recentNotes.length"
-                                    class="space-y-3 p-4"
+                                    class="grid grid-cols-2 gap-3 p-4 lg:grid-cols-1"
                                 >
                                     <Link
-                                        v-for="note in recentNotes.slice(0, 3)"
+                                        v-for="note in recentNotes.slice(0, 5)"
                                         :key="note.id"
                                         href="/calendar/overview"
-                                        class="block rounded-2xl border border-border/70 bg-muted/35 px-4 py-3 transition hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card"
+                                        class="block rounded-2xl border border-border/70 bg-muted/35 px-3 py-3 transition hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card sm:px-4"
                                     >
                                         <div class="flex items-start justify-between gap-3">
                                             <div class="min-w-0">
@@ -733,12 +799,8 @@ const dashboardSectionHeaderStrip =
                             <!-- Weather -->
                                 <section
                                     v-if="id === 'weather'"
-                                    class="overflow-hidden rounded-[1.6rem] border border-border bg-card/95 shadow-sm"
-                                    :class="
-                                        editLayout
-                                            ? 'ring-1 ring-primary/25'
-                                            : ''
-                                    "
+                                    class="overflow-hidden rounded-[1.6rem] border border-border bg-card/95 shadow-sm lg:mb-4 lg:break-inside-avoid"
+                                    :class="editLayout ? 'ring-1 ring-primary/25' : ''"
                                 >
                                     <div
                                         class="group flex cursor-pointer items-center justify-between gap-3 border-b border-border bg-linear-to-r px-4 py-3"
@@ -829,12 +891,8 @@ const dashboardSectionHeaderStrip =
                                 <!-- Moon -->
                                 <section
                                     v-if="id === 'moon'"
-                                    class="overflow-hidden rounded-[1.6rem] border border-border bg-card/95 shadow-sm"
-                                    :class="
-                                        editLayout
-                                            ? 'ring-1 ring-primary/25'
-                                            : ''
-                                    "
+                                    class="overflow-hidden rounded-[1.6rem] border border-border bg-card/95 shadow-sm lg:mb-4 lg:break-inside-avoid"
+                                    :class="editLayout ? 'ring-1 ring-primary/25' : ''"
                                 >
                                     <div
                                         class="group flex cursor-pointer items-center justify-between gap-3 border-b border-border bg-linear-to-r px-4 py-3"

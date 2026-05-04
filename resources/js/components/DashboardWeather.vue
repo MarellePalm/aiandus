@@ -122,7 +122,7 @@ const humidity = computed(() => q.data.value?.humidity ?? null);
 const windSpeed = computed(() => q.data.value?.windSpeed ?? null);
 
 const daily = computed<WeatherDailyItem[]>(() => q.data.value?.daily ?? []);
-const forecastDays = computed(() => daily.value.slice(1, 5));
+const forecastDays = computed(() => daily.value.slice(1, 6));
 
 const todayWeatherLabel = computed(
     () => q.data.value?.openWeatherLabel ?? null,
@@ -225,21 +225,15 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
 
 <template>
     <div class="weather-card">
-        <div class="mb-4">
-            <div class="flex items-start justify-between gap-2">
-                <div class="min-w-0 space-y-1">
+        <div
+            class="rounded-[1.6rem] border border-border/70 bg-linear-to-br from-background via-background to-muted/25 p-4 shadow-sm"
+        >
+            <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0 flex-1">
                     <div class="flex flex-wrap items-center gap-2">
-                        <span
-                            class="text-[48px] leading-none font-bold tracking-tight text-foreground sm:text-[52px]"
-                        >
-                            <template v-if="q.isSuccess.value && temp !== null">
-                                {{ Math.round(temp) }}°C
-                            </template>
-                            <template v-else>...</template>
-                        </span>
                         <div
                             v-if="q.isSuccess.value && locationName"
-                            class="inline-flex items-center rounded-full bg-muted/60 px-2.5 py-1 text-xs text-foreground/85 ring-1 ring-border/60 dark:bg-card/80"
+                            class="inline-flex items-center rounded-full bg-card/80 px-2.5 py-1 text-xs text-foreground/80 ring-1 ring-border/70"
                         >
                             <span class="material-symbols-outlined mr-1 text-sm"
                                 >location_on</span
@@ -248,23 +242,47 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                                 locationName
                             }}</span>
                         </div>
+                        <div
+                            v-if="q.isSuccess.value && todayWeatherLabel"
+                            class="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary ring-1 ring-primary/15"
+                        >
+                            {{ todayWeatherLabel }}
+                        </div>
+                    </div>
+
+                    <div class="mt-4 flex items-end gap-3">
+                        <span
+                            class="text-[44px] leading-none font-bold tracking-tight text-foreground sm:text-[52px]"
+                        >
+                            <template v-if="q.isSuccess.value && temp !== null">
+                                {{ Math.round(temp) }}°C
+                            </template>
+                            <template v-else>...</template>
+                        </span>
+                        <span
+                            class="pb-1 text-sm font-medium text-muted-foreground"
+                        >
+                            Max {{ Math.round(tMax ?? 0) }}° / Min
+                            {{ Math.round(tMin ?? 0) }}°
+                        </span>
                     </div>
                 </div>
-                <div class="shrink-0 pt-1">
+
+                <div class="shrink-0">
                     <img
                         v-if="q.isSuccess.value && todayHeroIconUrl"
                         :src="todayHeroIconUrl"
                         alt=""
-                        class="block h-28 w-28 object-contain opacity-95 drop-shadow-sm sm:h-32 sm:w-32"
-                        width="112"
-                        height="112"
+                        class="block h-20 w-20 object-contain opacity-95 drop-shadow-sm sm:h-24 sm:w-24"
+                        width="96"
+                        height="96"
                     />
                     <span
                         v-else-if="q.isSuccess.value"
                         class="material-symbols-outlined block leading-none drop-shadow-sm"
                         :class="fallbackWeatherColorClass"
                         style="
-                            font-size: 6rem;
+                            font-size: 4.5rem;
                             font-variation-settings: 'opsz' 72;
                         "
                         aria-hidden="true"
@@ -276,105 +294,105 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
 
             <div
                 v-if="q.isSuccess.value"
-                class="mt-1 rounded-lg bg-muted/30 p-2 text-sm text-muted-foreground ring-1 ring-border/60 dark:bg-card/70"
+                class="mt-4 grid grid-cols-2 gap-2.5 xl:grid-cols-4"
             >
-                <div class="flex flex-wrap items-start gap-x-3 gap-y-2">
-                    <span class="inline-flex shrink-0 items-center gap-1.5">
-                        <span
-                            class="material-symbols-outlined text-base text-foreground/80"
-                            aria-hidden="true"
-                            >device_thermostat</span
-                        >
-                        <span class="font-medium text-foreground/85">
-                            Max {{ Math.round(tMax ?? 0) }}° / Min
-                            {{ Math.round(tMin ?? 0) }}°
-                        </span>
-                    </span>
-                    <span
-                        class="inline-flex min-w-0 flex-1 basis-full items-start gap-1.5 sm:basis-auto"
+                <div
+                    class="rounded-2xl border border-border/70 bg-card/70 px-3 py-2.5"
+                >
+                    <p
+                        class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                     >
+                        Tuul
+                    </p>
+                    <div class="mt-1 flex items-center gap-2">
                         <span
-                            class="material-symbols-outlined mt-0.5 shrink-0 text-base text-foreground/80"
-                            aria-hidden="true"
-                            >{{ detailConditionMaterialIcon }}</span
-                        >
-                        <span
-                            class="min-w-0 leading-snug font-semibold break-words text-foreground/85"
-                        >
-                            {{ todayWeatherLabel ?? '—' }}
-                        </span>
-                    </span>
-                </div>
-                <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span class="inline-flex items-center gap-1.5">
-                        <span
-                            class="material-symbols-outlined text-base text-foreground/80"
+                            class="material-symbols-outlined hidden text-base text-foreground/80 sm:inline-flex"
                             aria-hidden="true"
                             >air</span
                         >
-                        <span class="text-foreground/80">{{
-                            windSpeed != null
-                                ? `${windSpeed.toFixed(1)} m/s`
-                                : '—'
-                        }}</span>
-                    </span>
-                    <span class="inline-flex items-center gap-1.5">
+                        <span class="text-sm font-medium text-foreground">
+                            {{
+                                windSpeed != null
+                                    ? `${windSpeed.toFixed(1)} m/s`
+                                    : '—'
+                            }}
+                        </span>
+                    </div>
+                </div>
+
+                <div
+                    class="rounded-2xl border border-border/70 bg-card/70 px-3 py-2.5"
+                >
+                    <p
+                        class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
+                    >
+                        Niiskus
+                    </p>
+                    <div class="mt-1 flex items-center gap-2">
                         <span
-                            class="material-symbols-outlined text-base text-foreground/80"
+                            class="material-symbols-outlined hidden text-base text-foreground/80 sm:inline-flex"
                             aria-hidden="true"
                             >water_drop</span
                         >
-                        <span class="text-foreground/80">{{
-                            humidity != null ? `${humidity}%` : '—'
-                        }}</span>
-                    </span>
+                        <span class="text-sm font-medium text-foreground">
+                            {{ humidity != null ? `${humidity}%` : '—' }}
+                        </span>
+                    </div>
                 </div>
+
                 <div
-                    v-if="q.isSuccess.value && (sunrise || sunset)"
-                    class="mt-1.5 flex items-center gap-2 text-xs sm:text-sm"
+                    class="rounded-2xl border border-border/70 bg-card/70 px-3 py-2.5"
                 >
-                    <span
-                        class="inline-flex items-center gap-1.5 text-foreground/80"
+                    <p
+                        class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                     >
+                        Tõus
+                    </p>
+                    <div class="mt-1 flex items-center gap-2">
                         <span
-                            class="material-symbols-outlined text-base text-amber-400"
+                            class="material-symbols-outlined hidden text-base text-amber-400 sm:inline-flex"
                             aria-hidden="true"
                             >light_mode</span
                         >
-                        <span class="text-foreground/80">{{
-                            sunrise ? `Tõuseb ${sunrise}` : '—'
-                        }}</span>
-                    </span>
-                    <span
-                        class="inline-flex items-center gap-1.5 text-foreground/80"
+                        <span class="text-sm font-medium text-foreground">
+                            {{ sunrise ?? '—' }}
+                        </span>
+                    </div>
+                </div>
+
+                <div
+                    class="rounded-2xl border border-border/70 bg-card/70 px-3 py-2.5"
+                >
+                    <p
+                        class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                     >
+                        Loojang
+                    </p>
+                    <div class="mt-1 flex items-center gap-2">
                         <span
-                            class="material-symbols-outlined text-base text-amber-500"
+                            class="material-symbols-outlined hidden text-base text-amber-500 sm:inline-flex"
                             aria-hidden="true"
                             >wb_twilight</span
                         >
-                        <span class="text-foreground/80">{{
-                            sunset ? `Loojub ${sunset}` : '—'
-                        }}</span>
-                    </span>
+                        <span class="text-sm font-medium text-foreground">
+                            {{ sunset ?? '—' }}
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="mb-1.5 h-px w-full bg-border"></div>
-
         <div
             v-if="q.isSuccess.value && forecastDays.length"
-            class="relative overflow-x-auto pb-2"
+            class="mt-3"
         >
             <div
-                class="pointer-events-none absolute top-0 right-0 h-full w-10 bg-linear-to-l from-background to-transparent"
-            ></div>
-            <div class="flex min-w-0 gap-2.5" style="width: max-content">
+                class="flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-3 sm:gap-2.5 sm:overflow-visible xl:grid-cols-5"
+            >
                 <div
                     v-for="d in forecastDays"
                     :key="d.date"
-                    class="flex w-22 shrink-0 flex-col items-center rounded-lg bg-muted/15 p-2 ring-1 ring-border/70 dark:bg-card/70"
+                    class="flex w-18 shrink-0 flex-col items-center rounded-2xl border border-border/70 bg-card/80 px-2 py-2.5 shadow-sm sm:w-auto"
                 >
                     <span
                         class="text-[11px] font-semibold tracking-wide text-foreground/85 uppercase"
@@ -390,13 +408,13 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                         v-if="dailyIconUrl(d.icon, true)"
                         :src="dailyIconUrl(d.icon, true)!"
                         alt=""
-                        class="mb-1 h-11 w-11 object-contain"
+                        class="mb-1 h-8 w-8 object-contain sm:h-10 sm:w-10"
                         width="56"
                         height="56"
                     />
                     <span
                         v-else
-                        class="mb-1 block h-11 w-11"
+                        class="mb-1 block h-8 w-8 sm:h-10 sm:w-10"
                         aria-hidden="true"
                     />
 
@@ -404,7 +422,7 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                         <span class="text-sm font-bold text-foreground"
                             >{{ Math.round(d.tMax ?? 0) }}°</span
                         >
-                        <span class="text-sm text-muted-foreground"
+                        <span class="text-xs text-muted-foreground"
                             >{{ Math.round(d.tMin ?? 0) }}°</span
                         >
                     </div>

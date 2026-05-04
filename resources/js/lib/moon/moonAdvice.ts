@@ -23,41 +23,41 @@ type PhaseRule = Readonly<{
 
 const PHASE_RULES: Record<MoonPhase8, PhaseRule> = {
     Uuskuu: {
-        moodHeadline: 'Vaikse alguse aeg.',
+        moodHeadline: 'Rahulik aeg uueks ringiks.',
         leadParagraph:
-            'Uuskuu tähistab uue kuutsükli algust. See on hea aeg rahulikuks alustamiseks, planeerimiseks ja ettevalmistusteks. Aias sobib tähelepanu pöörata peenarde korrastamisele, mulla ettevalmistusele ja järgmiste tööde läbimõtlemisele.',
+            'Noorkuu paiku tasub tempo maha võtta. Hea aeg peenarde korrastamiseks, mulla ettevalmistuseks ja järgmiste tööde läbimõtlemiseks.',
         tasks: [
             'planeerimine',
             'peenarde ettevalmistus',
             'mulla hooldus',
-            'rahulik alustamine',
+            'korrastamine',
         ],
         avoid: [
-            'Praegu on parem suuremate istutustega veidi oodata.',
-            'Taimi tasub täna võimalikult vähe häirida ja mitte ümber istutada.',
+            'Suuremad istutused jäta pigem järgmisteks päevadeks.',
+            'Taimi tasub täna võimalikult vähe häirida.',
         ],
     },
 
     'Kasvav sirp': {
-        moodHeadline: 'Kasvu alguse aeg.',
+        moodHeadline: 'Kasvu toetav aeg.',
         leadParagraph:
-            'Kasvava sirbi ajal lisandub kuuvalgust iga päevaga. Seda aega seostatakse edenemise, tärkamise ja uute algustega. Aias sobib see hästi külvamiseks, istutamiseks ja taimede kasvule hoo andmiseks.',
-        tasks: ['külvamine', 'istutamine', 'kerge hooldus', 'kasvu toetamine'],
+            'Kasvava sirbi ajal on hea keskenduda külvile ja uuele kasvule. Sobib hästi noorte taimede toetamiseks ja pehmemateks aiatöödeks.',
+        tasks: ['külvamine', 'istutamine', 'kerge hooldus', 'kastmise kontroll'],
         avoid: [
             'Tugevama tagasilõikusega tasub veel veidi oodata.',
-            'Kui muld on väga kuiv, siis ära alusta kõige nõudlikumatest töödest.',
+            'Kuiva mullaga ära alusta kõige nõudlikumatest töödest.',
         ],
     },
 
     'Esimene veerand': {
-        moodHeadline: 'Tegutsemise aeg.',
+        moodHeadline: 'Aktiivne kasvuaeg.',
         leadParagraph:
-            'Esimene veerand on aktiivsem ja liikuvam faas. See sobib hästi külvamiseks, istutamiseks ja töödeks, millelt ootad nähtavat edenemist.',
+            'Esimene veerand sobib aktiivseteks aiatöödeks. Hea aeg külvamiseks, istutamiseks ja töödeks, kus tahad näha kiiremat edenemist.',
         tasks: [
             'külvamine',
             'istutamine',
-            'salatite ja ürtide hooldus',
-            'niitmine',
+            'taimede toestamine',
+            'peenarde hooldus',
         ],
         avoid: [
             'Noori taimi ei tasu väetisega üle koormata.',
@@ -66,56 +66,56 @@ const PHASE_RULES: Record<MoonPhase8, PhaseRule> = {
     },
 
     'Kasvav kumer kuu': {
-        moodHeadline: 'Jõu kogunemise aeg.',
+        moodHeadline: 'Jõudu koguv aeg.',
         leadParagraph:
-            'Kasvava kumera kuu ajal on fookuses edenemine ja jõu kogunemine. Seda peetakse heaks ajaks taimede toetamiseks, istutamiseks ja mulla eest hoolitsemiseks.',
+            'Kasvava kumera kuu ajal koguneb taimedes jõudu. Hea aeg kasvule kaasa aidata ja peenraid hooldada.',
         tasks: [
-            'külv või istutus',
+            'istutamine',
             'mulla hooldus',
             'kasvu toetamine',
-            'päeva iseloomu järgimine',
+            'väetamise planeerimine',
         ],
-        avoid: ['Kuiva ja kuuma ilmaga ära unusta taimi kasta.'],
+        avoid: ['Kuiva ilmaga ära unusta kastmist.'],
     },
 
     Täiskuu: {
-        moodHeadline: 'Täisjõu aeg.',
+        moodHeadline: 'Jälgimise ja korje aeg.',
         leadParagraph:
-            'Täiskuu ajal on kuuvalgus kõige tugevam. Seda aega peetakse intensiivseks ja elavaks, mistõttu sobib see hästi vaatlemiseks, hooldustöödeks ja küpse saagi korjamiseks.',
-        tasks: ['korja saagi', 'planeeri järgmised tööd'],
+            'Täiskuu ajal tasub aias rohkem jälgida kui suruda peale suuri muutusi. Hea aeg saagi korjamiseks ja märkmete tegemiseks.',
+        tasks: ['saagi koristamine', 'taimede jälgimine', 'märkmete tegemine'],
         avoid: [
             'Õrnu taimi ei tasu täna ümber istutada.',
-            'Liigne kastmine või järsud sekkumised võivad taimedele halvasti mõjuda.',
+            'Tugevamad hooldustööd võiks jätta hilisemaks.',
         ],
     },
 
     'Kahanev kumer kuu': {
-        moodHeadline: 'Juurdumise ja korrastamise aeg.',
+        moodHeadline: 'Hoolduse ja korrastamise aeg.',
         leadParagraph:
-            'Pärast täiskuud hakkab kuuvalgus vähenema ja tähelepanu liigub juurtele, mullale ning korrastamisele. See on sobiv aeg rohimiseks, tagasilõikuseks ja juurviljadega seotud töödeks.',
-        tasks: ['rohi', 'kärbi', 'komposti'],
+            'Pärast täiskuud liigub rõhk rohkem hooldusele ja korrastamisele. See on hea aeg rohimiseks, kärpimiseks ja peenarde puhastamiseks.',
+        tasks: ['rohimine', 'kärpimine', 'kompostimine'],
         avoid: [
-            'Liiga tugev tagasilõikus võib taimi liigselt kurnata.',
-            'Eemalda täna taimedelt haiged ja kahjustunud osad.',
+            'Liiga tugeva tagasilõikusega tasub piiri pidada.',
+            'Haiged või kuivanud osad eemalda rahulikult.',
         ],
     },
 
     'Viimane veerand': {
         moodHeadline: 'Puhastamise ja lõpetamise aeg.',
         leadParagraph:
-            'Viimane veerand on rahulikum ja kokkuvõtlikum faas. Aias sobib see aeg hooldus- ja korrastustöödeks, rohimiseks, harvendamiseks ja kuivanud osade eemaldamiseks.',
-        tasks: ['rohi', 'harvenda', 'komposti', 'korrasta'],
-        avoid: ['Võta täna aias rahulikult.'],
+            'Viimane veerand sobib hooldus- ja korrastustöödeks. Hea aeg rohida, harvendada ja lõpetada töid, mis on mõnda aega oodanud.',
+        tasks: ['rohimine', 'harvendamine', 'korrastamine', 'kompostimine'],
+        avoid: ['Suured uued algused võiks jätta järgmisse faasi.'],
     },
 
     'Kahanev sirp': {
-        moodHeadline: 'Lahtilaskmise aeg.',
+        moodHeadline: 'Rahuliku lõpetamise aeg.',
         leadParagraph:
-            'Kahanev sirp on kuutsükli lõpuosa, mida seostatakse rahunemise, puhastumise ja ettevalmistusega. Aias sobib see aeg pinnase korrastamiseks, haigete osade eemaldamiseks ja järgmise tsükli ettevalmistamiseks.',
-        tasks: ['komposti', 'eemalda kahjustunud taimeosad'],
+            'Kahanev sirp on kuutsükli lõpuosa. Sobib peenarde rahulikuks korrastamiseks ja järgmise ringi ettevalmistamiseks.',
+        tasks: ['kompostimine', 'kahjustunud osade eemaldamine', 'peenarde korrastus'],
         avoid: [
-            'Kõike ei pea ühe päevaga ära tegema.',
-            'Suuremad uued algused jäta järgmisse kuutsüklisse.',
+            'Kõiki töid ei pea ühe päevaga lõpetama.',
+            'Uued suuremad algused jäta järgmisse kuutsüklisse.',
         ],
     },
 } as const;
