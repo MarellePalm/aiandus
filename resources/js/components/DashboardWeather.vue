@@ -139,49 +139,6 @@ const todayHeroIconUrl = computed(() => {
     return `https://openweathermap.org/img/wn/${icon}@2x.png`;
 });
 
-const openWeatherConditionId = computed(
-    () => q.data.value?.openWeatherConditionId ?? null,
-);
-const openWeatherIconCode = computed(() => q.data.value?.openWeatherIcon ?? '');
-
-/** Kirjelduse kõrval: tingimuse ID + öö/päev, mitte alati „pool pilves“. */
-const detailConditionMaterialIcon = computed(() => {
-    const id = openWeatherConditionId.value;
-    const ow = openWeatherIconCode.value;
-    const day = ow.endsWith('d');
-    if (id === 800) return day ? 'sunny' : 'nightlight';
-    if (id === 801 || id === 802)
-        return day ? 'partly_cloudy_day' : 'partly_cloudy_night';
-    if (id !== null && id >= 803 && id <= 804) return 'cloud';
-    if (id !== null && id >= 200 && id < 300) return 'thunderstorm';
-    if (id !== null && id >= 300 && id < 600) return 'rainy';
-    if (id !== null && id >= 600 && id < 700) return 'weather_snowy';
-    if (id !== null && id >= 700 && id < 800) return 'foggy';
-
-    const base = ow.length >= 2 ? ow.slice(0, 2) : '';
-    switch (base) {
-        case '01':
-            return day ? 'sunny' : 'nightlight';
-        case '02':
-            return day ? 'partly_cloudy_day' : 'partly_cloudy_night';
-        case '03':
-        case '04':
-            return 'cloud';
-        case '09':
-            return 'rainy';
-        case '10':
-            return 'rainy';
-        case '11':
-            return 'thunderstorm';
-        case '13':
-            return 'weather_snowy';
-        case '50':
-            return 'foggy';
-        default:
-            return 'wb_cloudy';
-    }
-});
-
 const weatherLabelNormalized = computed(() =>
     (todayWeatherLabel.value ?? '').toLowerCase(),
 );
