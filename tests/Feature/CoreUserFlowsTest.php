@@ -27,6 +27,72 @@ test('guest is redirected from plants create page', function () {
         ->assertRedirect(route('login'));
 });
 
+test('dashboard returns action summary for authenticated user', function () {
+    $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
+
+    $filledBed = Bed::query()->create([
+        'user_id' => $user->id,
+        'garden_plan_id' => $plan->id,
+        'name' => 'Tomatipeenar',
+        'location' => null,
+        'sort_order' => 1,
+    ]);
+
+    Bed::query()->create([
+        'user_id' => $user->id,
+        'garden_plan_id' => $plan->id,
+        'name' => 'Tühi peenar',
+        'location' => null,
+        'sort_order' => 2,
+    ]);
+
+    Plant::query()->create([
+        'user_id' => $user->id,
+        'bed_id' => $filledBed->id,
+        'position_in_bed' => '0,0',
+        'name' => 'Tomat',
+        'subtitle' => 'Tomat',
+    ]);
+
+    Plant::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Salat',
+        'subtitle' => 'Salat',
+    ]);
+
+    CalendarNote::query()->create([
+        'user_id' => $user->id,
+        'note_date' => now()->format('Y-m-d'),
+        'title' => 'Kasta tomatid',
+        'body' => 'Kontrolli kasvuhoone peenart ja kasta tomatid.',
+        'type' => 'task',
+        'done' => false,
+    ]);
+
+    CalendarNote::query()->create([
+        'user_id' => $user->id,
+        'note_date' => now()->subDay()->format('Y-m-d'),
+        'title' => 'Rohi peenar läbi',
+        'body' => 'Eemalda umbrohi tühjast peenrast.',
+        'type' => 'task',
+        'done' => false,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Dashboard')
+            ->where('dashboardSummary.bedsCount', 2)
+            ->where('dashboardSummary.plantsCount', 2)
+            ->where('dashboardSummary.emptyBedsCount', 1)
+            ->where('dashboardSummary.plantsWithoutBedCount', 1)
+            ->where('dashboardSummary.todayTasksCount', 1)
+            ->where('dashboardSummary.overdueTasksCount', 1)
+            ->where('todayTasks.0.title', 'Kasta tomatid'));
+});
+
 test('authenticated user can create a bed', function () {
     $user = User::factory()->create();
     $plan = makeGardenPlan($user);

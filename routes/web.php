@@ -36,6 +36,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('dashboard', function (Request $request) {
         $user = $request->user();
+        $today = now()->startOfDay();
 
         $recentNotes = CalendarNote::query()
             ->where('user_id', $user->id)
@@ -76,10 +77,78 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     : null,
             ]);
 
+        $todayTasks = CalendarNote::query()
+            ->where('user_id', $user->id)
+            ->where('done', false)
+            ->whereDate('note_date', $today)
+            ->orderBy('note_date')
+            ->orderBy('id')
+            ->limit(3)
+            ->get(['id', 'note_date', 'title', 'type'])
+            ->map(fn ($note) => [
+                'id' => $note->id,
+                'note_date' => $note->note_date?->format('Y-m-d'),
+                'title' => $note->title,
+                'type' => $note->type,
+            ]);
+
+        $bedsCount = Bed::query()
+            ->where('user_id', $user->id)
+            ->count();
+
+        $plantsCount = Plant::query()
+            ->where('user_id', $user->id)
+            ->count();
+
+        $seedsCount = Seed::query()
+            ->where('user_id', $user->id)
+            ->count();
+
+        $emptyBedsCount = Bed::query()
+            ->where('user_id', $user->id)
+            ->doesntHave('plants')
+            ->count();
+
+        $plantsWithoutBedCount = Plant::query()
+            ->where('user_id', $user->id)
+            ->whereNull('bed_id')
+            ->count();
+
+        $openTasksCount = CalendarNote::query()
+            ->where('user_id', $user->id)
+            ->where('done', false)
+            ->count();
+
+        $todayTasksCount = CalendarNote::query()
+            ->where('user_id', $user->id)
+            ->where('done', false)
+            ->whereDate('note_date', $today)
+            ->count();
+
+        $overdueTasksCount = CalendarNote::query()
+            ->where('user_id', $user->id)
+            ->where('done', false)
+            ->whereDate('note_date', '<', $today)
+            ->count();
+
         return Inertia::render('Dashboard', [
             'recentNotes' => $recentNotes,
             'recentPlants' => $recentPlants,
             'recentSeeds' => $recentSeeds,
+            'todayTasks' => $todayTasks,
+            'dashboardSummary' => [
+                'bedsCount' => $bedsCount,
+                'plantsCount' => $plantsCount,
+                'seedsCount' => $seedsCount,
+                'emptyBedsCount' => $emptyBedsCount,
+                'plantsWithoutBedCount' => $plantsWithoutBedCount,
+                'openTasksCount' => $openTasksCount,
+                'todayTasksCount' => $todayTasksCount,
+                'overdueTasksCount' => $overdueTasksCount,
+                'notesCount' => CalendarNote::query()
+                    ->where('user_id', $user->id)
+                    ->count(),
+            ],
         ]);
     })->name('dashboard');
 
