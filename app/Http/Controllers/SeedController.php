@@ -57,7 +57,7 @@ class SeedController extends Controller
                 'name' => $seed->name,
                 'amount_text' => $seed->amount_text,
                 'year' => $seed->year,
-                'expires_at' => $seed->expires_at ? $seed->expires_at->format('Y') : null,
+                'expires_at' => $seed->expires_at ? $seed->expires_at->format('Y-m-d') : null,
                 'image_url' => $seed->image_url,
                 'notes' => $seed->notes,
                 'is_favorite' => (bool) $seed->is_favorite,
@@ -101,21 +101,30 @@ class SeedController extends Controller
     {
         $user = $request->user();
 
-        $data = $request->validate([
-            'category_id' => [
-                'nullable',
-                'integer',
-                Rule::exists('categories', 'id')
-                    ->where('scope', Category::SCOPE_SEED)
-                    ->where('user_id', $user->id),
+        $data = $request->validate(
+            [
+                'category_id' => [
+                    'nullable',
+                    'integer',
+                    Rule::exists('categories', 'id')
+                        ->where('scope', Category::SCOPE_SEED)
+                        ->where('user_id', $user->id),
+                ],
+                'name' => ['required', 'string', 'max:160'],
+                'amount_text' => ['nullable', 'string', 'max:120'],
+                'year' => ['nullable', 'integer', 'between:2000,2100'],
+                'expires_at' => ['required', 'date'],
+                'notes' => ['nullable', 'string', 'max:5000'],
+                'image' => ['nullable', 'image', 'max:5120', 'dimensions:min_width=300,min_height=300,max_width=6000,max_height=6000'],
             ],
-            'name' => ['required', 'string', 'max:160'],
-            'amount_text' => ['nullable', 'string', 'max:120'],
-            'year' => ['nullable', 'integer', 'between:2000,2100'],
-            'expires_at' => ['nullable', 'date'],
-            'notes' => ['nullable', 'string', 'max:5000'],
-            'image' => ['nullable', 'image', 'max:5120'],
-        ]);
+            [
+                'expires_at.required' => 'Kohustuslik väli.',
+                'expires_at.date' => 'Kohustuslik väli.',
+            ],
+            [
+                'amount_text' => 'kogus',
+            ]
+        );
 
         $category = null;
         if (! empty($data['category_id'])) {
@@ -171,7 +180,7 @@ class SeedController extends Controller
                 'amount' => $seed->amount,
                 'amount_text' => $seed->amount_text,
                 'year' => $seed->year,
-                'expires_at' => $seed->expires_at?->format('Y'),
+                'expires_at' => $seed->expires_at?->format('Y-m-d'),
                 'image_url' => $seed->image_url,
                 'notes' => $seed->notes ?? null,
                 'is_favorite' => (bool) $seed->is_favorite,
@@ -183,14 +192,23 @@ class SeedController extends Controller
     {
         abort_unless($seed->user_id === $request->user()->id, 403);
 
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:160'],
-            'amount_text' => ['nullable', 'string', 'max:120'],
-            'year' => ['nullable', 'integer', 'between:2000,2100'],
-            'expires_at' => ['nullable', 'date'],
-            'notes' => ['nullable', 'string', 'max:5000'],
-            'image' => ['nullable', 'image', 'max:5120'],
-        ]);
+        $data = $request->validate(
+            [
+                'name' => ['required', 'string', 'max:160'],
+                'amount_text' => ['nullable', 'string', 'max:120'],
+                'year' => ['nullable', 'integer', 'between:2000,2100'],
+                'expires_at' => ['required', 'date'],
+                'notes' => ['nullable', 'string', 'max:5000'],
+                'image' => ['nullable', 'image', 'max:5120', 'dimensions:min_width=300,min_height=300,max_width=6000,max_height=6000'],
+            ],
+            [
+                'expires_at.required' => 'Kohustuslik väli.',
+                'expires_at.date' => 'Kohustuslik väli.',
+            ],
+            [
+                'amount_text' => 'kogus',
+            ]
+        );
 
         $imageUrl = $seed->image_url;
         if ($request->hasFile('image')) {
@@ -230,6 +248,6 @@ class SeedController extends Controller
 
         $seed->delete();
 
-        return redirect()->route('seeds.index');
+        return back()->with('success', 'Varu kustutatud!');
     }
 }

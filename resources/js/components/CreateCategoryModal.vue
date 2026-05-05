@@ -217,10 +217,11 @@ onBeforeUnmount(() => {
                                     <div
                                         class="flex flex-col items-center gap-3 text-foreground/60"
                                     >
-                                        <span
-                                            class="material-symbols-outlined text-5xl text-primary"
-                                            >add_a_photo</span
-                                        >
+                                        <img
+                                            src="/logo.png"
+                                            alt=""
+                                            class="h-20 w-auto object-contain opacity-90"
+                                        />
                                         <span class="text-base"
                                             >Lohistage foto siia või
                                             klõpsake</span

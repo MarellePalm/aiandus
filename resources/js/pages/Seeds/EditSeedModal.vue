@@ -6,7 +6,7 @@ type SeedItem = {
     id: number;
     name: string;
     amount_text?: string | null;
-    year?: number | null;
+    year?: number | string | null;
     expires_at?: string | null;
     notes?: string | null;
     image_url?: string | null;
@@ -209,7 +209,7 @@ onBeforeUnmount(() => {
                                 <h3
                                     class="text-lg font-semibold text-[#2E2E2E]"
                                 >
-                                    Muuda seemet
+                                    Muuda varu
                                 </h3>
                                 <p class="mt-1 text-sm text-[#2E2E2E]/70">
                                     Muuda nime, ostuaastat, aegumist ja
@@ -300,6 +300,7 @@ onBeforeUnmount(() => {
                                     v-model="form.expires_at"
                                     type="date"
                                     lang="et-EE"
+                                    placeholder="(PP.KK.AAAA) nt 05.09.2026"
                                     class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
                                     @change="form.clearErrors('expires_at')"
                                     @click="
@@ -313,6 +314,9 @@ onBeforeUnmount(() => {
                                     class="mt-2 text-sm text-red-600"
                                 >
                                     {{ form.errors.expires_at }}
+                                </p>
+                                <p class="mt-2 text-xs text-[#2E2E2E]/60">
+                                    Kuupäeva formaat: (PP.KK.AAAA), nt 05.09.2026
                                 </p>
                             </div>
                         </div>
@@ -364,12 +368,13 @@ onBeforeUnmount(() => {
                                     </p>
                                 </template>
                                 <template v-else>
-                                    <span
-                                        class="material-symbols-outlined text-5xl text-[#6B8C68]"
-                                        >add_a_photo</span
-                                    >
+                                    <img
+                                        src="/logo.png"
+                                        alt=""
+                                        class="mx-auto h-20 w-auto object-contain opacity-90"
+                                    />
                                     <p class="mt-2 text-sm text-[#2E2E2E]/70">
-                                        Lisa seemne pilt
+                                        Lisa varu pilt
                                     </p>
                                 </template>
                             </button>

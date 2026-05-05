@@ -30,6 +30,20 @@ const props = defineProps<{
     categories: Category[];
 }>();
 
+const fallbackLogo = '/logo.png';
+
+function categoryImage(src?: string | null) {
+    return src && src.trim() !== '' ? src : fallbackLogo;
+}
+
+function onCategoryImageError(event: Event) {
+    const img = event.target as HTMLImageElement;
+
+    if (img.src.endsWith('/logo.png')) return;
+
+    img.src = fallbackLogo;
+}
+
 type TabKey = 'all' | 'favorites';
 
 const activeTab = ref<TabKey>('all');
@@ -212,7 +226,8 @@ const openEditCategory = (category: Category) => {
                                 Varud puuduvad
                             </h2>
                             <p class="mt-2 text-sm text-muted-foreground">
-                                Vajuta plussi, et lisada uus varu.
+                                Vajuta plussi, et lisada uus kategooria varude
+                                lisamiseks.
                             </p>
                         </div>
 
@@ -227,23 +242,14 @@ const openEditCategory = (category: Category) => {
                                 class="group relative aspect-[1/1] overflow-hidden rounded-2xl shadow-lg"
                             >
                                 <img
-                                    v-if="cat.image"
-                                    :src="cat.image"
-                                    alt=""
+                                    :alt="cat.name"
                                     class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                    :src="categoryImage(cat.image)"
+                                    @error="onCategoryImageError"
                                 />
                                 <div
-                                    v-else
-                                    class="absolute inset-0 flex h-full w-full items-center justify-center bg-primary/10 text-primary"
-                                >
-                                    <span
-                                        class="material-symbols-outlined text-4xl"
-                                        >category</span
-                                    >
-                                </div>
-                                <div
-                                    class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"
-                                />
+                                    class="matte-overlay absolute inset-0"
+                                ></div>
 
                                 <CardActionsMenu
                                     @edit="openEditCategory(cat)"
@@ -285,9 +291,9 @@ const openEditCategory = (category: Category) => {
                                     class="absolute bottom-0 left-0 w-full p-4 text-white"
                                 >
                                     <span
-                                        class="mb-1 inline-block rounded-md bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase backdrop-blur-md"
+                                        class="mb-1 inline-block rounded-md bg-card/30 px-2 py-0.5 text-[10px] font-bold uppercase backdrop-blur-md dark:bg-black/30"
                                     >
-                                        {{ cat.count }} seemet
+                                        {{ cat.count }} varu
                                     </span>
                                     <h3 class="text-lg font-bold">
                                         {{ cat.name }}
@@ -302,7 +308,7 @@ const openEditCategory = (category: Category) => {
                     v-model:open="showSearch"
                     :initialQuery="searchQuery"
                     :suggestions="categoryNames"
-                    title="Otsi seemneid"
+                    title="Otsi varusid"
                     @search="(q) => (searchQuery = q)"
                     @clear="searchQuery = ''"
                 />
@@ -338,6 +344,13 @@ const openEditCategory = (category: Category) => {
 </template>
 
 <style scoped>
+.matte-overlay {
+    background: linear-gradient(
+        to top,
+        rgba(79, 106, 82, 0.8) 0%,
+        rgba(79, 106, 82, 0) 60%
+    );
+}
 .no-scrollbar::-webkit-scrollbar {
     display: none;
 }

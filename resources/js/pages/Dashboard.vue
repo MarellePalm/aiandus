@@ -127,7 +127,7 @@ const overviewStats = computed(() => {
             hint:
                 seedsCount > 0
                     ? 'Vaata varusid'
-                    : 'Lisa seemneid või varusid',
+                    : 'Lisa varusid',
         },
     ];
 });
