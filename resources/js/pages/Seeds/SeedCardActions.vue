@@ -46,7 +46,7 @@ const emit = defineEmits<{
     </SeedActionButton>
 
     <SeedActionButton
-        aria-label="Muuda seemet"
+        aria-label="Muuda varu"
         position-class="top-2 left-1/2 -translate-x-1/2"
         @click.prevent.stop="emit('edit')"
     >

@@ -17,6 +17,26 @@ const processing = ref(false);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const imagePreview = ref<string | null>(null);
 const categoryOptions = ['Köögiviljad', 'Lilled', 'Toataimed', 'Maitsetaimed'];
+const plantedAtDisplay = ref('');
+
+const parseEtDateToIso = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+    const m = trimmed.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+    if (!m) return null;
+    const day = Number.parseInt(m[1], 10);
+    const month = Number.parseInt(m[2], 10);
+    const year = Number.parseInt(m[3], 10);
+    const date = new Date(year, month - 1, day);
+    if (
+        date.getFullYear() !== year ||
+        date.getMonth() !== month - 1 ||
+        date.getDate() !== day
+    ) {
+        return null;
+    }
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+};
 
 function closeModal() {
     if (window.history.length > 1) {
@@ -27,6 +47,10 @@ function closeModal() {
 }
 
 function submit() {
+    const parsed = parseEtDateToIso(plantedAtDisplay.value);
+    if (parsed !== null) {
+        form.value.planted_at = parsed;
+    }
     // TODO: wire this up to an Inertia post when backend route is ready
     // example:
     // router.post(route('plants.store'), form.value, { onStart: () => (processing.value = true), onFinish: () => (processing.value = false) });
@@ -136,16 +160,15 @@ function onFileChange(e: Event) {
                                 >Istutamise kuupäev</label
                             >
                             <input
-                                v-model="form.planted_at"
-                                type="date"
-                                lang="et-EE"
-                                @click="
-                                    (
-                                        $event.target as HTMLInputElement
-                                    ).showPicker?.()
-                                "
+                                v-model="plantedAtDisplay"
+                                type="text"
+                                inputmode="numeric"
+                                placeholder="PP.KK.AAAA"
                                 class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
                             />
+                            <p class="mt-2 text-xs text-[#2E2E2E]/60">
+                                Kuupäeva formaat: (PP.KK.AAAA), nt 05.09.2026
+                            </p>
                         </div>
 
                         <div>

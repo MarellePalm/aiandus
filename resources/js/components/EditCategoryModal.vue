@@ -211,10 +211,11 @@ onBeforeUnmount(() => {
                                     </p>
                                 </template>
                                 <template v-else>
-                                    <span
-                                        class="material-symbols-outlined text-5xl text-primary"
-                                        >add_a_photo</span
-                                    >
+                                    <img
+                                        src="/logo.png"
+                                        alt=""
+                                        class="mx-auto h-20 w-auto object-contain opacity-90"
+                                    />
                                     <p class="mt-2 text-sm text-foreground/70">
                                         Lisa kategooria pilt
                                     </p>

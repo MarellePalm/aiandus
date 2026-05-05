@@ -221,8 +221,19 @@ function cancel() {
                                         id="note_date"
                                         v-model="form.note_date"
                                         type="date"
+                                        lang="et-EE"
+                                        placeholder="(PP.KK.AAAA) nt 05.09.2026"
                                         class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                        @click="
+                                            (
+                                                $event.target as HTMLInputElement
+                                            ).showPicker?.()
+                                        "
                                     />
+                                    <p class="mt-1 text-xs text-foreground/50">
+                                        Kuupäeva formaat: (PP.KK.AAAA), nt
+                                        05.09.2026
+                                    </p>
                                     <p
                                         v-if="form.errors.note_date"
                                         class="mt-1 text-xs text-red-600 dark:text-red-400"
@@ -326,8 +337,19 @@ function cancel() {
                                         id="due_date"
                                         v-model="form.due_date"
                                         type="date"
+                                        lang="et-EE"
+                                        placeholder="(PP.KK.AAAA) nt 05.09.2026"
                                         class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                        @click="
+                                            (
+                                                $event.target as HTMLInputElement
+                                            ).showPicker?.()
+                                        "
                                     />
+                                    <p class="mt-1 text-xs text-foreground/50">
+                                        Kuupäeva formaat: (PP.KK.AAAA), nt
+                                        05.09.2026
+                                    </p>
                                     <p
                                         v-if="form.errors.due_date"
                                         class="mt-1 text-xs text-red-600 dark:text-red-400"

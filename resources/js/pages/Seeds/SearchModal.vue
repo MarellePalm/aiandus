@@ -108,7 +108,7 @@ function clear() {
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <h3 class="text-lg font-semibold text-[#2E2E2E]">
-                                {{ props.title ?? 'Otsi seemneid' }}
+                                {{ props.title ?? 'Otsi varusid' }}
                             </h3>
                             <p class="mt-1 text-sm text-[#2E2E2E]/70">
                                 Sisesta nimi, sort või kategooria.

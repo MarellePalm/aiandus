@@ -309,6 +309,9 @@ onBeforeUnmount(() => {
                                 >
                                     {{ form.errors.expires_at }}
                                 </p>
+                                <p class="mt-2 text-xs text-foreground/50">
+                                    Kuupäeva formaat: (PP.KK.AAAA), nt 05.09.2026
+                                </p>
                             </div>
                         </div>
 
@@ -349,10 +352,11 @@ onBeforeUnmount(() => {
                                 @click="openPicker"
                             >
                                 <template v-if="!hasImage">
-                                    <span
-                                        class="material-symbols-outlined text-5xl text-primary"
-                                        >add_a_photo</span
-                                    >
+                                    <img
+                                        src="/logo.png"
+                                        alt=""
+                                        class="mx-auto h-20 w-auto object-contain opacity-90"
+                                    />
                                     <p class="mt-2 text-sm text-foreground/70">
                                         Lisa varu pilt
                                     </p>
@@ -553,6 +557,9 @@ onBeforeUnmount(() => {
                                 >
                                     {{ form.errors.expires_at }}
                                 </p>
+                                <p class="mt-2 text-xs text-foreground/50">
+                                    Kuupäeva formaat: (PP.KK.AAAA), nt 05.09.2026
+                                </p>
                             </div>
                         </div>
 
@@ -595,12 +602,13 @@ onBeforeUnmount(() => {
                                 @click="openPicker"
                             >
                                 <template v-if="!hasImage">
-                                    <span
-                                        class="material-symbols-outlined text-5xl text-primary"
-                                        >add_a_photo</span
-                                    >
+                                    <img
+                                        src="/logo.png"
+                                        alt=""
+                                        class="mx-auto h-20 w-auto object-contain opacity-90"
+                                    />
                                     <p class="mt-2 text-sm text-foreground/70">
-                                        Lisa seemne pilt
+                                        Lisa varu pilt
                                     </p>
                                 </template>
                                 <template v-else>

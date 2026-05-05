@@ -268,6 +268,9 @@ onBeforeUnmount(() => {
                                 >
                                     {{ form.errors.planted_at }}
                                 </p>
+                                <p class="mt-2 text-xs text-foreground/50">
+                                    Kuupäeva formaat: (PP.KK.AAAA), nt 05.09.2026
+                                </p>
                             </div>
 
                             <!-- KOGUS -->

@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 import BackIconButton from '@/components/BackIconButton.vue';
-import CardActionsMenu from '@/components/CardActionsMenu.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 
@@ -27,8 +26,10 @@ const props = defineProps<{ seed: Seed }>();
 const showDeleteSeed = ref(false);
 const deleteProcessing = ref(false);
 const showEditSeed = ref(false);
+const menuOpen = ref(false);
 
 const openDeleteModal = () => {
+    menuOpen.value = false;
     showDeleteSeed.value = true;
 };
 
@@ -38,6 +39,7 @@ const closeDeleteModal = () => {
 };
 
 const openEditModal = () => {
+    menuOpen.value = false;
     showEditSeed.value = true;
 };
 
@@ -61,6 +63,16 @@ const deleteSeed = () => {
         },
     });
 };
+
+const onDocClick = (e: MouseEvent) => {
+    if (!menuOpen.value) return;
+    const t = e.target as HTMLElement | null;
+    if (t?.closest?.('[data-seed-menu]')) return;
+    menuOpen.value = false;
+};
+
+onMounted(() => document.addEventListener('click', onDocClick));
+onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
 </script>
 
 <template>
@@ -77,11 +89,39 @@ const deleteSeed = () => {
                     <BackIconButton href="/seeds" />
                 </template>
                 <template #actions>
-                    <CardActionsMenu
-                        placement="inline"
-                        @edit="openEditModal"
-                        @delete="openDeleteModal"
-                    />
+                    <div class="relative" data-seed-menu>
+                        <button
+                            type="button"
+                            class="flex items-center justify-center rounded-full bg-card/70 p-2 backdrop-blur-md transition-colors"
+                            @click.stop="menuOpen = !menuOpen"
+                            aria-label="Menüü"
+                        >
+                            <span class="material-symbols-outlined"
+                                >more_vert</span
+                            >
+                        </button>
+
+                        <div
+                            v-if="menuOpen"
+                            class="absolute top-12 right-0 z-50 w-44 overflow-hidden rounded-2xl border border-border bg-card shadow-xl ring-1 ring-border"
+                        >
+                            <button
+                                type="button"
+                                class="w-full px-4 py-3 text-left text-sm text-foreground hover:bg-black/5"
+                                @click="openEditModal"
+                            >
+                                Muuda varu
+                            </button>
+
+                            <button
+                                type="button"
+                                class="w-full px-4 py-3 text-left text-sm text-foreground hover:bg-black/5"
+                                @click="openDeleteModal"
+                            >
+                                Kustuta
+                            </button>
+                        </div>
+                    </div>
                 </template>
             </DiaryHeader>
 
@@ -130,6 +170,13 @@ const deleteSeed = () => {
                         <h3 class="text-lg font-bold tracking-tight">
                             Märkmed
                         </h3>
+                        <button
+                            type="button"
+                            class="text-sm font-semibold text-primary"
+                            @click="openEditModal"
+                        >
+                            Muuda
+                        </button>
                     </div>
 
                     <div
@@ -146,7 +193,7 @@ const deleteSeed = () => {
         </div>
         <DeleteConfirmModal
             :open="showDeleteSeed"
-            :title="'Kustuta seeme?'"
+            :title="'Kustuta varu?'"
             :message="`${props.seed.name} eemaldatakse jäädavalt.`"
             :processing="deleteProcessing"
             @close="closeDeleteModal"

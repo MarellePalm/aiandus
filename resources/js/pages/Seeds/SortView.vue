@@ -24,6 +24,7 @@ type SeedItem = {
     is_favorite?: boolean;
     created_at?: string | null;
 };
+type EditableSeedItem = Omit<SeedItem, 'year'> & { year?: number | null };
 
 type CategoryItem = { id: number; name: string; slug: string };
 
@@ -40,7 +41,7 @@ const showSearch = ref(false);
 const showEditSeed = ref(false);
 const showDeleteSeed = ref(false);
 const searchQuery = ref('');
-const editingSeed = ref<SeedItem | null>(null);
+const editingSeed = ref<EditableSeedItem | null>(null);
 const deletingSeed = ref<SeedItem | null>(null);
 const deleteProcessing = ref(false);
 const menuOpenForId = ref<number | null>(null);
@@ -234,7 +235,15 @@ const confirmDeleteSeed = () => {
 };
 
 const openSeedEdit = (seed: SeedItem) => {
-    editingSeed.value = seed;
+    const yearNumber =
+        typeof seed.year === 'string'
+            ? (Number.parseInt(seed.year, 10) || null)
+            : (seed.year ?? null);
+
+    editingSeed.value = {
+        ...seed,
+        year: yearNumber,
+    };
     showEditSeed.value = true;
     menuOpenForId.value = null;
 };
@@ -503,7 +512,7 @@ onBeforeUnmount(() => {
                     v-model:open="showSearch"
                     :initialQuery="searchQuery"
                     :suggestions="seedNames"
-                    title="Otsi seemneid"
+                    title="Otsi varusid"
                     @search="(q) => (searchQuery = q)"
                     @clear="searchQuery = ''"
                 />
@@ -514,8 +523,8 @@ onBeforeUnmount(() => {
                 />
                 <DeleteConfirmModal
                     :open="showDeleteSeed"
-                    :title="'Kustuta seeme?'"
-                    :message="`${deletingSeed?.name ?? 'See seeme'} eemaldatakse jäädavalt.`"
+                    :title="'Kustuta varu?'"
+                    :message="`${deletingSeed?.name ?? 'See varu'} eemaldatakse jäädavalt.`"
                     :processing="deleteProcessing"
                     @close="closeDeleteSeed"
                     @confirm="confirmDeleteSeed"
