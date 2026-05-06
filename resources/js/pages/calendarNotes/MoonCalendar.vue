@@ -743,6 +743,33 @@ onUnmounted(() => {
                                     </div>
 
                                     <div
+                                        class="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5"
+                                    >
+                                        <div class="mb-1.5 flex items-center justify-between gap-2">
+                                            <p
+                                                class="text-[11px] font-semibold tracking-[0.12em] text-primary/90 uppercase"
+                                            >
+                                                Külv ja istutus täna
+                                            </p>
+                                            <span
+                                                class="rounded-full border px-2 py-0.5 text-[11px] font-semibold"
+                                                :class="
+                                                    selectedInfo?.timingConfidence === 'hea'
+                                                        ? 'border-primary/30 bg-primary/10 text-primary'
+                                                        : selectedInfo?.timingConfidence === 'mõõdukas'
+                                                          ? 'border-amber-200/60 bg-amber-50/45 text-amber-700/80'
+                                                          : 'border-rose-200/60 bg-rose-50/45 text-rose-700/75'
+                                                "
+                                            >
+                                                {{ selectedTimingBadge }}
+                                            </span>
+                                        </div>
+                                        <p class="text-sm leading-snug text-foreground/80">
+                                            {{ selectedInfo?.timingReason }}
+                                        </p>
+                                    </div>
+
+                                    <div
                                         v-if="selectedTaskSummary"
                                         class="rounded-xl border border-primary/25 bg-primary/10 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
                                     >
