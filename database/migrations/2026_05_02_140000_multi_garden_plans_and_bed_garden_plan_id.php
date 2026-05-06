@@ -85,6 +85,11 @@ return new class extends Migration
 
     private function hasForeignKey(string $table, string $column): bool
     {
+        $driver = DB::getDriverName();
+        if (! in_array($driver, ['mysql', 'mariadb'], true)) {
+            return false;
+        }
+
         $row = DB::selectOne(
             'SELECT COUNT(*) AS cnt
             FROM information_schema.KEY_COLUMN_USAGE
@@ -100,6 +105,31 @@ return new class extends Migration
 
     private function getUniqueIndexName(string $table, string $column): ?string
     {
+        $driver = DB::getDriverName();
+        if ($driver === 'sqlite') {
+            $indexes = DB::select("PRAGMA index_list('{$table}')");
+            foreach ($indexes as $index) {
+                $isUnique = (int) ($index->unique ?? 0) === 1;
+                $indexName = (string) ($index->name ?? '');
+                if (! $isUnique || $indexName === '') {
+                    continue;
+                }
+
+                $indexColumns = DB::select("PRAGMA index_info('{$indexName}')");
+                foreach ($indexColumns as $indexColumn) {
+                    if ((string) ($indexColumn->name ?? '') === $column) {
+                        return $indexName;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        if (! in_array($driver, ['mysql', 'mariadb'], true)) {
+            return null;
+        }
+
         $rows = DB::select("SHOW INDEX FROM `{$table}` WHERE Column_name = ? AND Non_unique = 0", [$column]);
         foreach ($rows as $row) {
             $keyName = (string) ($row->Key_name ?? '');
