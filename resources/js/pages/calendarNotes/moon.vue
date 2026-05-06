@@ -25,7 +25,6 @@ const dayTypeLabel = computed(
         zodiac.value.biodynamicDayLabel.charAt(0).toUpperCase() +
         zodiac.value.biodynamicDayLabel.slice(1),
 );
-
 </script>
 
 <template>
@@ -55,14 +54,15 @@ const dayTypeLabel = computed(
                         class="mt-0.5 text-base leading-snug font-medium tracking-tight text-foreground"
                     >
                         <span class="font-bold">{{ moon.displayTitle }}</span>
-                        <span class="text-foreground/70"> - {{ dayTypeLabel }}</span>
+                        <span class="text-foreground/70">
+                            - {{ dayTypeLabel }}</span
+                        >
                     </h4>
                     <p class="mt-0.5 text-sm leading-snug text-foreground/80">
                         {{ moon.moodHeadline }}
                     </p>
                 </div>
             </div>
-
         </div>
     </div>
 </template>

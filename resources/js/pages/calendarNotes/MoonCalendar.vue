@@ -180,16 +180,20 @@ function shortPhaseLabel(phase: string): string {
 }
 
 function dayTypeBestFor(label: string): string[] {
-    if (label === 'Juurepäev') return ['Juurviljade külv', 'Juurviljade istutus'];
-    if (label === 'Lehepäev') return ['Lehtköögiviljade külv', 'Lehttaimede istutus'];
+    if (label === 'Juurepäev')
+        return ['Juurviljade külv', 'Juurviljade istutus'];
+    if (label === 'Lehepäev')
+        return ['Lehtköögiviljade külv', 'Lehttaimede istutus'];
     if (label === 'Lillepäev') return ['Õistaimede külv', 'Õistaimede istutus'];
-    if (label === 'Viljapäev') return ['Viljataimede külv', 'Viljataimede istutus'];
+    if (label === 'Viljapäev')
+        return ['Viljataimede külv', 'Viljataimede istutus'];
     return ['Külv', 'Istutamine'];
 }
 
-function phaseTiming(
-    phase: string,
-): { confidence: 'hea' | 'mõõdukas' | 'pigem väldi'; reason: string } {
+function phaseTiming(phase: string): {
+    confidence: 'hea' | 'mõõdukas' | 'pigem väldi';
+    reason: string;
+} {
     if (
         phase === 'Kasvav sirp' ||
         phase === 'Esimene veerand' ||
@@ -255,7 +259,9 @@ const selectedInfo = computed(() =>
 const selectedDateLabel = computed(() =>
     selectedDateObj.value ? formatDateLong(selectedDateObj.value) : null,
 );
-const selectedLeadText = computed(() => selectedInfo.value?.leadParagraph ?? '');
+const selectedLeadText = computed(
+    () => selectedInfo.value?.leadParagraph ?? '',
+);
 const selectedBestTask = computed(() =>
     selectedInfo.value ? bestTaskOfDay(selectedInfo.value.tasks) : null,
 );
@@ -264,13 +270,19 @@ const selectedTasks = computed(() => {
     if (!tasks.length) return [];
     return (selectedBestTask.value ? tasks.slice(1) : tasks).slice(0, 3);
 });
-const selectedAvoid = computed(() => selectedInfo.value?.avoid.slice(0, 2) ?? []);
+const selectedAvoid = computed(
+    () => selectedInfo.value?.avoid.slice(0, 2) ?? [],
+);
 const selectedTaskSummary = computed(() =>
     [selectedBestTask.value, ...selectedTasks.value].filter(Boolean).join(', '),
 );
 const selectedAvoidSummary = computed(() => selectedAvoid.value.join(' '));
-const selectedBestFor = computed(() => selectedInfo.value?.bestFor.slice(0, 2) ?? []);
-const selectedNotIdealFor = computed(() => selectedInfo.value?.notIdealFor.slice(0, 2) ?? []);
+const selectedBestFor = computed(
+    () => selectedInfo.value?.bestFor.slice(0, 2) ?? [],
+);
+const selectedNotIdealFor = computed(
+    () => selectedInfo.value?.notIdealFor.slice(0, 2) ?? [],
+);
 const selectedTipsSummary = computed(() => {
     const notes = selectedInfo.value?.biodynamicNotes ?? [];
     if (notes.length) return notes.slice(0, 2).join(' ');
@@ -279,7 +291,8 @@ const selectedTipsSummary = computed(() => {
 const selectedTimingBadge = computed(() => {
     if (!selectedInfo.value) return '';
     if (selectedInfo.value.timingConfidence === 'hea') return 'Hea aeg';
-    if (selectedInfo.value.timingConfidence === 'mõõdukas') return 'Mõõdukas aeg';
+    if (selectedInfo.value.timingConfidence === 'mõõdukas')
+        return 'Mõõdukas aeg';
     return 'Pigem väldi';
 });
 
@@ -355,7 +368,7 @@ onUnmounted(() => {
                     >
                         <section
                             v-if="selectedDateObj && selectedInfo"
-                            class="mx-auto hidden w-full max-w-lg rounded-[1.5rem] border border-border/70 bg-linear-to-br from-stone-50 via-background to-stone-100/70 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_8px_24px_rgba(120,110,92,0.06)] lg:order-2 lg:mx-0 lg:block lg:max-w-none lg:sticky lg:top-6"
+                            class="mx-auto hidden w-full max-w-lg rounded-[1.5rem] border border-border/70 bg-linear-to-br from-stone-50 via-background to-stone-100/70 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_8px_24px_rgba(120,110,92,0.06)] lg:sticky lg:top-6 lg:order-2 lg:mx-0 lg:block lg:max-w-none"
                         >
                             <div class="flex items-start gap-3">
                                 <div
@@ -374,7 +387,9 @@ onUnmounted(() => {
                                     >
                                         Valitud päev
                                     </p>
-                                    <p class="mt-1 text-sm text-muted-foreground">
+                                    <p
+                                        class="mt-1 text-sm text-muted-foreground"
+                                    >
                                         {{ selectedDateLabel }}
                                     </p>
                                     <h2
@@ -383,11 +398,16 @@ onUnmounted(() => {
                                         <span class="font-bold">{{
                                             selectedInfo.phaseDisplay
                                         }}</span>
-                                        <span class="text-foreground/70"
-                                            > -  {{ selectedInfo.biodynamicLabel }}</span
+                                        <span class="text-foreground/70">
+                                            -
+                                            {{
+                                                selectedInfo.biodynamicLabel
+                                            }}</span
                                         >
                                     </h2>
-                                    <p class="mt-0.5 text-sm text-foreground/80">
+                                    <p
+                                        class="mt-0.5 text-sm text-foreground/80"
+                                    >
                                         {{ selectedInfo.moodHeadline }}
                                     </p>
                                 </div>
@@ -405,7 +425,9 @@ onUnmounted(() => {
                                 <div
                                     class="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3"
                                 >
-                                    <div class="mb-2 flex items-center justify-between gap-2">
+                                    <div
+                                        class="mb-2 flex items-center justify-between gap-2"
+                                    >
                                         <p
                                             class="text-[11px] font-semibold tracking-[0.12em] text-primary/90 uppercase"
                                         >
@@ -414,9 +436,11 @@ onUnmounted(() => {
                                         <span
                                             class="rounded-full border px-2 py-0.5 text-[11px] font-semibold"
                                             :class="
-                                                selectedInfo?.timingConfidence === 'hea'
+                                                selectedInfo?.timingConfidence ===
+                                                'hea'
                                                     ? 'border-primary/30 bg-primary/10 text-primary'
-                                                    : selectedInfo?.timingConfidence === 'mõõdukas'
+                                                    : selectedInfo?.timingConfidence ===
+                                                        'mõõdukas'
                                                       ? 'border-amber-200/60 bg-amber-50/45 text-amber-700/80'
                                                       : 'border-rose-200/60 bg-rose-50/45 text-rose-700/75'
                                             "
@@ -428,7 +452,6 @@ onUnmounted(() => {
                                     <p class="mb-2 text-sm text-foreground/80">
                                         {{ selectedInfo?.timingReason }}
                                     </p>
-
                                 </div>
 
                                 <div
@@ -437,14 +460,15 @@ onUnmounted(() => {
                                     <p
                                         class="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                                     >
-                                        <span class="material-symbols-outlined mr-1 align-[-2px] text-[13px] normal-case"
+                                        <span
+                                            class="material-symbols-outlined mr-1 align-[-2px] text-[13px] normal-case"
                                             >check_circle</span
                                         >
                                         Täna tee
                                     </p>
                                     <p
                                         v-if="selectedTaskSummary"
-                                        class="mt-1.5 text-[15px] leading-7 font-small text-foreground/90"
+                                        class="font-small mt-1.5 text-[15px] leading-7 text-foreground/90"
                                     >
                                         {{ selectedTaskSummary }}
                                     </p>
@@ -463,12 +487,15 @@ onUnmounted(() => {
                                     <p
                                         class="text-[11px] font-semibold tracking-[0.12em] text-rose-700/80 uppercase"
                                     >
-                                        <span class="material-symbols-outlined mr-1 align-[-2px] text-[13px] normal-case"
+                                        <span
+                                            class="material-symbols-outlined mr-1 align-[-2px] text-[13px] normal-case"
                                             >block</span
                                         >
                                         Ära tee täna
                                     </p>
-                                    <p class="mt-1.5 text-[14px] leading-6 text-foreground/85">
+                                    <p
+                                        class="mt-1.5 text-[14px] leading-6 text-foreground/85"
+                                    >
                                         {{ selectedNotIdealFor.join(', ') }}
                                     </p>
                                 </div>
@@ -479,7 +506,8 @@ onUnmounted(() => {
                                     <p
                                         class="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                                     >
-                                        <span class="material-symbols-outlined mr-1 align-[-2px] text-[13px] normal-case"
+                                        <span
+                                            class="material-symbols-outlined mr-1 align-[-2px] text-[13px] normal-case"
                                             >info</span
                                         >
                                         Tasub meeles pidada
@@ -494,7 +522,8 @@ onUnmounted(() => {
                                         v-else
                                         class="mt-1.5 text-[14px] leading-6 text-foreground/75"
                                     >
-                                        Täna piisab rahulikust hooldusest ja jälgimisest.
+                                        Täna piisab rahulikust hooldusest ja
+                                        jälgimisest.
                                     </p>
                                 </div>
                             </div>
@@ -503,7 +532,9 @@ onUnmounted(() => {
                         <section
                             class="mx-auto w-full max-w-lg card p-2.5 sm:p-3 lg:order-1 lg:mx-0 lg:max-w-none"
                         >
-                            <div class="mb-3 flex items-center justify-between lg:mb-4">
+                            <div
+                                class="mb-3 flex items-center justify-between lg:mb-4"
+                            >
                                 <button
                                     type="button"
                                     class="icon-btn"
@@ -547,7 +578,7 @@ onUnmounted(() => {
                                         v-for="d in weekDays"
                                         :key="d.getTime()"
                                         type="button"
-                                        class="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border border-border/60 bg-card px-1 py-1 text-left transition hover:bg-muted/45 sm:min-h-15 sm:px-1.5 lg:min-h-24 lg:rounded-2xl lg:gap-2 lg:px-2 lg:py-2"
+                                        class="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border border-border/60 bg-card px-1 py-1 text-left transition hover:bg-muted/45 sm:min-h-15 sm:px-1.5 lg:min-h-24 lg:gap-2 lg:rounded-2xl lg:px-2 lg:py-2"
                                         :class="[
                                             isSelectedDate(d)
                                                 ? 'border-stone-300 bg-stone-100 ring-2 ring-stone-300/70'
@@ -587,7 +618,8 @@ onUnmounted(() => {
                                         >
                                             {{
                                                 shortPhaseLabel(
-                                                    dayInfoForDate(d).phaseDisplay,
+                                                    dayInfoForDate(d)
+                                                        .phaseDisplay,
                                                 )
                                             }}
                                         </span>
@@ -635,7 +667,7 @@ onUnmounted(() => {
                                     <div
                                         v-for="day in daysInMonth"
                                         :key="day"
-                                        class="flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-border/60 bg-card px-1 py-1 text-left transition hover:bg-muted/45 sm:min-h-15 sm:px-1.5 lg:min-h-24 lg:rounded-2xl lg:gap-2 lg:px-2 lg:py-2"
+                                        class="flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-border/60 bg-card px-1 py-1 text-left transition hover:bg-muted/45 sm:min-h-15 sm:px-1.5 lg:min-h-24 lg:gap-2 lg:rounded-2xl lg:px-2 lg:py-2"
                                         :class="
                                             selectedDay === day
                                                 ? 'border-stone-300 bg-stone-100 ring-2 ring-stone-300/70'
@@ -684,7 +716,9 @@ onUnmounted(() => {
                                         type="button"
                                         class="icon-btn shrink-0"
                                         aria-label="Eelmine päev"
-                                        @click="shiftFromDate(selectedDateObj, -1)"
+                                        @click="
+                                            shiftFromDate(selectedDateObj, -1)
+                                        "
                                     >
                                         <span class="material-symbols-outlined"
                                             >chevron_left</span
@@ -707,7 +741,9 @@ onUnmounted(() => {
                                         type="button"
                                         class="icon-btn shrink-0"
                                         aria-label="Järgmine päev"
-                                        @click="shiftFromDate(selectedDateObj, 1)"
+                                        @click="
+                                            shiftFromDate(selectedDateObj, 1)
+                                        "
                                     >
                                         <span class="material-symbols-outlined"
                                             >chevron_right</span
@@ -719,7 +755,9 @@ onUnmounted(() => {
                                     <div class="flex items-center gap-2.5">
                                         <MoonPhaseIcon
                                             :lunation-t="selectedInfo.lunationT"
-                                            :phase-index="selectedInfo.phaseIndex"
+                                            :phase-index="
+                                                selectedInfo.phaseIndex
+                                            "
                                             :size="30"
                                             class="shrink-0 text-primary"
                                         />
@@ -731,7 +769,10 @@ onUnmounted(() => {
                                                     selectedInfo.phaseDisplay
                                                 }}</span>
                                                 <span class="text-foreground/70"
-                                                    >, {{ selectedInfo.biodynamicLabel }}</span
+                                                    >,
+                                                    {{
+                                                        selectedInfo.biodynamicLabel
+                                                    }}</span
                                                 >
                                             </p>
                                             <p
@@ -745,7 +786,9 @@ onUnmounted(() => {
                                     <div
                                         class="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5"
                                     >
-                                        <div class="mb-1.5 flex items-center justify-between gap-2">
+                                        <div
+                                            class="mb-1.5 flex items-center justify-between gap-2"
+                                        >
                                             <p
                                                 class="text-[11px] font-semibold tracking-[0.12em] text-primary/90 uppercase"
                                             >
@@ -754,9 +797,11 @@ onUnmounted(() => {
                                             <span
                                                 class="rounded-full border px-2 py-0.5 text-[11px] font-semibold"
                                                 :class="
-                                                    selectedInfo?.timingConfidence === 'hea'
+                                                    selectedInfo?.timingConfidence ===
+                                                    'hea'
                                                         ? 'border-primary/30 bg-primary/10 text-primary'
-                                                        : selectedInfo?.timingConfidence === 'mõõdukas'
+                                                        : selectedInfo?.timingConfidence ===
+                                                            'mõõdukas'
                                                           ? 'border-amber-200/60 bg-amber-50/45 text-amber-700/80'
                                                           : 'border-rose-200/60 bg-rose-50/45 text-rose-700/75'
                                                 "
@@ -764,7 +809,9 @@ onUnmounted(() => {
                                                 {{ selectedTimingBadge }}
                                             </span>
                                         </div>
-                                        <p class="text-sm leading-snug text-foreground/80">
+                                        <p
+                                            class="text-sm leading-snug text-foreground/80"
+                                        >
                                             {{ selectedInfo?.timingReason }}
                                         </p>
                                     </div>
@@ -776,7 +823,8 @@ onUnmounted(() => {
                                         <p
                                             class="text-[11px] font-semibold tracking-[0.12em] text-primary uppercase"
                                         >
-                                            <span class="material-symbols-outlined mr-1 align-[-2px] text-[13px] normal-case"
+                                            <span
+                                                class="material-symbols-outlined mr-1 align-[-2px] text-[13px] normal-case"
                                                 >check_circle</span
                                             >
                                             Täna tee
@@ -795,7 +843,8 @@ onUnmounted(() => {
                                         <p
                                             class="text-[11px] font-semibold tracking-[0.12em] text-rose-700/80 uppercase"
                                         >
-                                            <span class="material-symbols-outlined mr-1 align-[-2px] text-[13px] normal-case"
+                                            <span
+                                                class="material-symbols-outlined mr-1 align-[-2px] text-[13px] normal-case"
                                                 >block</span
                                             >
                                             Ära tee täna
@@ -813,7 +862,8 @@ onUnmounted(() => {
                                         <p
                                             class="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                                         >
-                                            <span class="material-symbols-outlined mr-1 align-[-2px] text-[13px] normal-case"
+                                            <span
+                                                class="material-symbols-outlined mr-1 align-[-2px] text-[13px] normal-case"
                                                 >info</span
                                             >
                                             Tasub meeles pidada

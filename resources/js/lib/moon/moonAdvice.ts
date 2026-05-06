@@ -78,7 +78,11 @@ const PHASE_RULES: Record<MoonPhase8, PhaseRule> = {
         moodHeadline: 'Rahuliku lõpetamise aeg.',
         leadParagraph:
             'Aeg on tsüklit rahulikult lõpetada ning valmistada aeda ette järgmiseks ringiks.',
-        tasks: ['korrasta peenraid', 'hoolda mulda', 'eemalda kahjustunud osad'],
+        tasks: [
+            'korrasta peenraid',
+            'hoolda mulda',
+            'eemalda kahjustunud osad',
+        ],
         avoid: ['Uued suuremad algused jäta järgmisse kuutsüklisse.'],
     },
 } as const;
