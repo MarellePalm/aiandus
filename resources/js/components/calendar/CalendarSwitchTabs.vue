@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
 
-import { calendar } from '@/routes';
-
 type ActiveKey = 'day' | 'moon';
 
 const props = withDefaults(
@@ -14,7 +12,7 @@ const props = withDefaults(
     },
 );
 
-const dayHref = calendar().url;
+const dayHref = '/calendar';
 const moonHref = '/calendar/moon';
 
 function tabClass(key: ActiveKey) {

@@ -72,9 +72,12 @@ const BIODYNAMIC_ET: Record<BiodynamicDayType, BiodynamicInfoEt> = {
             'kasta taimi',
             'niida muru',
             'väeta toataimi',
-            'toeta lehemassi kasvu',
+            'korja värskeks söömiseks',
         ],
-        notes: ['Sobib lehtköögiviljade ja roheliste taimede hoolduseks.'],
+        notes: [
+            'Lehepäev sobib lehtköögiviljade külviks ja värskeks korjeks.',
+            'Toataimede kastmine ning mõõdukas väetamine annavad täna parema tulemuse.',
+        ],
     },
     fruit: {
         label: 'Viljapäev',
@@ -86,9 +89,12 @@ const BIODYNAMIC_ET: Record<BiodynamicDayType, BiodynamicInfoEt> = {
             'näpista võrseid',
             'eemalda võsusid',
             'toeta saagi kujunemist',
-            'hoolda seemnetaimi',
+            'väeta viljataimi',
         ],
-        notes: ['Sobib viljakandvate taimede hoolduseks ja saagi korjamiseks.'],
+        notes: [
+            'Viljapäev toetab vilja- ja seemnetaimede töid ning saagi kujunemist.',
+            'Hea hetk võrsete suunamiseks ja viljataimede väetamiseks.',
+        ],
     },
     root: {
         label: 'Juurepäev',
@@ -99,10 +105,14 @@ const BIODYNAMIC_ET: Record<BiodynamicDayType, BiodynamicInfoEt> = {
             'istuta juurvilju',
             'mulda taimi',
             'väeta mulda',
-            'rohii peenraid',
-            'valmista saaki säilitamiseks ette',
+            'rohi peenraid',
+            'komposti peenraid',
+            'harvenda taimi',
         ],
-        notes: ['Sobib juurviljade külviks, hoolduseks ja korjeks.'],
+        notes: [
+            'Juurepäev sobib juurviljade külviks, harvendamiseks ja kompostimiseks.',
+            'Rohimine ning mõõdukas hooldus annavad täna stabiilsema tulemuse.',
+        ],
     },
     flower: {
         label: 'Lillepäev',
@@ -114,9 +124,12 @@ const BIODYNAMIC_ET: Record<BiodynamicDayType, BiodynamicInfoEt> = {
             'korista maitsetaimi',
             'lõika lõikelilli',
             'hoolda ilutaimi',
-            'tee kergemaid aiatöid',
+            'korja ravimtaimi',
         ],
-        notes: ['Sobib õistaimede ja maitsetaimede hoolduseks.'],
+        notes: [
+            'Lillepäev on hea aeg õistaimedele, ravimtaimede korjeks ja ilutöödeks.',
+            'Lõikelillede lõikus ning maitsetaimede hooldus õnnestuvad täna paremini.',
+        ],
     },
 } as const;
 

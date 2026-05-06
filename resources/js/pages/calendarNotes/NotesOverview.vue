@@ -24,7 +24,7 @@ type Note = {
     images?: string[];
 };
 
-type Group = { label: string; items: Note[] };
+type Group = { label: string; iso: string; items: Note[] };
 
 const props = withDefaults(
     defineProps<{
@@ -89,10 +89,84 @@ function parseISODate(iso: string) {
 
 function humanLabel(dateISO: string) {
     const d = parseISODate(dateISO);
+    const today = new Date();
+    const tomorrowBase = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const dayOnly = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diffDays = Math.round((dayOnly.getTime() - tomorrowBase.getTime()) / 86400000);
+
+    if (diffDays === 0) return 'Täna';
+    if (diffDays === -1) return 'Eile';
+
     const dd = String(d.getDate()).padStart(2, '0');
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const yyyy = d.getFullYear();
     return `${dd}.${mm}.${yyyy}`;
+}
+
+function escapeHtml(value: string) {
+    return value
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+function highlightHtml(text?: string | null) {
+    if (!text) return '';
+    const safe = escapeHtml(text);
+    const q = query.value.trim();
+    if (!q) return safe;
+
+    const escapedQuery = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedQuery})`, 'ig');
+
+    return safe.replace(
+        regex,
+        '<mark class="rounded bg-primary/15 px-0.5 text-foreground">$1</mark>',
+    );
+}
+
+function snippetFromBody(text?: string | null, max = 110) {
+    if (!text) return '';
+    const normalized = text.trim();
+    const q = query.value.trim().toLowerCase();
+
+    if (!q) {
+        return normalized.length > max
+            ? `${normalized.slice(0, max).trim()}...`
+            : normalized;
+    }
+
+    const index = normalized.toLowerCase().indexOf(q);
+    if (index === -1) {
+        return normalized.length > max
+            ? `${normalized.slice(0, max).trim()}...`
+            : normalized;
+    }
+
+    const start = Math.max(0, index - 28);
+    const end = Math.min(normalized.length, index + q.length + 52);
+    const prefix = start > 0 ? '... ' : '';
+    const suffix = end < normalized.length ? ' ...' : '';
+
+    return `${prefix}${normalized.slice(start, end).trim()}${suffix}`;
+}
+
+function sortNotes(items: Note[]) {
+    return [...items].sort((a, b) => {
+        if (a.kind !== b.kind) {
+            return a.kind === 'reminder' ? -1 : 1;
+        }
+
+        if (a.time && b.time) {
+            return a.time.localeCompare(b.time);
+        }
+
+        if (a.time) return -1;
+        if (b.time) return 1;
+        return a.title.localeCompare(b.title, 'et');
+    });
 }
 
 const filteredGroups = computed<Group[]>(() => {
@@ -131,7 +205,8 @@ const filteredGroups = computed<Group[]>(() => {
             .sort(([a], [b]) => (a < b ? 1 : -1))
             .map(([iso, groupItems]) => ({
                 label: humanLabel(iso),
-                items: groupItems,
+                iso,
+                items: sortNotes(groupItems),
             }));
     }
 
@@ -139,7 +214,8 @@ const filteredGroups = computed<Group[]>(() => {
     const sorted = [...byISO.entries()].sort(([a], [b]) => (a < b ? 1 : -1));
     return sorted.map(([iso, groupItems]) => ({
         label: humanLabel(iso),
-        items: groupItems,
+        iso,
+        items: sortNotes(groupItems),
     }));
 });
 
@@ -281,12 +357,17 @@ watch(query, () => {
                             :key="group.label"
                         >
                             <h3
-                                class="mb-3 text-sm font-bold tracking-wider text-muted-foreground uppercase"
+                                class="mb-3 flex items-center justify-between gap-3 text-sm font-bold tracking-wider text-muted-foreground uppercase"
                             >
-                                {{ group.label }}
+                                <span>{{ group.label }}</span>
+                                <span
+                                    class="text-[11px] font-medium tracking-normal text-muted-foreground/80 normal-case"
+                                >
+                                    {{ group.items.length }} kirjet
+                                </span>
                             </h3>
 
-                            <div class="grid grid-cols-2 gap-3">
+                            <div class="space-y-3">
                                 <article
                                     v-for="note in group.items"
                                     :key="note.id"
@@ -295,12 +376,12 @@ watch(query, () => {
                                     tabindex="0"
                                     @click="
                                         router.visit(
-                                            `/calendar/notes/${note.id}/edit`,
+                                            `/calendar/notes/${note.id}`,
                                         )
                                     "
                                     @keydown.enter="
                                         router.visit(
-                                            `/calendar/notes/${note.id}/edit`,
+                                            `/calendar/notes/${note.id}`,
                                         )
                                     "
                                 >
@@ -315,15 +396,6 @@ watch(query, () => {
                                                     : 'bg-secondary text-muted-foreground'
                                             "
                                         >
-                                            <span
-                                                class="material-symbols-outlined text-[13px]"
-                                            >
-                                                {{
-                                                    note.kind === 'reminder'
-                                                        ? 'notifications_active'
-                                                        : 'description'
-                                                }}
-                                            </span>
                                             {{ note.tag }}
                                         </span>
                                     </div>
@@ -335,14 +407,14 @@ watch(query, () => {
                                                 ? 'line-through opacity-60'
                                                 : ''
                                         "
+                                        v-html="highlightHtml(note.title || 'Nimetu kirje')"
                                     >
-                                        {{ note.title || 'Nimetu kirje' }}
                                     </h4>
                                     <p
                                         v-if="note.body"
                                         class="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground"
+                                        v-html="highlightHtml(snippetFromBody(note.body, 90))"
                                     >
-                                        {{ note.body }}
                                     </p>
 
                                     <div class="mt-2">
@@ -374,7 +446,7 @@ watch(query, () => {
 
                                 <p
                                     v-if="group.items.length === 0"
-                                    class="col-span-2 text-sm text-muted-foreground"
+                                    class="text-sm text-muted-foreground"
                                 >
                                     Pole kirjeid.
                                 </p>
