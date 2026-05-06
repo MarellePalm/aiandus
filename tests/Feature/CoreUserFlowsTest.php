@@ -555,6 +555,28 @@ test('user can update own calendar note', function () {
     expect($note->body)->toBe('Uus sisu');
 });
 
+test('user can view own calendar note detail', function () {
+    $user = User::factory()->create();
+
+    $note = CalendarNote::query()->create([
+        'user_id' => $user->id,
+        'note_date' => '2026-05-06',
+        'title' => 'Testmärge',
+        'body' => 'Sisu ridadel.',
+        'type' => 'note',
+        'done' => null,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('calendar.notes.show', $note))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('calendarNotes/NoteShow')
+            ->where('note.id', $note->id)
+            ->where('note.title', 'Testmärge')
+            ->where('note.body', 'Sisu ridadel.'));
+});
+
 test('user can toggle calendar note done status', function () {
     $user = User::factory()->create();
 
