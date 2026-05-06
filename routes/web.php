@@ -14,6 +14,7 @@ use App\Http\Controllers\SeedController;
 use App\Http\Controllers\WeatherController;
 use App\Models\Bed;
 use App\Models\CalendarNote;
+use App\Models\GardenPlan;
 use App\Models\Plant;
 use App\Models\Seed;
 use App\Models\User;
@@ -104,6 +105,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->where('user_id', $user->id)
             ->count();
 
+        $gardensCount = GardenPlan::query()
+            ->where('user_id', $user->id)
+            ->count();
+
         $emptyBedsCount = Bed::query()
             ->where('user_id', $user->id)
             ->doesntHave('plants')
@@ -140,6 +145,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'bedsCount' => $bedsCount,
                 'plantsCount' => $plantsCount,
                 'seedsCount' => $seedsCount,
+                'gardensCount' => $gardensCount,
                 'emptyBedsCount' => $emptyBedsCount,
                 'plantsWithoutBedCount' => $plantsWithoutBedCount,
                 'openTasksCount' => $openTasksCount,

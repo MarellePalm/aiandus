@@ -183,33 +183,35 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
 <template>
     <div class="weather-card">
         <div
-            class="rounded-[1.6rem] border border-border/70 bg-linear-to-br from-background via-background to-muted/25 p-4 shadow-sm"
+            class="rounded-[1.35rem] border border-border/70 bg-linear-to-br from-background via-background to-muted/25 p-3 shadow-sm"
         >
-            <div class="flex items-start justify-between gap-4">
+            <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0 flex-1">
-                    <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex items-center gap-1.5">
                         <div
                             v-if="q.isSuccess.value && locationName"
-                            class="inline-flex items-center rounded-full bg-card/80 px-2.5 py-1 text-xs text-foreground/80 ring-1 ring-border/70"
+                            class="inline-flex min-w-0 items-center rounded-full bg-card/80 px-2.5 py-1 text-xs text-foreground/80 ring-1 ring-border/70"
                         >
                             <span class="material-symbols-outlined mr-1 text-sm"
                                 >location_on</span
                             >
-                            <span class="max-w-[160px] truncate">{{
+                            <span class="max-w-[110px] truncate sm:max-w-[160px]">{{
                                 locationName
                             }}</span>
                         </div>
                         <div
                             v-if="q.isSuccess.value && todayWeatherLabel"
-                            class="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary ring-1 ring-primary/15"
+                            class="inline-flex min-w-0 items-center rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary ring-1 ring-primary/15"
                         >
-                            {{ todayWeatherLabel }}
+                            <span class="max-w-[90px] truncate sm:max-w-[140px]">{{
+                                todayWeatherLabel
+                            }}</span>
                         </div>
                     </div>
 
-                    <div class="mt-4 flex items-end gap-3">
+                    <div class="mt-2.5 flex items-end gap-2.5">
                         <span
-                            class="text-[44px] leading-none font-bold tracking-tight text-foreground sm:text-[52px]"
+                            class="text-[40px] leading-none font-bold tracking-tight text-foreground sm:text-[48px]"
                         >
                             <template v-if="q.isSuccess.value && temp !== null">
                                 {{ Math.round(temp) }}°C
@@ -217,7 +219,7 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                             <template v-else>...</template>
                         </span>
                         <span
-                            class="pb-1 text-sm font-medium text-muted-foreground"
+                            class="pb-0.5 text-xs font-medium text-muted-foreground sm:text-sm"
                         >
                             Max {{ Math.round(tMax ?? 0) }}° / Min
                             {{ Math.round(tMin ?? 0) }}°
@@ -230,7 +232,7 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                         v-if="q.isSuccess.value && todayHeroIconUrl"
                         :src="todayHeroIconUrl"
                         alt=""
-                        class="block h-20 w-20 object-contain opacity-95 drop-shadow-sm sm:h-24 sm:w-24"
+                        class="block h-16 w-16 object-contain opacity-95 drop-shadow-sm sm:h-20 sm:w-20"
                         width="96"
                         height="96"
                     />
@@ -251,17 +253,17 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
 
             <div
                 v-if="q.isSuccess.value"
-                class="mt-4 grid grid-cols-2 gap-2.5 xl:grid-cols-4"
+                class="mt-2.5 grid grid-cols-2 gap-1.5 xl:grid-cols-4"
             >
                 <div
-                    class="rounded-2xl border border-border/70 bg-card/70 px-3 py-2.5"
+                    class="rounded-xl border border-border/70 bg-card/70 px-2 py-1.5"
                 >
                     <p
                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                     >
                         Tuul
                     </p>
-                    <div class="mt-1 flex items-center gap-2">
+                    <div class="mt-0.5 flex items-center gap-1.5">
                         <span
                             class="material-symbols-outlined hidden text-base text-foreground/80 sm:inline-flex"
                             aria-hidden="true"
@@ -278,14 +280,14 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                 </div>
 
                 <div
-                    class="rounded-2xl border border-border/70 bg-card/70 px-3 py-2.5"
+                    class="rounded-xl border border-border/70 bg-card/70 px-2 py-1.5"
                 >
                     <p
                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                     >
                         Niiskus
                     </p>
-                    <div class="mt-1 flex items-center gap-2">
+                    <div class="mt-0.5 flex items-center gap-1.5">
                         <span
                             class="material-symbols-outlined hidden text-base text-foreground/80 sm:inline-flex"
                             aria-hidden="true"
@@ -298,14 +300,14 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                 </div>
 
                 <div
-                    class="rounded-2xl border border-border/70 bg-card/70 px-3 py-2.5"
+                    class="rounded-xl border border-border/70 bg-card/70 px-2 py-1.5"
                 >
                     <p
                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                     >
                         Tõus
                     </p>
-                    <div class="mt-1 flex items-center gap-2">
+                    <div class="mt-0.5 flex items-center gap-1.5">
                         <span
                             class="material-symbols-outlined hidden text-base text-amber-400 sm:inline-flex"
                             aria-hidden="true"
@@ -318,14 +320,14 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                 </div>
 
                 <div
-                    class="rounded-2xl border border-border/70 bg-card/70 px-3 py-2.5"
+                    class="rounded-xl border border-border/70 bg-card/70 px-2 py-1.5"
                 >
                     <p
                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                     >
                         Loojang
                     </p>
-                    <div class="mt-1 flex items-center gap-2">
+                    <div class="mt-0.5 flex items-center gap-1.5">
                         <span
                             class="material-symbols-outlined hidden text-base text-amber-500 sm:inline-flex"
                             aria-hidden="true"
@@ -341,15 +343,15 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
 
         <div
             v-if="q.isSuccess.value && forecastDays.length"
-            class="mt-3"
+            class="mt-2.5"
         >
             <div
-                class="flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-3 sm:gap-2.5 sm:overflow-visible xl:grid-cols-5"
+                class="flex gap-1.5 overflow-x-auto pb-1 sm:grid sm:grid-cols-3 sm:gap-2 sm:overflow-visible xl:grid-cols-5"
             >
                 <div
                     v-for="d in forecastDays"
                     :key="d.date"
-                    class="flex w-18 shrink-0 flex-col items-center rounded-2xl border border-border/70 bg-card/80 px-2 py-2.5 shadow-sm sm:w-auto"
+                    class="flex w-16 shrink-0 flex-col items-center rounded-xl border border-border/70 bg-card/80 px-1.5 py-2 shadow-sm sm:w-auto"
                 >
                     <span
                         class="text-[11px] font-semibold tracking-wide text-foreground/85 uppercase"

@@ -63,7 +63,7 @@ const PHASE_RULES: Record<MoonPhase8, PhaseRule> = {
         leadParagraph:
             'Kahanev kuu suunab jõu juurtele ning soosib hooldus- ja korrastustöid.',
         tasks: ['rohi peenraid', 'harvenda taimi', 'lisa komposti'],
-        avoid: ['Väga tugevat tagasilõikust väldi täna.'],
+        avoid: ['Väldi täna väga tugevat tagasilõikust.'],
     },
 
     'Viimane veerand': {

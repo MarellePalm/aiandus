@@ -64,6 +64,7 @@ const todayTasks = computed<TodayTask[]>(
 );
 
 type DashboardSummary = {
+    gardensCount: number;
     bedsCount: number;
     plantsCount: number;
     seedsCount: number;
@@ -79,6 +80,7 @@ const dashboardSummary = computed<DashboardSummary>(() => {
         .length;
 
     return {
+        gardensCount: 0,
         bedsCount: 0,
         plantsCount: recentPlants.value.length,
         seedsCount: recentSeeds.value.length,
@@ -93,9 +95,18 @@ const dashboardSummary = computed<DashboardSummary>(() => {
 });
 
 const overviewStats = computed(() => {
-    const { bedsCount, plantsCount, seedsCount } = dashboardSummary.value;
+    const { gardensCount, bedsCount, plantsCount, seedsCount } =
+        dashboardSummary.value;
 
     return [
+        {
+            id: 'gardens',
+            label: 'Aiad',
+            value: gardensCount,
+            href: '/map',
+            icon: 'yard',
+            hint: gardensCount > 0 ? 'Ava aiaplaanid' : 'Lisa esimene aed',
+        },
         {
             id: 'beds',
             label: 'Peenrad',
@@ -641,16 +652,16 @@ const dashboardSectionHeaderStrip =
                                         </button>
                                     </div>
                                 </div>
-                                <div class="p-4 lg:p-3.5">
-                                    <div class="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-2.5">
+                                <div class="p-3 lg:p-3.5">
+                                    <div class="grid grid-cols-4 gap-1.5 sm:gap-2.5 lg:gap-2.5">
                                         <div
                                             v-for="stat in overviewStats"
                                             :key="stat.id"
-                                            class="aspect-square min-h-0 lg:aspect-auto lg:h-28"
+                                            class="h-[5.5rem] min-h-0 sm:aspect-square lg:aspect-auto lg:h-28"
                                         >
                                             <Link
                                                 :href="stat.href"
-                                                class="flex h-full min-h-0 flex-col rounded-2xl border border-border/70 bg-muted/25 p-2.5 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-md sm:p-3 lg:justify-between"
+                                                class="flex h-full min-h-0 flex-col rounded-xl border border-border/70 bg-muted/25 p-2 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-md sm:rounded-2xl sm:p-2.5 lg:justify-between"
                                             >
                                                 <div
                                                     class="flex items-start justify-between gap-2"
@@ -672,7 +683,7 @@ const dashboardSectionHeaderStrip =
                                                     class="flex min-h-0 flex-1 items-center justify-center"
                                                 >
                                                     <p
-                                                        class="text-center text-xl font-bold tracking-tight text-foreground tabular-nums sm:text-2xl"
+                                                        class="text-center text-lg font-bold tracking-tight text-foreground tabular-nums sm:text-xl lg:text-2xl"
                                                     >
                                                         {{ stat.value }}
                                                     </p>
@@ -758,13 +769,13 @@ const dashboardSectionHeaderStrip =
 
                                 <div
                                     v-if="recentNotes.length"
-                                    class="grid grid-cols-2 gap-3 p-4 lg:grid-cols-1"
+                                    class="space-y-0 p-4 lg:space-y-3"
                                 >
                                     <Link
                                         v-for="note in recentNotes.slice(0, 5)"
                                         :key="note.id"
                                         href="/calendar/overview"
-                                        class="block rounded-2xl border border-border/70 bg-muted/35 px-3 py-3 transition hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card sm:px-4"
+                                        class="block border-b border-border/60 py-2.5 transition last:border-b-0 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-muted/35 lg:px-3 lg:py-3 lg:hover:-translate-y-0.5 lg:hover:border-primary/25 lg:hover:bg-card"
                                     >
                                         <div class="flex items-start justify-between gap-3">
                                             <div class="min-w-0">
@@ -775,6 +786,13 @@ const dashboardSectionHeaderStrip =
                                                     {{ note.note_date }}
                                                 </p>
                                             </div>
+                                            <div
+                                                v-if="note.media_urls?.[0]"
+                                                class="h-12 w-12 shrink-0 rounded-lg border border-border/70 bg-cover bg-center lg:h-14 lg:w-14"
+                                                :style="{
+                                                    backgroundImage: `url('${note.media_urls[0]}')`,
+                                                }"
+                                            />
                                         </div>
                                     </Link>
                                 </div>
@@ -882,7 +900,7 @@ const dashboardSectionHeaderStrip =
                                     </div>
                                     <div
                                         v-show="isSectionExpanded('weather')"
-                                        class="p-4 sm:p-5"
+                                        class="p-3 sm:p-4"
                                     >
                                         <DashboardWeather />
                                     </div>

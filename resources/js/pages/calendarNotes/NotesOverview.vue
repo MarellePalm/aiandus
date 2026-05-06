@@ -308,7 +308,7 @@ watch(query, () => {
                         </div>
                     </div>
 
-                    <div class="space-y-6 pt-6">
+                    <div class="space-y-4 pt-4 sm:space-y-6 sm:pt-6">
                         <!-- Tühi olek -->
                         <div
                             v-if="filteredGroups.length === 0"
@@ -357,7 +357,7 @@ watch(query, () => {
                             :key="group.label"
                         >
                             <h3
-                                class="mb-3 flex items-center justify-between gap-3 text-sm font-bold tracking-wider text-muted-foreground uppercase"
+                                class="mb-2 flex items-center justify-between gap-3 text-sm font-bold tracking-wider text-muted-foreground uppercase sm:mb-3"
                             >
                                 <span>{{ group.label }}</span>
                                 <span
@@ -367,11 +367,11 @@ watch(query, () => {
                                 </span>
                             </h3>
 
-                            <div class="space-y-3">
+                            <div class="space-y-2.5 sm:space-y-3">
                                 <article
                                     v-for="note in group.items"
                                     :key="note.id"
-                                    class="cursor-pointer rounded-2xl border border-border/60 bg-card p-3 shadow-soft transition hover:border-primary/30 hover:shadow-md"
+                                    class="cursor-pointer border-b border-border/60 py-2.5 transition hover:bg-muted/20 sm:rounded-xl sm:border sm:bg-card sm:px-3 sm:shadow-soft sm:hover:border-primary/30"
                                     role="button"
                                     tabindex="0"
                                     @click="
@@ -385,62 +385,55 @@ watch(query, () => {
                                         )
                                     "
                                 >
-                                    <div
-                                        class="mb-2 flex items-start justify-between gap-2"
-                                    >
-                                        <span
-                                            class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                                            :class="
-                                                note.kind === 'journal'
-                                                    ? 'bg-primary/10 text-primary'
-                                                    : 'bg-secondary text-muted-foreground'
-                                            "
-                                        >
-                                            {{ note.tag }}
-                                        </span>
-                                    </div>
+                                    <div class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                                        <div class="min-w-0">
+                                            <div class="mb-1.5 flex items-start justify-between gap-2">
+                                                <span
+                                                    class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                                                    :class="
+                                                        note.kind === 'journal'
+                                                            ? 'bg-primary/10 text-primary'
+                                                            : 'bg-secondary text-muted-foreground'
+                                                    "
+                                                >
+                                                    {{ note.tag }}
+                                                </span>
+                                            </div>
 
-                                    <h4
-                                        class="line-clamp-2 text-base leading-snug font-semibold"
-                                        :class="
-                                            note.done
-                                                ? 'line-through opacity-60'
-                                                : ''
-                                        "
-                                        v-html="highlightHtml(note.title || 'Nimetu kirje')"
-                                    >
-                                    </h4>
-                                    <p
-                                        v-if="note.body"
-                                        class="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground"
-                                        v-html="highlightHtml(snippetFromBody(note.body, 90))"
-                                    >
-                                    </p>
+                                            <h4
+                                                class="line-clamp-2 text-[15px] leading-snug font-semibold"
+                                                :class="
+                                                    note.done
+                                                        ? 'line-through opacity-60'
+                                                        : ''
+                                                "
+                                                v-html="highlightHtml(note.title || 'Nimetu kirje')"
+                                            >
+                                            </h4>
+                                            <p
+                                                v-if="note.body"
+                                                class="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground"
+                                                v-html="highlightHtml(snippetFromBody(note.body, 90))"
+                                            >
+                                            </p>
 
-                                    <div class="mt-2">
-                                        <p
-                                            v-if="note.time"
-                                            class="text-[11px] font-semibold text-primary"
-                                        >
-                                            {{ note.time }}
-                                        </p>
-                                        <div
-                                            v-if="note.images?.length"
-                                            class="no-scrollbar mt-2 flex gap-2 overflow-x-auto"
-                                        >
-                                            <div
-                                                v-for="(
-                                                    img, idx
-                                                ) in note.images"
-                                                :key="idx"
-                                                class="size-14 shrink-0 rounded-lg border border-border bg-cover bg-center"
-                                                :style="{
-                                                    backgroundImage: `url('${img}')`,
-                                                }"
-                                                role="img"
-                                                :aria-label="`Pilt ${idx + 1}`"
-                                            />
+                                            <p
+                                                v-if="note.time"
+                                                class="mt-1 text-[11px] font-semibold text-primary"
+                                            >
+                                                {{ note.time }}
+                                            </p>
                                         </div>
+
+                                        <div
+                                            v-if="note.images?.[0]"
+                                            class="h-14 w-14 shrink-0 rounded-lg border border-border/70 bg-cover bg-center sm:h-16 sm:w-16"
+                                            :style="{
+                                                backgroundImage: `url('${note.images[0]}')`,
+                                            }"
+                                            role="img"
+                                            aria-label="Märkme pilt"
+                                        />
                                     </div>
                                 </article>
 
