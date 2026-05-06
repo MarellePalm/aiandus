@@ -16,8 +16,6 @@ return new class extends Migration
             $table->unsignedSmallInteger('height')->default(800)->comment('Garden height in centimeters');
             $table->string('unit', 10)->default('cm');
             $table->timestamps();
-
-            $table->unique('user_id');
         });
     }
 
