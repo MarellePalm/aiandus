@@ -270,15 +270,8 @@ const selectedTasks = computed(() => {
     if (!tasks.length) return [];
     return (selectedBestTask.value ? tasks.slice(1) : tasks).slice(0, 3);
 });
-const selectedAvoid = computed(
-    () => selectedInfo.value?.avoid.slice(0, 2) ?? [],
-);
 const selectedTaskSummary = computed(() =>
     [selectedBestTask.value, ...selectedTasks.value].filter(Boolean).join(', '),
-);
-const selectedAvoidSummary = computed(() => selectedAvoid.value.join(' '));
-const selectedBestFor = computed(
-    () => selectedInfo.value?.bestFor.slice(0, 2) ?? [],
 );
 const selectedNotIdealFor = computed(
     () => selectedInfo.value?.notIdealFor.slice(0, 2) ?? [],
