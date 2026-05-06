@@ -363,18 +363,10 @@ onUnmounted(() => {
                             v-if="selectedDateObj && selectedInfo"
                             class="mx-auto hidden w-full max-w-lg rounded-[1.5rem] border border-border/70 bg-linear-to-br from-stone-50 via-background to-stone-100/70 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_8px_24px_rgba(120,110,92,0.06)] lg:sticky lg:top-6 lg:order-2 lg:mx-0 lg:block lg:max-w-none"
                         >
-                            <div class="flex items-start gap-3">
-                                <div
-                                    class="flex h-15 w-15 shrink-0 items-center justify-center rounded-[1.15rem] border border-border/70 bg-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_18px_rgba(120,110,92,0.08)]"
-                                >
-                                    <MoonPhaseIcon
-                                        :lunation-t="selectedInfo.lunationT"
-                                        :phase-index="selectedInfo.phaseIndex"
-                                        :size="42"
-                                        class="drop-shadow-sm"
-                                    />
-                                </div>
-                                <div class="min-w-0 flex-1">
+                            <div
+                                class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3"
+                            >
+                                <div class="min-w-0">
                                     <p
                                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                                     >
@@ -403,6 +395,16 @@ onUnmounted(() => {
                                     >
                                         {{ selectedInfo.moodHeadline }}
                                     </p>
+                                </div>
+                                <div
+                                    class="flex h-15 w-15 shrink-0 items-center justify-center rounded-[1.15rem] border border-border/70 bg-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_18px_rgba(120,110,92,0.08)]"
+                                >
+                                    <MoonPhaseIcon
+                                        :lunation-t="selectedInfo.lunationT"
+                                        :phase-index="selectedInfo.phaseIndex"
+                                        :size="42"
+                                        class="drop-shadow-sm"
+                                    />
                                 </div>
                             </div>
 
@@ -448,16 +450,16 @@ onUnmounted(() => {
                                 </div>
 
                                 <div
-                                    class="rounded-2xl border border-primary/15 bg-linear-to-br from-primary/8 via-stone-50 to-white px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_16px_rgba(120,110,92,0.05)]"
+                                    class="rounded-2xl border border-emerald-200/70 bg-emerald-50/40 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_16px_rgba(120,110,92,0.05)]"
                                 >
                                     <p
-                                        class="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                        class="flex items-center justify-between text-[11px] font-semibold tracking-[0.12em] text-emerald-900/80 uppercase"
                                     >
+                                        <span>Täna tee</span>
                                         <span
-                                            class="material-symbols-outlined mr-1 align-[-2px] text-[13px] normal-case"
+                                            class="material-symbols-outlined align-[-2px] text-[13px] normal-case"
                                             >check_circle</span
                                         >
-                                        Täna tee
                                     </p>
                                     <p
                                         v-if="selectedTaskSummary"
@@ -475,16 +477,16 @@ onUnmounted(() => {
 
                                 <div
                                     v-if="selectedNotIdealFor.length"
-                                    class="rounded-2xl border border-rose-200/55 bg-rose-50/40 px-4 py-3"
+                                    class="rounded-2xl border border-rose-200/70 bg-rose-50/40 px-4 py-3"
                                 >
                                     <p
-                                        class="text-[11px] font-semibold tracking-[0.12em] text-rose-700/80 uppercase"
+                                        class="flex items-center justify-between text-[11px] font-semibold tracking-[0.12em] text-rose-900/70 uppercase"
                                     >
+                                        <span>Ära tee täna</span>
                                         <span
-                                            class="material-symbols-outlined mr-1 align-[-2px] text-[13px] normal-case"
+                                            class="material-symbols-outlined align-[-2px] text-[13px] normal-case"
                                             >block</span
                                         >
-                                        Ära tee täna
                                     </p>
                                     <p
                                         class="mt-1.5 text-[14px] leading-6 text-foreground/85"
@@ -497,13 +499,13 @@ onUnmounted(() => {
                                     class="rounded-2xl border border-stone-200/90 bg-white/85 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_4px_14px_rgba(120,110,92,0.04)]"
                                 >
                                     <p
-                                        class="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                        class="flex items-center justify-between text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                                     >
+                                        <span>Tasub meeles pidada</span>
                                         <span
-                                            class="material-symbols-outlined mr-1 align-[-2px] text-[13px] normal-case"
+                                            class="material-symbols-outlined align-[-2px] text-[13px] normal-case"
                                             >info</span
                                         >
-                                        Tasub meeles pidada
                                     </p>
                                     <p
                                         v-if="selectedTipsSummary"
@@ -745,16 +747,10 @@ onUnmounted(() => {
                                 </div>
 
                                 <div class="space-y-3 px-3 py-3">
-                                    <div class="flex items-center gap-2.5">
-                                        <MoonPhaseIcon
-                                            :lunation-t="selectedInfo.lunationT"
-                                            :phase-index="
-                                                selectedInfo.phaseIndex
-                                            "
-                                            :size="30"
-                                            class="shrink-0 text-primary"
-                                        />
-                                        <div class="min-w-0 flex-1">
+                                    <div
+                                        class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5"
+                                    >
+                                        <div class="min-w-0">
                                             <p
                                                 class="text-base leading-tight font-semibold text-foreground"
                                             >
@@ -774,6 +770,14 @@ onUnmounted(() => {
                                                 {{ selectedInfo.moodHeadline }}
                                             </p>
                                         </div>
+                                        <MoonPhaseIcon
+                                            :lunation-t="selectedInfo.lunationT"
+                                            :phase-index="
+                                                selectedInfo.phaseIndex
+                                            "
+                                            :size="30"
+                                            class="shrink-0 text-primary"
+                                        />
                                     </div>
 
                                     <div
@@ -811,16 +815,16 @@ onUnmounted(() => {
 
                                     <div
                                         v-if="selectedTaskSummary"
-                                        class="rounded-xl border border-primary/25 bg-primary/10 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+                                        class="rounded-xl border border-emerald-200/70 bg-emerald-50/35 px-3 py-2"
                                     >
                                         <p
-                                            class="text-[11px] font-semibold tracking-[0.12em] text-primary uppercase"
+                                            class="flex items-center justify-between text-[11px] font-semibold tracking-[0.12em] text-emerald-900/80 uppercase"
                                         >
+                                            <span>Täna tee</span>
                                             <span
-                                                class="material-symbols-outlined mr-1 align-[-2px] text-[13px] normal-case"
+                                                class="material-symbols-outlined align-[-2px] text-[13px] normal-case"
                                                 >check_circle</span
                                             >
-                                            Täna tee
                                         </p>
                                         <p
                                             class="mt-1.5 text-sm leading-snug text-foreground/90"
@@ -831,16 +835,16 @@ onUnmounted(() => {
 
                                     <div
                                         v-if="selectedNotIdealFor.length"
-                                        class="rounded-xl border border-rose-200/55 bg-rose-50/40 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+                                        class="rounded-xl border border-rose-200/70 bg-rose-50/35 px-3 py-2"
                                     >
                                         <p
-                                            class="text-[11px] font-semibold tracking-[0.12em] text-rose-700/80 uppercase"
+                                            class="flex items-center justify-between text-[11px] font-semibold tracking-[0.12em] text-rose-900/70 uppercase"
                                         >
+                                            <span>Ära tee täna</span>
                                             <span
-                                                class="material-symbols-outlined mr-1 align-[-2px] text-[13px] normal-case"
+                                                class="material-symbols-outlined align-[-2px] text-[13px] normal-case"
                                                 >block</span
                                             >
-                                            Ära tee täna
                                         </p>
                                         <p
                                             class="mt-1.5 text-sm leading-snug text-foreground/85"
@@ -849,17 +853,15 @@ onUnmounted(() => {
                                         </p>
                                     </div>
 
-                                    <div
-                                        class="rounded-xl border border-stone-200/90 bg-white/85 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]"
-                                    >
+                                    <div class="px-1 py-1">
                                         <p
-                                            class="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                            class="flex items-center justify-between text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                                         >
+                                            <span>Tasub meeles pidada</span>
                                             <span
-                                                class="material-symbols-outlined mr-1 align-[-2px] text-[13px] normal-case"
+                                                class="material-symbols-outlined align-[-2px] text-[13px] normal-case"
                                                 >info</span
                                             >
-                                            Tasub meeles pidada
                                         </p>
                                         <p
                                             class="mt-1.5 text-sm leading-relaxed text-foreground/80"
