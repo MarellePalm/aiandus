@@ -3,7 +3,7 @@
     "short_name": "Aiap\u00e4evik",
     "background_color": "#faf8f4",
     "display": "fullscreen",
-    "description": "A Progressive Web Application setup for Laravel projects.",
+    "description": "Sinu aiapäevik: kalender, märkmed, taimed ja aia plaan ühes kohas.",
     "theme_color": "#679263",
     "start_url": "/",
     "icons": [
