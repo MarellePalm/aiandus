@@ -230,6 +230,35 @@ class CalendarNoteController extends Controller
         ]);
     }
 
+    public function show(Request $request, CalendarNote $note)
+    {
+        abort_unless($note->user_id === $request->user()->id, 403);
+
+        $note->loadMissing(['bed:id,name', 'plant:id,name']);
+
+        return Inertia::render('calendarNotes/NoteShow', [
+            'note' => [
+                'id' => $note->id,
+                'note_date' => $note->note_date->format('Y-m-d'),
+                'title' => $note->title,
+                'body' => $note->body,
+                'media_urls' => $note->media_urls,
+                'type' => $note->type,
+                'done' => $note->done,
+                'due_date' => $note->due_at ? $note->due_at->format('Y-m-d') : null,
+                'due_time' => $note->due_at ? $note->due_at->format('H:i') : null,
+                'bed' => $note->bed ? [
+                    'id' => $note->bed->id,
+                    'name' => $note->bed->name,
+                ] : null,
+                'plant' => $note->plant ? [
+                    'id' => $note->plant->id,
+                    'name' => $note->plant->name,
+                ] : null,
+            ],
+        ]);
+    }
+
     public function update(Request $request, CalendarNote $note)
     {
         abort_unless($note->user_id === $request->user()->id, 403);
@@ -305,7 +334,12 @@ class CalendarNoteController extends Controller
 
         $note->delete();
 
-        return redirect()->back();
+        $returnTo = $request->string('return_to')->toString();
+        if ($returnTo !== '' && str_starts_with($returnTo, '/')) {
+            return redirect($returnTo);
+        }
+
+        return redirect()->route('calendar.overview');
     }
 
     public function toggleDone(Request $request, CalendarNote $note)

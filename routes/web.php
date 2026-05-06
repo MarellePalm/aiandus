@@ -291,6 +291,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('calendar/notes', [CalendarNoteController::class, 'store'])
         ->name('calendar.notes.store');
 
+    Route::get('calendar/notes/{note}', [CalendarNoteController::class, 'show'])
+        ->name('calendar.notes.show');
+
     Route::get('calendar/notes/{note}/edit', [CalendarNoteController::class, 'edit'])
         ->name('calendar.notes.edit');
 

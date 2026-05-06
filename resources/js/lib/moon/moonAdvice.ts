@@ -3,14 +3,10 @@ import type { MoonInfo, MoonPhase8 } from './moon';
 import { moonPhaseDisplayLabel } from './moonPhaseDisplay';
 
 export type MoonAdvice = {
-    title: MoonPhase8;
     displayTitle: string;
-    /** Lühike meeleoluline pealkiri. */
     moodHeadline: string;
-    /** Lühike sissejuhatus „täna“ kaardile. */
     leadParagraph: string;
     tasks: string[];
-    /** Mida võiks täna pigem vältida või rahulikumalt võtta. */
     avoid: string[];
 };
 
@@ -23,100 +19,67 @@ type PhaseRule = Readonly<{
 
 const PHASE_RULES: Record<MoonPhase8, PhaseRule> = {
     Uuskuu: {
-        moodHeadline: 'Rahulik aeg uueks ringiks.',
+        moodHeadline: 'Uue ringi algus.',
         leadParagraph:
-            'Noorkuu paiku tasub tempo maha võtta. Hea aeg peenarde korrastamiseks, mulla ettevalmistuseks ja järgmiste tööde läbimõtlemiseks.',
-        tasks: [
-            'planeerimine',
-            'peenarde ettevalmistus',
-            'mulla hooldus',
-            'korrastamine',
-        ],
-        avoid: [
-            'Suuremad istutused jäta pigem järgmisteks päevadeks.',
-            'Taimi tasub täna võimalikult vähe häirida.',
-        ],
+            'Hea aeg rahulikuks korrastamiseks ja järgmiste tööde planeerimiseks.',
+        tasks: ['planeeri töid', 'valmista peenraid ette', 'hoolda mulda'],
+        avoid: ['Külvi ja ümberistutamist lükka pigem järgmistele päevadele.'],
     },
 
     'Kasvav sirp': {
         moodHeadline: 'Kasvu toetav aeg.',
         leadParagraph:
-            'Kasvava sirbi ajal on hea keskenduda külvile ja uuele kasvule. Sobib hästi noorte taimede toetamiseks ja pehmemateks aiatöödeks.',
-        tasks: ['külvamine', 'istutamine', 'kerge hooldus', 'kastmise kontroll'],
-        avoid: [
-            'Tugevama tagasilõikusega tasub veel veidi oodata.',
-            'Kuiva mullaga ära alusta kõige nõudlikumatest töödest.',
-        ],
+            'Kasvav kuu suunab jõu ülespoole ning toetab aktiivseid istutus- ja külvitöid.',
+        tasks: ['külva', 'istuta', 'väeta mõõdukalt'],
+        avoid: ['Suurema tagasilõikusega tasub veel oodata.'],
     },
 
     'Esimene veerand': {
         moodHeadline: 'Aktiivne kasvuaeg.',
         leadParagraph:
-            'Esimene veerand sobib aktiivseteks aiatöödeks. Hea aeg külvamiseks, istutamiseks ja töödeks, kus tahad näha kiiremat edenemist.',
-        tasks: [
-            'külvamine',
-            'istutamine',
-            'taimede toestamine',
-            'peenarde hooldus',
-        ],
-        avoid: [
-            'Noori taimi ei tasu väetisega üle koormata.',
-            'Ümberistutamisel tegutse rahulikult ja ettevaatlikult.',
-        ],
+            'Taimede kasv on aktiivne ja hea aeg on kasvu toetavateks töödeks.',
+        tasks: ['istuta ettekasvatatud taimi', 'väeta', 'toesta võrseid'],
+        avoid: ['Õrnu taimi istuta ümber ettevaatlikult.'],
     },
 
     'Kasvav kumer kuu': {
         moodHeadline: 'Jõudu koguv aeg.',
         leadParagraph:
-            'Kasvava kumera kuu ajal koguneb taimedes jõudu. Hea aeg kasvule kaasa aidata ja peenraid hooldada.',
-        tasks: [
-            'istutamine',
-            'mulla hooldus',
-            'kasvu toetamine',
-            'väetamise planeerimine',
-        ],
-        avoid: ['Kuiva ilmaga ära unusta kastmist.'],
+            'Kasvule suunatud periood: hea aeg taimede tugevdamiseks ja edenemise toetamiseks.',
+        tasks: ['istuta', 'väeta', 'seo ja toesta taimi'],
+        avoid: ['Kuiva ilmaga kontrolli enne istutamist mulla niiskust.'],
     },
 
     Täiskuu: {
-        moodHeadline: 'Jälgimise ja korje aeg.',
+        moodHeadline: 'Korje ja jälgimise aeg.',
         leadParagraph:
-            'Täiskuu ajal tasub aias rohkem jälgida kui suruda peale suuri muutusi. Hea aeg saagi korjamiseks ja märkmete tegemiseks.',
-        tasks: ['saagi koristamine', 'taimede jälgimine', 'märkmete tegemine'],
-        avoid: [
-            'Õrnu taimi ei tasu täna ümber istutada.',
-            'Tugevamad hooldustööd võiks jätta hilisemaks.',
-        ],
+            'Hea aeg saaki korjata, taimi jälgida ja tähelepanekud kirja panna.',
+        tasks: ['korja saaki', 'jälgi taimi', 'tee märkmeid'],
+        avoid: ['Õrnu taimi ära täna ümber istuta.'],
     },
 
     'Kahanev kumer kuu': {
         moodHeadline: 'Hoolduse ja korrastamise aeg.',
         leadParagraph:
-            'Pärast täiskuud liigub rõhk rohkem hooldusele ja korrastamisele. See on hea aeg rohimiseks, kärpimiseks ja peenarde puhastamiseks.',
-        tasks: ['rohimine', 'kärpimine', 'kompostimine'],
-        avoid: [
-            'Liiga tugeva tagasilõikusega tasub piiri pidada.',
-            'Haiged või kuivanud osad eemalda rahulikult.',
-        ],
+            'Kahanev kuu suunab jõu juurtele ning soosib hooldus- ja korrastustöid.',
+        tasks: ['rohi peenraid', 'harvenda taimi', 'lisa komposti'],
+        avoid: ['Väga tugevat tagasilõikust väldi täna.'],
     },
 
     'Viimane veerand': {
         moodHeadline: 'Puhastamise ja lõpetamise aeg.',
         leadParagraph:
-            'Viimane veerand sobib hooldus- ja korrastustöödeks. Hea aeg rohida, harvendada ja lõpetada töid, mis on mõnda aega oodanud.',
-        tasks: ['rohimine', 'harvendamine', 'korrastamine', 'kompostimine'],
-        avoid: ['Suured uued algused võiks jätta järgmisse faasi.'],
+            'Hea aeg võtta rahulikum tempo ja lõpetada pooleli jäänud aiatööd.',
+        tasks: ['rohi peenraid', 'harvenda taimi', 'korrasta peenraid'],
+        avoid: ['Suured uued algused jäta järgmisse faasi.'],
     },
 
     'Kahanev sirp': {
         moodHeadline: 'Rahuliku lõpetamise aeg.',
         leadParagraph:
-            'Kahanev sirp on kuutsükli lõpuosa. Sobib peenarde rahulikuks korrastamiseks ja järgmise ringi ettevalmistamiseks.',
-        tasks: ['kompostimine', 'kahjustunud osade eemaldamine', 'peenarde korrastus'],
-        avoid: [
-            'Kõiki töid ei pea ühe päevaga lõpetama.',
-            'Uued suuremad algused jäta järgmisse kuutsüklisse.',
-        ],
+            'Aeg on tsüklit rahulikult lõpetada ning valmistada aeda ette järgmiseks ringiks.',
+        tasks: ['korrasta peenraid', 'hoolda mulda', 'eemalda kahjustunud osad'],
+        avoid: ['Uued suuremad algused jäta järgmisse kuutsüklisse.'],
     },
 } as const;
 
@@ -129,7 +92,6 @@ export function moonAdvice(info: MoonInfo): MoonAdvice {
     const rule = PHASE_RULES[info.phase as MoonPhase8] ?? PHASE_RULES.Uuskuu;
 
     return {
-        title: info.phase as MoonPhase8,
         displayTitle: moonPhaseDisplayLabel(info.phase as MoonPhase8),
         moodHeadline: rule.moodHeadline,
         leadParagraph: rule.leadParagraph,

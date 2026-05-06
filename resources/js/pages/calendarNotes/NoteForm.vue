@@ -42,6 +42,11 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
+const initialNoteDate =
+    props.note?.note_date ??
+    props.initialDate ??
+    new Date().toISOString().slice(0, 10);
+
 const form = useForm<{
     note_date: string;
     title: string;
@@ -56,15 +61,12 @@ const form = useForm<{
 
     photos: File[];
 }>({
-    note_date:
-        props.note?.note_date ??
-        props.initialDate ??
-        new Date().toISOString().slice(0, 10),
+    note_date: initialNoteDate,
     title: props.note?.title ?? '',
     body: props.note?.body ?? '',
     type: 'note',
 
-    due_date: props.note?.due_date ?? new Date().toISOString().slice(0, 10),
+    due_date: props.note?.due_date ?? initialNoteDate,
     due_time: props.note?.due_time ?? '09:00',
 
     bed_id: props.note?.bed_id ?? props.initialBedId ?? null,
