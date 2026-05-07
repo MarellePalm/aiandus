@@ -3,6 +3,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, ref } from 'vue';
 
 import BackIconButton from '@/components/BackIconButton.vue';
+import { normalizeImageForUpload } from '@/lib/imageUpload';
 
 type Plant = {
     id: number;
@@ -37,15 +38,16 @@ function pickFile() {
     fileInput.value?.click();
 }
 
-function onFileChange(e: Event) {
+async function onFileChange(e: Event) {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
 
-    pickedFile.value = file;
-    form.image = file;
+    const normalizedFile = file ? await normalizeImageForUpload(file) : null;
+    pickedFile.value = normalizedFile;
+    form.image = normalizedFile;
 
     if (localPreview.value) URL.revokeObjectURL(localPreview.value);
-    localPreview.value = file ? URL.createObjectURL(file) : null;
+    localPreview.value = normalizedFile ? URL.createObjectURL(normalizedFile) : null;
 }
 
 function clearFile() {
@@ -59,6 +61,17 @@ function clearFile() {
 }
 
 function submit() {
+    const quantity = Number(form.quantity);
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
+        form.setError(
+            'quantity',
+            'Taimede arv peab olema täisarv vahemikus 1 kuni 100.',
+        );
+        return;
+    }
+    form.clearErrors('quantity');
+    form.quantity = quantity;
+
     form.put(`/plants/${props.plant.id}`, {
         forceFormData: true,
         preserveScroll: true,
@@ -205,6 +218,8 @@ onBeforeUnmount(() => {
                                 v-model="form.quantity"
                                 type="number"
                                 min="1"
+                                max="100"
+                                step="1"
                                 class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 placeholder="1"
                             />

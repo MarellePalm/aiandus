@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue';
 
 import BackIconButton from '@/components/BackIconButton.vue';
 import CardActionsMenu from '@/components/CardActionsMenu.vue';
+import DesktopSearchField from '@/components/DesktopSearchField.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import EditCategoryModal from '@/components/EditCategoryModal.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
@@ -165,7 +166,12 @@ const resetToAll = () => {
                 <div
                     class="border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x bg-background shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
                 >
-                    <DiaryHeader title="Taimed">
+                    <DiaryHeader
+                        title="Taimed"
+                        header-class="pt-6"
+                        top-row-class="mb-3"
+                        bottom-row-class="mb-4"
+                    >
                         <template #leading>
                             <BackIconButton
                                 href="/dashboard"
@@ -173,8 +179,12 @@ const resetToAll = () => {
                             />
                         </template>
                         <template #actions>
+                            <DesktopSearchField
+                                v-model="searchQuery"
+                                placeholder="Otsi taimi..."
+                            />
                             <button
-                                class="flex h-10 w-10 items-center justify-center rounded-full text-primary transition hover:bg-primary/10"
+                                class="flex h-10 w-10 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 lg:hidden"
                                 type="button"
                                 @click="showSearch = true"
                             >
@@ -219,7 +229,35 @@ const resetToAll = () => {
                     <!-- Category Grid -->
                     <main class="flex-1 px-6 py-4 md:px-8">
                         <div
-                            class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
+                            v-if="filteredCategories.length === 0"
+                            class="rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-6 py-12 text-center"
+                        >
+                            <div
+                                class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-primary"
+                                    >favorite</span
+                                >
+                            </div>
+                            <h2 class="text-lg font-semibold text-foreground">
+                                {{
+                                    activeTab === 'favorites'
+                                        ? 'Lemmikuid veel ei ole'
+                                        : 'Kategooriaid veel ei ole'
+                                }}
+                            </h2>
+                            <p class="mt-2 text-sm text-muted-foreground">
+                                {{
+                                    activeTab === 'favorites'
+                                        ? 'Märgi mõni kategooria lemmikuks, et see siin kuvataks.'
+                                        : 'Lisa uus taime kategooria, et alustada.'
+                                }}
+                            </p>
+                        </div>
+                        <div
+                            v-else
+                            class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6"
                         >
                             <!-- TAIMEKATEGOORIA NIMI -->
                             <Link
@@ -238,14 +276,14 @@ const resetToAll = () => {
                                     class="matte-overlay absolute inset-0"
                                 ></div>
                                 <div
-                                    class="absolute bottom-0 left-0 w-full p-4"
+                                    class="absolute bottom-0 left-0 w-full p-4 lg:p-3"
                                 >
                                     <span
-                                        class="mb-1 inline-block rounded-md bg-card/30 px-2 py-0.5 text-[10px] font-bold text-white uppercase backdrop-blur-md dark:bg-black/30"
+                                        class="mb-1 inline-block rounded-md bg-card/30 px-2 py-0.5 text-[10px] font-bold text-white uppercase backdrop-blur-md dark:bg-black/30 lg:text-[9px]"
                                     >
                                         {{ cat.count }} Sorti
                                     </span>
-                                    <h3 class="text-lg font-bold text-white">
+                                    <h3 class="text-lg font-bold text-white lg:text-base">
                                         {{ cat.name }}
                                     </h3>
                                 </div>
@@ -285,6 +323,23 @@ const resetToAll = () => {
                                     </span>
                                 </button>
                             </Link>
+
+                            <button
+                                v-if="activeTab !== 'favorites'"
+                                type="button"
+                                class="group relative hidden aspect-[1/1] items-center justify-center rounded-2xl border-2 border-dashed border-primary/20 bg-primary/5 text-primary transition hover:border-primary/35 hover:bg-primary/10 lg:flex"
+                                @click="showCreateCategory = true"
+                            >
+                                <div class="text-center">
+                                    <span
+                                        class="material-symbols-outlined text-5xl leading-none opacity-70 transition group-hover:opacity-100 lg:text-4xl"
+                                        >add</span
+                                    >
+                                    <p class="mt-2 text-sm font-semibold lg:text-xs">
+                                        Lisa uus taime kategooria
+                                    </p>
+                                </div>
+                            </button>
                         </div>
                     </main>
                     <SearchModal
@@ -360,14 +415,14 @@ const resetToAll = () => {
                             </div>
                         </div>
                     </transition>
+                    <FloatingPlusButton
+                        class="lg:hidden"
+                        aria-label="Lisa taime kategooria"
+                        :size-px="52"
+                        :icon-size-px="30"
+                        @click="showCreateCategory = true"
+                    />
                 </div>
-
-                <FloatingPlusButton
-                    aria-label="Lisa kategooria"
-                    :size-px="52"
-                    :icon-size-px="30"
-                    @click="showCreateCategory = true"
-                />
 
                 <BottomNav active="plants" />
             </div>

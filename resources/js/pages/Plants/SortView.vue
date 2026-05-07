@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import BackIconButton from '@/components/BackIconButton.vue';
 import CreatePlantModal from '@/components/CreatePlantModal.vue';
+import DesktopSearchField from '@/components/DesktopSearchField.vue';
 import DeletePlantModal from '@/components/DeletePlantModal.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
@@ -280,10 +281,14 @@ function onPlantImageError(event: Event) {
                             />
                         </template>
                         <template #actions>
+                            <DesktopSearchField
+                                v-model="searchQuery"
+                                placeholder="Otsi sorte..."
+                            />
                             <button
-                                class="flex h-10 w-10 items-center justify-center rounded-full text-primary transition hover:bg-primary/10"
                                 type="button"
                                 aria-label="Otsi"
+                                class="flex h-10 w-10 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 lg:hidden"
                                 @click="showSearch = true"
                             >
                                 <span
@@ -317,11 +322,9 @@ function onPlantImageError(event: Event) {
 
                     <main class="pb-24">
                         <div class="px-4 py-6">
-                            <div
-                                class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-                            >
+                            <div class="flex items-center gap-3">
                                 <div
-                                    class="no-scrollbar flex gap-3 overflow-x-auto overflow-y-visible pb-2 sm:pb-0"
+                                    class="no-scrollbar flex min-w-0 flex-1 gap-3 overflow-x-auto overflow-y-visible pb-2"
                                 >
                                     <button
                                         type="button"
@@ -339,9 +342,7 @@ function onPlantImageError(event: Event) {
                                     </button>
                                 </div>
 
-                                <div
-                                    class="ml-auto shrink-0 self-end sm:self-auto"
-                                >
+                                <div class="ml-auto shrink-0">
                                     <SortDropdown
                                         v-model="selectedSort"
                                         :options="sortOptions"
@@ -353,55 +354,235 @@ function onPlantImageError(event: Event) {
                         <div class="px-4">
                             <div
                                 v-if="visiblePlants.length === 0"
-                                class="text-text-muted rounded-2xl border border-primary/10 bg-card p-6 text-sm"
+                                class="rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-6 py-12 text-center"
                             >
-                                Sorte veel pole. Vajuta “+”, et lisada esimene.
+                                <div
+                                    class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10"
+                                >
+                                    <span
+                                        class="material-symbols-outlined text-primary"
+                                        >potted_plant</span
+                                    >
+                                </div>
+                                <h2 class="text-lg font-semibold text-foreground">
+                                    {{
+                                        activeTab === 'favorites'
+                                            ? 'Lemmikud puuduvad'
+                                            : 'Selles kategoorias taimi ei ole'
+                                    }}
+                                </h2>
+                                <button
+                                    v-if="activeTab !== 'favorites'"
+                                    type="button"
+                                    class="mt-4 hidden items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 lg:inline-flex"
+                                    @click="openAddPlant"
+                                >
+                                    <span
+                                        class="material-symbols-outlined text-[18px]"
+                                        >add</span
+                                    >
+                                    Lisa uus taim
+                                </button>
+                                <p class="mt-2 text-sm text-muted-foreground">
+                                    {{
+                                        activeTab === 'favorites'
+                                            ? 'Märgi mõni taim lemmikuks, et see siin kuvataks.'
+                                            : 'Lisa siia esimene kirje.'
+                                    }}
+                                </p>
                             </div>
 
-                            <div v-else class="space-y-4">
-                                <div
-                                    v-for="p in visiblePlants"
-                                    :key="p.id"
-                                    class="relative rounded-2xl border border-primary/10 bg-card p-4 shadow-sm transition hover:shadow-md"
-                                    @click="router.visit(`/plants/${p.id}`)"
-                                >
-                                    <div class="flex items-center gap-4">
-                                        <img
-                                            :class="[
-                                                'h-16 w-16 shrink-0 rounded-xl border border-primary/10',
-                                                isFallback(p.image_url)
-                                                    ? 'bg-gray-100 object-contain p-2'
-                                                    : 'object-cover',
-                                            ]"
-                                            :src="p.image_url || fallbackImage"
-                                            :alt="p.subtitle"
-                                            @error="onPlantImageError"
-                                        />
+                            <div v-else>
+                                <div class="space-y-4 lg:hidden">
+                                    <div
+                                        v-for="p in visiblePlants"
+                                        :key="p.id"
+                                        class="relative rounded-2xl border border-primary/10 bg-card p-4 shadow-sm transition hover:shadow-md"
+                                        @click="router.visit(`/plants/${p.id}`)"
+                                    >
+                                        <div class="flex items-center gap-4">
+                                            <img
+                                                :class="[
+                                                    'h-16 w-16 shrink-0 rounded-xl border border-primary/10',
+                                                    isFallback(p.image_url)
+                                                        ? 'bg-gray-100 object-contain p-2'
+                                                        : 'object-cover',
+                                                ]"
+                                                :src="p.image_url || fallbackImage"
+                                                :alt="p.subtitle"
+                                                @error="onPlantImageError"
+                                            />
 
-                                        <div class="min-w-0 flex-1">
-                                            <div
-                                                class="text-text-main truncate text-lg font-bold"
-                                            >
-                                                {{ p.subtitle }}
-                                            </div>
-                                            <div
-                                                class="text-text-muted mt-1 text-sm"
-                                            >
-                                                Istutatud:
-                                                {{ formatDateEE(p.planted_at) }}
-                                            </div>
-                                            <div>
-                                                <p
-                                                    class="text-sm text-foreground/70"
+                                            <div class="min-w-0 flex-1">
+                                                <div
+                                                    class="text-text-main truncate text-lg font-bold"
                                                 >
-                                                    Taimede arv:
-                                                    {{ p.quantity }} tk
-                                                </p>
+                                                    {{ p.subtitle }}
+                                                </div>
+                                                <div
+                                                    class="text-text-muted mt-1 text-sm"
+                                                >
+                                                    Istutatud:
+                                                    {{
+                                                        formatDateEE(
+                                                            p.planted_at,
+                                                        )
+                                                    }}
+                                                </div>
+                                                <div>
+                                                    <p
+                                                        class="text-sm text-foreground/70"
+                                                    >
+                                                        Taimede arv:
+                                                        {{ p.quantity }} tk
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div
+                                                class="ml-2 flex shrink-0 items-center gap-2"
+                                                data-plant-menu
+                                                @click.stop
+                                            >
+                                                <button
+                                                    type="button"
+                                                    class="flex h-9 w-9 items-center justify-center rounded-full border border-primary/10 bg-background transition hover:scale-105 hover:bg-primary/5"
+                                                    :class="
+                                                        p.is_favorite
+                                                            ? 'text-rose-600 shadow-sm'
+                                                            : 'text-foreground/45'
+                                                    "
+                                                    @click.prevent.stop="
+                                                        toggleFavorite(p.id)
+                                                    "
+                                                    aria-label="Lisa lemmikuks"
+                                                    :title="
+                                                        p.is_favorite
+                                                            ? 'Eemalda lemmikutest'
+                                                            : 'Lisa lemmikuks'
+                                                    "
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined text-[20px] leading-none transition"
+                                                        :style="
+                                                            p.is_favorite
+                                                                ? {
+                                                                      fontVariationSettings: `'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24`,
+                                                                  }
+                                                                : {
+                                                                      fontVariationSettings: `'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
+                                                                  }
+                                                        "
+                                                    >
+                                                        favorite
+                                                    </span>
+                                                </button>
+
+                                                <div class="relative">
+                                                    <button
+                                                        type="button"
+                                                        class="text-text-muted flex h-9 w-9 items-center justify-center rounded-full border border-transparent transition hover:bg-primary/10"
+                                                        aria-label="Menüü"
+                                                        @click.stop.prevent="
+                                                            toggleMenu(p.id)
+                                                        "
+                                                    >
+                                                        <span
+                                                            class="material-symbols-outlined text-[22px]"
+                                                        >
+                                                            more_horiz
+                                                        </span>
+                                                    </button>
+
+                                                    <div
+                                                        v-if="
+                                                            menuOpenForId ===
+                                                            p.id
+                                                        "
+                                                        class="absolute top-11 right-0 z-20 w-44 overflow-hidden rounded-xl border border-primary/10 bg-card shadow-lg"
+                                                        @click.stop
+                                                    >
+                                                        <button
+                                                            type="button"
+                                                            class="w-full px-4 py-3 text-left text-sm text-foreground hover:bg-primary/5"
+                                                            @click.stop="
+                                                                editPlant(p)
+                                                            "
+                                                        >
+                                                            Muuda
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                                            @click.stop="
+                                                                askDelete(p)
+                                                            "
+                                                        >
+                                                            Kustuta
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="hidden lg:grid lg:grid-cols-3 lg:gap-5 xl:grid-cols-4"
+                                >
+                                    <article
+                                        v-for="p in visiblePlants"
+                                        :key="`desktop-${p.id}`"
+                                        class="overflow-hidden rounded-2xl border border-primary/10 bg-card shadow-sm transition hover:shadow-md"
+                                    >
+                                        <div
+                                            class="cursor-pointer p-4"
+                                            @click="router.visit(`/plants/${p.id}`)"
+                                        >
+                                            <div class="flex items-start gap-3">
+                                                <img
+                                                    :class="[
+                                                        'h-16 w-16 shrink-0 rounded-xl border border-primary/10',
+                                                        isFallback(p.image_url)
+                                                            ? 'bg-gray-100 object-contain p-2'
+                                                            : 'object-cover',
+                                                    ]"
+                                                    :src="
+                                                        p.image_url ||
+                                                        fallbackImage
+                                                    "
+                                                    :alt="p.subtitle"
+                                                    @error="onPlantImageError"
+                                                />
+
+                                                <div class="min-w-0 flex-1">
+                                                    <div
+                                                        class="text-text-main truncate text-xl font-bold"
+                                                    >
+                                                        {{ p.subtitle }}
+                                                    </div>
+                                                    <div
+                                                        class="text-text-muted mt-3 text-sm"
+                                                    >
+                                                        Istutatud:
+                                                        {{
+                                                            formatDateEE(
+                                                                p.planted_at,
+                                                            )
+                                                        }}
+                                                    </div>
+                                                    <p
+                                                        class="mt-1 text-sm text-foreground/70"
+                                                    >
+                                                        Taimede arv:
+                                                        {{ p.quantity }} tk
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
 
                                         <div
-                                            class="ml-2 flex shrink-0 items-center gap-2"
+                                            class="flex items-center justify-between border-t border-primary/10 px-3 py-2"
                                             data-plant-menu
                                             @click.stop
                                         >
@@ -459,7 +640,7 @@ function onPlantImageError(event: Event) {
                                                     v-if="
                                                         menuOpenForId === p.id
                                                     "
-                                                    class="absolute top-11 right-0 z-20 w-44 overflow-hidden rounded-xl border border-primary/10 bg-card shadow-lg"
+                                                    class="absolute right-0 bottom-11 z-20 w-44 overflow-hidden rounded-xl border border-primary/10 bg-card shadow-lg"
                                                     @click.stop
                                                 >
                                                     <button
@@ -483,21 +664,36 @@ function onPlantImageError(event: Event) {
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    </article>
+                                    <button
+                                        type="button"
+                                        class="group relative hidden min-h-[190px] rounded-2xl border-2 border-dashed border-primary/20 bg-primary/5 p-4 text-primary transition hover:border-primary/35 hover:bg-primary/10 lg:flex"
+                                        @click="openAddPlant"
+                                    >
+                                        <div class="m-auto text-center">
+                                            <span
+                                                class="material-symbols-outlined text-5xl leading-none opacity-70 transition group-hover:opacity-100"
+                                                >add</span
+                                            >
+                                            <p class="mt-2 text-sm font-semibold">
+                                                Lisa uus taim
+                                            </p>
+                                        </div>
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     </main>
                 </div>
 
+                <BottomNav active="plants" />
                 <FloatingPlusButton
+                    class="lg:hidden"
                     aria-label="Lisa taim"
                     :size-px="52"
                     :icon-size-px="30"
                     @click="openAddPlant"
                 />
-
-                <BottomNav active="plants" />
             </div>
         </div>
 

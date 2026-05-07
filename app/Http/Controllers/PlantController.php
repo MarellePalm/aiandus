@@ -124,7 +124,7 @@ class PlantController extends Controller
             'fertilizing_frequency' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
             'image' => ['nullable', 'image', 'max:5120', 'dimensions:min_width=300,min_height=300,max_width=6000,max_height=6000'],
-            'quantity' => ['nullable', 'integer', 'min:1'],
+            'quantity' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $imagePath = null;
@@ -192,7 +192,7 @@ class PlantController extends Controller
             'bed_id' => ['nullable', 'exists:beds,id'],
             'position_in_bed' => ['nullable', 'string', 'max:120'],
             'image' => ['nullable', 'image', 'max:5120', 'dimensions:min_width=300,min_height=300,max_width=6000,max_height=6000'],
-            'quantity' => ['nullable', 'integer', 'min:1'],
+            'quantity' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         if (! empty($data['bed_id'])) {

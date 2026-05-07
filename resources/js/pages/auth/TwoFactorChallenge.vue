@@ -53,7 +53,7 @@ const code = ref<string>('');
         :title="authConfigContent.title"
         :description="authConfigContent.description"
     >
-        <Head title="Two-Factor Authentication" />
+        <Head title="Kahefaktoriline autentimine" />
 
         <div class="space-y-6">
             <template v-if="!showRecoveryInput">

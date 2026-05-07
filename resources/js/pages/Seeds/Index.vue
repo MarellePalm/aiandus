@@ -5,6 +5,7 @@ import { computed, ref, watch } from 'vue';
 import BackIconButton from '@/components/BackIconButton.vue';
 import CardActionsMenu from '@/components/CardActionsMenu.vue';
 import CreateCategoryModal from '@/components/CreateCategoryModal.vue';
+import DesktopSearchField from '@/components/DesktopSearchField.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import EditCategoryModal from '@/components/EditCategoryModal.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
@@ -136,7 +137,7 @@ const toggleFavorite = (id: number) => {
 
 const tabClass = (key: TabKey) => {
     const base =
-        'flex h-9 shrink-0 items-center justify-center rounded-full px-4 text-sm font-medium transition-colors';
+        'flex h-8 shrink-0 items-center justify-center rounded-full px-3 text-xs font-semibold transition-colors';
     if (activeTab.value === key) {
         return `${base} bg-primary text-white`;
     }
@@ -178,9 +179,13 @@ const openEditCategory = (category: Category) => {
                             />
                         </template>
                         <template #actions>
+                            <DesktopSearchField
+                                v-model="searchQuery"
+                                placeholder="Otsi varusid..."
+                            />
                             <button
                                 type="button"
-                                class="flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10"
+                                class="flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10 lg:hidden"
                                 @click="showSearch = true"
                             >
                                 <span class="material-symbols-outlined text-xl"
@@ -223,23 +228,30 @@ const openEditCategory = (category: Category) => {
                                 >
                             </div>
                             <h2 class="text-lg font-semibold text-foreground">
-                                Varud puuduvad
+                                {{
+                                    activeTab === 'favorites'
+                                        ? 'Lemmikuid veel ei ole'
+                                        : 'Varud puuduvad'
+                                }}
                             </h2>
                             <p class="mt-2 text-sm text-muted-foreground">
-                                Vajuta plussi, et lisada uus kategooria varude
-                                lisamiseks.
+                                {{
+                                    activeTab === 'favorites'
+                                        ? 'Märgi mõni kategooria lemmikuks, et see siin kuvataks.'
+                                        : 'Vajuta plussi, et lisada uus kategooria varude lisamiseks.'
+                                }}
                             </p>
                         </div>
 
                         <div
                             v-else
-                            class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
+                            class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-5 xl:grid-cols-5"
                         >
                             <Link
                                 v-for="cat in filteredCategories"
                                 :key="cat.id"
                                 :href="`/seeds/category/${cat.slug}`"
-                                class="group relative aspect-[1/1] overflow-hidden rounded-2xl shadow-lg"
+                                class="group relative aspect-square overflow-hidden rounded-2xl shadow-lg"
                             >
                                 <img
                                     :alt="cat.name"
@@ -288,18 +300,33 @@ const openEditCategory = (category: Category) => {
                                 </button>
 
                                 <div
-                                    class="absolute bottom-0 left-0 w-full p-4 text-white"
+                                    class="absolute bottom-0 left-0 w-full p-4 text-white lg:p-3"
                                 >
                                     <span
-                                        class="mb-1 inline-block rounded-md bg-card/30 px-2 py-0.5 text-[10px] font-bold uppercase backdrop-blur-md dark:bg-black/30"
+                                        class="mb-1 inline-block rounded-md bg-card/30 px-2 py-0.5 text-[10px] font-bold uppercase backdrop-blur-md dark:bg-black/30 lg:text-[9px]"
                                     >
                                         {{ cat.count }} varu
                                     </span>
-                                    <h3 class="text-lg font-bold">
+                                    <h3 class="text-lg font-bold lg:text-base">
                                         {{ cat.name }}
                                     </h3>
                                 </div>
                             </Link>
+                            <button
+                                type="button"
+                                class="group relative hidden aspect-square items-center justify-center rounded-2xl border-2 border-dashed border-primary/20 bg-primary/5 text-primary transition hover:border-primary/35 hover:bg-primary/10 lg:flex"
+                                @click="showCreateCategory = true"
+                            >
+                                <div class="text-center">
+                                    <span
+                                        class="material-symbols-outlined text-5xl leading-none opacity-70 transition group-hover:opacity-100 lg:text-4xl"
+                                        >add</span
+                                    >
+                                    <p class="mt-2 text-sm font-semibold lg:text-xs">
+                                        Lisa uus varu kategooria
+                                    </p>
+                                </div>
+                            </button>
                         </div>
                     </main>
                 </div>
@@ -332,6 +359,7 @@ const openEditCategory = (category: Category) => {
                     @confirm="confirmDeleteCategory"
                 />
                 <FloatingPlusButton
+                    class="lg:hidden"
                     aria-label="Lisa varu"
                     :size-px="52"
                     :icon-size-px="30"

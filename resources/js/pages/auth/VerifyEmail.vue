@@ -15,10 +15,10 @@ defineProps<{
 
 <template>
     <AuthLayout
-        title="Verify email"
+        title="Kinnita e-post"
         description="Please verify your email address by clicking on the link we just emailed to you."
     >
-        <Head title="Email verification" />
+        <Head title="E-posti kinnitamine" />
 
         <div
             v-if="status === 'verification-link-sent'"

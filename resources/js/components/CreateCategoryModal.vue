@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { normalizeImageForUpload } from '@/lib/imageUpload';
 
 const props = withDefaults(
     defineProps<{
@@ -48,23 +49,25 @@ const setFile = (file: File | null) => {
 
 const openPicker = () => fileInputRef.value?.click();
 
-const onFileChange = (e: Event) => {
+const onFileChange = async (e: Event) => {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
 
     if (file && !file.type.startsWith('image/')) return;
 
-    setFile(file);
+    const normalizedFile = file ? await normalizeImageForUpload(file) : null;
+    setFile(normalizedFile);
     input.value = ''; // sama faili uuesti valides käivituks change
 };
 
-const onDrop = (e: DragEvent) => {
+const onDrop = async (e: DragEvent) => {
     isDragging.value = false;
     const file = e.dataTransfer?.files?.[0] ?? null;
     if (!file) return;
     if (!file.type.startsWith('image/')) return;
 
-    setFile(file);
+    const normalizedFile = await normalizeImageForUpload(file);
+    setFile(normalizedFile);
 };
 
 const reset = () => {

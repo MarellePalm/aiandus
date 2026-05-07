@@ -12,10 +12,12 @@ withDefaults(
         modelValue: string;
         iconOnly?: boolean;
         compact?: boolean;
+        label?: string;
     }>(),
     {
         iconOnly: false,
         compact: false,
+        label: 'Sorteeri',
     },
 );
 
@@ -73,14 +75,23 @@ onBeforeUnmount(() => {
         <button
             ref="triggerRef"
             type="button"
-            class="flex h-9 w-9 items-center justify-center rounded-full border border-primary/30 bg-primary/5 text-primary shadow-sm transition hover:bg-primary/10"
+            class="flex h-9 items-center justify-center rounded-full border border-primary/30 bg-primary/5 px-3 text-primary shadow-sm transition hover:bg-primary/10"
             :class="[
-                iconOnly ? 'h-9 w-9' : '',
-                compact && !iconOnly ? 'h-9 w-9' : '',
+                iconOnly
+                    ? 'h-9 w-9 px-0'
+                    : compact
+                      ? 'h-9 w-9 px-0 lg:h-9 lg:w-auto lg:px-3'
+                      : 'w-9 px-0 lg:w-auto lg:px-3',
             ]"
             @click.stop="toggleDropdown"
         >
             <span class="material-symbols-outlined text-[20px]">sort</span>
+            <span
+                v-if="!iconOnly"
+                class="ml-1.5 hidden text-sm font-medium lg:inline"
+            >
+                {{ label }}
+            </span>
         </button>
 
         <Teleport to="body">

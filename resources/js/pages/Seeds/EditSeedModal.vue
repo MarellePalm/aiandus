@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { normalizeImageForUpload } from '@/lib/imageUpload';
 
 type SeedItem = {
     id: number;
@@ -66,11 +67,12 @@ const setFile = (file: File | null) => {
     }
 };
 
-const onFileChange = (e: Event) => {
+const onFileChange = async (e: Event) => {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
     if (file && !file.type.startsWith('image/')) return;
-    setFile(file);
+    const normalizedFile = file ? await normalizeImageForUpload(file) : null;
+    setFile(normalizedFile);
     input.value = '';
 };
 

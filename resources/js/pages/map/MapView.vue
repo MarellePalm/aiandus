@@ -11,6 +11,7 @@ import {
 
 import BackIconButton from '@/components/BackIconButton.vue';
 import CardActionsMenu from '@/components/CardActionsMenu.vue';
+import DesktopSearchField from '@/components/DesktopSearchField.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -1295,9 +1296,13 @@ function saveGardenPlan() {
                             />
                         </template>
                         <template #actions>
+                            <DesktopSearchField
+                                v-model="searchQuery"
+                                placeholder="Otsi peenraid..."
+                            />
                             <button
                                 type="button"
-                                class="flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10"
+                                class="flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10 lg:hidden"
                                 @click="showSearch = true"
                             >
                                 <span class="material-symbols-outlined text-xl"

@@ -3,6 +3,7 @@ import { Head, router } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import BackIconButton from '@/components/BackIconButton.vue';
+import DesktopSearchField from '@/components/DesktopSearchField.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import SortDropdown from '@/components/SortDropdown.vue';
@@ -303,9 +304,13 @@ onBeforeUnmount(() => {
                             />
                         </template>
                         <template #actions>
+                            <DesktopSearchField
+                                v-model="searchQuery"
+                                placeholder="Otsi varusid..."
+                            />
                             <button
-                                class="flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10"
                                 type="button"
+                                class="flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10 lg:hidden"
                                 @click="showSearch = true"
                             >
                                 <span
@@ -356,67 +361,235 @@ onBeforeUnmount(() => {
                                 >
                             </div>
                             <h2 class="text-lg font-semibold text-foreground">
-                                Selles kategoorias varusi ei ole
+                                {{
+                                    activeTab === 'favorites'
+                                        ? 'Lemmikud puuduvad'
+                                        : 'Selles kategoorias varusi ei ole'
+                                }}
                             </h2>
                             <p class="mt-2 text-sm text-muted-foreground">
-                                Vajuta plussi, et lisada uus varu.
+                                {{
+                                    activeTab === 'favorites'
+                                        ? 'Märgi mõni varu lemmikuks, et see siin kuvataks.'
+                                        : 'Lisa siia esimene kirje.'
+                                }}
                             </p>
+                            <button
+                                v-if="activeTab !== 'favorites'"
+                                type="button"
+                                class="mt-4 hidden items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 lg:inline-flex"
+                                @click="showAddSeed = true"
+                            >
+                                <span class="material-symbols-outlined text-[18px]"
+                                    >add</span
+                                >
+                                Lisa uus varu
+                            </button>
                         </div>
 
-                        <div v-else class="space-y-4">
-                            <div
-                                v-for="seed in filteredSeeds"
-                                :key="seed.id"
-                                class="rounded-2xl border border-primary/10 bg-card p-4 shadow-sm transition hover:shadow-md"
-                                role="button"
-                                tabindex="0"
-                                @click="openSeed(seed.id)"
-                                @keydown.enter.prevent="openSeed(seed.id)"
-                            >
-                                <div class="flex items-center gap-4">
-                                    <div
-                                        class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-primary/10 bg-muted/40"
-                                    >
-                                        <img
-                                            v-if="seed.image_url"
-                                            :src="seed.image_url"
-                                            alt=""
-                                            class="h-full w-full object-cover"
-                                        />
+                        <div v-else>
+                            <div class="space-y-4 lg:hidden">
+                                <div
+                                    v-for="seed in filteredSeeds"
+                                    :key="seed.id"
+                                    class="rounded-2xl border border-primary/10 bg-card p-4 shadow-sm transition hover:shadow-md"
+                                    role="button"
+                                    tabindex="0"
+                                    @click="openSeed(seed.id)"
+                                    @keydown.enter.prevent="openSeed(seed.id)"
+                                >
+                                    <div class="flex items-center gap-4">
                                         <div
-                                            v-else
-                                            class="flex h-full w-full items-center justify-center text-primary/70"
+                                            class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-primary/10 bg-muted/40"
                                         >
-                                            <span
-                                                class="material-symbols-outlined text-2xl"
-                                                >potted_plant</span
+                                            <img
+                                                v-if="seed.image_url"
+                                                :src="seed.image_url"
+                                                alt=""
+                                                class="h-full w-full object-cover"
+                                            />
+                                            <div
+                                                v-else
+                                                class="flex h-full w-full items-center justify-center text-primary/70"
                                             >
+                                                <span
+                                                    class="material-symbols-outlined text-2xl"
+                                                    >potted_plant</span
+                                                >
+                                            </div>
+                                        </div>
+
+                                        <div class="min-w-0 flex-1">
+                                            <h3
+                                                class="truncate text-lg font-semibold"
+                                            >
+                                                {{ seed.name }}
+                                            </h3>
+                                            <p
+                                                v-if="seed.year"
+                                                class="mt-1 text-sm text-muted-foreground"
+                                            >
+                                                Ostetud: {{ seed.year }}
+                                            </p>
+                                            <p
+                                                v-if="seed.expires_at"
+                                                class="mt-1 text-sm text-muted-foreground"
+                                            >
+                                                Aegub:
+                                                {{ formatDateEE(seed.expires_at) }}
+                                            </p>
+                                        </div>
+
+                                        <div
+                                            class="ml-2 flex shrink-0 items-center gap-2"
+                                            data-seed-menu
+                                            @click.stop
+                                        >
+                                            <button
+                                                type="button"
+                                                class="flex h-9 w-9 items-center justify-center rounded-full border border-primary/10 bg-white transition hover:scale-105 hover:bg-primary/5"
+                                                :class="
+                                                    seed.is_favorite
+                                                        ? 'text-rose-600 shadow-sm'
+                                                        : 'text-[#2E2E2E]/45'
+                                                "
+                                                @click.prevent.stop="
+                                                    toggleFavorite(seed.id)
+                                                "
+                                                aria-label="Lisa lemmikuks"
+                                                :title="
+                                                    seed.is_favorite
+                                                        ? 'Eemalda lemmikutest'
+                                                        : 'Lisa lemmikuks'
+                                                "
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-[20px] leading-none transition"
+                                                    :style="
+                                                        seed.is_favorite
+                                                            ? {
+                                                                  fontVariationSettings: `'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24`,
+                                                              }
+                                                            : {
+                                                                  fontVariationSettings: `'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
+                                                              }
+                                                    "
+                                                >
+                                                    favorite
+                                                </span>
+                                            </button>
+
+                                            <div class="relative">
+                                                <button
+                                                    type="button"
+                                                    class="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition hover:bg-primary/10"
+                                                    aria-label="Menüü"
+                                                    @click.stop.prevent="
+                                                        toggleMenu(seed.id)
+                                                    "
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined text-[22px]"
+                                                        >more_horiz</span
+                                                    >
+                                                </button>
+
+                                                <div
+                                                    v-if="menuOpenForId === seed.id"
+                                                    class="absolute top-12 right-0 z-20 w-48 overflow-hidden rounded-xl border border-primary/10 bg-card shadow-lg"
+                                                    @click.stop
+                                                >
+                                                    <button
+                                                        type="button"
+                                                        class="w-full px-4 py-3 text-left text-sm hover:bg-primary/5"
+                                                        @click.stop="
+                                                            openSeedEdit(seed)
+                                                        "
+                                                    >
+                                                        Muuda
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-500/10"
+                                                        @click.stop="
+                                                            openDeleteSeed(seed);
+                                                            menuOpenForId = null;
+                                                        "
+                                                    >
+                                                        Kustuta
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div
+                                class="hidden lg:grid lg:grid-cols-3 lg:gap-5 xl:grid-cols-4"
+                            >
+                                <article
+                                    v-for="seed in filteredSeeds"
+                                    :key="`desktop-${seed.id}`"
+                                    class="overflow-hidden rounded-2xl border border-primary/10 bg-card shadow-sm transition hover:shadow-md"
+                                >
+                                    <div
+                                        class="cursor-pointer p-4"
+                                        role="button"
+                                        tabindex="0"
+                                        @click="openSeed(seed.id)"
+                                        @keydown.enter.prevent="openSeed(seed.id)"
+                                    >
+                                        <div class="flex items-start gap-3">
+                                            <div
+                                                class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-primary/10 bg-muted/40"
+                                            >
+                                                <img
+                                                    v-if="seed.image_url"
+                                                    :src="seed.image_url"
+                                                    alt=""
+                                                    class="h-full w-full object-cover"
+                                                />
+                                                <div
+                                                    v-else
+                                                    class="flex h-full w-full items-center justify-center text-primary/70"
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined text-2xl"
+                                                        >potted_plant</span
+                                                    >
+                                                </div>
+                                            </div>
+
+                                            <div class="min-w-0 flex-1">
+                                                <h3
+                                                    class="truncate text-xl font-bold"
+                                                >
+                                                    {{ seed.name }}
+                                                </h3>
+                                                <p
+                                                    v-if="seed.year"
+                                                    class="mt-3 text-sm text-muted-foreground"
+                                                >
+                                                    Ostetud: {{ seed.year }}
+                                                </p>
+                                                <p
+                                                    v-if="seed.expires_at"
+                                                    class="mt-1 text-sm text-muted-foreground"
+                                                >
+                                                    Aegub:
+                                                    {{
+                                                        formatDateEE(
+                                                            seed.expires_at,
+                                                        )
+                                                    }}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div class="min-w-0 flex-1">
-                                        <h3
-                                            class="truncate text-lg font-semibold"
-                                        >
-                                            {{ seed.name }}
-                                        </h3>
-                                        <p
-                                            v-if="seed.year"
-                                            class="mt-1 text-sm text-muted-foreground"
-                                        >
-                                            Ostetud: {{ seed.year }}
-                                        </p>
-                                        <p
-                                            v-if="seed.expires_at"
-                                            class="mt-1 text-sm text-muted-foreground"
-                                        >
-                                            Aegub:
-                                            {{ formatDateEE(seed.expires_at) }}
-                                        </p>
-                                    </div>
-
                                     <div
-                                        class="ml-2 flex shrink-0 items-center gap-2"
+                                        class="flex items-center justify-between border-t border-primary/10 px-3 py-2"
                                         data-seed-menu
                                         @click.stop
                                     >
@@ -457,7 +630,7 @@ onBeforeUnmount(() => {
                                         <div class="relative">
                                             <button
                                                 type="button"
-                                                class="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition hover:bg-primary/10"
+                                                class="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-primary/10"
                                                 aria-label="Menüü"
                                                 @click.stop.prevent="
                                                     toggleMenu(seed.id)
@@ -471,7 +644,7 @@ onBeforeUnmount(() => {
 
                                             <div
                                                 v-if="menuOpenForId === seed.id"
-                                                class="absolute top-12 right-0 z-20 w-48 overflow-hidden rounded-xl border border-primary/10 bg-card shadow-lg"
+                                                class="absolute right-0 bottom-11 z-20 w-48 overflow-hidden rounded-xl border border-primary/10 bg-card shadow-lg"
                                                 @click.stop
                                             >
                                                 <button
@@ -496,7 +669,22 @@ onBeforeUnmount(() => {
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                </article>
+                                <button
+                                    type="button"
+                                    class="group relative hidden h-full rounded-2xl border-2 border-dashed border-primary/20 bg-primary/5 p-4 text-primary transition hover:border-primary/35 hover:bg-primary/10 lg:flex"
+                                    @click="showAddSeed = true"
+                                >
+                                    <div class="m-auto text-center">
+                                        <span
+                                            class="material-symbols-outlined text-5xl leading-none opacity-70 transition group-hover:opacity-100"
+                                            >add</span
+                                        >
+                                        <p class="mt-2 text-sm font-semibold">
+                                            Lisa uus varu
+                                        </p>
+                                    </div>
+                                </button>
                             </div>
                         </div>
                     </main>
@@ -530,6 +718,7 @@ onBeforeUnmount(() => {
                     @confirm="confirmDeleteSeed"
                 />
                 <FloatingPlusButton
+                    class="lg:hidden"
                     aria-label="Lisa varu"
                     :size-px="52"
                     :icon-size-px="30"
