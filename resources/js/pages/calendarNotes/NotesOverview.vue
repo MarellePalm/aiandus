@@ -426,7 +426,7 @@ watch(query, () => {
 
                                         <div
                                             v-if="note.images?.[0]"
-                                            class="h-14 w-14 shrink-0 rounded-lg border border-border/70 bg-cover bg-center sm:h-16 sm:w-16"
+                                            class="h-20 w-20 shrink-0 rounded-xl border border-border/70 bg-cover bg-center sm:h-24 sm:w-24"
                                             :style="{
                                                 backgroundImage: `url('${note.images[0]}')`,
                                             }"

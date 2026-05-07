@@ -129,6 +129,9 @@ const todayWeatherLabel = computed(
 );
 const sunrise = computed(() => q.data.value?.sunrise ?? null);
 const sunset = computed(() => q.data.value?.sunset ?? null);
+const conditionId = computed(
+    () => q.data.value?.openWeatherConditionId ?? null,
+);
 
 /** Suur ikoon: WeatherAPI (täpsem „tänane“ tunne), muidu OpenWeather PNG. */
 const todayHeroIconUrl = computed(() => {
@@ -173,6 +176,92 @@ const fallbackWeatherColorClass = computed(() => {
     return 'text-slate-200';
 });
 
+const weatherCardToneClass = computed(() => {
+    const id = conditionId.value;
+    const label = weatherLabelNormalized.value;
+
+    const isThunder =
+        (id != null && id >= 200 && id < 300) || label.includes('äike');
+    const isRain =
+        (id != null && id >= 500 && id < 600) || label.includes('vihm');
+    const isSnow =
+        (id != null && id >= 600 && id < 700) || label.includes('lumi');
+    const isClear =
+        (id != null && id === 800) ||
+        label.includes('selge') ||
+        label.includes('päike');
+
+    if (isThunder) {
+        return 'from-violet-50/80 via-background to-slate-100/70';
+    }
+    if (isRain || isSnow) {
+        return 'from-sky-50/80 via-background to-blue-100/70';
+    }
+    if (isClear) {
+        return 'from-amber-50/80 via-background to-emerald-50/60';
+    }
+    return 'from-background via-background to-muted/25';
+});
+
+type WeatherAlert = {
+    id: string;
+    label: string;
+    icon: string;
+    toneClass: string;
+};
+
+const weatherAlerts = computed<WeatherAlert[]>(() => {
+    const alerts: WeatherAlert[] = [];
+    const minTemp = tMin.value;
+    const wind = windSpeed.value;
+    const id = conditionId.value;
+    const label = weatherLabelNormalized.value;
+
+    const hasRainSignal =
+        (id != null && id >= 500 && id < 600) || label.includes('vihm');
+    const hasThunderSignal = id != null && id >= 200 && id < 300;
+    const hasSnowSignal =
+        (id != null && id >= 600 && id < 700) || label.includes('lumi');
+
+    if (minTemp != null && minTemp <= 0) {
+        alerts.push({
+            id: 'frost',
+            label: 'Külmaoht',
+            icon: 'ac_unit',
+            toneClass: 'bg-cyan-50 text-cyan-800 ring-cyan-200',
+        });
+    }
+
+    if (wind != null && wind >= 11) {
+        alerts.push({
+            id: 'wind',
+            label: 'Tuuline',
+            icon: 'air',
+            toneClass: 'bg-amber-50 text-amber-800 ring-amber-200',
+        });
+    }
+
+    if (hasThunderSignal) {
+        alerts.push({
+            id: 'thunder',
+            label: 'Äikeseoht',
+            icon: 'thunderstorm',
+            toneClass: 'bg-violet-50 text-violet-800 ring-violet-200',
+        });
+    } else if (hasRainSignal || hasSnowSignal) {
+        alerts.push({
+            id: 'precip',
+            label: hasSnowSignal ? 'Lumi' : 'Sadu tulekul',
+            icon: hasSnowSignal ? 'weather_snowy' : 'rainy',
+            toneClass: hasSnowSignal
+                ? 'bg-sky-50 text-sky-800 ring-sky-200'
+                : 'bg-blue-50 text-blue-800 ring-blue-200',
+        });
+    }
+
+    return alerts.slice(0, 3);
+});
+
 function dailyIconUrl(icon: string | null | undefined, retina = false) {
     if (!icon) return null;
     const suffix = retina ? '@2x' : '';
@@ -183,7 +272,8 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
 <template>
     <div class="weather-card">
         <div
-            class="rounded-[1.35rem] border border-border/70 bg-linear-to-br from-background via-background to-muted/25 p-3 shadow-sm"
+            class="rounded-[1.35rem] border border-border/70 bg-linear-to-br p-3 shadow-sm"
+            :class="weatherCardToneClass"
         >
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0 flex-1">
@@ -197,14 +287,6 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                             >
                             <span class="max-w-[110px] truncate sm:max-w-[160px]">{{
                                 locationName
-                            }}</span>
-                        </div>
-                        <div
-                            v-if="q.isSuccess.value && todayWeatherLabel"
-                            class="inline-flex min-w-0 items-center rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary ring-1 ring-primary/15"
-                        >
-                            <span class="max-w-[90px] truncate sm:max-w-[140px]">{{
-                                todayWeatherLabel
                             }}</span>
                         </div>
                     </div>
@@ -223,6 +305,23 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                         >
                             Max {{ Math.round(tMax ?? 0) }}° / Min
                             {{ Math.round(tMin ?? 0) }}°
+                        </span>
+                    </div>
+
+                    <div
+                        v-if="q.isSuccess.value && weatherAlerts.length"
+                        class="mt-2 flex flex-wrap gap-1.5"
+                    >
+                        <span
+                            v-for="alert in weatherAlerts"
+                            :key="alert.id"
+                            class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1"
+                            :class="alert.toneClass"
+                        >
+                            <span class="material-symbols-outlined text-sm">{{
+                                alert.icon
+                            }}</span>
+                            {{ alert.label }}
                         </span>
                     </div>
                 </div>

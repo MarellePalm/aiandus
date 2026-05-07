@@ -133,9 +133,61 @@ function markersForDay(day: number): DayMarker[] {
 
 function markerClass(marker: DayMarker) {
     if (marker === 'reminder') return 'bg-primary';
-    if (marker === 'done') return 'bg-emerald-500';
-    return 'bg-stone-400';
+    if (marker === 'done') return 'bg-primary/55';
+    return 'bg-stone-400/70';
 }
+
+function notesCountForDay(day: number): number {
+    return notesForDay(day).length;
+}
+
+function hasReminderForDay(day: number): boolean {
+    return notesForDay(day).some(
+        (n) => n.due_at || n.reminder_enabled || n.reminder_time,
+    );
+}
+
+function isToday(day: number): boolean {
+    return (
+        viewDate.value.getMonth() === today.getMonth() &&
+        viewDate.value.getFullYear() === today.getFullYear() &&
+        day === today.getDate()
+    );
+}
+
+function isWeekendCol(idx: number): boolean {
+    return idx === 5 || idx === 6;
+}
+
+function jumpToToday() {
+    viewDate.value = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        1,
+    );
+    selectedDay.value = today.getDate();
+}
+
+const viewingCurrentMonth = computed(
+    () =>
+        viewDate.value.getFullYear() === today.getFullYear() &&
+        viewDate.value.getMonth() === today.getMonth(),
+);
+
+const monthNotesCount = computed(() => {
+    let count = 0;
+    const obj = notesByDate || {};
+    for (const key of Object.keys(obj)) {
+        const d = new Date(key);
+        if (
+            d.getFullYear() === viewDate.value.getFullYear() &&
+            d.getMonth() === viewDate.value.getMonth()
+        ) {
+            count += obj[key]?.length ?? 0;
+        }
+    }
+    return count;
+});
 
 const selectedDate = computed(() => {
     const d = viewDate.value;
@@ -259,11 +311,24 @@ onMounted(() => {
                         class="mx-auto flex-1 space-y-5 px-6 py-4 md:max-w-6xl md:px-8 lg:grid lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.95fr)] lg:items-start lg:gap-6 lg:space-y-0"
                     >
                         <!-- Calendar card -->
-                        <section class="card p-3.5 sm:p-4 lg:order-1">
-                            <div class="mb-3 flex items-center justify-between">
+                        <section
+                            class="cal-shell relative overflow-hidden rounded-[1.4rem] border border-primary/15 bg-linear-to-br from-card via-muted/20 to-primary/8 p-3.5 shadow-[0_10px_28px_rgba(43,74,52,0.08)] ring-1 ring-amber-300/15 sm:p-4 lg:order-1 dark:from-card dark:via-muted/15 dark:to-primary/12"
+                        >
+                            <span
+                                class="pointer-events-none absolute -top-10 -right-8 h-32 w-32 rounded-full bg-amber-300/20 blur-3xl dark:bg-amber-500/10"
+                                aria-hidden="true"
+                            />
+                            <span
+                                class="pointer-events-none absolute -bottom-12 -left-10 h-28 w-28 rounded-full bg-primary/10 blur-3xl dark:bg-primary/15"
+                                aria-hidden="true"
+                            />
+
+                            <div
+                                class="relative mb-3 flex items-center justify-between"
+                            >
                                 <button
                                     type="button"
-                                    class="icon-btn size-11"
+                                    class="flex h-10 w-10 items-center justify-center rounded-full bg-card text-foreground/85 ring-1 shadow-sm ring-border transition hover:bg-primary/8 hover:text-primary hover:ring-primary/30"
                                     @click="prevMonth"
                                     aria-label="Eelmine kuu"
                                 >
@@ -274,24 +339,56 @@ onMounted(() => {
 
                                 <div class="text-center">
                                     <p
-                                        class="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                        class="flex items-center justify-center gap-1 text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase"
                                     >
+                                        <span
+                                            class="material-symbols-outlined text-[14px] text-primary/70"
+                                            aria-hidden="true"
+                                        >
+                                            calendar_month
+                                        </span>
                                         Kalender
                                     </p>
-                                    <h3 class="text-xl font-bold tracking-tight">
+                                    <h3
+                                        class="text-xl font-bold tracking-tight capitalize"
+                                    >
                                         {{ monthTitle }}
                                     </h3>
+                                    <p
+                                        v-if="monthNotesCount > 0"
+                                        class="mt-0.5 text-[11px] font-medium text-muted-foreground"
+                                    >
+                                        {{ monthNotesCount }} kirjet kuus
+                                    </p>
                                 </div>
 
                                 <button
                                     type="button"
-                                    class="icon-btn size-11"
+                                    class="flex h-10 w-10 items-center justify-center rounded-full bg-card text-foreground/85 ring-1 shadow-sm ring-border transition hover:bg-primary/8 hover:text-primary hover:ring-primary/30"
                                     @click="nextMonth"
                                     aria-label="Järgmine kuu"
                                 >
                                     <span class="material-symbols-outlined"
                                         >chevron_right</span
                                     >
+                                </button>
+                            </div>
+
+                            <div
+                                v-if="!viewingCurrentMonth"
+                                class="relative mb-3 flex justify-center"
+                            >
+                                <button
+                                    type="button"
+                                    class="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary ring-1 ring-primary/25 transition hover:bg-primary/15"
+                                    @click="jumpToToday"
+                                >
+                                    <span
+                                        class="material-symbols-outlined text-[14px]"
+                                        aria-hidden="true"
+                                        >today</span
+                                    >
+                                    Mine tänase juurde
                                 </button>
                             </div>
 
@@ -316,11 +413,18 @@ onMounted(() => {
                                 </Link>
                             </div>
 
-                            <div class="grid grid-cols-7 gap-1.5 sm:gap-2">
+                            <div
+                                class="relative grid grid-cols-7 gap-1.5 sm:gap-2"
+                            >
                                 <div
-                                    v-for="lbl in dayLabels"
+                                    v-for="(lbl, lblIdx) in dayLabels"
                                     :key="lbl"
-                                    class="pb-1 text-center text-[10px] font-bold tracking-[0.12em] text-primary/60"
+                                    class="pb-1 text-center text-[11px] font-bold tracking-[0.14em] uppercase sm:text-xs"
+                                    :class="
+                                        isWeekendCol(lblIdx)
+                                            ? 'text-amber-600/85 dark:text-amber-300/85'
+                                            : 'text-foreground/75'
+                                    "
                                 >
                                     {{ lbl }}
                                 </div>
@@ -328,40 +432,60 @@ onMounted(() => {
                                 <div
                                     v-for="n in startOffset"
                                     :key="'sp-' + n"
-                                    class="h-11 sm:h-12"
+                                    class="h-13 sm:h-14"
                                 />
 
                                 <button
-                                    v-for="day in daysInMonth"
+                                    v-for="(day, dayIdx) in daysInMonth"
                                     :key="day"
                                     type="button"
-                                    class="relative flex h-12 flex-col items-center justify-between rounded-xl border border-transparent px-1 py-1.5 text-sm font-medium transition-colors sm:h-14"
+                                    class="cal-cell relative flex h-13 flex-col items-center justify-center gap-1 rounded-xl border text-sm transition-all duration-200 sm:h-14"
                                     :class="[
                                         day === selectedDay
-                                            ? 'leaf-shape border-primary/20 bg-primary font-bold text-primary-foreground shadow-md shadow-primary/20'
-                                            : '',
-                                        day !== selectedDay &&
-                                        viewDate.getMonth() ===
-                                            today.getMonth() &&
-                                        viewDate.getFullYear() ===
-                                            today.getFullYear() &&
-                                        day === today.getDate()
-                                            ? 'border-primary/35 bg-primary/5 text-foreground ring-1 ring-primary/25 ring-offset-1 ring-offset-background'
-                                            : 'hover:border-border/70 hover:bg-muted/40',
+                                            ? 'cal-cell-selected z-[2] border-primary/40 bg-linear-to-br from-primary to-primary/85 font-bold text-primary-foreground shadow-[0_8px_22px_rgba(43,74,52,0.28)] ring-2 ring-primary/30 ring-offset-2 ring-offset-background'
+                                            : isToday(day)
+                                              ? 'border-amber-400/60 bg-amber-50/40 ring-1 ring-amber-400/40 hover:-translate-y-0.5 hover:border-amber-400/80 dark:bg-amber-500/10'
+                                              : markedDays.has(day)
+                                                ? 'border-primary/20 bg-primary/5 hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md'
+                                                : 'border-border/40 bg-card/60 hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-md',
                                     ]"
+                                    :style="{
+                                        '--cal-delay': `${
+                                            (startOffset + dayIdx) * 12
+                                        }ms`,
+                                    }"
                                     @click="selectDay(day)"
                                     :aria-label="`Vali päev ${day}`"
+                                    :aria-pressed="day === selectedDay"
                                 >
                                     <span
-                                        class="leading-none"
-                                        :class="
+                                        class="leading-none font-semibold"
+                                        :class="[
                                             day === selectedDay
                                                 ? 'text-primary-foreground'
-                                                : 'text-foreground'
-                                        "
+                                                : isToday(day)
+                                                  ? 'text-amber-700 dark:text-amber-200'
+                                                  : 'text-foreground',
+                                        ]"
                                     >
                                         {{ day }}
                                     </span>
+
+                                    <span
+                                        v-if="hasReminderForDay(day) && day !== selectedDay"
+                                        class="material-symbols-outlined absolute top-0.5 right-0.5 text-[12px] text-primary/70"
+                                        aria-hidden="true"
+                                    >
+                                        notifications
+                                    </span>
+                                    <span
+                                        v-else-if="hasReminderForDay(day) && day === selectedDay"
+                                        class="material-symbols-outlined absolute top-0.5 right-0.5 text-[12px] text-primary-foreground/85"
+                                        aria-hidden="true"
+                                    >
+                                        notifications
+                                    </span>
+
                                     <div
                                         class="flex min-h-1.5 items-center justify-center gap-1"
                                         aria-hidden="true"
@@ -369,7 +493,7 @@ onMounted(() => {
                                         <span
                                             v-for="marker in markersForDay(day)"
                                             :key="`${day}-${marker}`"
-                                            class="size-1.5 rounded-full"
+                                            class="h-1.5 w-1.5 rounded-full transition"
                                             :class="[
                                                 markerClass(marker),
                                                 day === selectedDay
@@ -377,16 +501,44 @@ onMounted(() => {
                                                     : '',
                                             ]"
                                         />
-                                        <span
-                                            v-if="
-                                                !markersForDay(day).length &&
-                                                markedDays.has(day) &&
-                                                day !== selectedDay
-                                            "
-                                            class="size-1.5 rounded-full bg-primary/55"
-                                        />
                                     </div>
+
+                                    <span
+                                        v-if="
+                                            notesCountForDay(day) > 3 &&
+                                            day !== selectedDay
+                                        "
+                                        class="absolute bottom-0.5 right-1 text-[9px] font-bold text-primary/70"
+                                        aria-hidden="true"
+                                    >
+                                        +{{ notesCountForDay(day) - 3 }}
+                                    </span>
                                 </button>
+                            </div>
+
+                            <!-- Värviseletus -->
+                            <div
+                                v-if="markedDays.size > 0"
+                                class="relative mt-3 flex flex-wrap items-center justify-center gap-3 text-[10px] font-medium text-muted-foreground"
+                            >
+                                <span class="inline-flex items-center gap-1">
+                                    <span
+                                        class="h-1.5 w-1.5 rounded-full bg-primary"
+                                    />
+                                    Meeldetuletus
+                                </span>
+                                <span class="inline-flex items-center gap-1">
+                                    <span
+                                        class="h-1.5 w-1.5 rounded-full bg-primary/55"
+                                    />
+                                    Tehtud
+                                </span>
+                                <span class="inline-flex items-center gap-1">
+                                    <span
+                                        class="h-1.5 w-1.5 rounded-full bg-stone-400/70"
+                                    />
+                                    Märge
+                                </span>
                             </div>
                         </section>
 
@@ -491,7 +643,7 @@ onMounted(() => {
                                                 v-if="item.note.media_urls?.[0]"
                                                 :src="item.note.media_urls[0]"
                                                 alt="Märkme foto"
-                                                class="h-16 w-16 rounded-lg border border-border/60 object-cover"
+                                                class="h-20 w-20 rounded-xl border border-border/60 object-cover sm:h-24 sm:w-24"
                                             />
                                         </div>
                                     </article>
@@ -529,3 +681,61 @@ onMounted(() => {
         </div>
     </AppLayout>
 </template>
+
+<style scoped>
+.cal-shell {
+    background-image:
+        radial-gradient(
+            circle at 20% 12%,
+            rgba(251, 191, 36, 0.06) 0,
+            transparent 55%
+        ),
+        radial-gradient(
+            circle at 85% 88%,
+            rgba(43, 74, 52, 0.08) 0,
+            transparent 60%
+        );
+}
+
+.cal-cell {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+    animation: cal-cell-in 420ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation-delay: var(--cal-delay, 0ms);
+    will-change: opacity, transform;
+}
+@keyframes cal-cell-in {
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+.cal-cell-selected {
+    animation:
+        cal-cell-in 420ms cubic-bezier(0.22, 1, 0.36, 1) forwards,
+        cal-cell-pulse 2.6s ease-in-out 700ms infinite;
+}
+@keyframes cal-cell-pulse {
+    0%,
+    100% {
+        box-shadow:
+            0 8px 22px rgba(43, 74, 52, 0.28),
+            0 0 0 0 rgba(43, 74, 52, 0.35);
+    }
+    50% {
+        box-shadow:
+            0 8px 22px rgba(43, 74, 52, 0.28),
+            0 0 0 8px rgba(43, 74, 52, 0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cal-cell,
+    .cal-cell-selected {
+        animation: none !important;
+        opacity: 1;
+        transform: none;
+    }
+}
+</style>

@@ -26,6 +26,7 @@ type RecentNote = {
     type?: string;
     done?: boolean | null;
     media_urls?: string[];
+    due_at?: string | null;
 };
 const recentNotes = computed<RecentNote[]>(
     () => (page.props.recentNotes as RecentNote[] | undefined) ?? [],
@@ -92,55 +93,6 @@ const dashboardSummary = computed<DashboardSummary>(() => {
         notesCount: recentNotes.value.length,
         ...(page.props.dashboardSummary as Partial<DashboardSummary> | undefined),
     };
-});
-
-const overviewStats = computed(() => {
-    const { gardensCount, bedsCount, plantsCount, seedsCount } =
-        dashboardSummary.value;
-
-    return [
-        {
-            id: 'gardens',
-            label: 'Aiad',
-            value: gardensCount,
-            href: '/map',
-            icon: 'yard',
-            hint: gardensCount > 0 ? 'Ava aiaplaanid' : 'Lisa esimene aed',
-        },
-        {
-            id: 'beds',
-            label: 'Peenrad',
-            value: bedsCount,
-            href: map().url,
-            icon: 'map',
-            hint:
-                bedsCount > 0
-                    ? 'Vaata peenarde kaarti'
-                    : 'Lisa esimene peenar kaardilt',
-        },
-        {
-            id: 'plants',
-            label: 'Taimed',
-            value: plantsCount,
-            href: '/plants',
-            icon: 'local_florist',
-            hint:
-                plantsCount > 0
-                    ? 'Ava taimede nimekiri'
-                    : 'Aed ootab taimi',
-        },
-        {
-            id: 'seeds',
-            label: 'Varud',
-            value: seedsCount,
-            href: '/seeds',
-            icon: 'shelves',
-            hint:
-                seedsCount > 0
-                    ? 'Vaata varusid'
-                    : 'Lisa varusid',
-        },
-    ];
 });
 
 const todayWorkSummary = computed(() => {
@@ -213,12 +165,176 @@ const todayLabel = computed(() => {
     return `${weekdayCap} ${day}. ${month} • ${time}`;
 });
 
+const greeting = computed(() => {
+    const hour = new Date().getHours();
+    if (hour < 11) return 'Tere hommikust';
+    if (hour < 17) return 'Tere päevast';
+    return 'Tere õhtust';
+});
+
+const dashboardHighlights = computed(() => {
+    const summary = dashboardSummary.value;
+    const totalBeds = Math.max(1, summary.bedsCount);
+    const activeBeds = Math.max(0, summary.bedsCount - summary.emptyBedsCount);
+    const bedCoverage = Math.min(100, Math.round((activeBeds / totalBeds) * 100));
+    const plantsPlaced = Math.max(
+        0,
+        summary.plantsCount - summary.plantsWithoutBedCount,
+    );
+    const plantPlacement = summary.plantsCount
+        ? Math.min(100, Math.round((plantsPlaced / summary.plantsCount) * 100))
+        : 0;
+    const tasksClosed = Math.max(
+        0,
+        summary.openTasksCount - summary.overdueTasksCount,
+    );
+    const taskPace = summary.openTasksCount
+        ? Math.min(100, Math.round((tasksClosed / summary.openTasksCount) * 100))
+        : 100;
+
+    return [
+        {
+            id: 'beds',
+            label: 'Peenrad aktiivsed',
+            value: `${bedCoverage}%`,
+            hint: `${activeBeds}/${summary.bedsCount} kasutuses`,
+            icon: 'grid_view',
+            progress: bedCoverage,
+        },
+        {
+            id: 'plants',
+            label: 'Taimed paigas',
+            value: `${plantPlacement}%`,
+            hint: `${plantsPlaced}/${summary.plantsCount} peenardes`,
+            icon: 'local_florist',
+            progress: plantPlacement,
+        },
+        {
+            id: 'tasks',
+            label: 'Töötempo',
+            value: `${taskPace}%`,
+            hint:
+                summary.openTasksCount > 0
+                    ? `${summary.overdueTasksCount} vajab tähelepanu`
+                    : 'Kõik tegevused kontrolli all',
+            icon: 'task_alt',
+            progress: taskPace,
+        },
+    ];
+});
+
+function noteRelativeDate(noteDate?: string | null): string {
+    if (!noteDate) return '';
+    const d = new Date(noteDate);
+    if (Number.isNaN(d.getTime())) return noteDate;
+
+    const startOfDay = (date: Date) =>
+        new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    const today = startOfDay(new Date());
+    const that = startOfDay(d);
+    const diffDays = Math.round((today - that) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Täna';
+    if (diffDays === 1) return 'Eile';
+    if (diffDays === -1) return 'Homme';
+    if (diffDays > 1 && diffDays < 7) return `${diffDays} päeva tagasi`;
+    if (diffDays >= 7 && diffDays < 14) return 'Eelmisel nädalal';
+    if (diffDays < 0 && diffDays > -7) return `${Math.abs(diffDays)} päeva pärast`;
+
+    return new Intl.DateTimeFormat('et-EE', {
+        day: 'numeric',
+        month: 'short',
+    }).format(d);
+}
+
+function noteAccentClass(note: RecentNote): string {
+    if (note.done === true) return 'bg-emerald-400';
+    if (note.done === false) return 'bg-amber-400';
+    return 'bg-primary/60';
+}
+
+function noteDateChipClass(noteDate?: string | null): string {
+    if (!noteDate) return 'bg-muted text-muted-foreground';
+    const d = new Date(noteDate);
+    if (Number.isNaN(d.getTime())) return 'bg-muted text-muted-foreground';
+    const startOfDay = (date: Date) =>
+        new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    const diffDays = Math.round(
+        (startOfDay(new Date()) - startOfDay(d)) / (1000 * 60 * 60 * 24),
+    );
+    if (diffDays === 0)
+        return 'bg-primary/15 text-primary ring-1 ring-primary/25';
+    if (diffDays === 1)
+        return 'bg-amber-500/10 text-amber-700 ring-1 ring-amber-500/20 dark:text-amber-300';
+    if (diffDays >= 2 && diffDays < 7)
+        return 'bg-sky-500/10 text-sky-700 ring-1 ring-sky-500/20 dark:text-sky-300';
+    return 'bg-muted/80 text-muted-foreground ring-1 ring-border/60';
+}
+
+function noteRowToneClass(note: RecentNote): string {
+    if (!note.note_date) return '';
+    const d = new Date(note.note_date);
+    if (Number.isNaN(d.getTime())) return '';
+    const startOfDay = (date: Date) =>
+        new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    const diffDays = Math.round(
+        (startOfDay(new Date()) - startOfDay(d)) / (1000 * 60 * 60 * 24),
+    );
+    if (diffDays === 0) {
+        return 'bg-linear-to-r from-primary/12 via-primary/5 to-transparent border-primary/30';
+    }
+    if (diffDays === 1) {
+        return 'bg-linear-to-r from-amber-300/15 via-amber-200/6 to-transparent border-amber-400/25';
+    }
+    if (diffDays >= 2 && diffDays < 7) {
+        return 'bg-linear-to-r from-sky-300/12 via-sky-200/5 to-transparent border-sky-400/25';
+    }
+    if (diffDays >= 7 && diffDays < 21) {
+        return 'bg-linear-to-r from-violet-300/10 via-violet-200/4 to-transparent border-violet-400/20';
+    }
+    return 'bg-linear-to-r from-muted/40 to-transparent';
+}
+
+const recentNotePhotos = computed(() =>
+    recentNotes.value
+        .flatMap((note) => note.media_urls ?? [])
+        .filter((url) => typeof url === 'string' && url.length > 0)
+        .slice(0, 6),
+);
+
+const notePhotoTimeline = computed(() =>
+    recentNotes.value
+        .flatMap((note) =>
+            (note.media_urls ?? []).map((url, index) => ({
+                url,
+                noteDate: note.note_date,
+                key: `${note.id}-${index}-${url}`,
+            })),
+        )
+        .filter((item) => typeof item.url === 'string' && item.url.length > 0)
+        .slice(0, 6),
+);
+
+// Wow-efekt: ühine sissetulekuanimatsiooni progress (0 → 1) – animeerib
+// numbreid ja edenemisribasid sujuvalt sisse esimesel laadimisel.
+const appearProgress = ref(0);
+let appearRaf = 0;
+const animatedHighlights = computed(() =>
+    dashboardHighlights.value.map((item) => ({
+        ...item,
+        animatedProgress: item.progress * appearProgress.value,
+        animatedLabel: `${Math.round(item.progress * appearProgress.value)}%`,
+    })),
+);
+const animatedTodayValue = computed(() =>
+    Math.round(Number(todayWorkSummary.value.value) * appearProgress.value),
+);
+
 // Järjekord: salvestatakse localStorage'i, kasutaja saab plokke üles/alla tõsta
 const STORAGE_KEY = 'dashboardSectionOrder';
 const COLLAPSED_KEY = 'dashboardSectionCollapsed';
-type SectionId = 'garden' | 'notes' | 'weather' | 'moon';
+type SectionId = 'notes' | 'weather' | 'moon';
 const DEFAULT_ORDER: SectionId[] = [
-    'garden',
     'notes',
     'weather',
     'moon',
@@ -233,7 +349,7 @@ const isDesktop = ref(false);
 let desktopMediaQuery: MediaQueryList | null = null;
 let handleDesktopChange: ((event: MediaQueryListEvent) => void) | null = null;
 
-const DESKTOP_SECTION_ORDER: SectionId[] = ['weather', 'moon', 'notes', 'garden'];
+const DESKTOP_SECTION_ORDER: SectionId[] = ['weather', 'moon', 'notes'];
 
 const displaySectionOrder = computed(() => {
     if (editLayout.value || !isDesktop.value) return sectionOrder.value;
@@ -323,7 +439,6 @@ function toggleSectionCollapsed(id: SectionId) {
 }
 function sectionTitle(id: SectionId): string {
     const titles: Record<SectionId, string> = {
-        garden: 'Kokkuvõte',
         notes: 'Viimased märkmed',
         weather: 'Ilm',
         moon: 'Kuufaas täna',
@@ -331,7 +446,36 @@ function sectionTitle(id: SectionId): string {
     return titles[id];
 }
 
+function startAppearAnimation() {
+    try {
+        const reduce = window.matchMedia(
+            '(prefers-reduced-motion: reduce)',
+        ).matches;
+        if (reduce) {
+            appearProgress.value = 1;
+            return;
+        }
+    } catch {
+        appearProgress.value = 1;
+        return;
+    }
+
+    const start = performance.now();
+    const duration = 1400;
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+
+    const tick = (now: number) => {
+        const elapsed = now - start;
+        const t = Math.min(1, elapsed / duration);
+        appearProgress.value = easeOutCubic(t);
+        if (t < 1) appearRaf = requestAnimationFrame(tick);
+    };
+    appearRaf = requestAnimationFrame(tick);
+}
+
 onMounted(() => {
+    startAppearAnimation();
+
     try {
         const params = new URLSearchParams(window.location.search);
         editLayout.value = params.get('layout') === 'edit';
@@ -407,7 +551,18 @@ onUnmounted(() => {
     if (desktopMediaQuery && handleDesktopChange) {
         desktopMediaQuery.removeEventListener('change', handleDesktopChange);
     }
+    if (appearRaf) cancelAnimationFrame(appearRaf);
 });
+
+// Õrnad hõljuvad lehed tervituskaardil (ambient).
+const wowLeaves = [
+    { icon: 'eco', left: '6%', top: '18%', size: 'text-base', delay: '0s', duration: '7s' },
+    { icon: 'spa', left: '88%', top: '24%', size: 'text-lg', delay: '1.2s', duration: '9s' },
+    { icon: 'local_florist', left: '22%', top: '68%', size: 'text-sm', delay: '2.5s', duration: '8s' },
+    { icon: 'eco', left: '72%', top: '78%', size: 'text-xl', delay: '0.8s', duration: '11s' },
+    { icon: 'spa', left: '52%', top: '6%', size: 'text-sm', delay: '3.2s', duration: '7.5s' },
+    { icon: 'local_florist', left: '14%', top: '88%', size: 'text-base', delay: '1.8s', duration: '10s' },
+] as const;
 
 // Lumememma-stiilis + nupp: väikesed ümarad kiirtegevused selle kohal
 const showFabMenu = ref(false);
@@ -467,86 +622,175 @@ const dashboardSectionHeaderStrip =
                         </div>
 
                         <div
-                            class="rounded-[1.75rem] border border-primary/15 bg-linear-to-br from-primary/12 via-background to-secondary/35 px-3.5 py-2 shadow-sm sm:px-4 sm:py-2.5 lg:px-5 lg:py-3"
+                            class="wow-hero wow-fade-up relative overflow-hidden rounded-[1.7rem] border border-primary/20 bg-linear-to-br from-primary/16 via-background to-primary/6 px-3.5 py-3 shadow-[0_12px_24px_rgba(43,74,52,0.1)] sm:px-4 sm:py-3.5"
+                            style="--wow-delay: 0ms"
                         >
-                            <p class="text-sm text-muted-foreground lg:text-[13px]">
-                                {{ todayLabel }}
-                            </p>
+                            <div class="wow-blob wow-blob-a pointer-events-none absolute -top-12 -right-10 h-32 w-32 rounded-full bg-primary/15 blur-2xl" />
+                            <div class="wow-blob wow-blob-b pointer-events-none absolute -bottom-14 -left-10 h-28 w-28 rounded-full bg-emerald-300/20 blur-2xl" />
 
                             <div
-                                v-if="todayWorkSummary.showValue || todayTasks.length"
-                                class="mt-3 lg:mt-2.5"
+                                class="pointer-events-none absolute inset-0 overflow-hidden"
+                                aria-hidden="true"
                             >
-                                <Link
-                                    :href="todayWorkSummary.href"
-                                    class="block rounded-[1.5rem] border border-border/70 bg-card/90 p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md lg:p-3.5"
-                                    :class="{
-                                        'ring-1 ring-primary/20': todayWorkSummary.tone === 'primary',
-                                        'ring-1 ring-amber-200/80': todayWorkSummary.tone === 'amber',
-                                        'ring-1 ring-emerald-200/80': todayWorkSummary.tone === 'green',
+                                <span
+                                    v-for="(leaf, leafIndex) in wowLeaves"
+                                    :key="`leaf-${leafIndex}`"
+                                    class="wow-leaf material-symbols-outlined absolute"
+                                    :class="leaf.size"
+                                    :style="{
+                                        left: leaf.left,
+                                        top: leaf.top,
+                                        animationDelay: leaf.delay,
+                                        animationDuration: leaf.duration,
                                     }"
                                 >
-                                    <div class="flex items-start justify-between gap-3 lg:items-center">
-                                        <div class="min-w-0">
-                                            <p
-                                                class="font-semibold text-foreground"
-                                                :class="
-                                                    todayWorkSummary.showValue
-                                                        ? 'text-[11px] tracking-[0.16em] text-muted-foreground uppercase'
-                                                        : 'text-base tracking-normal'
-                                                "
-                                            >
-                                                {{ todayWorkSummary.title }}
-                                            </p>
-                                            <p
-                                                v-if="todayWorkSummary.showValue"
-                                                class="mt-2 text-3xl font-bold tracking-tight text-foreground lg:text-2xl"
-                                            >
-                                                {{ todayWorkSummary.value }}
-                                            </p>
-                                            <p
-                                                class="text-sm text-muted-foreground"
-                                                :class="
-                                                    todayWorkSummary.showValue
-                                                        ? 'mt-2'
-                                                        : 'mt-3'
-                                                "
-                                            >
-                                                {{ todayWorkSummary.body }}
-                                            </p>
-                                        </div>
-                                        <span
-                                            class="material-symbols-outlined rounded-2xl bg-primary/10 p-2 text-primary"
-                                        >
-                                            {{ todayWorkSummary.icon }}
-                                        </span>
-                                    </div>
+                                    {{ leaf.icon }}
+                                </span>
+                            </div>
 
+                            <div class="wow-shimmer pointer-events-none absolute inset-0" aria-hidden="true" />
+
+                            <div class="relative z-10">
+                                <p class="text-xs font-semibold tracking-[0.16em] text-primary/75 uppercase">
+                                    {{ greeting }}
+                                </p>
+                                <h2 class="mt-1 text-lg font-bold tracking-tight text-foreground sm:text-xl">
+                                    Sinu aiapäeviku tänane ülevaade
+                                </h2>
+                                <p class="mt-1 text-sm text-muted-foreground lg:text-[13px]">
+                                    {{ todayLabel }}
+                                </p>
+                                <div class="mt-3 grid grid-cols-3 gap-1.5 sm:gap-2">
                                     <div
-                                        v-if="todayTasks.length"
-                                        class="mt-4 space-y-2 lg:mt-3 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0"
+                                        v-for="(item, itemIndex) in animatedHighlights"
+                                        :key="item.id"
+                                        class="wow-fade-up rounded-xl border border-border/60 bg-card/85 px-2.5 py-2 shadow-sm"
+                                        :style="{ '--wow-delay': `${120 + itemIndex * 90}ms` }"
                                     >
-                                        <div
-                                            v-for="task in todayTasks"
-                                            :key="task.id"
-                                            class="flex items-center justify-between gap-3 rounded-2xl bg-muted/60 px-3 py-2"
-                                        >
-                                            <div class="min-w-0">
-                                                <p class="truncate text-sm font-medium text-foreground">
-                                                    {{ task.title || 'Tänane aiatöö' }}
-                                                </p>
-                                                <p class="text-xs text-muted-foreground">
-                                                    {{ task.note_date }}
-                                                </p>
-                                            </div>
+                                        <div class="flex items-center justify-between gap-2">
+                                            <p class="text-[10px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
+                                                {{ item.label }}
+                                            </p>
                                             <span
-                                                class="material-symbols-outlined text-base text-muted-foreground"
+                                                v-if="isDesktop"
+                                                class="material-symbols-outlined text-sm text-primary/80"
                                             >
-                                                chevron_right
+                                                {{ item.icon }}
+                                            </span>
+                                        </div>
+                                        <p class="mt-1 text-lg font-bold tracking-tight text-foreground tabular-nums">
+                                            {{ item.animatedLabel }}
+                                        </p>
+                                        <p class="mt-0.5 text-[11px] text-muted-foreground">
+                                            {{ item.hint }}
+                                        </p>
+                                        <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted/70">
+                                            <div
+                                                class="h-full rounded-full bg-linear-to-r from-primary/70 via-primary to-emerald-400/80"
+                                                :style="{ width: `${item.animatedProgress}%` }"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div
+                                    v-if="recentNotePhotos.length"
+                                    class="mt-3 rounded-2xl border border-border/60 bg-card/85 p-3"
+                                >
+                                    <div class="mb-2 flex items-center justify-between gap-2">
+                                        <p class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                            Viimased aiapildid
+                                        </p>
+                                        <Link
+                                            href="/calendar/overview"
+                                            class="text-xs font-medium text-primary transition hover:text-primary/80"
+                                        >
+                                            Ava märkmed
+                                        </Link>
+                                    </div>
+                                    <div class="flex gap-2.5 overflow-x-auto pb-1">
+                                        <div
+                                            v-for="(photo, index) in notePhotoTimeline"
+                                            :key="photo.key"
+                                            class="relative shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted/30"
+                                            :class="
+                                                index === 0
+                                                    ? 'h-24 w-28 sm:h-28 sm:w-36'
+                                                    : 'h-20 w-20 sm:h-24 sm:w-24'
+                                            "
+                                        >
+                                            <img
+                                                :src="photo.url"
+                                                alt="Aiapilt"
+                                                class="h-full w-full object-cover transition-transform duration-300 ease-out hover:scale-105"
+                                                loading="lazy"
+                                            />
+                                            <span
+                                                class="absolute bottom-1 left-1 rounded-full bg-black/45 px-1.5 py-0.5 text-[10px] font-medium text-white"
+                                            >
+                                                {{ photo.noteDate }}
                                             </span>
                                         </div>
                                     </div>
-                                </Link>
+                                </div>
+
+                                <div
+                                    v-if="todayWorkSummary.showValue || todayTasks.length"
+                                    class="mt-3"
+                                >
+                                    <Link
+                                        :href="todayWorkSummary.href"
+                                        class="block rounded-[1.2rem] border border-border/70 bg-card/90 p-3.5 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"
+                                    >
+                                        <div class="flex items-start justify-between gap-3">
+                                            <div class="min-w-0">
+                                                <p class="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+                                                    {{ todayWorkSummary.title }}
+                                                </p>
+                                                <p
+                                                    v-if="todayWorkSummary.showValue"
+                                                    class="mt-1.5 text-2xl font-bold tracking-tight text-foreground tabular-nums"
+                                                >
+                                                    {{ animatedTodayValue }}
+                                                </p>
+                                                <p class="mt-1.5 text-sm text-muted-foreground">
+                                                    {{ todayWorkSummary.body }}
+                                                </p>
+                                            </div>
+                                            <span
+                                                v-if="isDesktop"
+                                                class="material-symbols-outlined rounded-2xl bg-primary/10 p-2 text-primary"
+                                            >
+                                                {{ todayWorkSummary.icon }}
+                                            </span>
+                                        </div>
+
+                                        <div
+                                            v-if="todayTasks.length"
+                                            class="mt-4 space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0"
+                                        >
+                                            <div
+                                                v-for="task in todayTasks"
+                                                :key="task.id"
+                                                class="flex items-center justify-between gap-3 rounded-2xl bg-muted/60 px-3 py-2"
+                                            >
+                                                <div class="min-w-0">
+                                                    <p class="truncate text-sm font-medium text-foreground">
+                                                        {{ task.title || 'Tänane aiatöö' }}
+                                                    </p>
+                                                    <p class="text-xs text-muted-foreground">
+                                                        {{ task.note_date }}
+                                                    </p>
+                                                </div>
+                                                <span
+                                                    class="material-symbols-outlined text-base text-muted-foreground"
+                                                >
+                                                    chevron_right
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -591,7 +835,7 @@ const dashboardSectionHeaderStrip =
                     </div>
                 </div>
 
-                <div class="px-6 pt-4 pb-24 md:px-8">
+                <div class="px-6 pt-4 pb-4 md:px-8">
                     <div
                         class="space-y-4"
                         :class="
@@ -600,110 +844,13 @@ const dashboardSectionHeaderStrip =
                                 : 'lg:columns-2 lg:space-y-0 lg:[column-gap:1rem]'
                         "
                     >
-                        <template v-for="id in displaySectionOrder" :key="id">
-                            <!-- Aia seis -->
-                            <section
-                                v-if="id === 'garden'"
-                                class="overflow-hidden rounded-[1.6rem] border border-border bg-card/90 shadow-sm lg:mb-4 lg:break-inside-avoid"
-                                :class="editLayout ? 'ring-1 ring-primary/25' : ''"
-                            >
-                                <div
-                                    class="flex items-center justify-between gap-3 border-b border-border bg-linear-to-r px-4 py-3"
-                                    :class="dashboardSectionHeaderStrip"
-                                >
-                                    <h3
-                                        class="min-w-0 flex-1 text-sm font-semibold text-foreground"
-                                    >
-                                        {{ sectionTitle('garden') }}
-                                    </h3>
-                                    <div
-                                        v-if="editLayout"
-                                        class="flex shrink-0 items-center gap-1"
-                                    >
-                                        <button
-                                            type="button"
-                                            class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
-                                            :disabled="
-                                                !canMoveSectionUp('garden')
-                                            "
-                                            @click.stop="
-                                                moveSection('garden', 'up')
-                                            "
-                                        >
-                                            <span
-                                                class="material-symbols-outlined text-sm"
-                                                >arrow_upward</span
-                                            >
-                                        </button>
-                                        <button
-                                            type="button"
-                                            class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
-                                            :disabled="
-                                                !canMoveSectionDown('garden')
-                                            "
-                                            @click.stop="
-                                                moveSection('garden', 'down')
-                                            "
-                                        >
-                                            <span
-                                                class="material-symbols-outlined text-sm"
-                                                >arrow_downward</span
-                                            >
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="p-3 lg:p-3.5">
-                                    <div class="grid grid-cols-4 gap-1.5 sm:gap-2.5 lg:gap-2.5">
-                                        <div
-                                            v-for="stat in overviewStats"
-                                            :key="stat.id"
-                                            class="h-[5.5rem] min-h-0 sm:aspect-square lg:aspect-auto lg:h-28"
-                                        >
-                                            <Link
-                                                :href="stat.href"
-                                                class="flex h-full min-h-0 flex-col rounded-xl border border-border/70 bg-muted/25 p-2 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:bg-card hover:shadow-md sm:rounded-2xl sm:p-2.5 lg:justify-between"
-                                            >
-                                                <div
-                                                    class="flex items-start justify-between gap-2"
-                                                >
-                                                    <p
-                                                        class="text-center text-[9px] font-semibold tracking-[0.12em] text-muted-foreground uppercase leading-tight sm:text-[11px] sm:tracking-[0.16em] lg:text-left"
-                                                    >
-                                                        {{ stat.label }}
-                                                    </p>
-                                                    <span
-                                                        v-if="isDesktop"
-                                                        aria-hidden="true"
-                                                        class="material-symbols-outlined inline-block shrink-0 rounded-2xl bg-primary/10 p-1.5 text-[18px] leading-none text-primary"
-                                                    >
-                                                        {{ stat.icon }}
-                                                    </span>
-                                                </div>
-                                                <div
-                                                    class="flex min-h-0 flex-1 items-center justify-center"
-                                                >
-                                                    <p
-                                                        class="text-center text-lg font-bold tracking-tight text-foreground tabular-nums sm:text-xl lg:text-2xl"
-                                                    >
-                                                        {{ stat.value }}
-                                                    </p>
-                                                </div>
-                                                <p
-                                                    class="hidden text-center text-[11px] leading-snug text-muted-foreground lg:block"
-                                                >
-                                                    {{ stat.hint }}
-                                                </p>
-                                            </Link>
-                                        </div>
-                                    </div>
-                                </div>
-                            </section>
-
+                        <template v-for="(id, sectionIndex) in displaySectionOrder" :key="id">
                             <!-- Viimased märkmed -->
                             <section
                                 v-if="id === 'notes'"
-                                class="overflow-hidden rounded-[1.6rem] border border-border bg-card/90 shadow-sm lg:mb-4 lg:break-inside-avoid"
+                                class="wow-fade-up overflow-hidden rounded-[1.6rem] border border-border bg-card/90 shadow-sm lg:mb-4 lg:break-inside-avoid"
                                 :class="editLayout ? 'ring-1 ring-primary/25' : ''"
+                                :style="{ '--wow-delay': `${260 + sectionIndex * 110}ms` }"
                             >
                                 <div
                                     class="flex items-center justify-between gap-3 border-b border-border bg-linear-to-r px-4 py-3"
@@ -769,30 +916,100 @@ const dashboardSectionHeaderStrip =
 
                                 <div
                                     v-if="recentNotes.length"
-                                    class="space-y-0 p-4 lg:space-y-3"
+                                    class="note-paper space-y-1.5 p-2.5 lg:space-y-2 lg:p-3"
                                 >
                                     <Link
-                                        v-for="note in recentNotes.slice(0, 5)"
+                                        v-for="(note, noteIndex) in recentNotes.slice(0, 5)"
                                         :key="note.id"
                                         href="/calendar/overview"
-                                        class="block border-b border-border/60 py-2.5 transition last:border-b-0 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-muted/35 lg:px-3 lg:py-3 lg:hover:-translate-y-0.5 lg:hover:border-primary/25 lg:hover:bg-card"
+                                        class="note-row group relative block overflow-hidden rounded-xl border border-border/60 bg-card/85 px-2.5 py-2 transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-card hover:shadow-[0_4px_14px_rgba(43,74,52,0.12)] lg:rounded-2xl lg:px-3 lg:py-2.5"
+                                        :class="noteRowToneClass(note)"
+                                        :style="{
+                                            '--note-row-delay': `${noteIndex * 60}ms`,
+                                        }"
                                     >
-                                        <div class="flex items-start justify-between gap-3">
-                                            <div class="min-w-0">
-                                                <p class="truncate text-sm font-semibold text-foreground">
-                                                    {{ note.title || 'Pealkirjata märge' }}
-                                                </p>
-                                                <p class="mt-1 text-xs text-muted-foreground">
-                                                    {{ note.note_date }}
-                                                </p>
+                                        <span
+                                            class="absolute inset-y-0 left-0 w-0.5 rounded-r-full sm:w-1"
+                                            :class="noteAccentClass(note)"
+                                            aria-hidden="true"
+                                        />
+
+                                        <div
+                                            class="flex items-center gap-2.5 pl-1 sm:pl-1.5"
+                                        >
+                                            <div class="min-w-0 flex-1">
+                                                <div
+                                                    class="flex min-w-0 items-center gap-1.5"
+                                                >
+                                                    <span
+                                                        v-if="note.due_at"
+                                                        class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary ring-1 ring-primary/20 sm:h-7 sm:w-7"
+                                                        title="Meeldetuletus"
+                                                        aria-label="Meeldetuletus"
+                                                    >
+                                                        <span
+                                                            class="material-symbols-outlined text-[16px] sm:text-[18px]"
+                                                            aria-hidden="true"
+                                                        >
+                                                            notifications
+                                                        </span>
+                                                    </span>
+                                                    <span
+                                                        class="min-w-0 truncate text-[13px] leading-tight font-semibold text-foreground sm:text-sm"
+                                                        :class="
+                                                            note.done === true
+                                                                ? 'line-through decoration-emerald-500/50 decoration-1'
+                                                                : ''
+                                                        "
+                                                    >
+                                                        {{
+                                                            note.title ||
+                                                            'Pealkirjata märge'
+                                                        }}
+                                                    </span>
+                                                </div>
+                                                <div
+                                                    class="mt-1 flex items-center gap-1.5"
+                                                >
+                                                    <span
+                                                        class="inline-flex shrink-0 items-center rounded-full px-1.5 py-px text-[10px] font-semibold tracking-wide"
+                                                        :class="
+                                                            noteDateChipClass(
+                                                                note.note_date,
+                                                            )
+                                                        "
+                                                    >
+                                                        {{
+                                                            noteRelativeDate(
+                                                                note.note_date,
+                                                            )
+                                                        }}
+                                                    </span>
+                                                    <span
+                                                        v-if="note.done === true"
+                                                        class="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-emerald-500/10 px-1.5 py-px text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300"
+                                                    >
+                                                        <span
+                                                            class="material-symbols-outlined text-[11px]"
+                                                            aria-hidden="true"
+                                                            >check</span
+                                                        >
+                                                        Tehtud
+                                                    </span>
+                                                </div>
                                             </div>
                                             <div
                                                 v-if="note.media_urls?.[0]"
-                                                class="h-12 w-12 shrink-0 rounded-lg border border-border/70 bg-cover bg-center lg:h-14 lg:w-14"
+                                                class="note-thumb relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border-2 border-card bg-cover bg-center shadow-md ring-1 ring-border/50 sm:h-14 sm:w-14"
                                                 :style="{
                                                     backgroundImage: `url('${note.media_urls[0]}')`,
                                                 }"
-                                            />
+                                            >
+                                                <span
+                                                    class="absolute inset-0 bg-linear-to-t from-black/30 via-transparent to-transparent"
+                                                    aria-hidden="true"
+                                                />
+                                            </div>
                                         </div>
                                     </Link>
                                 </div>
@@ -817,8 +1034,9 @@ const dashboardSectionHeaderStrip =
                             <!-- Weather -->
                                 <section
                                     v-if="id === 'weather'"
-                                    class="overflow-hidden rounded-[1.6rem] border border-border bg-card/95 shadow-sm lg:mb-4 lg:break-inside-avoid"
+                                    class="wow-fade-up overflow-hidden rounded-[1.6rem] border border-border bg-card/95 shadow-sm lg:mb-4 lg:break-inside-avoid"
                                     :class="editLayout ? 'ring-1 ring-primary/25' : ''"
+                                    :style="{ '--wow-delay': `${260 + sectionIndex * 110}ms` }"
                                 >
                                     <div
                                         class="group flex cursor-pointer items-center justify-between gap-3 border-b border-border bg-linear-to-r px-4 py-3"
@@ -909,8 +1127,9 @@ const dashboardSectionHeaderStrip =
                                 <!-- Moon -->
                                 <section
                                     v-if="id === 'moon'"
-                                    class="overflow-hidden rounded-[1.6rem] border border-border bg-card/95 shadow-sm lg:mb-4 lg:break-inside-avoid"
+                                    class="wow-fade-up overflow-hidden rounded-[1.6rem] border border-border bg-card/95 shadow-sm lg:mb-4 lg:break-inside-avoid"
                                     :class="editLayout ? 'ring-1 ring-primary/25' : ''"
+                                    :style="{ '--wow-delay': `${260 + sectionIndex * 110}ms` }"
                                 >
                                     <div
                                         class="group flex cursor-pointer items-center justify-between gap-3 border-b border-border bg-linear-to-r px-4 py-3"
@@ -996,10 +1215,7 @@ const dashboardSectionHeaderStrip =
                                             </Link>
                                         </div>
                                     </div>
-                                    <div
-                                        v-show="isSectionExpanded('moon')"
-                                        class="p-4 sm:p-5"
-                                    >
+                                    <div v-show="isSectionExpanded('moon')">
                                         <Moon />
                                     </div>
                                 </section>
@@ -1040,7 +1256,7 @@ const dashboardSectionHeaderStrip =
                     type="button"
                     aria-label="Lisa (märkmed, taim, varud, peenar)"
                     :aria-expanded="showFabMenu"
-                    class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:scale-105 active:scale-95"
+                    class="wow-fab relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:scale-105 active:scale-95"
                     @click="showFabMenu = !showFabMenu"
                 >
                     <span class="material-symbols-outlined text-3xl font-light"
@@ -1059,3 +1275,166 @@ const dashboardSectionHeaderStrip =
         </div>
     </AppLayout>
 </template>
+
+<style scoped>
+.wow-fade-up {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+    animation: wow-fade-up 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation-delay: var(--wow-delay, 0ms);
+    will-change: opacity, transform;
+}
+
+@keyframes wow-fade-up {
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+.wow-leaf {
+    color: rgb(34 110 79 / 0.38);
+    animation-name: wow-leaf-float;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+    will-change: transform, opacity;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.04));
+}
+
+:global(.dark) .wow-leaf {
+    color: rgb(134 200 165 / 0.32);
+}
+
+@keyframes wow-leaf-float {
+    0%,
+    100% {
+        transform: translate3d(0, 0, 0) rotate(-4deg);
+        opacity: 0.45;
+    }
+    50% {
+        transform: translate3d(6px, -18px, 0) rotate(10deg);
+        opacity: 0.75;
+    }
+}
+
+.wow-blob {
+    animation: wow-blob-breath 9s ease-in-out infinite;
+    will-change: transform, opacity;
+}
+.wow-blob-b {
+    animation-duration: 12s;
+    animation-delay: 1.4s;
+}
+@keyframes wow-blob-breath {
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.85;
+    }
+    50% {
+        transform: scale(1.12);
+        opacity: 1;
+    }
+}
+
+.wow-shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        110deg,
+        transparent 0%,
+        transparent 35%,
+        rgba(255, 255, 255, 0.55) 50%,
+        transparent 65%,
+        transparent 100%
+    );
+    transform: translateX(-150%);
+    animation: wow-shimmer 1700ms ease-out 650ms 1 forwards;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+}
+@keyframes wow-shimmer {
+    to {
+        transform: translateX(150%);
+    }
+}
+
+.note-paper {
+    background-image:
+        radial-gradient(
+            circle at 1px 1px,
+            rgba(43, 74, 52, 0.05) 1px,
+            transparent 0
+        );
+    background-size: 14px 14px;
+    background-position: 0 0;
+}
+:global(.dark) .note-paper {
+    background-image: radial-gradient(
+        circle at 1px 1px,
+        rgba(255, 255, 255, 0.04) 1px,
+        transparent 0
+    );
+}
+
+.note-row {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+    animation: note-row-in 520ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation-delay: calc(var(--note-row-delay, 0ms) + 320ms);
+    will-change: opacity, transform;
+}
+.note-row:hover .note-thumb {
+    transform: rotate(-3deg) scale(1.06);
+}
+.note-thumb {
+    transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes note-row-in {
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+.wow-fab::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    box-shadow: 0 0 0 0 rgba(74, 124, 89, 0.55);
+    animation: wow-fab-pulse 2.6s ease-out infinite;
+    pointer-events: none;
+}
+@keyframes wow-fab-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(74, 124, 89, 0.45);
+    }
+    70% {
+        box-shadow: 0 0 0 14px rgba(74, 124, 89, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(74, 124, 89, 0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .wow-fade-up,
+    .wow-leaf,
+    .wow-blob,
+    .wow-shimmer::after,
+    .wow-fab::before,
+    .note-row {
+        animation: none !important;
+    }
+    .note-row {
+        opacity: 1;
+        transform: none;
+    }
+    .wow-fade-up {
+        opacity: 1;
+        transform: none;
+    }
+}
+</style>
