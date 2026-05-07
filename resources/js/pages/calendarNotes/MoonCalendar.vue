@@ -250,6 +250,62 @@ function isToday(d: Date): boolean {
     return isSameCalendarDate(d, new Date());
 }
 
+function fullMonthDayIsToday(day: number): boolean {
+    return isToday(dateForDay(day));
+}
+
+function weekDayCellClass(d: Date): string {
+    const selected = isSelectedDate(d);
+    const today = isToday(d);
+    const out = !isInViewMonth(d);
+    const parts: string[] = [
+        'moon-cal-cell relative flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border px-1 py-1 text-left transition duration-200 sm:min-h-15 lg:min-h-24 lg:gap-2 lg:rounded-2xl lg:px-2 lg:py-2',
+        'border-indigo-200/35 bg-linear-to-b from-white via-white to-amber-50/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_2px_8px_rgba(30,42,74,0.06)]',
+        'hover:z-[1] hover:-translate-y-0.5 hover:border-amber-300/55 hover:shadow-[0_6px_16px_rgba(251,191,36,0.18)]',
+        'dark:border-white/12 dark:from-slate-800/95 dark:via-slate-800/90 dark:to-indigo-950/50 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_10px_rgba(0,0,0,0.25)]',
+        'dark:hover:border-amber-400/35 dark:hover:shadow-[0_6px_18px_rgba(251,191,36,0.12)]',
+    ];
+    if (out) parts.push('opacity-40');
+    if (selected) {
+        parts.push(
+            'z-[2] border-amber-400/70 bg-linear-to-b from-amber-100/90 via-amber-50/50 to-white ring-2 ring-amber-400/75 shadow-[0_0_0_3px_rgba(251,191,36,0.22),0_8px_20px_rgba(217,119,6,0.15)]',
+            'dark:from-amber-500/25 dark:via-amber-600/15 dark:to-indigo-950/60 dark:ring-amber-400/50',
+        );
+    } else if (today) {
+        parts.push(
+            'ring-2 ring-primary/35 ring-offset-2 ring-offset-background dark:ring-offset-slate-900',
+        );
+    }
+    return parts.join(' ');
+}
+
+function monthDayCellClass(day: number): string {
+    const selected = selectedDay.value === day;
+    const today = fullMonthDayIsToday(day);
+    const parts: string[] = [
+        'moon-cal-cell flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-1 py-1 text-left transition duration-200 sm:min-h-15 sm:px-1.5 lg:min-h-24 lg:gap-2 lg:rounded-2xl lg:px-2 lg:py-2',
+        'border-indigo-200/35 bg-linear-to-b from-white via-white to-amber-50/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_2px_8px_rgba(30,42,74,0.06)]',
+        'hover:z-[1] hover:-translate-y-0.5 hover:border-amber-300/55 hover:shadow-[0_6px_16px_rgba(251,191,36,0.18)]',
+        'dark:border-white/12 dark:from-slate-800/95 dark:via-slate-800/90 dark:to-indigo-950/50 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_2px_10px_rgba(0,0,0,0.25)]',
+        'dark:hover:border-amber-400/35 dark:hover:shadow-[0_6px_18px_rgba(251,191,36,0.12)]',
+    ];
+    if (selected) {
+        parts.push(
+            'z-[2] border-amber-400/70 bg-linear-to-b from-amber-100/90 via-amber-50/50 to-white ring-2 ring-amber-400/75 shadow-[0_0_0_3px_rgba(251,191,36,0.22),0_8px_20px_rgba(217,119,6,0.15)]',
+            'dark:from-amber-500/25 dark:via-amber-600/15 dark:to-indigo-950/60 dark:ring-amber-400/50',
+        );
+    } else if (today) {
+        parts.push(
+            'ring-2 ring-primary/35 ring-offset-2 ring-offset-background dark:ring-offset-slate-900',
+        );
+    }
+    return parts.join(' ');
+}
+
+function weekdayHeaderClass(): string {
+    return 'pb-0.5 text-center text-[11px] font-bold tracking-[0.12em] text-foreground/75 uppercase sm:text-xs lg:pb-1 lg:text-[13px] lg:font-semibold lg:tracking-normal lg:normal-case lg:text-foreground/80 dark:text-amber-100/85';
+}
+
 const selectedDateObj = computed(() =>
     selectedDay.value == null ? null : dateForDay(selectedDay.value),
 );
@@ -288,6 +344,31 @@ const selectedTimingBadge = computed(() => {
         return 'Mõõdukas aeg';
     return 'Pigem väldi';
 });
+
+// Tähekesed öötaeva-tausta jaoks (deterministlikud).
+const moonPanelStars = [
+    { x: '6%', y: '14%', size: 2, delay: '0s', duration: '3.4s' },
+    { x: '20%', y: '74%', size: 1.5, delay: '0.6s', duration: '2.9s' },
+    { x: '34%', y: '8%', size: 2.4, delay: '1.2s', duration: '3.8s' },
+    { x: '48%', y: '32%', size: 1.6, delay: '0.4s', duration: '3.2s' },
+    { x: '62%', y: '70%', size: 1.8, delay: '1.8s', duration: '3.6s' },
+    { x: '76%', y: '18%', size: 2.2, delay: '0.9s', duration: '2.7s' },
+    { x: '88%', y: '60%', size: 1.4, delay: '2.4s', duration: '4s' },
+    { x: '14%', y: '92%', size: 1.7, delay: '1.4s', duration: '3.3s' },
+    { x: '54%', y: '90%', size: 2, delay: '0.2s', duration: '3.5s' },
+    { x: '92%', y: '36%', size: 1.5, delay: '2.7s', duration: '3.1s' },
+] as const;
+
+const isWaxing = computed(
+    () =>
+        selectedInfo.value != null &&
+        selectedInfo.value.lunationT != null &&
+        selectedInfo.value.lunationT < 0.5,
+);
+
+const selectedIlluminationPercent = computed(() =>
+    Math.round((selectedInfo.value?.illumination ?? 0) * 100),
+);
 
 function syncSelectedDayWithMonth() {
     const maxDay = daysInMonth.value;
@@ -361,115 +442,157 @@ onUnmounted(() => {
                     >
                         <section
                             v-if="selectedDateObj && selectedInfo"
-                            class="mx-auto hidden w-full max-w-lg rounded-[1.5rem] border border-border/70 bg-linear-to-br from-stone-50 via-background to-stone-100/70 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_8px_24px_rgba(120,110,92,0.06)] lg:sticky lg:top-6 lg:order-2 lg:mx-0 lg:block lg:max-w-none"
+                            class="moon-night-panel relative mx-auto hidden w-full max-w-lg overflow-hidden rounded-[1.5rem] shadow-[0_12px_32px_rgba(15,23,42,0.22)] ring-1 ring-white/10 lg:sticky lg:top-6 lg:order-2 lg:mx-0 lg:block lg:max-w-none"
                         >
                             <div
-                                class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3"
-                            >
-                                <div class="min-w-0">
-                                    <p
-                                        class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
-                                    >
-                                        Valitud päev
-                                    </p>
-                                    <p
-                                        class="mt-1 text-sm text-muted-foreground"
-                                    >
-                                        {{ selectedDateLabel }}
-                                    </p>
-                                    <h2
-                                        class="mt-1 text-lg font-bold tracking-tight text-foreground"
-                                    >
-                                        <span class="font-bold">{{
-                                            selectedInfo.phaseDisplay
-                                        }}</span>
-                                        <span class="text-foreground/70">
-                                            -
-                                            {{
-                                                selectedInfo.biodynamicLabel
-                                            }}</span
+                                class="moon-night-bg absolute inset-0"
+                                aria-hidden="true"
+                            />
+                            <span
+                                v-for="(star, starIndex) in moonPanelStars"
+                                :key="`star-d-${starIndex}`"
+                                class="moon-night-star"
+                                aria-hidden="true"
+                                :style="{
+                                    left: star.x,
+                                    top: star.y,
+                                    width: `${star.size}px`,
+                                    height: `${star.size}px`,
+                                    animationDelay: star.delay,
+                                    animationDuration: star.duration,
+                                }"
+                            />
+
+                            <div class="relative px-4 py-4">
+                                <div
+                                    class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3"
+                                >
+                                    <div class="min-w-0 text-white/95">
+                                        <p
+                                            class="text-[10px] font-semibold tracking-[0.22em] text-white/55 uppercase"
                                         >
-                                    </h2>
-                                    <p
-                                        class="mt-0.5 text-sm text-foreground/80"
+                                            {{ selectedInfo.biodynamicLabel }}
+                                        </p>
+                                        <p
+                                            class="mt-1 text-sm text-white/70"
+                                        >
+                                            {{ selectedDateLabel }}
+                                        </p>
+                                        <h2
+                                            class="mt-1 text-lg font-bold tracking-tight"
+                                        >
+                                            {{ selectedInfo.phaseDisplay }}
+                                        </h2>
+                                        <p class="mt-0.5 text-sm text-white/75">
+                                            {{
+                                                isWaxing
+                                                    ? 'Kasvav'
+                                                    : 'Kahanev'
+                                            }}
+                                            · valgustatud
+                                            <span
+                                                class="font-semibold text-white tabular-nums"
+                                            >
+                                                {{
+                                                    selectedIlluminationPercent
+                                                }}%
+                                            </span>
+                                        </p>
+                                        <p
+                                            class="mt-1.5 text-sm font-medium text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]"
+                                        >
+                                            {{ selectedInfo.moodHeadline }}
+                                        </p>
+                                    </div>
+                                    <div class="moon-night-disc relative shrink-0">
+                                        <span
+                                            class="moon-night-glow"
+                                            aria-hidden="true"
+                                        />
+                                        <div class="moon-night-float relative">
+                                            <MoonPhaseIcon
+                                                :lunation-t="
+                                                    selectedInfo.lunationT
+                                                "
+                                                :phase-index="
+                                                    selectedInfo.phaseIndex
+                                                "
+                                                :size="56"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3 flex flex-wrap gap-1.5">
+                                    <span
+                                        class="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-white/95 ring-1 ring-white/15"
                                     >
-                                        {{ selectedInfo.moodHeadline }}
-                                    </p>
-                                </div>
-                                <div
-                                    class="flex h-15 w-15 shrink-0 items-center justify-center rounded-[1.15rem] border border-border/70 bg-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_18px_rgba(120,110,92,0.08)]"
-                                >
-                                    <MoonPhaseIcon
-                                        :lunation-t="selectedInfo.lunationT"
-                                        :phase-index="selectedInfo.phaseIndex"
-                                        :size="42"
-                                        class="drop-shadow-sm"
-                                    />
+                                        <span
+                                            class="material-symbols-outlined text-[14px] text-amber-200"
+                                            aria-hidden="true"
+                                            >auto_awesome</span
+                                        >
+                                        Kuu on
+                                        {{ selectedInfo.moonSignInessive }}
+                                    </span>
                                 </div>
                             </div>
 
-                            <div class="mt-3 flex flex-wrap gap-1.5">
-                                <span
-                                    class="inline-flex rounded-full border border-border/70 bg-white/80 px-2.5 py-1 text-xs font-medium text-foreground shadow-sm"
-                                >
-                                    Kuu on {{ selectedInfo.moonSignInessive }}
-                                </span>
-                            </div>
-
-                            <div class="mt-4 hidden space-y-3 lg:block">
+                            <div
+                                class="relative space-y-3 border-t border-white/10 bg-linear-to-b from-white/[0.05] to-white/[0.1] px-4 py-4 backdrop-blur-[2px]"
+                            >
                                 <div
-                                    class="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3"
+                                    class="rounded-2xl bg-white/[0.06] px-4 py-3 ring-1 ring-white/12"
                                 >
                                     <div
                                         class="mb-2 flex items-center justify-between gap-2"
                                     >
                                         <p
-                                            class="text-[11px] font-semibold tracking-[0.12em] text-primary/90 uppercase"
+                                            class="text-[10px] font-semibold tracking-[0.18em] text-white/65 uppercase"
                                         >
                                             Külv ja istutus täna
                                         </p>
                                         <span
-                                            class="rounded-full border px-2 py-0.5 text-[11px] font-semibold"
+                                            class="rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1"
                                             :class="
                                                 selectedInfo?.timingConfidence ===
                                                 'hea'
-                                                    ? 'border-primary/30 bg-primary/10 text-primary'
+                                                    ? 'bg-emerald-300/15 text-emerald-50 ring-emerald-200/30'
                                                     : selectedInfo?.timingConfidence ===
                                                         'mõõdukas'
-                                                      ? 'border-amber-200/60 bg-amber-50/45 text-amber-700/80'
-                                                      : 'border-rose-200/60 bg-rose-50/45 text-rose-700/75'
+                                                      ? 'bg-amber-300/15 text-amber-50 ring-amber-200/30'
+                                                      : 'bg-rose-300/15 text-rose-50 ring-rose-200/30'
                                             "
                                         >
                                             {{ selectedTimingBadge }}
                                         </span>
                                     </div>
-
-                                    <p class="mb-2 text-sm text-foreground/80">
+                                    <p class="text-sm leading-snug text-white/85">
                                         {{ selectedInfo?.timingReason }}
                                     </p>
                                 </div>
 
                                 <div
-                                    class="rounded-2xl border border-emerald-200/70 bg-emerald-50/40 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_6px_16px_rgba(120,110,92,0.05)]"
+                                    class="rounded-2xl bg-emerald-300/12 px-4 py-3 ring-1 ring-emerald-200/25"
                                 >
                                     <p
-                                        class="flex items-center justify-between text-[11px] font-semibold tracking-[0.12em] text-emerald-900/80 uppercase"
+                                        class="flex items-center justify-between text-[10px] font-semibold tracking-[0.18em] text-emerald-50/90 uppercase"
                                     >
                                         <span>Täna tee</span>
                                         <span
-                                            class="material-symbols-outlined align-[-2px] text-[13px] normal-case"
+                                            class="material-symbols-outlined align-[-2px] text-[14px] text-emerald-200 normal-case"
                                             >check_circle</span
                                         >
                                     </p>
                                     <p
                                         v-if="selectedTaskSummary"
-                                        class="font-small mt-1.5 text-[15px] leading-7 text-foreground/90"
+                                        class="mt-1.5 text-[15px] leading-7 font-medium text-white"
                                     >
                                         {{ selectedTaskSummary }}
                                     </p>
                                     <p
                                         v-else
-                                        class="mt-1.5 text-[15px] leading-7 text-foreground/75"
+                                        class="mt-1.5 text-[15px] leading-7 text-white/75"
                                     >
                                         Täna ei ole erisoovitusi.
                                     </p>
@@ -477,45 +600,45 @@ onUnmounted(() => {
 
                                 <div
                                     v-if="selectedNotIdealFor.length"
-                                    class="rounded-2xl border border-rose-200/70 bg-rose-50/40 px-4 py-3"
+                                    class="rounded-2xl bg-rose-300/12 px-4 py-3 ring-1 ring-rose-200/25"
                                 >
                                     <p
-                                        class="flex items-center justify-between text-[11px] font-semibold tracking-[0.12em] text-rose-900/70 uppercase"
+                                        class="flex items-center justify-between text-[10px] font-semibold tracking-[0.18em] text-rose-50/90 uppercase"
                                     >
                                         <span>Ära tee täna</span>
                                         <span
-                                            class="material-symbols-outlined align-[-2px] text-[13px] normal-case"
+                                            class="material-symbols-outlined align-[-2px] text-[14px] text-rose-200 normal-case"
                                             >block</span
                                         >
                                     </p>
                                     <p
-                                        class="mt-1.5 text-[14px] leading-6 text-foreground/85"
+                                        class="mt-1.5 text-[14px] leading-6 text-white/90"
                                     >
                                         {{ selectedNotIdealFor.join(', ') }}
                                     </p>
                                 </div>
 
                                 <div
-                                    class="rounded-2xl border border-stone-200/90 bg-white/85 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_4px_14px_rgba(120,110,92,0.04)]"
+                                    class="rounded-2xl bg-white/[0.05] px-4 py-3 ring-1 ring-white/10"
                                 >
                                     <p
-                                        class="flex items-center justify-between text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                        class="flex items-center justify-between text-[10px] font-semibold tracking-[0.18em] text-white/70 uppercase"
                                     >
                                         <span>Tasub meeles pidada</span>
                                         <span
-                                            class="material-symbols-outlined align-[-2px] text-[13px] normal-case"
+                                            class="material-symbols-outlined align-[-2px] text-[14px] text-white/70 normal-case"
                                             >info</span
                                         >
                                     </p>
                                     <p
                                         v-if="selectedTipsSummary"
-                                        class="mt-1.5 text-[14px] leading-6 text-foreground/80"
+                                        class="mt-1.5 text-[14px] leading-6 text-white/85"
                                     >
                                         {{ selectedTipsSummary }}
                                     </p>
                                     <p
                                         v-else
-                                        class="mt-1.5 text-[14px] leading-6 text-foreground/75"
+                                        class="mt-1.5 text-[14px] leading-6 text-white/70"
                                     >
                                         Täna piisab rahulikust hooldusest ja
                                         jälgimisest.
@@ -525,14 +648,23 @@ onUnmounted(() => {
                         </section>
 
                         <section
-                            class="mx-auto w-full max-w-lg card p-2.5 sm:p-3 lg:order-1 lg:mx-0 lg:max-w-none"
+                            class="moon-cal-shell relative mx-auto w-full max-w-lg overflow-hidden rounded-[1.4rem] border border-indigo-300/30 bg-linear-to-br from-indigo-50/85 via-white to-amber-50/55 p-2.5 shadow-[0_10px_28px_rgba(30,42,74,0.12)] ring-1 ring-amber-300/25 sm:p-3.5 lg:order-1 lg:mx-0 lg:max-w-none dark:border-white/10 dark:from-slate-900/90 dark:via-slate-900/85 dark:to-indigo-950/80 dark:ring-amber-400/15"
                         >
+                            <span
+                                class="pointer-events-none absolute -top-10 -right-8 h-32 w-32 rounded-full bg-amber-300/20 blur-3xl dark:bg-amber-500/15"
+                                aria-hidden="true"
+                            />
+                            <span
+                                class="pointer-events-none absolute -bottom-12 -left-10 h-28 w-28 rounded-full bg-indigo-400/20 blur-3xl dark:bg-indigo-500/20"
+                                aria-hidden="true"
+                            />
+
                             <div
-                                class="mb-3 flex items-center justify-between lg:mb-4"
+                                class="relative mb-3 flex items-center justify-between lg:mb-4"
                             >
                                 <button
                                     type="button"
-                                    class="icon-btn"
+                                    class="flex h-9 w-9 items-center justify-center rounded-full bg-white/85 text-indigo-700 ring-1 ring-indigo-200/60 shadow-sm transition hover:bg-white hover:text-amber-600 hover:ring-amber-300/60 dark:bg-white/10 dark:text-amber-100 dark:ring-white/15 dark:hover:bg-white/15"
                                     @click="prevMonth"
                                     aria-label="Eelmine kuu"
                                 >
@@ -541,13 +673,19 @@ onUnmounted(() => {
                                     >
                                 </button>
                                 <h2
-                                    class="text-base font-bold capitalize sm:text-lg lg:text-xl"
+                                    class="flex items-center gap-2 text-base font-bold capitalize sm:text-lg lg:text-xl"
                                 >
+                                    <span
+                                        class="material-symbols-outlined text-base text-amber-600/80 dark:text-amber-200/85"
+                                        aria-hidden="true"
+                                    >
+                                        nights_stay
+                                    </span>
                                     {{ monthTitle }}
                                 </h2>
                                 <button
                                     type="button"
-                                    class="icon-btn"
+                                    class="flex h-9 w-9 items-center justify-center rounded-full bg-white/85 text-indigo-700 ring-1 ring-indigo-200/60 shadow-sm transition hover:bg-white hover:text-amber-600 hover:ring-amber-300/60 dark:bg-white/10 dark:text-amber-100 dark:ring-white/15 dark:hover:bg-white/15"
                                     @click="nextMonth"
                                     aria-label="Järgmine kuu"
                                 >
@@ -560,12 +698,12 @@ onUnmounted(() => {
                             <!-- Nädalavaade -->
                             <template v-if="!displayFullMonth">
                                 <div
-                                    class="grid grid-cols-7 gap-x-1 gap-y-1.5 sm:gap-x-1.5 sm:gap-y-2 lg:gap-x-2.5 lg:gap-y-3"
+                                    class="relative grid grid-cols-7 gap-x-1 gap-y-1.5 sm:gap-x-1.5 sm:gap-y-2 lg:gap-x-2.5 lg:gap-y-3"
                                 >
                                     <div
                                         v-for="lbl in dayLabels"
                                         :key="'w-' + lbl"
-                                        class="pb-0.5 text-center text-[10px] font-bold text-primary/60 sm:text-xs lg:pb-1 lg:text-[13px] lg:text-foreground/70"
+                                        :class="weekdayHeaderClass()"
                                     >
                                         {{ lbl }}
                                     </div>
@@ -573,15 +711,7 @@ onUnmounted(() => {
                                         v-for="d in weekDays"
                                         :key="d.getTime()"
                                         type="button"
-                                        class="flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl border border-border/60 bg-card px-1 py-1 text-left transition hover:bg-muted/45 sm:min-h-15 sm:px-1.5 lg:min-h-24 lg:gap-2 lg:rounded-2xl lg:px-2 lg:py-2"
-                                        :class="[
-                                            isSelectedDate(d)
-                                                ? 'border-stone-300 bg-stone-100 ring-2 ring-stone-300/70'
-                                                : '',
-                                            !isInViewMonth(d)
-                                                ? 'opacity-45'
-                                                : '',
-                                        ]"
+                                        :class="weekDayCellClass(d)"
                                         :aria-pressed="isSelectedDate(d)"
                                         @click="selectCalendarDate(d)"
                                     >
@@ -589,7 +719,7 @@ onUnmounted(() => {
                                             class="shrink-0 text-[11px] leading-none font-semibold sm:text-xs"
                                             :class="
                                                 isToday(d)
-                                                    ? 'text-primary'
+                                                    ? 'text-amber-600 dark:text-amber-200'
                                                     : 'text-foreground'
                                             "
                                         >
@@ -603,10 +733,10 @@ onUnmounted(() => {
                                                 dayInfoForDate(d).phaseIndex
                                             "
                                             :size="26"
-                                            class="shrink-0 text-primary"
+                                            class="shrink-0 drop-shadow-[0_0_4px_rgba(251,191,36,0.25)]"
                                         />
                                         <span
-                                            class="hidden text-center text-[10px] leading-tight font-medium text-foreground/70 lg:block"
+                                            class="hidden text-center text-[10px] leading-tight font-medium text-foreground/75 lg:block dark:text-amber-100/85"
                                             :title="
                                                 dayInfoForDate(d).phaseDisplay
                                             "
@@ -643,12 +773,12 @@ onUnmounted(() => {
                                 </div>
 
                                 <div
-                                    class="grid grid-cols-7 gap-x-1 gap-y-1.5 sm:gap-x-1.5 sm:gap-y-2 lg:gap-x-2.5 lg:gap-y-3"
+                                    class="relative grid grid-cols-7 gap-x-1 gap-y-1.5 sm:gap-x-1.5 sm:gap-y-2 lg:gap-x-2.5 lg:gap-y-3"
                                 >
                                     <div
                                         v-for="lbl in dayLabels"
                                         :key="lbl"
-                                        class="pb-0.5 text-center text-[10px] font-bold text-primary/60 sm:text-xs lg:pb-1 lg:text-[13px] lg:text-foreground/70"
+                                        :class="weekdayHeaderClass()"
                                     >
                                         {{ lbl }}
                                     </div>
@@ -662,12 +792,7 @@ onUnmounted(() => {
                                     <div
                                         v-for="day in daysInMonth"
                                         :key="day"
-                                        class="flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-border/60 bg-card px-1 py-1 text-left transition hover:bg-muted/45 sm:min-h-15 sm:px-1.5 lg:min-h-24 lg:gap-2 lg:rounded-2xl lg:px-2 lg:py-2"
-                                        :class="
-                                            selectedDay === day
-                                                ? 'border-stone-300 bg-stone-100 ring-2 ring-stone-300/70'
-                                                : ''
-                                        "
+                                        :class="monthDayCellClass(day)"
                                         role="button"
                                         tabindex="0"
                                         :aria-pressed="selectedDay === day"
@@ -675,7 +800,12 @@ onUnmounted(() => {
                                         @keydown.enter="selectedDay = day"
                                     >
                                         <span
-                                            class="shrink-0 text-[11px] leading-none font-semibold text-foreground sm:text-xs"
+                                            class="shrink-0 text-[11px] leading-none font-semibold sm:text-xs"
+                                            :class="
+                                                fullMonthDayIsToday(day)
+                                                    ? 'text-amber-600 dark:text-amber-200'
+                                                    : 'text-foreground'
+                                            "
                                             >{{ day }}</span
                                         >
                                         <MoonPhaseIcon
@@ -684,10 +814,10 @@ onUnmounted(() => {
                                                 dayInfo(day).phaseIndex
                                             "
                                             :size="26"
-                                            class="shrink-0 text-primary"
+                                            class="shrink-0 drop-shadow-[0_0_4px_rgba(251,191,36,0.25)]"
                                         />
                                         <span
-                                            class="hidden text-center text-[10px] leading-tight font-medium text-foreground/70 lg:block"
+                                            class="hidden text-center text-[10px] leading-tight font-medium text-foreground/75 lg:block dark:text-amber-100/85"
                                             :title="dayInfo(day).phaseDisplay"
                                         >
                                             {{
@@ -702,14 +832,33 @@ onUnmounted(() => {
 
                             <section
                                 v-if="selectedDateObj && selectedInfo"
-                                class="mt-3 overflow-hidden rounded-[1.35rem] border border-border/70 bg-card/75 shadow-soft lg:hidden"
+                                class="moon-night-panel relative mt-3 overflow-hidden rounded-[1.35rem] shadow-[0_10px_28px_rgba(15,23,42,0.18)] ring-1 ring-white/10 lg:hidden"
                             >
                                 <div
-                                    class="flex items-center gap-2 border-b border-border/50 px-2.5 py-2"
+                                    class="moon-night-bg absolute inset-0"
+                                    aria-hidden="true"
+                                />
+                                <span
+                                    v-for="(star, starIndex) in moonPanelStars"
+                                    :key="`star-m-${starIndex}`"
+                                    class="moon-night-star"
+                                    aria-hidden="true"
+                                    :style="{
+                                        left: star.x,
+                                        top: star.y,
+                                        width: `${star.size}px`,
+                                        height: `${star.size}px`,
+                                        animationDelay: star.delay,
+                                        animationDuration: star.duration,
+                                    }"
+                                />
+
+                                <div
+                                    class="relative flex items-center gap-2 border-b border-white/10 px-2.5 py-2"
                                 >
                                     <button
                                         type="button"
-                                        class="icon-btn shrink-0"
+                                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/8 text-white/85 ring-1 ring-white/15 transition hover:bg-white/15"
                                         aria-label="Eelmine päev"
                                         @click="
                                             shiftFromDate(selectedDateObj, -1)
@@ -721,20 +870,20 @@ onUnmounted(() => {
                                     </button>
                                     <div class="min-w-0 flex-1 text-center">
                                         <p
-                                            class="text-sm leading-tight font-semibold text-foreground"
+                                            class="text-sm leading-tight font-semibold text-white"
                                         >
                                             {{ selectedDateLabel }}
                                         </p>
                                         <p
                                             v-if="isToday(selectedDateObj)"
-                                            class="mt-0.5 text-xs font-medium text-primary"
+                                            class="mt-0.5 text-xs font-semibold tracking-[0.16em] text-amber-200 uppercase"
                                         >
                                             Täna
                                         </p>
                                     </div>
                                     <button
                                         type="button"
-                                        class="icon-btn shrink-0"
+                                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/8 text-white/85 ring-1 ring-white/15 transition hover:bg-white/15"
                                         aria-label="Järgmine päev"
                                         @click="
                                             shiftFromDate(selectedDateObj, 1)
@@ -746,68 +895,97 @@ onUnmounted(() => {
                                     </button>
                                 </div>
 
-                                <div class="space-y-3 px-3 py-3">
+                                <div class="relative space-y-3 px-3 py-3">
                                     <div
-                                        class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5"
+                                        class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3"
                                     >
-                                        <div class="min-w-0">
+                                        <div class="min-w-0 text-white/95">
                                             <p
-                                                class="text-base leading-tight font-semibold text-foreground"
+                                                class="text-[10px] font-semibold tracking-[0.22em] text-white/55 uppercase"
                                             >
-                                                <span class="font-bold">{{
-                                                    selectedInfo.phaseDisplay
-                                                }}</span>
-                                                <span class="text-foreground/70"
-                                                    >,
-                                                    {{
-                                                        selectedInfo.biodynamicLabel
-                                                    }}</span
-                                                >
+                                                {{
+                                                    selectedInfo.biodynamicLabel
+                                                }}
                                             </p>
                                             <p
-                                                class="mt-0.5 text-sm text-foreground/75"
+                                                class="mt-0.5 text-base leading-tight font-bold tracking-tight"
+                                            >
+                                                {{ selectedInfo.phaseDisplay }}
+                                            </p>
+                                            <p
+                                                class="mt-0.5 text-xs text-white/70 sm:text-sm"
+                                            >
+                                                {{
+                                                    isWaxing
+                                                        ? 'Kasvav'
+                                                        : 'Kahanev'
+                                                }}
+                                                · valgustatud
+                                                <span
+                                                    class="font-semibold text-white tabular-nums"
+                                                >
+                                                    {{
+                                                        selectedIlluminationPercent
+                                                    }}%
+                                                </span>
+                                            </p>
+                                            <p
+                                                class="mt-1 text-sm font-medium text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]"
                                             >
                                                 {{ selectedInfo.moodHeadline }}
                                             </p>
                                         </div>
-                                        <MoonPhaseIcon
-                                            :lunation-t="selectedInfo.lunationT"
-                                            :phase-index="
-                                                selectedInfo.phaseIndex
-                                            "
-                                            :size="30"
-                                            class="shrink-0 text-primary"
-                                        />
+                                        <div
+                                            class="moon-night-disc relative shrink-0"
+                                        >
+                                            <span
+                                                class="moon-night-glow"
+                                                aria-hidden="true"
+                                            />
+                                            <div
+                                                class="moon-night-float relative"
+                                            >
+                                                <MoonPhaseIcon
+                                                    :lunation-t="
+                                                        selectedInfo.lunationT
+                                                    "
+                                                    :phase-index="
+                                                        selectedInfo.phaseIndex
+                                                    "
+                                                    :size="44"
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <div
-                                        class="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5"
+                                        class="rounded-xl bg-white/[0.06] px-3 py-2.5 ring-1 ring-white/12"
                                     >
                                         <div
                                             class="mb-1.5 flex items-center justify-between gap-2"
                                         >
                                             <p
-                                                class="text-[11px] font-semibold tracking-[0.12em] text-primary/90 uppercase"
+                                                class="text-[10px] font-semibold tracking-[0.18em] text-white/65 uppercase"
                                             >
                                                 Külv ja istutus täna
                                             </p>
                                             <span
-                                                class="rounded-full border px-2 py-0.5 text-[11px] font-semibold"
+                                                class="rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1"
                                                 :class="
                                                     selectedInfo?.timingConfidence ===
                                                     'hea'
-                                                        ? 'border-primary/30 bg-primary/10 text-primary'
+                                                        ? 'bg-emerald-300/15 text-emerald-50 ring-emerald-200/30'
                                                         : selectedInfo?.timingConfidence ===
                                                             'mõõdukas'
-                                                          ? 'border-amber-200/60 bg-amber-50/45 text-amber-700/80'
-                                                          : 'border-rose-200/60 bg-rose-50/45 text-rose-700/75'
+                                                          ? 'bg-amber-300/15 text-amber-50 ring-amber-200/30'
+                                                          : 'bg-rose-300/15 text-rose-50 ring-rose-200/30'
                                                 "
                                             >
                                                 {{ selectedTimingBadge }}
                                             </span>
                                         </div>
                                         <p
-                                            class="text-sm leading-snug text-foreground/80"
+                                            class="text-sm leading-snug text-white/85"
                                         >
                                             {{ selectedInfo?.timingReason }}
                                         </p>
@@ -815,19 +993,19 @@ onUnmounted(() => {
 
                                     <div
                                         v-if="selectedTaskSummary"
-                                        class="rounded-xl border border-emerald-200/70 bg-emerald-50/35 px-3 py-2"
+                                        class="rounded-xl bg-emerald-300/12 px-3 py-2 ring-1 ring-emerald-200/25"
                                     >
                                         <p
-                                            class="flex items-center justify-between text-[11px] font-semibold tracking-[0.12em] text-emerald-900/80 uppercase"
+                                            class="flex items-center justify-between text-[10px] font-semibold tracking-[0.18em] text-emerald-50/90 uppercase"
                                         >
                                             <span>Täna tee</span>
                                             <span
-                                                class="material-symbols-outlined align-[-2px] text-[13px] normal-case"
+                                                class="material-symbols-outlined align-[-2px] text-[13px] text-emerald-200 normal-case"
                                                 >check_circle</span
                                             >
                                         </p>
                                         <p
-                                            class="mt-1.5 text-sm leading-snug text-foreground/90"
+                                            class="mt-1.5 text-sm leading-snug font-medium text-white"
                                         >
                                             {{ selectedTaskSummary }}
                                         </p>
@@ -835,36 +1013,38 @@ onUnmounted(() => {
 
                                     <div
                                         v-if="selectedNotIdealFor.length"
-                                        class="rounded-xl border border-rose-200/70 bg-rose-50/35 px-3 py-2"
+                                        class="rounded-xl bg-rose-300/12 px-3 py-2 ring-1 ring-rose-200/25"
                                     >
                                         <p
-                                            class="flex items-center justify-between text-[11px] font-semibold tracking-[0.12em] text-rose-900/70 uppercase"
+                                            class="flex items-center justify-between text-[10px] font-semibold tracking-[0.18em] text-rose-50/90 uppercase"
                                         >
                                             <span>Ära tee täna</span>
                                             <span
-                                                class="material-symbols-outlined align-[-2px] text-[13px] normal-case"
+                                                class="material-symbols-outlined align-[-2px] text-[13px] text-rose-200 normal-case"
                                                 >block</span
                                             >
                                         </p>
                                         <p
-                                            class="mt-1.5 text-sm leading-snug text-foreground/85"
+                                            class="mt-1.5 text-sm leading-snug text-white/90"
                                         >
                                             {{ selectedNotIdealFor.join(', ') }}
                                         </p>
                                     </div>
 
-                                    <div class="px-1 py-1">
+                                    <div
+                                        class="rounded-xl bg-white/[0.05] px-3 py-2 ring-1 ring-white/10"
+                                    >
                                         <p
-                                            class="flex items-center justify-between text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                            class="flex items-center justify-between text-[10px] font-semibold tracking-[0.18em] text-white/70 uppercase"
                                         >
                                             <span>Tasub meeles pidada</span>
                                             <span
-                                                class="material-symbols-outlined align-[-2px] text-[13px] normal-case"
+                                                class="material-symbols-outlined align-[-2px] text-[13px] text-white/70 normal-case"
                                                 >info</span
                                             >
                                         </p>
                                         <p
-                                            class="mt-1.5 text-sm leading-relaxed text-foreground/80"
+                                            class="mt-1.5 text-sm leading-relaxed text-white/85"
                                         >
                                             {{
                                                 selectedTipsSummary ||
@@ -883,3 +1063,138 @@ onUnmounted(() => {
         </div>
     </AppLayout>
 </template>
+
+<style scoped>
+.moon-night-bg {
+    background:
+        radial-gradient(
+            120% 120% at 85% 10%,
+            rgba(255, 224, 153, 0.18) 0%,
+            transparent 55%
+        ),
+        radial-gradient(
+            90% 80% at 15% 90%,
+            rgba(118, 150, 232, 0.22) 0%,
+            transparent 55%
+        ),
+        linear-gradient(135deg, #1e2a4a 0%, #2c3868 45%, #3b3a6a 100%);
+}
+
+.moon-night-star {
+    position: absolute;
+    border-radius: 9999px;
+    background: radial-gradient(
+        circle,
+        rgba(255, 255, 255, 0.95) 0%,
+        rgba(255, 255, 255, 0.6) 60%,
+        transparent 100%
+    );
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.55);
+    animation-name: moon-night-twinkle;
+    animation-iteration-count: infinite;
+    animation-timing-function: ease-in-out;
+    will-change: opacity, transform;
+}
+@keyframes moon-night-twinkle {
+    0%,
+    100% {
+        opacity: 0.35;
+        transform: scale(0.85);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.15);
+    }
+}
+
+.moon-night-disc {
+    width: 56px;
+    height: 56px;
+}
+.moon-night-glow {
+    position: absolute;
+    inset: -10px;
+    border-radius: 9999px;
+    background: radial-gradient(
+        circle,
+        rgba(255, 220, 130, 0.55) 0%,
+        rgba(255, 220, 130, 0.18) 45%,
+        transparent 75%
+    );
+    filter: blur(6px);
+    animation: moon-night-glow-pulse 5.5s ease-in-out infinite;
+    pointer-events: none;
+}
+@keyframes moon-night-glow-pulse {
+    0%,
+    100% {
+        opacity: 0.7;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.08);
+    }
+}
+
+.moon-night-float {
+    animation: moon-night-float 6s ease-in-out infinite;
+    will-change: transform;
+}
+@keyframes moon-night-float {
+    0%,
+    100% {
+        transform: translate3d(0, 0, 0);
+    }
+    50% {
+        transform: translate3d(0, -3px, 0);
+    }
+}
+
+.moon-cal-shell {
+    background-image:
+        radial-gradient(
+            circle at 18% 22%,
+            rgba(251, 191, 36, 0.07) 0,
+            transparent 60%
+        ),
+        radial-gradient(
+            circle at 82% 78%,
+            rgba(99, 102, 241, 0.08) 0,
+            transparent 60%
+        ),
+        radial-gradient(
+            circle at 50% 50%,
+            transparent 0,
+            transparent 100%
+        );
+}
+:global(.dark) .moon-cal-shell {
+    background-image:
+        radial-gradient(
+            circle at 18% 22%,
+            rgba(251, 191, 36, 0.1) 0,
+            transparent 55%
+        ),
+        radial-gradient(
+            circle at 82% 78%,
+            rgba(99, 102, 241, 0.18) 0,
+            transparent 55%
+        );
+}
+
+.moon-cal-cell {
+    will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .moon-night-star,
+    .moon-night-glow,
+    .moon-night-float {
+        animation: none !important;
+    }
+    .moon-cal-cell {
+        transition: none !important;
+    }
+}
+</style>

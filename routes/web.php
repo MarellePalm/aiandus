@@ -44,7 +44,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->orderBy('note_date', 'desc')
             ->orderBy('id', 'desc')
             ->limit(5)
-            ->get(['id', 'note_date', 'title', 'type', 'done', 'media']);
+            ->get(['id', 'note_date', 'title', 'type', 'done', 'media', 'due_at']);
 
         $recentPlants = Plant::query()
             ->where('user_id', $user->id)

@@ -62,13 +62,14 @@ const discId = computed(
     >
         <defs>
             <radialGradient :id="glowId" cx="50%" cy="50%" r="60%">
-                <stop offset="0%" stop-color="#f7f2df" stop-opacity="0.28" />
-                <stop offset="70%" stop-color="#f7f2df" stop-opacity="0.1" />
-                <stop offset="100%" stop-color="#f7f2df" stop-opacity="0" />
+                <stop offset="0%" stop-color="#ffe18a" stop-opacity="0.45" />
+                <stop offset="70%" stop-color="#ffd866" stop-opacity="0.16" />
+                <stop offset="100%" stop-color="#ffd866" stop-opacity="0" />
             </radialGradient>
             <linearGradient :id="discId" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#fff9ed" />
-                <stop offset="100%" stop-color="#efe7d4" />
+                <stop offset="0%" stop-color="#fff5cc" />
+                <stop offset="55%" stop-color="#f6d266" />
+                <stop offset="100%" stop-color="#e8b13e" />
             </linearGradient>
             <mask :id="maskId">
                 <rect width="100%" height="100%" fill="white" />
@@ -88,16 +89,16 @@ const discId = computed(
             :fill="`url(#${glowId})`"
         />
 
-        <!-- Uuskuu: ainult varjukülg -->
+        <!-- Uuskuu: ainult varjukülg (sügav öine sinakas) -->
         <circle
             v-if="isNewMoonPhase"
             :cx="cx"
             :cy="cy"
             :r="innerR"
-            fill="#647267"
+            fill="#3a3f56"
         />
 
-        <!-- Täiskuu: ainult valgus (kogu ketas valge) -->
+        <!-- Täiskuu: kogu ketas soe kollane -->
         <circle
             v-else-if="isFullMoonPhase"
             :cx="cx"
@@ -106,9 +107,9 @@ const discId = computed(
             :fill="`url(#${discId})`"
         />
 
-        <!-- Vahefaasid: pehme varjukülg + soe valgustatud osa -->
+        <!-- Vahefaasid: tume öine varjupool + soe kuldne valgustatud pool -->
         <g v-else>
-            <circle :cx="cx" :cy="cy" :r="innerR" fill="#6f7f72" />
+            <circle :cx="cx" :cy="cy" :r="innerR" fill="#3f4560" />
             <circle
                 :cx="cx"
                 :cy="cy"
@@ -123,7 +124,7 @@ const discId = computed(
             :cy="cy"
             :r="outerR"
             fill="none"
-            stroke="#8ba38a"
+            stroke="#b89757"
             :stroke-width="ringStroke"
         />
     </svg>

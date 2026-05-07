@@ -1,6 +1,31 @@
 <script setup lang="ts">
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import {
+    Bird,
+    Box,
+    Columns3,
+    Droplet,
+    Droplets,
+    Flame,
+    Home,
+    House,
+    LayoutGrid,
+    Leaf,
+    Logs,
+    Pencil,
+    Recycle,
+    Shapes,
+    Sofa,
+    Sprout,
+    Tent,
+    ToyBrick,
+    Trees,
+    Warehouse,
+    Waves,
+    Wrench,
+    type LucideIcon,
+} from 'lucide-vue-next';
+import {
     computed,
     nextTick,
     onBeforeUnmount,
@@ -146,7 +171,7 @@ const toolCategories: ToolCategory[] = [
     {
         id: 'buildings',
         label: 'Hooned',
-        icon: 'home_work',
+        icon: 'house',
         description: 'Maja, kasvuhoone, kuur ja muud ehitised.',
         variants: [
             {
@@ -165,7 +190,7 @@ const toolCategories: ToolCategory[] = [
                 description: 'Klassikaline kasvuhoone köögiviljadele.',
                 width: 300,
                 height: 200,
-                icon: 'home_work',
+                icon: 'warehouse',
             },
             {
                 id: 'greenhouse-tunnel',
@@ -174,7 +199,7 @@ const toolCategories: ToolCategory[] = [
                 description: 'Pikem tunnel varaseks kasvatuseks.',
                 width: 420,
                 height: 180,
-                icon: 'architecture',
+                icon: 'tent',
             },
             {
                 id: 'greenhouse-mini',
@@ -183,7 +208,7 @@ const toolCategories: ToolCategory[] = [
                 description: 'Kompaktne kasvuhoone väiksemasse aeda.',
                 width: 220,
                 height: 150,
-                icon: 'home_work',
+                icon: 'sprout',
             },
             {
                 id: 'greenhouse-raised-bed-cover',
@@ -192,7 +217,7 @@ const toolCategories: ToolCategory[] = [
                 description: 'Madal kate tõstetud peenrale.',
                 width: 260,
                 height: 120,
-                icon: 'roofing',
+                icon: 'box',
             },
             {
                 id: 'shed-tool',
@@ -201,7 +226,7 @@ const toolCategories: ToolCategory[] = [
                 description: 'Panipaik tööriistadele ja varustusele.',
                 width: 240,
                 height: 180,
-                icon: 'warehouse',
+                icon: 'wrench',
             },
             {
                 id: 'shed-wood',
@@ -210,7 +235,7 @@ const toolCategories: ToolCategory[] = [
                 description: 'Kuiv hoiukoht puudele.',
                 width: 200,
                 height: 160,
-                icon: 'cottage',
+                icon: 'logs',
             },
             {
                 id: 'shed-gazebo',
@@ -219,7 +244,7 @@ const toolCategories: ToolCategory[] = [
                 description: 'Katusega varjualune istumiseks.',
                 width: 320,
                 height: 260,
-                icon: 'holiday_village',
+                icon: 'tent',
             },
             {
                 id: 'shed-sauna',
@@ -228,14 +253,14 @@ const toolCategories: ToolCategory[] = [
                 description: 'Väike kõrvalhoone puhkealale.',
                 width: 300,
                 height: 220,
-                icon: 'cabin',
+                icon: 'home',
             },
         ],
     },
     {
         id: 'water',
         label: 'Veealad',
-        icon: 'water',
+        icon: 'droplets',
         description: 'Tiigid, purskkaevud ja vee kogumine.',
         variants: [
             {
@@ -245,7 +270,7 @@ const toolCategories: ToolCategory[] = [
                 description: 'Rahulik veesilm aeda.',
                 width: 250,
                 height: 180,
-                icon: 'water',
+                icon: 'waves',
             },
             {
                 id: 'fountain',
@@ -254,7 +279,7 @@ const toolCategories: ToolCategory[] = [
                 description: 'Väiksem dekoratiivne veeobjekt.',
                 width: 140,
                 height: 140,
-                icon: 'water_drop',
+                icon: 'droplet',
             },
             {
                 id: 'pond-bird-bath',
@@ -263,7 +288,7 @@ const toolCategories: ToolCategory[] = [
                 description: 'Väike veeallikas lindudele.',
                 width: 110,
                 height: 110,
-                icon: 'pets',
+                icon: 'bird',
             },
             {
                 id: 'pond-rain-barrel',
@@ -272,14 +297,14 @@ const toolCategories: ToolCategory[] = [
                 description: 'Vee kogumine kastmiseks.',
                 width: 120,
                 height: 120,
-                icon: 'water_full',
+                icon: 'droplets',
             },
         ],
     },
     {
         id: 'compost',
         label: 'Kompost',
-        icon: 'compost',
+        icon: 'recycle',
         description: 'Kompostikastid ja orgaanika alad.',
         variants: [
             {
@@ -289,7 +314,7 @@ const toolCategories: ToolCategory[] = [
                 description: 'Kompaktne kompostikast biojäätmetele.',
                 width: 120,
                 height: 120,
-                icon: 'compost',
+                icon: 'recycle',
             },
             {
                 id: 'compost-area',
@@ -298,7 +323,7 @@ const toolCategories: ToolCategory[] = [
                 description: 'Suurem avatud kompostiala.',
                 width: 220,
                 height: 160,
-                icon: 'yard',
+                icon: 'sprout',
             },
             {
                 id: 'compost-leaf-area',
@@ -307,7 +332,7 @@ const toolCategories: ToolCategory[] = [
                 description: 'Lehtedele ja pehmemale orgaanikale.',
                 width: 180,
                 height: 140,
-                icon: 'park',
+                icon: 'leaf',
             },
             {
                 id: 'compost-multibox',
@@ -316,14 +341,14 @@ const toolCategories: ToolCategory[] = [
                 description: 'Tõhusam komposteerimine mitmes sektsioonis.',
                 width: 260,
                 height: 120,
-                icon: 'view_week',
+                icon: 'columns-3',
             },
         ],
     },
     {
         id: 'zones',
         label: 'Alad',
-        icon: 'grid_view',
+        icon: 'trees',
         description: 'Puhkealad ja muud tsoonid.',
         variants: [
             {
@@ -333,7 +358,7 @@ const toolCategories: ToolCategory[] = [
                 description: 'Varjuline puhkeala.',
                 width: 280,
                 height: 220,
-                icon: 'deck',
+                icon: 'tent',
             },
             {
                 id: 'other-terrace',
@@ -342,7 +367,7 @@ const toolCategories: ToolCategory[] = [
                 description: 'Istumis- ja puhkeala.',
                 width: 360,
                 height: 240,
-                icon: 'table_restaurant',
+                icon: 'sofa',
             },
             {
                 id: 'other-fireplace',
@@ -351,7 +376,7 @@ const toolCategories: ToolCategory[] = [
                 description: 'Ümar puhkeala lõkke jaoks.',
                 width: 220,
                 height: 220,
-                icon: 'local_fire_department',
+                icon: 'flame',
             },
             {
                 id: 'other-play-area',
@@ -360,7 +385,7 @@ const toolCategories: ToolCategory[] = [
                 description: 'Muru- või liivapind mängimiseks.',
                 width: 320,
                 height: 240,
-                icon: 'toys',
+                icon: 'toy-brick',
             },
             {
                 id: 'other-herb-corner',
@@ -369,7 +394,7 @@ const toolCategories: ToolCategory[] = [
                 description: 'Eraldi ala maitsetaimedele.',
                 width: 220,
                 height: 160,
-                icon: 'spa',
+                icon: 'leaf',
             },
             {
                 id: 'other-custom',
@@ -378,7 +403,7 @@ const toolCategories: ToolCategory[] = [
                 description: 'Sisesta ise objekti nimi.',
                 width: 200,
                 height: 150,
-                icon: 'edit_note',
+                icon: 'pencil',
                 requiresCustomName: true,
             },
         ],
@@ -1484,12 +1509,42 @@ function objectTypeLabel(type: GardenObjectType): string {
     }[type];
 }
 
+const iconLibrary: Record<string, LucideIcon> = {
+    house: House,
+    home: Home,
+    warehouse: Warehouse,
+    tent: Tent,
+    sprout: Sprout,
+    box: Box,
+    wrench: Wrench,
+    logs: Logs,
+    waves: Waves,
+    droplet: Droplet,
+    droplets: Droplets,
+    bird: Bird,
+    recycle: Recycle,
+    leaf: Leaf,
+    'columns-3': Columns3,
+    sofa: Sofa,
+    flame: Flame,
+    'toy-brick': ToyBrick,
+    pencil: Pencil,
+    shapes: Shapes,
+    'layout-grid': LayoutGrid,
+    trees: Trees,
+};
+
+function iconFor(name: string | undefined | null): LucideIcon {
+    if (!name) return Shapes;
+    return iconLibrary[name] ?? Shapes;
+}
+
 function objectTypeIcon(type: GardenObjectType): string {
     return {
-        greenhouse: 'home_work',
-        pond: 'water',
-        shed: 'warehouse',
-        compost: 'compost',
+        greenhouse: 'warehouse',
+        pond: 'waves',
+        shed: 'home',
+        compost: 'recycle',
         other: 'shapes',
     }[type];
 }
@@ -1505,7 +1560,7 @@ function objectTypeDescription(type: GardenObjectType): string {
 }
 
 
-function objectIconStyle(object: GardenObject): Record<string, string> {
+function objectIconSize(object: GardenObject): number {
     const base = Math.min(
         getObjectPixelWidth(object),
         getObjectPixelHeight(object),
@@ -1513,14 +1568,7 @@ function objectIconStyle(object: GardenObject): Record<string, string> {
     const type = objectVariantType(object);
     const multiplier = type === 'pond' ? 0.56 : 0.42;
     const maxSize = type === 'pond' ? 120 : 96;
-    const sizePx = Math.max(
-        14,
-        Math.min(maxSize, Math.round(base * multiplier)),
-    );
-    return {
-        fontSize: `${sizePx}px`,
-        lineHeight: '1',
-    };
+    return Math.max(14, Math.min(maxSize, Math.round(base * multiplier)));
 }
 
 function objectVariantIcon(object: GardenObject): string {
@@ -1571,9 +1619,10 @@ function plannerSurfaceStyle() {
         height: `${gardenSurfaceHeight.value}px`,
         transform: `translate(${panX.value}px, ${panY.value}px) scale(${zoom.value})`,
         transformOrigin: 'top left',
-        backgroundSize: `${plannerGridSizePx.value}px ${plannerGridSizePx.value}px, ${plannerGridSizePx.value}px ${plannerGridSizePx.value}px, ${plannerMajorGridSizePx.value}px ${plannerMajorGridSizePx.value}px, ${plannerMajorGridSizePx.value}px ${plannerMajorGridSizePx.value}px`,
-        backgroundImage:
-            'linear-gradient(to right, rgba(95,135,80,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(95,135,80,0.06) 1px, transparent 1px), linear-gradient(to right, rgba(95,135,80,0.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(95,135,80,0.12) 1px, transparent 1px)',
+        backgroundImage: [
+            'linear-gradient(180deg, rgba(243, 251, 234, 0.98), rgba(222, 238, 208, 0.99))',
+            'radial-gradient(circle at 50% 0%, rgba(185, 214, 160, 0.22), transparent 42%)',
+        ].join(', '),
     };
 }
 
@@ -2462,16 +2511,17 @@ function saveGardenPlan() {
                                                             "
                                                         >
                                                             <span class="flex items-start gap-2">
-                                                                <span
-                                                                    class="material-symbols-outlined mt-0.5 text-base"
+                                                                <component
+                                                                    :is="iconFor(variant.icon)"
+                                                                    :size="18"
+                                                                    :stroke-width="1.75"
+                                                                    class="mt-0.5 shrink-0"
                                                                     :class="
                                                                         toolVariantIconToneClass(
                                                                             variant.type,
                                                                         )
                                                                     "
-                                                                >
-                                                                    {{ variant.icon }}
-                                                                </span>
+                                                                />
                                                                 <span class="min-w-0">
                                                                     <span class="block text-sm font-semibold text-foreground">
                                                                         {{ variant.label }}
@@ -2588,18 +2638,10 @@ function saveGardenPlan() {
 
                                         </aside>
 
-                                        <div
-                                            ref="plannerViewport"
-                                            class="relative overflow-auto rounded-[1.75rem] border border-border/80 bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(244,239,229,0.98))] p-3 shadow-inner sm:p-4 cursor-default"
-                                            :style="{
-                                                height: 'min(72vh, 920px)',
-                                            }"
-                                            @pointerdown="startPanning($event)"
-                                            @wheel="onPlannerWheel($event)"
-                                        >
+                                        <div class="relative flex gap-3">
                                             <aside
                                                 data-ui-overlay="true"
-                                                class="pointer-events-auto absolute top-4 left-4 z-30 flex w-14 flex-col items-center gap-2 rounded-2xl border border-border/80 bg-white/92 px-2 py-2 shadow-lg backdrop-blur"
+                                                class="pointer-events-auto z-30 flex w-14 shrink-0 flex-col items-center gap-2 self-start rounded-2xl border border-border/80 bg-white/95 px-2 py-2 shadow-lg backdrop-blur"
                                             >
                                                 <button
                                                     v-for="category in toolCategories"
@@ -2620,8 +2662,10 @@ function saveGardenPlan() {
                                                         )
                                                     "
                                                 >
-                                                    <span
-                                                        class="material-symbols-outlined text-lg"
+                                                    <component
+                                                        :is="iconFor(category.icon)"
+                                                        :size="20"
+                                                        :stroke-width="1.75"
                                                         :class="
                                                             categoryIconToneClass(
                                                                 category.id,
@@ -2629,9 +2673,7 @@ function saveGardenPlan() {
                                                                     category.id,
                                                             )
                                                         "
-                                                    >
-                                                        {{ category.icon }}
-                                                    </span>
+                                                    />
                                                 </button>
                                                 <button
                                                     v-if="activeTool"
@@ -2643,10 +2685,11 @@ function saveGardenPlan() {
                                                     <span class="material-symbols-outlined text-sm">close</span>
                                                 </button>
                                             </aside>
+
                                             <div
                                                 v-if="selectedQuickCategoryId"
                                                 data-ui-overlay="true"
-                                                class="pointer-events-auto absolute top-4 left-20 z-30 w-72 rounded-2xl border border-border/80 bg-white/96 p-3 shadow-xl backdrop-blur"
+                                                class="pointer-events-auto absolute top-0 left-[68px] z-30 w-72 rounded-2xl border border-border/80 bg-white/96 p-3 shadow-xl backdrop-blur"
                                             >
                                                 <div class="mb-2 flex items-center justify-between">
                                                     <p class="text-sm font-semibold text-foreground">
@@ -2682,16 +2725,17 @@ function saveGardenPlan() {
                                                         "
                                                     >
                                                         <div class="flex items-start gap-2">
-                                                            <span
-                                                                class="material-symbols-outlined mt-0.5 text-base"
+                                                            <component
+                                                                :is="iconFor(variant.icon)"
+                                                                :size="18"
+                                                                :stroke-width="1.75"
+                                                                class="mt-0.5 shrink-0"
                                                                 :class="
                                                                     toolVariantIconToneClass(
                                                                         variant.type,
                                                                     )
                                                                 "
-                                                            >
-                                                                {{ variant.icon }}
-                                                            </span>
+                                                            />
                                                             <span class="min-w-0">
                                                                 <span class="block text-sm font-semibold text-foreground">
                                                                     {{ variant.label }}
@@ -2706,7 +2750,16 @@ function saveGardenPlan() {
                                             </div>
 
                                             <div
-                                                class="relative overflow-hidden rounded-[1.6rem] border border-emerald-900/10 bg-[radial-gradient(circle_at_top,_rgba(185,214,160,0.22),_transparent_32%),linear-gradient(180deg,rgba(239,247,232,0.96),rgba(228,239,219,0.98))]"
+                                                ref="plannerViewport"
+                                                class="relative flex-1 min-w-0 overflow-auto rounded-[1.75rem] border border-border/80 bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(244,239,229,0.98))] p-3 shadow-inner sm:p-4 cursor-default"
+                                                :style="{
+                                                    height: 'min(72vh, 920px)',
+                                                }"
+                                                @pointerdown="startPanning($event)"
+                                                @wheel="onPlannerWheel($event)"
+                                            >
+                                            <div
+                                                class="relative overflow-hidden rounded-[1.6rem] border border-emerald-900/10 bg-emerald-50/80"
                                                 :style="plannerSurfaceStyle()"
                                                 @click="
                                                     handlePlannerSurfaceClick(
@@ -2789,7 +2842,7 @@ function saveGardenPlan() {
                                                 >
                                                     <div class="relative z-10">
                                                         <div
-                                                            class="grid place-content-center gap-[3px] rounded-[0.9rem] border border-emerald-900/10 bg-[radial-gradient(circle_at_top,_rgba(217,235,202,0.6),_rgba(228,240,218,0.9))] p-1 transition"
+                                                            class="grid place-content-center gap-[2px] rounded-[0.9rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(241,250,232,0.96),rgba(228,240,217,0.98))] p-1 transition"
                                                             :class="
                                                                 selectedBed?.id ===
                                                                 bed.id
@@ -2815,13 +2868,13 @@ function saveGardenPlan() {
                                                                         _, c
                                                                     ) in rowData"
                                                                     :key="`plan-cell-${bed.id}-${r}-${c}`"
-                                                                    class="rounded-[4px] border"
+                                                                    class="rounded-[3px] border"
                                                                     :class="
                                                                         rowData[
                                                                             c
                                                                         ] === 1
                                                                             ? 'border-emerald-900/15 bg-[linear-gradient(180deg,rgba(131,171,116,0.95),rgba(95,139,84,0.98))]'
-                                                                            : 'border-transparent bg-transparent'
+                                                                            : 'border-emerald-700/15 bg-emerald-100/55'
                                                                     "
                                                                     :style="
                                                                         rowData[
@@ -2997,230 +3050,42 @@ function saveGardenPlan() {
                                                     "
                                                 >
                                                     <div
-                                                        class="relative flex h-full w-full items-center justify-center"
+                                                        class="relative z-10 flex h-full w-full items-center justify-center p-1"
                                                     >
-                                                        <span
-                                                            class="material-symbols-outlined relative z-10"
-                                                            :class="
-                                                                toolVariantIconToneClass(
-                                                                    objectVariantType(
-                                                                        object,
-                                                                    ),
-                                                                )
-                                                            "
-                                                            :style="
-                                                                objectIconStyle(
-                                                                    object,
-                                                                )
-                                                            "
-                                                        >
-                                                            {{
-                                                                objectVariantIcon(
-                                                                    object,
-                                                                )
-                                                            }}
-                                                        </span>
-
                                                         <div
-                                                            v-if="
-                                                                showPlannerLabels
-                                                            "
-                                                            class="pointer-events-none absolute top-full left-1/2 z-20 mt-2 -translate-x-1/2 rounded-full bg-white/88 px-2.5 py-1 text-[11px] font-semibold text-foreground shadow-sm backdrop-blur-sm"
+                                                            class="flex max-w-full flex-col items-center gap-1"
                                                         >
-                                                            {{ object.name }}
-                                                        </div>
-
-                                                        <div
-                                                            v-if="
-                                                                selectedObject?.id ===
-                                                                object.id
-                                                            "
-                                                            class="absolute top-full left-1/2 z-30 mt-3 hidden w-56 -translate-x-1/2 rounded-[1.2rem] border border-primary/15 bg-white/95 p-3 text-left shadow-lg backdrop-blur-sm lg:block"
-                                                            @click.stop
-                                                        >
-                                                            <div
-                                                                class="flex items-start justify-between gap-2"
-                                                            >
-                                                                <div
-                                                                    class="min-w-0"
-                                                                >
-                                                                    <p
-                                                                        class="truncate text-sm font-semibold text-foreground"
-                                                                    >
-                                                                        {{
-                                                                            object.name
-                                                                        }}
-                                                                    </p>
-                                                                    <p
-                                                                        class="mt-1 text-[11px] text-muted-foreground"
-                                                                    >
-                                                                        {{
-                                                                            formatCentimeters(
-                                                                                object.width,
-                                                                            )
-                                                                        }}
-                                                                        ×
-                                                                        {{
-                                                                            formatCentimeters(
-                                                                                object.height,
-                                                                            )
-                                                                        }}
-                                                                    </p>
-                                                                </div>
-                                                                <span
-                                                                    class="material-symbols-outlined rounded-full bg-primary/10 p-1.5 text-[18px] text-primary"
-                                                                >
-                                                                    {{
-                                                                        objectTypeIcon(
-                                                                            object.type,
-                                                                        )
-                                                                    }}
-                                                                </span>
-                                                            </div>
-
-                                                            <div
-                                                                class="mt-3 grid grid-cols-2 gap-2 text-[11px]"
-                                                            >
-                                                                <button
-                                                                    type="button"
-                                                                    class="rounded-xl border border-border/70 bg-background px-2 py-2 text-left transition hover:bg-muted"
-                                                                    @click.stop="
-                                                                        nudgeSelectedObjectSize(
-                                                                            'width',
-                                                                            -0.1,
-                                                                        )
-                                                                    "
-                                                                >
-                                                                    <div
-                                                                        class="text-muted-foreground"
-                                                                    >
-                                                                        Laius
-                                                                    </div>
-                                                                    <div
-                                                                        class="mt-1 font-semibold text-foreground"
-                                                                    >
-                                                                        - 0.1 m
-                                                                    </div>
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    class="rounded-xl border border-border/70 bg-background px-2 py-2 text-left transition hover:bg-muted"
-                                                                    @click.stop="
-                                                                        nudgeSelectedObjectSize(
-                                                                            'width',
-                                                                            0.1,
-                                                                        )
-                                                                    "
-                                                                >
-                                                                    <div
-                                                                        class="text-muted-foreground"
-                                                                    >
-                                                                        Laius
-                                                                    </div>
-                                                                    <div
-                                                                        class="mt-1 font-semibold text-foreground"
-                                                                    >
-                                                                        + 0.1 m
-                                                                    </div>
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    class="rounded-xl border border-border/70 bg-background px-2 py-2 text-left transition hover:bg-muted"
-                                                                    @click.stop="
-                                                                        nudgeSelectedObjectSize(
-                                                                            'height',
-                                                                            -0.1,
-                                                                        )
-                                                                    "
-                                                                >
-                                                                    <div
-                                                                        class="text-muted-foreground"
-                                                                    >
-                                                                        Kõrgus
-                                                                    </div>
-                                                                    <div
-                                                                        class="mt-1 font-semibold text-foreground"
-                                                                    >
-                                                                        - 0.1 m
-                                                                    </div>
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    class="rounded-xl border border-border/70 bg-background px-2 py-2 text-left transition hover:bg-muted"
-                                                                    @click.stop="
-                                                                        nudgeSelectedObjectSize(
-                                                                            'height',
-                                                                            0.1,
-                                                                        )
-                                                                    "
-                                                                >
-                                                                    <div
-                                                                        class="text-muted-foreground"
-                                                                    >
-                                                                        Kõrgus
-                                                                    </div>
-                                                                    <div
-                                                                        class="mt-1 font-semibold text-foreground"
-                                                                    >
-                                                                        + 0.1 m
-                                                                    </div>
-                                                                </button>
-                                                            </div>
-
-                                                            <button
-                                                                type="button"
-                                                                class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/15"
-                                                                @click.stop="
-                                                                    revealSelectedObjectEditor
+                                                            <component
+                                                                :is="iconFor(objectVariantIcon(object))"
+                                                                :size="objectIconSize(object)"
+                                                                :stroke-width="1.5"
+                                                                class="relative shrink-0"
+                                                                :class="
+                                                                    toolVariantIconToneClass(
+                                                                        objectVariantType(
+                                                                            object,
+                                                                        ),
+                                                                    )
                                                                 "
-                                                            >
-                                                                <span
-                                                                    class="material-symbols-outlined text-sm"
-                                                                    >straighten</span
-                                                                >
-                                                                Muuda mõõte
-                                                            </button>
+                                                            />
 
                                                             <div
-                                                                class="mt-2 grid grid-cols-2 gap-2"
+                                                                v-if="
+                                                                    showPlannerLabels
+                                                                "
+                                                                class="pointer-events-none max-w-[min(14rem,100%)] truncate rounded-full bg-white/88 px-2.5 py-0.5 text-center text-[11px] font-semibold text-foreground shadow-sm backdrop-blur-sm"
                                                             >
-                                                                <button
-                                                                    type="button"
-                                                                    class="inline-flex items-center justify-center gap-2 rounded-full border border-border/70 bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted"
-                                                                    @click.stop="
-                                                                        duplicateSelectedObject
-                                                                    "
-                                                                >
-                                                                    <span
-                                                                        class="material-symbols-outlined text-sm"
-                                                                        >content_copy</span
-                                                                    >
-                                                                    Dubleeri
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    class="inline-flex items-center justify-center gap-2 rounded-full border border-border/70 bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted"
-                                                                    @click.stop="
-                                                                        rotateSelectedObject
-                                                                    "
-                                                                >
-                                                                    <span
-                                                                        class="material-symbols-outlined text-sm"
-                                                                        >rotate_90_degrees_ccw</span
-                                                                    >
-                                                                    Pööra
-                                                                </button>
+                                                                {{ object.name }}
                                                             </div>
-                                                        </div>
 
-                                                        <div
-                                                            v-if="
-                                                                hoveredObjectId ===
-                                                                    object.id &&
-                                                                selectedObject?.id !==
-                                                                    object.id
-                                                            "
-                                                            class="absolute top-full left-1/2 z-30 mt-3 hidden w-44 -translate-x-1/2 rounded-[1.2rem] border border-emerald-900/10 bg-white/92 p-3 text-left shadow-lg backdrop-blur-sm md:block"
+                                                            <div
+                                                                v-if="
+                                                                    hoveredObjectId ===
+                                                                        object.id &&
+                                                                    selectedObject?.id !==
+                                                                        object.id
+                                                                "
+                                                            class="z-30 hidden w-44 max-w-[min(14rem,calc(100vw-2rem))] rounded-[1.2rem] border border-emerald-900/10 bg-white/92 p-3 text-left shadow-lg backdrop-blur-sm md:block"
                                                         >
                                                             <p
                                                                 class="truncate text-sm font-semibold text-foreground"
@@ -3296,9 +3161,11 @@ function saveGardenPlan() {
                                                                 Ava vaade
                                                             </button>
                                                         </div>
+                                                        </div>
                                                     </div>
                                                 </article>
                                             </div>
+                                        </div>
                                         </div>
                                     </div>
 
