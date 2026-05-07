@@ -747,12 +747,6 @@ const gardenPresetButtonClass = (active: boolean) => {
     return `${base} border-border/70 bg-card/85 text-foreground hover:bg-muted`;
 };
 
-const toolMenuItemClass = (type: GardenObjectType) => {
-    const active = activeTool.value === type;
-    return active
-        ? 'border-primary/25 bg-primary/8 ring-2 ring-primary/15'
-        : 'border-border/70 bg-background/80 hover:border-primary/20 hover:bg-muted/60';
-};
 const toolVariantButtonClass = (variant: ToolVariant) => {
     const active = activeToolVariant.value?.id === variant.id;
     return active
@@ -1243,32 +1237,6 @@ function getDefaultToolVariant(type: GardenObjectType): ToolVariant {
     return match ?? allToolVariants[0];
 }
 
-function getDefaultToolVariantForCategory(
-    categoryId: ToolCategoryId,
-): ToolVariant {
-    const category = toolCategories.find((item) => item.id === categoryId);
-    return category?.variants[0] ?? allToolVariants[0];
-}
-
-function chooseTool(type: GardenObjectType) {
-    activeTool.value = type;
-    activeToolVariant.value = getDefaultToolVariant(type);
-    const category = toolCategories.find((item) =>
-        item.variants.some((variant) => variant.type === type),
-    );
-    activeToolCategoryId.value = category?.id ?? null;
-    selectedQuickCategoryId.value = null;
-    otherObjectNameError.value = '';
-    if (type === 'other') {
-        const variant = activeToolVariant.value;
-        otherObjectNameDraft.value = variant?.requiresCustomName
-            ? ''
-            : (variant?.label ?? '');
-        return;
-    }
-    otherObjectNameDraft.value = '';
-}
-
 function chooseToolVariant(variant: ToolVariant) {
     activeTool.value = variant.type;
     activeToolVariant.value = variant;
@@ -1536,88 +1504,6 @@ function objectTypeDescription(type: GardenObjectType): string {
     }[type];
 }
 
-function objectClass(object: GardenObject): string {
-    const variantId =
-        object.meta && typeof object.meta === 'object'
-            ? (object.meta['variant_id'] as string | undefined)
-            : undefined;
-
-    if (object.type === 'greenhouse') {
-        if (variantId === 'greenhouse-tunnel') {
-            return 'rounded-[999px] border border-emerald-700/30 bg-[linear-gradient(180deg,rgba(214,236,219,0.96),rgba(152,196,166,0.94))] shadow-md';
-        }
-        if (variantId === 'greenhouse-mini') {
-            return 'rounded-[1.6rem] border border-emerald-700/30 bg-[linear-gradient(180deg,rgba(220,239,223,0.96),rgba(168,203,176,0.93))] shadow-md';
-        }
-        if (variantId === 'greenhouse-raised-bed-cover') {
-            return 'rounded-[999px] border border-emerald-700/25 bg-[linear-gradient(180deg,rgba(226,241,228,0.96),rgba(181,210,188,0.92))] shadow-md';
-        }
-    }
-
-    if (object.type === 'shed') {
-        if (variantId === 'shed-wood') {
-            return 'rounded-[0.85rem] border border-stone-700/30 bg-[repeating-linear-gradient(90deg,rgba(205,182,158,0.95)_0px,rgba(205,182,158,0.95)_7px,rgba(186,160,133,0.95)_7px,rgba(186,160,133,0.95)_14px)] shadow-md';
-        }
-        if (variantId === 'shed-gazebo') {
-            return 'rounded-[1.4rem] border border-stone-700/25 bg-[linear-gradient(180deg,rgba(224,207,186,0.95),rgba(172,139,104,0.92))] shadow-md';
-        }
-        if (variantId === 'shed-sauna') {
-            return 'rounded-[0.95rem] border border-amber-900/30 bg-[linear-gradient(180deg,rgba(212,179,143,0.95),rgba(154,111,74,0.95))] shadow-md';
-        }
-    }
-
-    if (object.type === 'pond') {
-        if (variantId === 'fountain') {
-            return 'rounded-full border border-sky-700/30 bg-[radial-gradient(circle_at_center,rgba(238,250,255,0.98),rgba(133,201,232,0.9))] shadow-md';
-        }
-        if (variantId === 'pond-bird-bath') {
-            return 'rounded-full border border-sky-700/25 bg-[radial-gradient(circle_at_center,rgba(247,252,255,0.98),rgba(180,221,242,0.9))] shadow-md';
-        }
-        if (variantId === 'pond-rain-barrel') {
-            return 'rounded-[1rem] border border-sky-800/25 bg-[linear-gradient(180deg,rgba(221,242,252,0.96),rgba(145,199,226,0.92))] shadow-md';
-        }
-    }
-
-    if (object.type === 'compost') {
-        if (variantId === 'compost-bin') {
-            return 'rounded-[0.8rem] border border-lime-900/35 bg-[linear-gradient(180deg,rgba(170,138,100,0.96),rgba(107,84,57,0.98))] shadow-md';
-        }
-        if (variantId === 'compost-area') {
-            return 'rounded-[1.25rem] border border-lime-900/30 bg-[linear-gradient(180deg,rgba(146,117,83,0.96),rgba(93,72,47,0.98))] shadow-md';
-        }
-        if (variantId === 'compost-leaf-area') {
-            return 'rounded-[999px] border border-lime-900/25 bg-[linear-gradient(180deg,rgba(179,157,126,0.95),rgba(124,104,76,0.95))] shadow-md';
-        }
-        if (variantId === 'compost-multibox') {
-            return 'rounded-[0.85rem] border border-lime-900/30 bg-[repeating-linear-gradient(90deg,rgba(153,123,87,0.95)_0px,rgba(153,123,87,0.95)_10px,rgba(118,93,63,0.95)_10px,rgba(118,93,63,0.95)_20px)] shadow-md';
-        }
-    }
-
-    if (object.type === 'other') {
-        if (variantId === 'other-house') {
-            return 'rounded-[1.1rem] border border-slate-700/30 bg-[linear-gradient(180deg,rgba(221,226,232,0.96),rgba(150,161,175,0.94))] shadow-md';
-        }
-        if (variantId === 'other-fireplace') {
-            return 'rounded-full border border-rose-700/25 bg-[radial-gradient(circle_at_top,rgba(255,222,196,0.96),rgba(251,146,60,0.35))] shadow-md';
-        }
-        if (variantId === 'other-terrace') {
-            return 'rounded-[0.7rem] border border-stone-700/25 bg-[repeating-linear-gradient(90deg,rgba(209,195,178,0.95)_0px,rgba(209,195,178,0.95)_8px,rgba(188,170,152,0.95)_8px,rgba(188,170,152,0.95)_16px)] shadow-md';
-        }
-        if (variantId === 'other-play-area') {
-            return 'rounded-[1.4rem] border border-violet-700/25 bg-[linear-gradient(180deg,rgba(232,227,245,0.96),rgba(201,187,229,0.52))] shadow-md';
-        }
-    }
-
-    return {
-        greenhouse:
-            'rounded-[1.25rem] border border-emerald-700/35 bg-[linear-gradient(180deg,rgba(197,229,210,0.92),rgba(136,187,153,0.95))] shadow-md',
-        pond: 'rounded-[999px] border border-sky-700/30 bg-[radial-gradient(circle_at_top,rgba(217,242,255,0.96),rgba(94,182,223,0.92))] shadow-md',
-        shed: 'rounded-[1rem] border border-stone-700/30 bg-[linear-gradient(180deg,rgba(202,176,145,0.96),rgba(133,101,72,0.96))] shadow-md',
-        compost:
-            'rounded-[1rem] border border-lime-900/30 bg-[linear-gradient(180deg,rgba(130,102,64,0.96),rgba(85,65,38,0.98))] shadow-md',
-        other: 'rounded-[1rem] border border-violet-800/25 bg-[linear-gradient(180deg,rgba(226,220,251,0.96),rgba(167,139,250,0.35))] shadow-md',
-    }[object.type];
-}
 
 function objectIconStyle(object: GardenObject): Record<string, string> {
     const base = Math.min(
@@ -1634,14 +1520,6 @@ function objectIconStyle(object: GardenObject): Record<string, string> {
     return {
         fontSize: `${sizePx}px`,
         lineHeight: '1',
-    };
-}
-
-function objectShapeStyle(object: GardenObject): Record<string, string> {
-    void object;
-    return {
-        clipPath:
-            'polygon(14% 12%, 86% 12%, 94% 28%, 94% 76%, 82% 90%, 18% 90%, 6% 76%, 6% 28%)',
     };
 }
 
