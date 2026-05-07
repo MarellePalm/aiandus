@@ -4,6 +4,7 @@ import { Head, router, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 import AppLayout from '@/layouts/AppLayout.vue';
+import { normalizeImageForUpload } from '@/lib/imageUpload';
 import { calendar } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 
@@ -118,11 +119,15 @@ function applyReminderPreset() {
 
 const photoPreviews = ref<string[]>([]);
 
-function onPhotosChange(e: Event) {
+async function onPhotosChange(e: Event) {
     const input = e.target as HTMLInputElement;
     const files = input.files ? Array.from(input.files) : [];
-    form.photos = files;
-    photoPreviews.value = files.map((f) => URL.createObjectURL(f));
+    photoPreviews.value.forEach((url) => URL.revokeObjectURL(url));
+    const normalizedFiles = await Promise.all(
+        files.map((file) => normalizeImageForUpload(file)),
+    );
+    form.photos = normalizedFiles;
+    photoPreviews.value = normalizedFiles.map((f) => URL.createObjectURL(f));
 }
 
 function removePhoto(index: number) {

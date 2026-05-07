@@ -37,13 +37,13 @@ function labelClass(key: NavKey) {
     <nav
         :class="[
             props.fixed ? 'fixed right-0 bottom-0 left-0' : 'sticky bottom-0',
-            'z-40 border-t border-border bg-card/95 backdrop-blur',
+            'z-40 border-t border-border bg-card/95 backdrop-blur lg:hidden',
         ]"
         aria-label="Põhinavigatsioon"
     >
         <div class="page-container-wide">
             <div class="flex h-20 items-center justify-around">
-                <!-- TÄNA -->
+                <!-- TÖÖLAUD -->
                 <Link
                     :href="dashboard().url"
                     :class="itemClass('dashboard')"
@@ -52,7 +52,7 @@ function labelClass(key: NavKey) {
                     "
                 >
                     <span class="material-symbols-outlined text-2xl">home</span>
-                    <span :class="labelClass('dashboard')">Täna</span>
+                    <span :class="labelClass('dashboard')">Töölaud</span>
                 </Link>
 
                 <!-- KALENDER -->
@@ -100,7 +100,7 @@ function labelClass(key: NavKey) {
                     :aria-current="activeKey === 'map' ? 'page' : undefined"
                 >
                     <span class="material-symbols-outlined text-2xl">map</span>
-                    <span :class="labelClass('map')">Peenrad</span>
+                    <span :class="labelClass('map')">Aiaplaan</span>
                 </Link>
             </div>
         </div>

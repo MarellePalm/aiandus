@@ -3,6 +3,7 @@ import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 import SaveButton from '@/components/SaveButton.vue';
+import { normalizeImageForUpload } from '@/lib/imageUpload';
 
 type Category = {
     id: number;
@@ -64,11 +65,12 @@ const setFile = (file: File | null) => {
     if (file) previewUrl.value = URL.createObjectURL(file);
 };
 
-const onFileChange = (e: Event) => {
+const onFileChange = async (e: Event) => {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
     if (file && !file.type.startsWith('image/')) return;
-    setFile(file);
+    const normalizedFile = file ? await normalizeImageForUpload(file) : null;
+    setFile(normalizedFile);
     input.value = '';
 };
 

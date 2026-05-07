@@ -20,19 +20,154 @@ defineProps<{
 </script>
 
 <template>
+    <Head title="Logi sisse" />
+
+    <div class="hidden min-h-screen bg-background p-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(430px,520px)] lg:gap-10">
+        <section class="relative overflow-hidden rounded-3xl border border-border bg-card">
+            <img
+                src="/welcome-garden.png"
+                alt="Aed"
+                class="absolute inset-0 h-full w-full object-cover"
+            />
+            <div class="absolute inset-0 bg-gradient-to-r from-background/95 via-background/85 to-transparent"></div>
+            <div class="relative z-10 flex h-full flex-col justify-between p-10">
+                <div class="flex items-center gap-2 text-primary">
+                    <span class="material-symbols-outlined text-[22px]">potted_plant</span>
+                    <span class="text-2xl font-bold tracking-tight">Aiapäevik</span>
+                </div>
+                <div class="max-w-sm">
+                    <h1 class="text-5xl leading-[1.05] font-extrabold tracking-tight text-foreground">
+                        Tere tulemast tagasi
+                        <span class="text-primary">aeda</span>
+                    </h1>
+                    <p class="mt-4 text-lg leading-8 text-foreground/80">
+                        Planeeri, jälgi ja halda oma aeda ühes kohas. Tea alati, mis kus kasvab.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section class="flex items-center justify-center">
+            <div class="panel w-full max-w-xl rounded-3xl border border-border bg-card p-8 shadow-sm">
+                <div class="mb-6 text-center">
+                    <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+                        <span class="material-symbols-outlined text-3xl text-primary">potted_plant</span>
+                    </div>
+                    <h2 class="text-4xl font-bold tracking-tight text-foreground">Logi sisse</h2>
+                    <p class="mt-2 text-base text-muted-foreground">Tere tulemast tagasi aeda</p>
+                </div>
+
+                <div v-if="status" class="mb-4 text-center text-sm font-medium text-primary">
+                    {{ status }}
+                </div>
+
+                <Form
+                    v-bind="store.form()"
+                    :reset-on-success="['password']"
+                    v-slot="{ errors, processing }"
+                    class="auth-form"
+                >
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-medium text-muted-foreground">Email</span>
+                        </div>
+                        <label class="auth-field">
+                            <span class="sr-only">Email</span>
+                            <input
+                                id="email-desktop"
+                                type="email"
+                                name="email"
+                                required
+                                autofocus
+                                :tabindex="1"
+                                autocomplete="email"
+                                placeholder="Email"
+                                class="auth-input"
+                            />
+                        </label>
+                        <InputError :message="errors.email" />
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-medium text-muted-foreground">Parool</span>
+                            <TextLink
+                                v-if="canResetPassword"
+                                :href="request()"
+                                class="text-sm text-primary hover:underline"
+                                :tabindex="5"
+                            >
+                                Unustasid parooli?
+                            </TextLink>
+                        </div>
+                        <label class="auth-field">
+                            <span class="sr-only">Parool</span>
+                            <input
+                                id="password-desktop"
+                                type="password"
+                                name="password"
+                                required
+                                :tabindex="2"
+                                autocomplete="current-password"
+                                placeholder="Parool"
+                                class="auth-input"
+                            />
+                        </label>
+                        <InputError :message="errors.password" />
+                    </div>
+
+                    <label class="flex items-center gap-3 pt-2 select-none">
+                        <input
+                            id="remember-desktop"
+                            name="remember"
+                            type="checkbox"
+                            class="h-5 w-5 rounded-md border-border bg-transparent text-primary focus:ring-0 focus:ring-offset-0"
+                            :tabindex="3"
+                        />
+                        <span class="text-sm text-foreground/90">Mäleta mind</span>
+                    </label>
+
+                    <div class="space-y-4 pt-6">
+                        <Button
+                            type="submit"
+                            class="btn-primary w-full"
+                            :tabindex="4"
+                            :disabled="processing"
+                            data-test="login-button-desktop"
+                        >
+                            <Spinner v-if="processing" class="mr-2" />
+                            Logi sisse <span aria-hidden="true">→</span>
+                        </Button>
+                        <Button as="a" href="/auth/redirect" class="btn-primary w-full" :tabindex="7">
+                            <GoogleLogo />
+                            Logi sisse Google kontoga
+                            <span aria-hidden="true">→</span>
+                        </Button>
+                        <div v-if="canRegister" class="text-center text-sm text-muted-foreground">
+                            Sul pole veel kontot?
+                            <Link
+                                :href="register()"
+                                class="ml-1 inline-flex items-center rounded-full bg-primary/10 px-3 py-1 font-semibold text-primary no-underline hover:bg-primary/15"
+                                :tabindex="6"
+                            >
+                                Registreeru siin
+                            </Link>
+                        </div>
+                    </div>
+                </Form>
+            </div>
+        </section>
+    </div>
+
     <AuthBase
         title="Logi sisse"
         description="Tere tulemast tagasi aeda"
         :back-href="'/'"
         :show-logo="true"
+        class="lg:hidden"
     >
-        <Head title="Logi sisse" />
-
         <div class="w-full">
-            <div
-                v-if="status"
-                class="mb-4 text-center text-sm font-medium text-primary"
-            >
+            <div v-if="status" class="mb-4 text-center text-sm font-medium text-primary">
                 {{ status }}
             </div>
 
@@ -43,13 +178,9 @@ defineProps<{
                     v-slot="{ errors, processing }"
                     class="auth-form"
                 >
-                    <!-- Email -->
                     <div class="flex flex-col gap-2">
                         <div class="flex items-center justify-between">
-                            <span
-                                class="text-sm font-medium text-muted-foreground"
-                                >Email</span
-                            >
+                            <span class="text-sm font-medium text-muted-foreground">Email</span>
                         </div>
 
                         <label class="auth-field">
@@ -69,14 +200,9 @@ defineProps<{
                         <InputError :message="errors.email" />
                     </div>
 
-                    <!-- Password -->
                     <div class="flex flex-col gap-2">
                         <div class="flex items-center justify-between">
-                            <span
-                                class="text-sm font-medium text-muted-foreground"
-                                >Parool</span
-                            >
-
+                            <span class="text-sm font-medium text-muted-foreground">Parool</span>
                             <TextLink
                                 v-if="canResetPassword"
                                 :href="request()"
@@ -104,7 +230,6 @@ defineProps<{
                         <InputError :message="errors.password" />
                     </div>
 
-                    <!-- Remember -->
                     <label class="flex items-center gap-3 pt-2 select-none">
                         <input
                             id="remember"
@@ -113,12 +238,9 @@ defineProps<{
                             class="h-5 w-5 rounded-md border-border bg-transparent text-primary focus:ring-0 focus:ring-offset-0"
                             :tabindex="3"
                         />
-                        <span class="text-sm text-foreground/90"
-                            >Mäleta mind</span
-                        >
+                        <span class="text-sm text-foreground/90">Mäleta mind</span>
                     </label>
 
-                    <!-- Actions -->
                     <div class="space-y-4 pt-6">
                         <Button
                             type="submit"
@@ -130,21 +252,13 @@ defineProps<{
                             <Spinner v-if="processing" class="mr-2" />
                             Logi sisse <span aria-hidden="true">→</span>
                         </Button>
-                        <Button
-                            as="a"
-                            href="/auth/redirect"
-                            class="btn-primary w-full"
-                            :tabindex="7"
-                        >
+                        <Button as="a" href="/auth/redirect" class="btn-primary w-full" :tabindex="7">
                             <GoogleLogo />
                             Logi sisse Google kontoga
                             <span aria-hidden="true">→</span>
                         </Button>
 
-                        <div
-                            v-if="canRegister"
-                            class="text-center text-sm text-muted-foreground"
-                        >
+                        <div v-if="canRegister" class="text-center text-sm text-muted-foreground">
                             Sul pole veel kontot?
                             <Link
                                 :href="register()"

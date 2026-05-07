@@ -261,7 +261,6 @@ watch(query, () => {
             >
                 <DiaryHeader
                     title="Märkmed"
-                    title-class="text-foreground text-3xl font-bold tracking-tight"
                     header-class="pt-6"
                     top-row-class="mb-3"
                     bottom-row-class="mb-4"

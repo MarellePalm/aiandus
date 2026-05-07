@@ -185,12 +185,6 @@ function clear() {
                         </button>
                     </div>
 
-                    <div
-                        class="mt-4 flex items-center justify-between text-xs text-[#2E2E2E]/60"
-                    >
-                        <span>Enter = otsi</span>
-                        <span>Esc = sulge</span>
-                    </div>
                 </div>
             </div>
         </div>

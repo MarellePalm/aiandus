@@ -431,7 +431,7 @@ const dashboardSectionHeaderStrip =
 </script>
 
 <template>
-    <Head title="Dashboard" />
+    <Head title="Töölaud" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="page page-with-bottomnav flex min-h-0 flex-col bg-muted/30">

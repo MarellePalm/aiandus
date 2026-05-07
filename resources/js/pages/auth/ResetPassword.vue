@@ -20,10 +20,10 @@ const inputEmail = ref(props.email);
 
 <template>
     <AuthLayout
-        title="Reset password"
+        title="Parooli lähtestamine"
         description="Please enter your new password below"
     >
-        <Head title="Reset password" />
+        <Head title="Parooli lähtestamine" />
 
         <Form
             v-bind="update.form()"

@@ -3,6 +3,7 @@ import { useForm } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
 import SaveButton from '@/components/SaveButton.vue';
+import { normalizeImageForUpload } from '@/lib/imageUpload';
 
 type Category = {
     id: number;
@@ -65,23 +66,25 @@ const setFile = (file: File | null) => {
 
 const openPicker = () => fileInputRef.value?.click();
 
-const onFileChange = (e: Event) => {
+const onFileChange = async (e: Event) => {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
 
     if (file && !file.type.startsWith('image/')) return;
 
-    setFile(file);
+    const normalizedFile = file ? await normalizeImageForUpload(file) : null;
+    setFile(normalizedFile);
     input.value = '';
 };
 
-const onDrop = (e: DragEvent) => {
+const onDrop = async (e: DragEvent) => {
     isDragging.value = false;
     const file = e.dataTransfer?.files?.[0] ?? null;
     if (!file) return;
     if (!file.type.startsWith('image/')) return;
 
-    setFile(file);
+    const normalizedFile = await normalizeImageForUpload(file);
+    setFile(normalizedFile);
 };
 
 const hasImage = computed(() => !!form.image);
@@ -118,6 +121,17 @@ watch(
 );
 
 function submit() {
+    const quantity = Number(form.quantity);
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
+        form.setError(
+            'quantity',
+            'Taimede arv peab olema täisarv vahemikus 1 kuni 100.',
+        );
+        return;
+    }
+    form.clearErrors('quantity');
+    form.quantity = quantity;
+
     form.post('/plants', {
         forceFormData: true,
         onSuccess: () => {
@@ -284,6 +298,8 @@ onBeforeUnmount(() => {
                                     v-model="form.quantity"
                                     type="number"
                                     min="1"
+                                    max="100"
+                                    step="1"
                                     class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                     placeholder="1"
                                 />

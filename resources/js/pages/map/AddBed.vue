@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { router, useForm } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { normalizeImageForUpload } from '@/lib/imageUpload';
 
 type BedPlant = {
     id: number;
@@ -441,18 +442,19 @@ function submit() {
     }
 }
 
-function onImageChange(event: Event) {
+async function onImageChange(event: Event) {
     const target = event.target as HTMLInputElement;
     const file = target.files?.[0] ?? null;
-    form.image = file;
+    const normalizedFile = file ? await normalizeImageForUpload(file) : null;
+    form.image = normalizedFile;
 
     if (newBedImagePreview.value) {
         URL.revokeObjectURL(newBedImagePreview.value);
         newBedImagePreview.value = null;
     }
 
-    if (file) {
-        newBedImagePreview.value = URL.createObjectURL(file);
+    if (normalizedFile) {
+        newBedImagePreview.value = URL.createObjectURL(normalizedFile);
     }
 }
 

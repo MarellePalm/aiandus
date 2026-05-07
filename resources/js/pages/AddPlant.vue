@@ -3,6 +3,7 @@ import { Head, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 import SaveButton from '@/components/SaveButton.vue';
+import { normalizeImageForUpload } from '@/lib/imageUpload';
 
 const form = ref({
     species: '',
@@ -63,11 +64,12 @@ function openPicker() {
     fileInputRef.value?.click();
 }
 
-function onFileChange(e: Event) {
+async function onFileChange(e: Event) {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
     if (!file || !file.type.startsWith('image/')) return;
-    imagePreview.value = URL.createObjectURL(file);
+    const normalizedFile = await normalizeImageForUpload(file);
+    imagePreview.value = URL.createObjectURL(normalizedFile);
 }
 </script>
 
