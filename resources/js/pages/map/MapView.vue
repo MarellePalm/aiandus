@@ -70,6 +70,24 @@ type GardenPlanSummary = {
     id: number;
     name: string;
 };
+type ToolVariant = {
+    id: string;
+    type: GardenObjectType;
+    label: string;
+    description: string;
+    width: number;
+    height: number;
+    icon: string;
+    requiresCustomName?: boolean;
+};
+type ToolCategoryId = 'buildings' | 'water' | 'compost' | 'zones';
+type ToolCategory = {
+    id: ToolCategoryId;
+    label: string;
+    icon: string;
+    description: string;
+    variants: ToolVariant[];
+};
 
 const props = defineProps<{
     gardenPlans: GardenPlanSummary[];
@@ -112,6 +130,8 @@ const hoveredObjectId = ref<number | null>(null);
 const selectedBedId = ref<number | null>(null);
 const selectedObjectId = ref<number | null>(null);
 const activeTool = ref<GardenObjectType | null>(null);
+const activeToolVariant = ref<ToolVariant | null>(null);
+const activeToolCategoryId = ref<ToolCategoryId | null>(null);
 const toolDrawerOpen = ref(false);
 const plannerControlsOpen = ref(false);
 const toolSearch = ref('');
@@ -121,6 +141,250 @@ const showBedsLayer = ref(true);
 const showStructuresLayer = ref(true);
 const showWaterLayer = ref(true);
 const showPlannerLabels = ref(true);
+const selectedQuickCategoryId = ref<ToolCategoryId | null>(null);
+const toolCategories: ToolCategory[] = [
+    {
+        id: 'buildings',
+        label: 'Hooned',
+        icon: 'home_work',
+        description: 'Maja, kasvuhoone, kuur ja muud ehitised.',
+        variants: [
+            {
+                id: 'other-house',
+                type: 'other',
+                label: 'Maja',
+                description: 'Põhihoone või elamu asukoht aias.',
+                width: 520,
+                height: 360,
+                icon: 'house',
+            },
+            {
+                id: 'greenhouse-classic',
+                type: 'greenhouse',
+                label: 'Kasvuhoone',
+                description: 'Klassikaline kasvuhoone köögiviljadele.',
+                width: 300,
+                height: 200,
+                icon: 'home_work',
+            },
+            {
+                id: 'greenhouse-tunnel',
+                type: 'greenhouse',
+                label: 'Tunnelkasvuhoone',
+                description: 'Pikem tunnel varaseks kasvatuseks.',
+                width: 420,
+                height: 180,
+                icon: 'architecture',
+            },
+            {
+                id: 'greenhouse-mini',
+                type: 'greenhouse',
+                label: 'Mini-kasvuhoone',
+                description: 'Kompaktne kasvuhoone väiksemasse aeda.',
+                width: 220,
+                height: 150,
+                icon: 'home_work',
+            },
+            {
+                id: 'greenhouse-raised-bed-cover',
+                type: 'greenhouse',
+                label: 'Kastipeenra kate',
+                description: 'Madal kate tõstetud peenrale.',
+                width: 260,
+                height: 120,
+                icon: 'roofing',
+            },
+            {
+                id: 'shed-tool',
+                type: 'shed',
+                label: 'Tööriistakuur',
+                description: 'Panipaik tööriistadele ja varustusele.',
+                width: 240,
+                height: 180,
+                icon: 'warehouse',
+            },
+            {
+                id: 'shed-wood',
+                type: 'shed',
+                label: 'Puukuur',
+                description: 'Kuiv hoiukoht puudele.',
+                width: 200,
+                height: 160,
+                icon: 'cottage',
+            },
+            {
+                id: 'shed-gazebo',
+                type: 'shed',
+                label: 'Aiapaviljon',
+                description: 'Katusega varjualune istumiseks.',
+                width: 320,
+                height: 260,
+                icon: 'holiday_village',
+            },
+            {
+                id: 'shed-sauna',
+                type: 'shed',
+                label: 'Aiasaun',
+                description: 'Väike kõrvalhoone puhkealale.',
+                width: 300,
+                height: 220,
+                icon: 'cabin',
+            },
+        ],
+    },
+    {
+        id: 'water',
+        label: 'Veealad',
+        icon: 'water',
+        description: 'Tiigid, purskkaevud ja vee kogumine.',
+        variants: [
+            {
+                id: 'pond',
+                type: 'pond',
+                label: 'Tiik',
+                description: 'Rahulik veesilm aeda.',
+                width: 250,
+                height: 180,
+                icon: 'water',
+            },
+            {
+                id: 'fountain',
+                type: 'pond',
+                label: 'Purskkaev',
+                description: 'Väiksem dekoratiivne veeobjekt.',
+                width: 140,
+                height: 140,
+                icon: 'water_drop',
+            },
+            {
+                id: 'pond-bird-bath',
+                type: 'pond',
+                label: 'Linnuvann',
+                description: 'Väike veeallikas lindudele.',
+                width: 110,
+                height: 110,
+                icon: 'pets',
+            },
+            {
+                id: 'pond-rain-barrel',
+                type: 'pond',
+                label: 'Vihmaveetünn',
+                description: 'Vee kogumine kastmiseks.',
+                width: 120,
+                height: 120,
+                icon: 'water_full',
+            },
+        ],
+    },
+    {
+        id: 'compost',
+        label: 'Kompost',
+        icon: 'compost',
+        description: 'Kompostikastid ja orgaanika alad.',
+        variants: [
+            {
+                id: 'compost-bin',
+                type: 'compost',
+                label: 'Kompostikast',
+                description: 'Kompaktne kompostikast biojäätmetele.',
+                width: 120,
+                height: 120,
+                icon: 'compost',
+            },
+            {
+                id: 'compost-area',
+                type: 'compost',
+                label: 'Kompostiala',
+                description: 'Suurem avatud kompostiala.',
+                width: 220,
+                height: 160,
+                icon: 'yard',
+            },
+            {
+                id: 'compost-leaf-area',
+                type: 'compost',
+                label: 'Lehekomposti ala',
+                description: 'Lehtedele ja pehmemale orgaanikale.',
+                width: 180,
+                height: 140,
+                icon: 'park',
+            },
+            {
+                id: 'compost-multibox',
+                type: 'compost',
+                label: 'Mitmekambriline komposter',
+                description: 'Tõhusam komposteerimine mitmes sektsioonis.',
+                width: 260,
+                height: 120,
+                icon: 'view_week',
+            },
+        ],
+    },
+    {
+        id: 'zones',
+        label: 'Alad',
+        icon: 'grid_view',
+        description: 'Puhkealad ja muud tsoonid.',
+        variants: [
+            {
+                id: 'other-pergola',
+                type: 'other',
+                label: 'Pergola',
+                description: 'Varjuline puhkeala.',
+                width: 280,
+                height: 220,
+                icon: 'deck',
+            },
+            {
+                id: 'other-terrace',
+                type: 'other',
+                label: 'Terrass',
+                description: 'Istumis- ja puhkeala.',
+                width: 360,
+                height: 240,
+                icon: 'table_restaurant',
+            },
+            {
+                id: 'other-fireplace',
+                type: 'other',
+                label: 'Lõkkeplats',
+                description: 'Ümar puhkeala lõkke jaoks.',
+                width: 220,
+                height: 220,
+                icon: 'local_fire_department',
+            },
+            {
+                id: 'other-play-area',
+                type: 'other',
+                label: 'Laste mänguala',
+                description: 'Muru- või liivapind mängimiseks.',
+                width: 320,
+                height: 240,
+                icon: 'toys',
+            },
+            {
+                id: 'other-herb-corner',
+                type: 'other',
+                label: 'Ürdinurk',
+                description: 'Eraldi ala maitsetaimedele.',
+                width: 220,
+                height: 160,
+                icon: 'spa',
+            },
+            {
+                id: 'other-custom',
+                type: 'other',
+                label: 'Muu (oma nimi)',
+                description: 'Sisesta ise objekti nimi.',
+                width: 200,
+                height: 150,
+                icon: 'edit_note',
+                requiresCustomName: true,
+            },
+        ],
+    },
+];
+const allToolVariants = toolCategories.flatMap((category) => category.variants);
 const plannerViewport = ref<HTMLElement | null>(null);
 const selectedObjectPanel = ref<HTMLElement | null>(null);
 const selectedBedPanel = ref<HTMLElement | null>(null);
@@ -136,6 +400,14 @@ const highlightSelectedObjectPanel = ref(false);
 const highlightSelectedBedPanel = ref(false);
 let objectPanelHighlightTimeout: ReturnType<typeof setTimeout> | null = null;
 let bedPanelHighlightTimeout: ReturnType<typeof setTimeout> | null = null;
+const plannerLandscapeHintDismissed = ref(false);
+const PLANNER_LANDSCAPE_HINT_KEY = 'planner-landscape-hint-dismissed';
+
+const shouldShowLandscapeHint = computed(
+    () =>
+        !plannerLandscapeHintDismissed.value &&
+        (viewportSize.value.width < 860 || viewportSize.value.height < 560),
+);
 
 const gardenForm = useForm({
     name: props.gardenPlan.name,
@@ -205,6 +477,11 @@ watch(
 );
 
 onMounted(() => {
+    if (typeof window !== 'undefined') {
+        plannerLandscapeHintDismissed.value =
+            window.localStorage.getItem(PLANNER_LANDSCAPE_HINT_KEY) === '1';
+    }
+
     syncPositionsFromProps();
     nextTick(() => {
         if (plannerViewport.value) {
@@ -228,6 +505,13 @@ onMounted(() => {
         resizeObserver.observe(plannerViewport.value);
     }
 });
+
+function dismissLandscapeHint() {
+    plannerLandscapeHintDismissed.value = true;
+    if (typeof window !== 'undefined') {
+        window.localStorage.setItem(PLANNER_LANDSCAPE_HINT_KEY, '1');
+    }
+}
 
 onBeforeUnmount(() => {
     window.removeEventListener('pointermove', onPointerMove);
@@ -339,13 +623,6 @@ const plannerGridSizePx = computed(() =>
 );
 const plannerMajorGridSizePx = computed(() => plannerGridSizePx.value * 5);
 const scaleBarWidthPx = computed(() => Math.round(100 * CM_TO_PX));
-const toolTypes: GardenObjectType[] = [
-    'greenhouse',
-    'pond',
-    'shed',
-    'compost',
-    'other',
-];
 const plannerBeds = computed(() =>
     showBedsLayer.value ? filteredBeds.value : [],
 );
@@ -356,16 +633,26 @@ const plannerObjects = computed(() =>
     }),
 );
 const visibleObjectsCount = computed(() => plannerObjects.value.length);
-const filteredToolTypes = computed(() => {
+const filteredToolCategories = computed(() => {
     const query = toolSearch.value.trim().toLowerCase();
-    if (!query) return toolTypes;
+    if (!query) return toolCategories;
 
-    return toolTypes.filter((type) => {
-        const label = objectTypeLabel(type).toLowerCase();
-        const desc = objectTypeDescription(type).toLowerCase();
-        return label.includes(query) || desc.includes(query);
-    });
+    return toolCategories
+        .map((category) => ({
+            ...category,
+            variants: category.variants.filter((variant) => {
+                const haystack = `${category.label} ${variant.label} ${variant.description}`.toLowerCase();
+                return haystack.includes(query);
+            }),
+        }))
+        .filter((category) => category.variants.length > 0);
 });
+const selectedToolDisplayLabel = computed(
+    () => activeToolVariant.value?.label ?? (activeTool.value ? objectTypeLabel(activeTool.value) : ''),
+);
+const selectedToolDisplayDescription = computed(
+    () => activeToolVariant.value?.description ?? '',
+);
 
 const selectedBed = computed(() => {
     if (selectedBedId.value === null) return null;
@@ -466,6 +753,52 @@ const toolMenuItemClass = (type: GardenObjectType) => {
         ? 'border-primary/25 bg-primary/8 ring-2 ring-primary/15'
         : 'border-border/70 bg-background/80 hover:border-primary/20 hover:bg-muted/60';
 };
+const toolVariantButtonClass = (variant: ToolVariant) => {
+    const active = activeToolVariant.value?.id === variant.id;
+    return active
+        ? 'border-primary/25 bg-primary/8 ring-2 ring-primary/15'
+        : 'border-border/70 bg-background/80 hover:border-primary/20 hover:bg-muted/60';
+};
+const toolVariantIconToneClass = (type: GardenObjectType) => {
+    return {
+        greenhouse: 'text-slate-600',
+        shed: 'text-slate-600',
+        pond: 'text-sky-600',
+        compost: 'text-amber-700',
+        other: 'text-violet-400',
+    }[type];
+};
+const categoryIconToneClass = (categoryId: ToolCategoryId, active: boolean) => {
+    if (active) {
+        return 'text-primary';
+    }
+
+    return {
+        buildings: 'text-slate-600',
+        water: 'text-sky-600',
+        compost: 'text-amber-700',
+        zones: 'text-violet-400',
+    }[categoryId];
+};
+const categoryButtonToneClass = (categoryId: ToolCategoryId, active: boolean) => {
+    if (active) {
+        return {
+            buildings: 'border-primary/30 bg-primary/12 text-primary shadow-sm',
+            water: 'border-primary/30 bg-primary/12 text-primary shadow-sm',
+            compost: 'border-primary/30 bg-primary/12 text-primary shadow-sm',
+            zones: 'border-primary/30 bg-primary/12 text-primary shadow-sm',
+        }[categoryId];
+    }
+
+    return {
+        buildings:
+            'border-border/70 bg-background text-foreground hover:bg-muted/70',
+        water: 'border-border/70 bg-background text-foreground hover:bg-muted/70',
+        compost:
+            'border-border/70 bg-background text-foreground hover:bg-muted/70',
+        zones: 'border-border/70 bg-background text-foreground hover:bg-muted/70',
+    }[categoryId];
+};
 
 function editBed(id: number) {
     router.get(`/beds/${id}/edit`);
@@ -551,6 +884,28 @@ function getBedVisibleLayout(bed: Bed): number[][] {
     return layout
         .slice(bounds.minRow, bounds.maxRow + 1)
         .map((row) => row.slice(bounds.minCol, bounds.maxCol + 1));
+}
+
+function getPlantAtVisibleCell(
+    bed: Bed,
+    visibleRow: number,
+    visibleCol: number,
+): PlantInBed | null {
+    const bounds = getBedActiveBounds(bed);
+    const absoluteRow = bounds.minRow + visibleRow;
+    const absoluteCol = bounds.minCol + visibleCol;
+    const key = `${absoluteRow},${absoluteCol}`;
+    return bed.plants.find((item) => item.position_in_bed === key) ?? null;
+}
+
+function getPlantPreviewImageAtVisibleCell(
+    bed: Bed,
+    visibleRow: number,
+    visibleCol: number,
+): string | null {
+    const plant = getPlantAtVisibleCell(bed, visibleRow, visibleCol);
+    if (!plant) return null;
+    return plant.image_url || '/logo.png';
 }
 
 function getBedPhysicalWidthCm(bed: Bed): number {
@@ -877,64 +1232,75 @@ function stopObjectDragging() {
 }
 
 function startPanning(event: PointerEvent) {
-    const target = event.target as HTMLElement | null;
-    if (target?.closest('[data-bed-shape="true"]')) return;
-    if (target?.closest('[data-object-shape="true"]')) return;
-    if (target?.closest('button, input, label, a')) return;
-
-    isPanning.value = true;
-    panStart.value = {
-        x: event.clientX,
-        y: event.clientY,
-        originX: panX.value,
-        originY: panY.value,
-    };
-
-    window.addEventListener('pointermove', onPanMove);
-    window.addEventListener('pointerup', stopPanning);
-    window.addEventListener('pointercancel', stopPanning);
+    void event;
+    // Planner surface panning is intentionally disabled:
+    // the grid stays fixed and only objects are moved.
+    return;
 }
 
-function getDefaultObjectConfig(type: GardenObjectType) {
-    return {
-        greenhouse: {
-            name: 'Kasvuhoone',
-            width: 300,
-            height: 200,
-        },
-        pond: {
-            name: 'Tiik',
-            width: 250,
-            height: 180,
-        },
-        shed: {
-            name: 'Kuur',
-            width: 220,
-            height: 180,
-        },
-        compost: {
-            name: 'Kompost',
-            width: 140,
-            height: 140,
-        },
-        other: {
-            name: '',
-            width: 200,
-            height: 150,
-        },
-    }[type];
+function getDefaultToolVariant(type: GardenObjectType): ToolVariant {
+    const match = allToolVariants.find((variant) => variant.type === type);
+    return match ?? allToolVariants[0];
+}
+
+function getDefaultToolVariantForCategory(
+    categoryId: ToolCategoryId,
+): ToolVariant {
+    const category = toolCategories.find((item) => item.id === categoryId);
+    return category?.variants[0] ?? allToolVariants[0];
 }
 
 function chooseTool(type: GardenObjectType) {
     activeTool.value = type;
+    activeToolVariant.value = getDefaultToolVariant(type);
+    const category = toolCategories.find((item) =>
+        item.variants.some((variant) => variant.type === type),
+    );
+    activeToolCategoryId.value = category?.id ?? null;
+    selectedQuickCategoryId.value = null;
     otherObjectNameError.value = '';
-    if (type !== 'other') {
-        otherObjectNameDraft.value = '';
+    if (type === 'other') {
+        const variant = activeToolVariant.value;
+        otherObjectNameDraft.value = variant?.requiresCustomName
+            ? ''
+            : (variant?.label ?? '');
+        return;
     }
+    otherObjectNameDraft.value = '';
+}
+
+function chooseToolVariant(variant: ToolVariant) {
+    activeTool.value = variant.type;
+    activeToolVariant.value = variant;
+    const category = toolCategories.find((item) =>
+        item.variants.some((entry) => entry.id === variant.id),
+    );
+    activeToolCategoryId.value = category?.id ?? null;
+    selectedQuickCategoryId.value = null;
+    otherObjectNameError.value = '';
+    if (variant.type === 'other') {
+        otherObjectNameDraft.value = variant.requiresCustomName ? '' : variant.label;
+        return;
+    }
+    otherObjectNameDraft.value = '';
+}
+
+function toggleQuickToolMenu(categoryId: ToolCategoryId) {
+    const category = toolCategories.find((item) => item.id === categoryId);
+    const variants = category?.variants ?? [];
+    if (variants.length <= 1 && variants[0]) {
+        chooseToolVariant(variants[0]);
+        return;
+    }
+    selectedQuickCategoryId.value =
+        selectedQuickCategoryId.value === categoryId ? null : categoryId;
 }
 
 function clearToolSelection() {
     activeTool.value = null;
+    activeToolVariant.value = null;
+    activeToolCategoryId.value = null;
+    selectedQuickCategoryId.value = null;
     otherObjectNameDraft.value = '';
     otherObjectNameError.value = '';
     toolDrawerOpen.value = false;
@@ -988,7 +1354,7 @@ function handlePlannerSurfaceClick(event: MouseEvent) {
     )
         return;
 
-    if (activeTool.value === 'other') {
+    if (activeTool.value === 'other' && activeToolVariant.value?.requiresCustomName) {
         if (!otherObjectNameDraft.value.trim()) {
             otherObjectNameError.value = 'Palun sisesta objekti nimi.';
             return;
@@ -996,7 +1362,7 @@ function handlePlannerSurfaceClick(event: MouseEvent) {
         otherObjectNameError.value = '';
     }
 
-    const config = getDefaultObjectConfig(activeTool.value);
+    const config = activeToolVariant.value ?? getDefaultToolVariant(activeTool.value);
     const point = getPlannerLocalPoint(event);
     const widthPx = Math.round(config.width * CM_TO_PX);
     const heightPx = Math.round(config.height * CM_TO_PX);
@@ -1013,8 +1379,8 @@ function handlePlannerSurfaceClick(event: MouseEvent) {
 
     const objectName =
         activeTool.value === 'other'
-            ? otherObjectNameDraft.value.trim()
-            : config.name;
+            ? (otherObjectNameDraft.value.trim() || config.label)
+            : config.label;
 
     router.post(
         '/garden-objects',
@@ -1026,15 +1392,21 @@ function handlePlannerSurfaceClick(event: MouseEvent) {
             y: clampedY,
             width: config.width,
             height: config.height,
+            meta: {
+                variant_id: config.id,
+            },
         },
         {
             preserveScroll: true,
             preserveState: true,
             onSuccess: () => {
                 activeTool.value = null;
+                activeToolVariant.value = null;
+                activeToolCategoryId.value = null;
                 otherObjectNameDraft.value = '';
                 otherObjectNameError.value = '';
                 toolDrawerOpen.value = false;
+                selectedQuickCategoryId.value = null;
             },
         },
     );
@@ -1164,7 +1536,78 @@ function objectTypeDescription(type: GardenObjectType): string {
     }[type];
 }
 
-function objectClass(type: GardenObjectType): string {
+function objectClass(object: GardenObject): string {
+    const variantId =
+        object.meta && typeof object.meta === 'object'
+            ? (object.meta['variant_id'] as string | undefined)
+            : undefined;
+
+    if (object.type === 'greenhouse') {
+        if (variantId === 'greenhouse-tunnel') {
+            return 'rounded-[999px] border border-emerald-700/30 bg-[linear-gradient(180deg,rgba(214,236,219,0.96),rgba(152,196,166,0.94))] shadow-md';
+        }
+        if (variantId === 'greenhouse-mini') {
+            return 'rounded-[1.6rem] border border-emerald-700/30 bg-[linear-gradient(180deg,rgba(220,239,223,0.96),rgba(168,203,176,0.93))] shadow-md';
+        }
+        if (variantId === 'greenhouse-raised-bed-cover') {
+            return 'rounded-[999px] border border-emerald-700/25 bg-[linear-gradient(180deg,rgba(226,241,228,0.96),rgba(181,210,188,0.92))] shadow-md';
+        }
+    }
+
+    if (object.type === 'shed') {
+        if (variantId === 'shed-wood') {
+            return 'rounded-[0.85rem] border border-stone-700/30 bg-[repeating-linear-gradient(90deg,rgba(205,182,158,0.95)_0px,rgba(205,182,158,0.95)_7px,rgba(186,160,133,0.95)_7px,rgba(186,160,133,0.95)_14px)] shadow-md';
+        }
+        if (variantId === 'shed-gazebo') {
+            return 'rounded-[1.4rem] border border-stone-700/25 bg-[linear-gradient(180deg,rgba(224,207,186,0.95),rgba(172,139,104,0.92))] shadow-md';
+        }
+        if (variantId === 'shed-sauna') {
+            return 'rounded-[0.95rem] border border-amber-900/30 bg-[linear-gradient(180deg,rgba(212,179,143,0.95),rgba(154,111,74,0.95))] shadow-md';
+        }
+    }
+
+    if (object.type === 'pond') {
+        if (variantId === 'fountain') {
+            return 'rounded-full border border-sky-700/30 bg-[radial-gradient(circle_at_center,rgba(238,250,255,0.98),rgba(133,201,232,0.9))] shadow-md';
+        }
+        if (variantId === 'pond-bird-bath') {
+            return 'rounded-full border border-sky-700/25 bg-[radial-gradient(circle_at_center,rgba(247,252,255,0.98),rgba(180,221,242,0.9))] shadow-md';
+        }
+        if (variantId === 'pond-rain-barrel') {
+            return 'rounded-[1rem] border border-sky-800/25 bg-[linear-gradient(180deg,rgba(221,242,252,0.96),rgba(145,199,226,0.92))] shadow-md';
+        }
+    }
+
+    if (object.type === 'compost') {
+        if (variantId === 'compost-bin') {
+            return 'rounded-[0.8rem] border border-lime-900/35 bg-[linear-gradient(180deg,rgba(170,138,100,0.96),rgba(107,84,57,0.98))] shadow-md';
+        }
+        if (variantId === 'compost-area') {
+            return 'rounded-[1.25rem] border border-lime-900/30 bg-[linear-gradient(180deg,rgba(146,117,83,0.96),rgba(93,72,47,0.98))] shadow-md';
+        }
+        if (variantId === 'compost-leaf-area') {
+            return 'rounded-[999px] border border-lime-900/25 bg-[linear-gradient(180deg,rgba(179,157,126,0.95),rgba(124,104,76,0.95))] shadow-md';
+        }
+        if (variantId === 'compost-multibox') {
+            return 'rounded-[0.85rem] border border-lime-900/30 bg-[repeating-linear-gradient(90deg,rgba(153,123,87,0.95)_0px,rgba(153,123,87,0.95)_10px,rgba(118,93,63,0.95)_10px,rgba(118,93,63,0.95)_20px)] shadow-md';
+        }
+    }
+
+    if (object.type === 'other') {
+        if (variantId === 'other-house') {
+            return 'rounded-[1.1rem] border border-slate-700/30 bg-[linear-gradient(180deg,rgba(221,226,232,0.96),rgba(150,161,175,0.94))] shadow-md';
+        }
+        if (variantId === 'other-fireplace') {
+            return 'rounded-full border border-rose-700/25 bg-[radial-gradient(circle_at_top,rgba(255,222,196,0.96),rgba(251,146,60,0.35))] shadow-md';
+        }
+        if (variantId === 'other-terrace') {
+            return 'rounded-[0.7rem] border border-stone-700/25 bg-[repeating-linear-gradient(90deg,rgba(209,195,178,0.95)_0px,rgba(209,195,178,0.95)_8px,rgba(188,170,152,0.95)_8px,rgba(188,170,152,0.95)_16px)] shadow-md';
+        }
+        if (variantId === 'other-play-area') {
+            return 'rounded-[1.4rem] border border-violet-700/25 bg-[linear-gradient(180deg,rgba(232,227,245,0.96),rgba(201,187,229,0.52))] shadow-md';
+        }
+    }
+
     return {
         greenhouse:
             'rounded-[1.25rem] border border-emerald-700/35 bg-[linear-gradient(180deg,rgba(197,229,210,0.92),rgba(136,187,153,0.95))] shadow-md',
@@ -1173,7 +1616,61 @@ function objectClass(type: GardenObjectType): string {
         compost:
             'rounded-[1rem] border border-lime-900/30 bg-[linear-gradient(180deg,rgba(130,102,64,0.96),rgba(85,65,38,0.98))] shadow-md',
         other: 'rounded-[1rem] border border-violet-800/25 bg-[linear-gradient(180deg,rgba(226,220,251,0.96),rgba(167,139,250,0.35))] shadow-md',
-    }[type];
+    }[object.type];
+}
+
+function objectIconStyle(object: GardenObject): Record<string, string> {
+    const base = Math.min(
+        getObjectPixelWidth(object),
+        getObjectPixelHeight(object),
+    );
+    const type = objectVariantType(object);
+    const multiplier = type === 'pond' ? 0.56 : 0.42;
+    const maxSize = type === 'pond' ? 120 : 96;
+    const sizePx = Math.max(
+        14,
+        Math.min(maxSize, Math.round(base * multiplier)),
+    );
+    return {
+        fontSize: `${sizePx}px`,
+        lineHeight: '1',
+    };
+}
+
+function objectShapeStyle(object: GardenObject): Record<string, string> {
+    void object;
+    return {
+        clipPath:
+            'polygon(14% 12%, 86% 12%, 94% 28%, 94% 76%, 82% 90%, 18% 90%, 6% 76%, 6% 28%)',
+    };
+}
+
+function objectVariantIcon(object: GardenObject): string {
+    const variantId =
+        object.meta && typeof object.meta === 'object'
+            ? (object.meta['variant_id'] as string | undefined)
+            : undefined;
+
+    if (variantId) {
+        const variant = allToolVariants.find((item) => item.id === variantId);
+        if (variant?.icon) return variant.icon;
+    }
+
+    return objectTypeIcon(object.type);
+}
+
+function objectVariantType(object: GardenObject): GardenObjectType {
+    const variantId =
+        object.meta && typeof object.meta === 'object'
+            ? (object.meta['variant_id'] as string | undefined)
+            : undefined;
+
+    if (variantId) {
+        const variant = allToolVariants.find((item) => item.id === variantId);
+        if (variant?.type) return variant.type;
+    }
+
+    return object.type;
 }
 
 function onPanMove(event: PointerEvent) {
@@ -1235,6 +1732,8 @@ function resetZoom() {
 }
 
 function onPlannerWheel(event: WheelEvent) {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('[data-ui-overlay="true"]')) return;
     event.preventDefault();
     const pointer = getPlannerLocalPoint(event);
     const delta = event.deltaY > 0 ? -0.12 : 0.12;
@@ -1330,8 +1829,36 @@ function saveGardenPlan() {
                                 </div>
 
                                 <div
+                                    v-if="shouldShowLandscapeHint"
+                                    class="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 shadow-sm"
+                                >
+                                    <div
+                                        class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+                                    >
+                                        <div>
+                                            <p class="text-sm font-semibold text-foreground">
+                                                Aiaplaan töötab paremini laiemas vaates
+                                            </p>
+                                            <p
+                                                class="mt-1 text-sm leading-6 text-muted-foreground"
+                                            >
+                                                Lohistamine ja paigutus on mugavam, kui kasutad
+                                                horisontaalrežiimi või avad akna laiemaks.
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            class="inline-flex shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+                                            @click="dismissLandscapeHint"
+                                        >
+                                            Sain aru
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div
                                     v-if="showOnboardingHint"
-                                    class="rounded-[1.75rem] border border-primary/20 bg-linear-to-r from-primary/10 via-primary/5 to-transparent p-5 shadow-sm"
+                                    class="rounded-xl border border-primary/20 bg-primary/5 p-5 shadow-sm"
                                 >
                                     <div
                                         class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
@@ -1362,7 +1889,7 @@ function saveGardenPlan() {
                                 </div>
 
                                 <div
-                                    class="rounded-[2rem] border border-border/70 bg-card/75 p-4 shadow-soft sm:p-5"
+                                    class="rounded-xl border border-border/70 bg-white p-4 shadow-[0_8px_24px_rgba(0,0,0,0.05)] sm:p-5"
                                 >
                                     <div
                                         class="mb-4 flex flex-wrap items-start justify-between gap-3"
@@ -1465,7 +1992,7 @@ function saveGardenPlan() {
                                     </div>
 
                                     <div
-                                        class="mb-4 flex flex-col gap-2 rounded-[1.5rem] border border-border/70 bg-background/75 px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+                                        class="mb-4 flex flex-col gap-2 rounded-xl border border-border/70 bg-background px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
                                     >
                                         <div class="min-w-0 flex-1">
                                             <label
@@ -1860,7 +2387,7 @@ function saveGardenPlan() {
                                             !props.beds.length &&
                                             !props.gardenObjects.length
                                         "
-                                        class="rounded-[1.75rem] border-2 border-dashed border-primary/30 bg-linear-to-br from-muted/25 to-primary/6 p-8 text-center"
+                                        class="rounded-xl border-2 border-dashed border-primary/25 bg-background p-8 text-center"
                                     >
                                         <p
                                             class="text-base font-semibold text-foreground"
@@ -1888,7 +2415,7 @@ function saveGardenPlan() {
                                             plannerBeds.length === 0 &&
                                             visibleObjectsCount === 0
                                         "
-                                        class="rounded-[1.75rem] border border-dashed border-primary/30 bg-primary/5 px-6 py-8 text-center"
+                                        class="rounded-xl border border-dashed border-primary/25 bg-background px-6 py-8 text-center"
                                     >
                                         <p
                                             class="text-base font-semibold text-foreground"
@@ -1904,7 +2431,7 @@ function saveGardenPlan() {
                                         </p>
                                         <button
                                             type="button"
-                                            class="mt-4 inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/15"
+                                            class="mt-4 inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
                                             @click="resetPlannerFilters"
                                         >
                                             Näita kõike
@@ -1913,11 +2440,11 @@ function saveGardenPlan() {
 
                                     <div
                                         v-else
-                                        class="mb-3 grid gap-3 xl:grid-cols-[18rem_minmax(0,1fr)]"
+                                        class="mb-3 grid gap-3"
                                     >
                                         <button
                                             type="button"
-                                            class="inline-flex items-center justify-between rounded-[1.25rem] border border-border/80 bg-card/92 px-4 py-3 text-left shadow-sm xl:hidden"
+                                            class="hidden items-center justify-between rounded-xl border border-border/80 bg-white px-4 py-3 text-left shadow-sm"
                                             @click="
                                                 toolDrawerOpen = !toolDrawerOpen
                                             "
@@ -1933,9 +2460,7 @@ function saveGardenPlan() {
                                                 >
                                                     {{
                                                         activeTool
-                                                            ? objectTypeLabel(
-                                                                  activeTool,
-                                                              )
+                                                            ? selectedToolDisplayLabel
                                                             : 'Lisa aeda objekt'
                                                     }}
                                                 </p>
@@ -1962,12 +2487,7 @@ function saveGardenPlan() {
                                         </button>
 
                                         <aside
-                                            class="rounded-[1.75rem] border border-border/80 bg-card/92 p-4 shadow-sm xl:sticky xl:top-6 xl:self-start"
-                                            :class="
-                                                toolDrawerOpen
-                                                    ? 'block'
-                                                    : 'hidden xl:block'
-                                            "
+                                            class="hidden rounded-xl border border-border/80 bg-white p-4 shadow-sm xl:sticky xl:top-6 xl:self-start"
                                         >
                                             <div
                                                 class="flex items-start justify-between gap-3"
@@ -2020,7 +2540,7 @@ function saveGardenPlan() {
                                                     <input
                                                         v-model="toolSearch"
                                                         type="text"
-                                                        class="w-full rounded-2xl border border-border/70 bg-background px-4 py-3 pr-11 text-sm text-foreground shadow-xs transition outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                        class="w-full rounded-xl border border-border/70 bg-background px-4 py-3 pr-11 text-sm text-foreground shadow-xs transition outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                                         placeholder="Otsi: kuur, tiik, muu..."
                                                     />
                                                     <button
@@ -2037,33 +2557,61 @@ function saveGardenPlan() {
                                                 </div>
                                             </label>
 
-                                            <div class="mt-4 space-y-2">
-                                                <button
-                                                    v-for="type in filteredToolTypes"
-                                                    :key="type"
-                                                    type="button"
-                                                    class="w-full rounded-[1.25rem] border p-3 text-left transition"
-                                                    :class="
-                                                        toolMenuItemClass(type)
-                                                    "
-                                                    @click="chooseTool(type)"
+                                            <div class="mt-4 space-y-3">
+                                                <div
+                                                    v-for="category in filteredToolCategories"
+                                                    :key="`tool-category-${category.id}`"
+                                                    class="rounded-xl border border-border/70 bg-background/60 p-2"
                                                 >
-                                                    <span
-                                                        class="block text-sm font-semibold text-foreground"
-                                                    >
-                                                        {{
-                                                            objectTypeLabel(
-                                                                type,
-                                                            )
-                                                        }}
-                                                    </span>
-                                                </button>
+                                                    <p class="px-2 py-1 text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                                        {{ category.label }}
+                                                    </p>
+                                                    <div class="space-y-1.5">
+                                                        <button
+                                                            v-for="variant in category.variants"
+                                                            :key="variant.id"
+                                                            type="button"
+                                                            class="w-full rounded-xl border p-3 text-left transition"
+                                                            :class="
+                                                                toolVariantButtonClass(
+                                                                    variant,
+                                                                )
+                                                            "
+                                                            @click="
+                                                                chooseToolVariant(
+                                                                    variant,
+                                                                )
+                                                            "
+                                                        >
+                                                            <span class="flex items-start gap-2">
+                                                                <span
+                                                                    class="material-symbols-outlined mt-0.5 text-base"
+                                                                    :class="
+                                                                        toolVariantIconToneClass(
+                                                                            variant.type,
+                                                                        )
+                                                                    "
+                                                                >
+                                                                    {{ variant.icon }}
+                                                                </span>
+                                                                <span class="min-w-0">
+                                                                    <span class="block text-sm font-semibold text-foreground">
+                                                                        {{ variant.label }}
+                                                                    </span>
+                                                                    <span class="mt-0.5 block text-xs text-muted-foreground">
+                                                                        {{ variant.description }}
+                                                                    </span>
+                                                                </span>
+                                                            </span>
+                                                        </button>
+                                                    </div>
+                                                </div>
 
                                                 <div
                                                     v-if="
-                                                        !filteredToolTypes.length
+                                                        !filteredToolCategories.length
                                                     "
-                                                    class="rounded-[1.15rem] border border-dashed border-border/80 bg-background/70 px-4 py-5 text-sm text-muted-foreground"
+                                                    class="rounded-xl border border-dashed border-border/80 bg-background px-4 py-5 text-sm text-muted-foreground"
                                                 >
                                                     Selle otsinguga sobivat
                                                     aiaelementi ei leitud.
@@ -2077,14 +2625,19 @@ function saveGardenPlan() {
                                                 <div
                                                     class="font-semibold text-primary"
                                                 >
-                                                    {{
-                                                        objectTypeLabel(
-                                                            activeTool,
-                                                        )
-                                                    }}
+                                                    {{ selectedToolDisplayLabel }}
                                                 </div>
+                                                <p
+                                                    v-if="selectedToolDisplayDescription"
+                                                    class="mt-1 text-xs text-muted-foreground"
+                                                >
+                                                    {{ selectedToolDisplayDescription }}
+                                                </p>
                                                 <div
-                                                    v-if="activeTool === 'other'"
+                                                    v-if="
+                                                        activeTool === 'other' &&
+                                                        activeToolVariant?.requiresCustomName
+                                                    "
                                                     class="mt-3 space-y-1"
                                                 >
                                                     <label class="block">
@@ -2116,13 +2669,17 @@ function saveGardenPlan() {
                                                 <div
                                                     class="mt-1 leading-6 text-muted-foreground"
                                                     :class="
-                                                        activeTool === 'other'
+                                                        activeTool === 'other' &&
+                                                        activeToolVariant?.requiresCustomName
                                                             ? 'mt-3'
                                                             : ''
                                                     "
                                                 >
                                                     <template
-                                                        v-if="activeTool === 'other'"
+                                                        v-if="
+                                                            activeTool === 'other' &&
+                                                            activeToolVariant?.requiresCustomName
+                                                        "
                                                     >
                                                         Seejärel klõpsa aias
                                                         kohta, kuhu objekt
@@ -2145,7 +2702,7 @@ function saveGardenPlan() {
 
                                             <button
                                                 type="button"
-                                                class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted xl:hidden"
+                                                class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-primary/20 bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 xl:hidden"
                                                 @click="toolDrawerOpen = false"
                                             >
                                                 Sulge tööriistad
@@ -2155,18 +2712,121 @@ function saveGardenPlan() {
 
                                         <div
                                             ref="plannerViewport"
-                                            class="overflow-auto rounded-[1.75rem] border border-border/80 bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(244,239,229,0.98))] p-3 shadow-inner sm:p-4"
-                                            :class="
-                                                isPanning
-                                                    ? 'cursor-grabbing'
-                                                    : 'cursor-grab'
-                                            "
+                                            class="relative overflow-auto rounded-[1.75rem] border border-border/80 bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(244,239,229,0.98))] p-3 shadow-inner sm:p-4 cursor-default"
                                             :style="{
                                                 height: 'min(72vh, 920px)',
                                             }"
                                             @pointerdown="startPanning($event)"
                                             @wheel="onPlannerWheel($event)"
                                         >
+                                            <aside
+                                                data-ui-overlay="true"
+                                                class="pointer-events-auto absolute top-4 left-4 z-30 flex w-14 flex-col items-center gap-2 rounded-2xl border border-border/80 bg-white/92 px-2 py-2 shadow-lg backdrop-blur"
+                                            >
+                                                <button
+                                                    v-for="category in toolCategories"
+                                                    :key="`quick-tool-${category.id}`"
+                                                    type="button"
+                                                    class="inline-flex h-10 w-10 items-center justify-center rounded-xl border transition"
+                                                    :class="
+                                                        categoryButtonToneClass(
+                                                            category.id,
+                                                            activeToolCategoryId ===
+                                                                category.id,
+                                                        )
+                                                    "
+                                                    :title="`Vali: ${category.label}`"
+                                                    @click.stop="
+                                                        toggleQuickToolMenu(
+                                                            category.id,
+                                                        )
+                                                    "
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined text-lg"
+                                                        :class="
+                                                            categoryIconToneClass(
+                                                                category.id,
+                                                                activeToolCategoryId ===
+                                                                    category.id,
+                                                            )
+                                                        "
+                                                    >
+                                                        {{ category.icon }}
+                                                    </span>
+                                                </button>
+                                                <button
+                                                    v-if="activeTool"
+                                                    type="button"
+                                                    class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/70 bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                                    title="Tühista valik"
+                                                    @click.stop="clearToolSelection"
+                                                >
+                                                    <span class="material-symbols-outlined text-sm">close</span>
+                                                </button>
+                                            </aside>
+                                            <div
+                                                v-if="selectedQuickCategoryId"
+                                                data-ui-overlay="true"
+                                                class="pointer-events-auto absolute top-4 left-20 z-30 w-72 rounded-2xl border border-border/80 bg-white/96 p-3 shadow-xl backdrop-blur"
+                                            >
+                                                <div class="mb-2 flex items-center justify-between">
+                                                    <p class="text-sm font-semibold text-foreground">
+                                                        {{
+                                                            toolCategories.find(
+                                                                (
+                                                                    item,
+                                                                ) =>
+                                                                    item.id ===
+                                                                    selectedQuickCategoryId,
+                                                            )?.label
+                                                        }}
+                                                        variandid
+                                                    </p>
+                                                    <button
+                                                        type="button"
+                                                        class="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                                        @click.stop="
+                                                            selectedQuickCategoryId = null
+                                                        "
+                                                    >
+                                                        <span class="material-symbols-outlined text-sm">close</span>
+                                                    </button>
+                                                </div>
+                                                <div class="max-h-[min(68vh,26rem)] space-y-1.5 overflow-y-auto pr-1">
+                                                    <button
+                                                        v-for="variant in toolCategories.find((item) => item.id === selectedQuickCategoryId)?.variants ?? []"
+                                                        :key="variant.id"
+                                                        type="button"
+                                                        class="w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-left transition hover:border-primary/20 hover:bg-primary/6"
+                                                        @click.stop="
+                                                            chooseToolVariant(variant)
+                                                        "
+                                                    >
+                                                        <div class="flex items-start gap-2">
+                                                            <span
+                                                                class="material-symbols-outlined mt-0.5 text-base"
+                                                                :class="
+                                                                    toolVariantIconToneClass(
+                                                                        variant.type,
+                                                                    )
+                                                                "
+                                                            >
+                                                                {{ variant.icon }}
+                                                            </span>
+                                                            <span class="min-w-0">
+                                                                <span class="block text-sm font-semibold text-foreground">
+                                                                    {{ variant.label }}
+                                                                </span>
+                                                                <span class="mt-0.5 block text-xs text-muted-foreground">
+                                                                    {{ variant.description }}
+                                                                </span>
+                                                            </span>
+                                                        </div>
+                                                    </button>
+                                                </div>
+                                            </div>
+
                                             <div
                                                 class="relative overflow-hidden rounded-[1.6rem] border border-emerald-900/10 bg-[radial-gradient(circle_at_top,_rgba(185,214,160,0.22),_transparent_32%),linear-gradient(180deg,rgba(239,247,232,0.96),rgba(228,239,219,0.98))]"
                                                 :style="plannerSurfaceStyle()"
@@ -2251,11 +2911,11 @@ function saveGardenPlan() {
                                                 >
                                                     <div class="relative z-10">
                                                         <div
-                                                            class="grid place-content-center gap-[3px] rounded-[0.9rem] transition"
+                                                            class="grid place-content-center gap-[3px] rounded-[0.9rem] border border-emerald-900/10 bg-[radial-gradient(circle_at_top,_rgba(217,235,202,0.6),_rgba(228,240,218,0.9))] p-1 transition"
                                                             :class="
                                                                 selectedBed?.id ===
                                                                 bed.id
-                                                                    ? 'bg-emerald-200/30 ring-2 ring-emerald-400/55 ring-offset-4 ring-offset-[#eef4e6]'
+                                                                    ? 'ring-2 ring-emerald-400/55 ring-offset-4 ring-offset-[#eef4e6]'
                                                                     : ''
                                                             "
                                                             :style="
@@ -2282,8 +2942,30 @@ function saveGardenPlan() {
                                                                         rowData[
                                                                             c
                                                                         ] === 1
-                                                                            ? 'border-amber-900/15 bg-[linear-gradient(180deg,rgba(145,101,67,0.95),rgba(109,76,49,0.98))]'
+                                                                            ? 'border-emerald-900/15 bg-[linear-gradient(180deg,rgba(131,171,116,0.95),rgba(95,139,84,0.98))]'
                                                                             : 'border-transparent bg-transparent'
+                                                                    "
+                                                                    :style="
+                                                                        rowData[
+                                                                            c
+                                                                        ] === 1 &&
+                                                                        getPlantPreviewImageAtVisibleCell(
+                                                                            bed,
+                                                                            r,
+                                                                            c,
+                                                                        )
+                                                                            ? {
+                                                                                  backgroundImage: `linear-gradient(180deg,rgba(32,44,30,0.18),rgba(32,44,30,0.32)), url('${getPlantPreviewImageAtVisibleCell(
+                                                                                      bed,
+                                                                                      r,
+                                                                                      c,
+                                                                                  )}')`,
+                                                                                  backgroundSize:
+                                                                                      'cover',
+                                                                                  backgroundPosition:
+                                                                                      'center',
+                                                                              }
+                                                                            : undefined
                                                                     "
                                                                 />
                                                             </template>
@@ -2438,22 +3120,25 @@ function saveGardenPlan() {
                                                 >
                                                     <div
                                                         class="relative flex h-full w-full items-center justify-center"
-                                                        :class="[
-                                                            objectClass(
-                                                                object.type,
-                                                            ),
-                                                            selectedObject?.id ===
-                                                            object.id
-                                                                ? 'ring-2 ring-primary/50 ring-offset-4 ring-offset-[#eef4e6]'
-                                                                : '',
-                                                        ]"
                                                     >
                                                         <span
-                                                            class="material-symbols-outlined text-[1.45rem] text-white/95"
+                                                            class="material-symbols-outlined relative z-10"
+                                                            :class="
+                                                                toolVariantIconToneClass(
+                                                                    objectVariantType(
+                                                                        object,
+                                                                    ),
+                                                                )
+                                                            "
+                                                            :style="
+                                                                objectIconStyle(
+                                                                    object,
+                                                                )
+                                                            "
                                                         >
                                                             {{
-                                                                objectTypeIcon(
-                                                                    object.type,
+                                                                objectVariantIcon(
+                                                                    object,
                                                                 )
                                                             }}
                                                         </span>

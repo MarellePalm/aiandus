@@ -343,6 +343,24 @@ function openCellModal(row: number, col: number) {
     selectedPlantQuantity.value = plantAt(row, col)?.quantity ?? 1;
 }
 
+function plantedCellClass(row: number, col: number): string {
+    const plant = plantAt(row, col);
+    if (!plant) return '';
+
+    if (plant.image_url) {
+        return 'border-emerald-700/25 shadow-[0_8px_20px_rgba(52,93,63,0.22)]';
+    }
+
+    return 'border-emerald-700/35 bg-[radial-gradient(circle_at_top,rgba(208,234,198,0.95),rgba(143,184,124,0.95))] shadow-[0_8px_20px_rgba(58,102,67,0.2)]';
+}
+
+function emptyCellClass(row: number, col: number): string {
+    const checker = (row + col) % 2 === 0;
+    return checker
+        ? 'border-emerald-900/20 bg-[linear-gradient(145deg,rgba(236,247,228,0.98),rgba(219,236,208,0.95))]'
+        : 'border-emerald-900/15 bg-[linear-gradient(145deg,rgba(231,243,222,0.98),rgba(212,230,200,0.94))]';
+}
+
 function changeSelectedPlantQuantity(delta: number) {
     selectedPlantQuantity.value = Math.max(
         1,
@@ -711,7 +729,8 @@ function handleBedStatusAction() {
                                             <button
                                                 v-if="plantAt(r, c)"
                                                 type="button"
-                                                class="group relative overflow-hidden rounded-xl border-2 border-primary/35 bg-card text-left"
+                                                class="group relative overflow-hidden rounded-xl border-2 text-left transition-transform duration-200 hover:-translate-y-0.5"
+                                                :class="plantedCellClass(r, c)"
                                                 :style="{
                                                     width: `${bedCellSize}px`,
                                                     height: `${bedCellSize}px`,
@@ -730,6 +749,14 @@ function handleBedStatusAction() {
                                                 />
                                                 <div
                                                     class="absolute inset-0 bg-linear-to-t from-black/75 via-black/20 to-transparent"
+                                                />
+                                                <div
+                                                    class="pointer-events-none absolute inset-0 opacity-[0.22]"
+                                                    style="
+                                                        background-image:
+                                                            radial-gradient(circle at 18% 22%, rgba(255,255,255,0.45) 0, rgba(255,255,255,0.02) 38%),
+                                                            radial-gradient(circle at 84% 76%, rgba(255,255,255,0.24) 0, rgba(255,255,255,0.02) 42%);
+                                                    "
                                                 />
                                                         <span
                                                             class="absolute right-1.5 bottom-1.5 left-1.5 truncate text-[11px] font-semibold text-white"
@@ -782,7 +809,8 @@ function handleBedStatusAction() {
                                             <button
                                                 v-else
                                                 type="button"
-                                                class="flex items-center justify-center rounded-xl border border-dashed border-primary/35 bg-primary/8 text-primary/70 transition hover:bg-primary/14 hover:text-primary"
+                                                class="flex items-center justify-center rounded-xl border border-dashed text-emerald-800/75 transition hover:-translate-y-0.5 hover:text-emerald-900"
+                                                :class="emptyCellClass(r, c)"
                                                 :style="{
                                                     width: `${bedCellSize}px`,
                                                     height: `${bedCellSize}px`,
