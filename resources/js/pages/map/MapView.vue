@@ -646,7 +646,6 @@ const gardenDimensionLabel = computed(() => {
 const plannerGridSizePx = computed(() =>
     Math.max(10, Math.round(GARDEN_GRID_CELL_CM * CM_TO_PX)),
 );
-const plannerMajorGridSizePx = computed(() => plannerGridSizePx.value * 5);
 const scaleBarWidthPx = computed(() => Math.round(100 * CM_TO_PX));
 const plannerBeds = computed(() =>
     showBedsLayer.value ? filteredBeds.value : [],
@@ -1460,43 +1459,6 @@ function saveSelectedObject() {
             preserveScroll: true,
             preserveState: true,
         });
-}
-
-function revealSelectedObjectEditor() {
-    nextTick(() => {
-        selectedObjectPanel.value?.scrollIntoView({
-            block: 'nearest',
-            behavior: 'smooth',
-        });
-        objectWidthInput.value?.focus();
-        objectWidthInput.value?.select();
-    });
-}
-
-function nudgeSelectedObjectSize(
-    dimension: 'width' | 'height',
-    deltaMeters: number,
-) {
-    if (!selectedObject.value) return;
-
-    const nextWidth =
-        dimension === 'width'
-            ? Math.max(
-                  0.5,
-                  Number((objectForm.widthMeters + deltaMeters).toFixed(1)),
-              )
-            : objectForm.widthMeters;
-    const nextHeight =
-        dimension === 'height'
-            ? Math.max(
-                  0.5,
-                  Number((objectForm.heightMeters + deltaMeters).toFixed(1)),
-              )
-            : objectForm.heightMeters;
-
-    objectForm.widthMeters = nextWidth;
-    objectForm.heightMeters = nextHeight;
-    saveSelectedObject();
 }
 
 function objectTypeLabel(type: GardenObjectType): string {
