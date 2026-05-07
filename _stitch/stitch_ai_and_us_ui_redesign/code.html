@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+
+<html lang="et"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "inverse-primary": "#afd09a",
+                    "outline-variant": "#c4c8bb",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-container": "#636563",
+                    "tertiary": "#5d5c5b",
+                    "on-secondary-fixed": "#1a1c1b",
+                    "on-error": "#ffffff",
+                    "surface-bright": "#f9f9f7",
+                    "primary-container": "#5f7d4e",
+                    "on-secondary": "#ffffff",
+                    "background": "#f9f9f7",
+                    "error": "#ba1a1a",
+                    "on-tertiary-fixed-variant": "#474746",
+                    "error-container": "#ffdad6",
+                    "tertiary-fixed-dim": "#c8c6c5",
+                    "primary-fixed": "#cbedb5",
+                    "surface-dim": "#dadad8",
+                    "on-primary-fixed-variant": "#324e24",
+                    "tertiary-container": "#757474",
+                    "on-primary": "#ffffff",
+                    "surface-container": "#eeeeec",
+                    "on-primary-container": "#f8ffee",
+                    "on-surface": "#1a1c1b",
+                    "inverse-on-surface": "#f1f1ef",
+                    "on-surface-variant": "#43483f",
+                    "inverse-surface": "#2f3130",
+                    "surface-variant": "#e2e3e1",
+                    "surface-container-highest": "#e2e3e1",
+                    "surface-tint": "#49663a",
+                    "surface-container-low": "#f4f4f2",
+                    "secondary-fixed-dim": "#c6c7c5",
+                    "surface-container-high": "#e8e8e6",
+                    "secondary-fixed": "#e2e3e1",
+                    "surface": "#f9f9f7",
+                    "on-error-container": "#93000a",
+                    "secondary-container": "#e2e3e1",
+                    "on-secondary-fixed-variant": "#454746",
+                    "on-primary-fixed": "#072100",
+                    "on-tertiary-fixed": "#1b1b1b",
+                    "primary": "#476438",
+                    "outline": "#74796e",
+                    "primary-fixed-dim": "#afd09a",
+                    "secondary": "#5d5f5d",
+                    "on-tertiary-container": "#fffcfb",
+                    "on-background": "#1a1c1b",
+                    "tertiary-fixed": "#e5e2e1",
+                    "on-tertiary": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "sm": "12px",
+                    "lg": "24px",
+                    "gutter": "16px",
+                    "md": "16px",
+                    "container-margin": "16px",
+                    "xs": "4px",
+                    "xl": "32px",
+                    "base": "8px"
+            },
+            "fontFamily": {
+                    "h3": ["Public Sans"],
+                    "h2": ["Public Sans"],
+                    "body-lg": ["Public Sans"],
+                    "caption": ["Public Sans"],
+                    "label-md": ["Public Sans"],
+                    "body-md": ["Public Sans"],
+                    "h1": ["Public Sans"]
+            },
+            "fontSize": {
+                    "h3": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                    "h2": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "caption": ["12px", {"lineHeight": "1.4", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "h1": ["32px", {"lineHeight": "1.2", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #f9f9f7;
+            font-family: 'Public Sans', sans-serif;
+            color: #1a1c1b;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen flex flex-col">
+<header class="flex items-center px-md py-sm w-full sticky top-0 z-50 bg-surface dark:bg-surface shadow-sm">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary font-h2 text-h2" data-icon="potted_plant">potted_plant</span>
+<h1 class="font-h2 text-primary dark:text-inverse-primary font-bold">Aiapäevik</h1>
+</div>
+<div class="ml-auto">
+<button class="p-2 hover:bg-surface-container-low transition-colors rounded-full">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="search">search</span>
+</button>
+</div>
+</header>
+<main class="flex-1 px-md pt-lg pb-32 max-w-md mx-auto w-full">
+<div class="mb-lg">
+<h2 class="font-h1 text-h1 text-on-surface mb-xs">Varud</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Halda oma aiatöödeks vajalikke materjale.</p>
+</div>
+<section class="flex flex-col gap-md">
+<div class="bg-surface-container-lowest p-md rounded-xl shadow-[0px_0px_8px_rgba(0,0,0,0.04)] border border-surface-variant/50">
+<div class="flex items-center justify-between mb-sm">
+<div class="flex items-center gap-sm">
+<div class="w-12 h-12 rounded-lg bg-primary-container/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="layers">layers</span>
+</div>
+<div>
+<h3 class="font-h3 text-h3">Muld</h3>
+<p class="font-caption text-caption text-on-surface-variant">Universaalne substraat</p>
+</div>
+</div>
+<div class="text-right">
+<span class="font-h3 text-h3 text-primary">45 L</span>
+<div class="h-1 w-16 bg-surface-container-high rounded-full mt-1 overflow-hidden">
+<div class="h-full bg-primary" style="width: 75%"></div>
+</div>
+</div>
+</div>
+<div class="flex gap-xs">
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full font-label-md text-label-md">Must muld</span>
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full font-label-md text-label-md">Toasilled</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-md rounded-xl shadow-[0px_0px_8px_rgba(0,0,0,0.04)] border border-surface-variant/50">
+<div class="flex items-center justify-between mb-sm">
+<div class="flex items-center gap-sm">
+<div class="w-12 h-12 rounded-lg bg-primary-container/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="opacity">opacity</span>
+</div>
+<div>
+<h3 class="font-h3 text-h3">Väetis</h3>
+<p class="font-caption text-caption text-on-surface-variant">Vedelväetis köögiviljadele</p>
+</div>
+</div>
+<div class="text-right">
+<span class="font-h3 text-h3 text-primary">2.5 L</span>
+<div class="h-1 w-16 bg-surface-container-high rounded-full mt-1 overflow-hidden">
+<div class="h-full bg-primary" style="width: 40%"></div>
+</div>
+</div>
+</div>
+<div class="flex gap-xs">
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full font-label-md text-label-md">Orgaaniline</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-md rounded-xl shadow-[0px_0px_8px_rgba(0,0,0,0.04)] border border-surface-variant/50">
+<div class="flex items-center justify-between mb-sm">
+<div class="flex items-center gap-sm">
+<div class="w-12 h-12 rounded-lg bg-primary-container/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="grain">grain</span>
+</div>
+<div>
+<h3 class="font-h3 text-h3">Seemned</h3>
+<p class="font-caption text-caption text-on-surface-variant">Erinevad sordid</p>
+</div>
+</div>
+<div class="text-right">
+<span class="font-h3 text-h3 text-primary">12 pk</span>
+<div class="h-1 w-16 bg-surface-container-high rounded-full mt-1 overflow-hidden">
+<div class="h-full bg-primary" style="width: 90%"></div>
+</div>
+</div>
+</div>
+<div class="flex flex-wrap gap-xs">
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full font-label-md text-label-md">Tomat</span>
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full font-label-md text-label-md">Kurk</span>
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full font-label-md text-label-md">Tšilli</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-md rounded-xl shadow-[0px_0px_8px_rgba(0,0,0,0.04)] border border-surface-variant/50">
+<div class="flex items-center justify-between mb-sm">
+<div class="flex items-center gap-sm">
+<div class="w-12 h-12 rounded-lg bg-primary-container/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="water_drop">water_drop</span>
+</div>
+<div>
+<h3 class="font-h3 text-h3">Kastmistarvikud</h3>
+<p class="font-caption text-caption text-on-surface-variant">Voolikud ja pihustid</p>
+</div>
+</div>
+<div class="text-right">
+<span class="font-h3 text-h3 text-on-surface-variant">OK</span>
+</div>
+</div>
+<div class="flex gap-xs">
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full font-label-md text-label-md">Töökorras</span>
+</div>
+</div>
+<button class="mt-lg w-full bg-primary text-on-primary font-label-md text-label-md h-[48px] rounded-xl flex items-center justify-center gap-sm active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+                Lisa varu
+            </button>
+</section>
+<section class="mt-xl">
+<h4 class="font-label-md text-label-md text-on-surface-variant mb-md uppercase tracking-wider">Viimased sissekanded</h4>
+<div class="flex flex-col gap-sm">
+<div class="flex items-center gap-md py-sm border-b border-surface-variant/30">
+<img alt="Väetisepudel" class="w-12 h-12 rounded-lg object-cover" data-alt="A macro photograph of a professional organic fertilizer bottle sitting on a clean white surface. The lighting is soft and natural, emphasizing a minimalist and airy gardening aesthetic. The color palette features soft greens and warm neutrals, conveying a sense of calm and biological health. The image has a high-end, clean-tech garden journal feel." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMuzwgYpYcxsWreh6xO35ZR_xDBETHmDFtLo5XEaDBhF-w6IdoxTW0qMarIPv7cDB6S0JloqMtyDxXnI6vRWgDvxdXPtOrDOyXfur6BCblRRCJFLFEzxP1j54Rz5ttLQPfyAB7g9LTG5qXSpojnhmzdP9hqi7jrKCbNJsI9RZUf9QdOynqa9mT6O4qsSNm6FcXANdsBWLdteivCFyxcvt4hfphsWcC_7AbrXNw2kYZK97eim5f0cYlAVzvFFupXTyDZJzK7gLV5p1f"/>
+<div class="flex-1">
+<p class="font-body-md text-body-md">BioBizz Grow</p>
+<p class="font-caption text-caption text-on-surface-variant">Lisatud 2 päeva tagasi</p>
+</div>
+<span class="text-primary font-label-md">+1.0 L</span>
+</div>
+<div class="flex items-center gap-md py-sm border-b border-surface-variant/30">
+<img alt="Mullakott" class="w-12 h-12 rounded-lg object-cover" data-alt="A beautifully styled shot of a premium bag of potting soil with high-quality texture visible. The setting is a bright, modern greenhouse with sunlight streaming through, creating a serene and professional atmosphere. The visual style is rooted in organic minimalism with a palette of moss green and off-white. The overall mood is organized and helpful for a hobbyist gardener." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhjtXpgx5LtdibzQ0w_y-T7mJirqWOUCk10qWBO3Z9fZawU8p15UzsXMssd3Cc1p7RGof1uz_xpCidJMq9kXay0UMZlAS8F4QYgVM_PwlvbS4J3z0bWDuI5_vuKRw6yNVkjvFuELgVswTKlE9q_PJOi9n8tXVabgZUcolqqh_E7hL7SbGUqrUvvvtudCB0yshbWq2KW8w8sy2Fgy5Fhgk9N17FnnZhW2avWGiS96hdki-KRKPKv_b2UZku2u0f0MpAwU-e3QyvgY7-"/>
+<div class="flex-1">
+<p class="font-body-md text-body-md">Kekkilä Külvimuld</p>
+<p class="font-caption text-caption text-on-surface-variant">Lisatud 5 päeva tagasi</p>
+</div>
+<span class="text-primary font-label-md">+20 L</span>
+</div>
+</div>
+</section>
+</main>
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-sm pb-6 pt-2 bg-surface-container-low dark:bg-inverse-surface shadow-lg rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant p-2 hover:bg-surface-container-high transition-all active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="calendar_month">calendar_month</span>
+<span class="font-label-md text-label-md">Kalender</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant p-2 hover:bg-surface-container-high transition-all active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="eco">eco</span>
+<span class="font-label-md text-label-md">Taimed</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container dark:bg-primary-container text-on-primary-container rounded-full px-4 py-1 active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="inventory_2" data-weight="fill" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+<span class="font-label-md text-label-md">Varud</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant p-2 hover:bg-surface-container-high transition-all active:scale-95 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="map">map</span>
+<span class="font-label-md text-label-md">Peenrad</span>
+</a>
+</nav>
+</body></html>

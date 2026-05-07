@@ -4,8 +4,8 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import BackIconButton from '@/components/BackIconButton.vue';
 import CreatePlantModal from '@/components/CreatePlantModal.vue';
-import DesktopSearchField from '@/components/DesktopSearchField.vue';
 import DeletePlantModal from '@/components/DeletePlantModal.vue';
+import DesktopSearchField from '@/components/DesktopSearchField.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import SortDropdown from '@/components/SortDropdown.vue';

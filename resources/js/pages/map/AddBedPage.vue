@@ -25,7 +25,7 @@ const breadcrumbs = [
     <Head title="Lisa peenar" />
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="page page-with-bottomnav">
-            <main class="space-y-4 pb-6">
+            <main class="mx-auto w-full max-w-5xl space-y-4 px-4 pb-6">
                 <DiaryHeader
                     title="Lisa peenar"
                     title-class="text-foreground text-3xl font-bold tracking-tight"
@@ -40,7 +40,10 @@ const breadcrumbs = [
                         />
                     </template>
                 </DiaryHeader>
-                <p v-if="props.showGuide" class="-mt-2 text-muted-foreground">
+                <p
+                    v-if="props.showGuide"
+                    class="-mt-2 rounded-xl border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-muted-foreground"
+                >
                     Loo uus peenar ja joonista selle kuju ruutudest.
                 </p>
 
