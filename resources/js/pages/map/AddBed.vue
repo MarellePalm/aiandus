@@ -479,7 +479,7 @@ watch(selectedCellId, async () => {
 <template>
     <section class="mb-8">
         <form
-            class="space-y-6 rounded-2xl border border-border/70 bg-white p-4 shadow-[0_8px_24px_rgba(0,0,0,0.05)] sm:p-6"
+            class="space-y-6 rounded-2xl border border-border/70 bg-white p-4 shadow-[0_8px_24px_rgba(0,0,0,0.05)] dark:bg-card sm:p-6"
             @submit.prevent="submit"
         >
             <section
@@ -524,7 +524,7 @@ watch(selectedCellId, async () => {
                 <div class="space-y-4">
                     <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_17rem]">
                         <div
-                            class="rounded-xl border border-border/70 bg-white p-4 shadow-sm"
+                            class="rounded-xl border border-border/70 bg-white p-4 shadow-sm dark:bg-card"
                         >
                             <label
                                 class="mb-1.5 block text-sm font-medium text-foreground"
@@ -533,7 +533,7 @@ watch(selectedCellId, async () => {
                             <input
                                 v-model="form.name"
                                 type="text"
-                                class="w-full rounded-xl border border-border/80 bg-white px-4 py-3 text-foreground shadow-sm transition outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                class="w-full rounded-xl border border-border/80 bg-white px-4 py-3 text-foreground shadow-sm transition outline-none dark:bg-card focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 placeholder="Nt Ürdipeenar"
                                 maxlength="120"
                             />
@@ -551,7 +551,7 @@ watch(selectedCellId, async () => {
                             <input
                                 v-model="form.location"
                                 type="text"
-                                class="w-full rounded-xl border border-border/80 bg-white px-4 py-3 text-foreground shadow-sm transition outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                class="w-full rounded-xl border border-border/80 bg-white px-4 py-3 text-foreground shadow-sm transition outline-none dark:bg-card focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 placeholder="Nt Kasvuhoone kõrval"
                                 maxlength="255"
                             />
@@ -572,7 +572,7 @@ watch(selectedCellId, async () => {
                                 min="10"
                                 max="200"
                                 step="10"
-                                class="w-full rounded-xl border border-border/80 bg-white px-4 py-3 text-foreground shadow-sm transition outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                class="w-full rounded-xl border border-border/80 bg-white px-4 py-3 text-foreground shadow-sm transition outline-none dark:bg-card focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 placeholder="30"
                             />
                             <p class="mt-1 text-xs text-muted-foreground">
@@ -589,7 +589,7 @@ watch(selectedCellId, async () => {
                         </div>
 
                         <div
-                            class="rounded-xl border border-border/70 bg-white p-4 shadow-sm"
+                            class="rounded-xl border border-border/70 bg-white p-4 shadow-sm dark:bg-card"
                         >
                             <div
                                 class="flex items-center justify-between gap-3"
@@ -616,7 +616,7 @@ watch(selectedCellId, async () => {
                             <input
                                 type="file"
                                 accept="image/*"
-                                class="mt-3 w-full rounded-xl border border-border/80 bg-white px-4 py-3 text-sm text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:font-medium file:text-primary hover:file:bg-primary/20"
+                                class="mt-3 w-full rounded-xl border border-border/80 bg-white px-4 py-3 text-sm text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:font-medium file:text-primary hover:file:bg-primary/20 dark:bg-card"
                                 @change="onImageChange"
                             />
                             <div
@@ -670,7 +670,7 @@ watch(selectedCellId, async () => {
                             </div>
 
                             <div
-                                class="flex items-center gap-2 rounded-xl border border-border/80 bg-white px-3 py-2 shadow-xs"
+                                class="flex items-center gap-2 rounded-xl border border-border/80 bg-white px-3 py-2 shadow-xs dark:bg-card"
                             >
                                 <span
                                     class="material-symbols-outlined rounded-xl bg-primary/10 p-2 text-primary"
@@ -689,7 +689,7 @@ watch(selectedCellId, async () => {
 
                         <div
                             ref="gridScroller"
-                            class="overflow-x-auto rounded-xl border border-border/80 bg-white p-3 shadow-sm sm:p-4"
+                            class="overflow-x-auto rounded-xl border border-border/80 bg-white p-3 shadow-sm dark:bg-card sm:p-4"
                         >
                             <div
                                 class="mb-3 flex items-center justify-between gap-3 text-xs text-muted-foreground"
@@ -817,7 +817,7 @@ watch(selectedCellId, async () => {
                                                         :class="
                                                             selectedCell?.id ===
                                                             getCellAt(x, y)?.id
-                                                                ? 'bg-white/95 text-emerald-700'
+                                                                ? 'bg-white/95 text-emerald-700 dark:bg-card/95 dark:text-emerald-300'
                                                                 : 'bg-black/15 text-amber-50/85'
                                                         "
                                                     >
@@ -899,7 +899,7 @@ watch(selectedCellId, async () => {
                                             <button
                                                 v-else
                                                 type="button"
-                                                class="h-full w-full rounded-[1.15rem] border border-dashed border-emerald-900/15 bg-white/50 text-muted-foreground transition hover:border-primary/30 hover:bg-primary/6 hover:text-primary"
+                                                class="h-full w-full rounded-[1.15rem] border border-dashed border-emerald-900/15 bg-white/50 text-muted-foreground transition hover:border-primary/30 hover:bg-primary/6 hover:text-primary dark:border-emerald-200/20 dark:bg-card/50"
                                                 @click="
                                                     addCellFromPlaceholder(x, y)
                                                 "
@@ -917,7 +917,7 @@ watch(selectedCellId, async () => {
 
                         <div class="mt-4 grid gap-4 lg:hidden">
                             <div
-                                class="rounded-xl border border-border/80 bg-white p-4 shadow-sm"
+                                class="rounded-xl border border-border/80 bg-white p-4 shadow-sm dark:bg-card"
                             >
                                 <div
                                     class="flex items-start justify-between gap-3"
@@ -1039,7 +1039,7 @@ watch(selectedCellId, async () => {
 
                 <aside class="space-y-4">
                     <div
-                        class="rounded-xl border border-border/80 bg-white p-4 shadow-sm"
+                        class="rounded-xl border border-border/80 bg-white p-4 shadow-sm dark:bg-card"
                     >
                         <p class="text-sm font-semibold text-foreground">
                             Valitud ruudu toimingud
@@ -1111,7 +1111,7 @@ watch(selectedCellId, async () => {
                     </div>
 
                     <div
-                        class="rounded-xl border border-border/80 bg-white p-4 shadow-sm"
+                        class="rounded-xl border border-border/80 bg-white p-4 shadow-sm dark:bg-card"
                     >
                         <div class="flex items-center justify-between gap-3">
                             <p class="text-sm font-semibold text-foreground">
@@ -1199,7 +1199,7 @@ watch(selectedCellId, async () => {
             </div>
 
             <div
-                class="sm:backdrop-blur-0 sticky bottom-3 z-10 -mx-1 rounded-xl border border-border/70 bg-white/95 p-3 shadow-sm backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
+                class="sm:backdrop-blur-0 sticky bottom-3 z-10 -mx-1 rounded-xl border border-border/70 bg-white/95 p-3 shadow-sm backdrop-blur dark:bg-card/95 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
             >
                 <div class="flex flex-col gap-2 sm:flex-row">
                     <button

@@ -254,6 +254,15 @@ const resetToAll = () => {
                                         : 'Lisa uus taime kategooria, et alustada.'
                                 }}
                             </p>
+                            <button
+                                v-if="activeTab !== 'favorites'"
+                                type="button"
+                                class="mt-5 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+                                @click="showCreateCategory = true"
+                            >
+                                <span class="material-symbols-outlined text-[18px]">add</span>
+                                Lisa uus taime kategooria
+                            </button>
                         </div>
                         <div
                             v-else

@@ -765,7 +765,7 @@ function handleBedStatusAction() {
                                                     }}</span
                                                 >
                                                 <span
-                                                    class="absolute top-1.5 left-1.5 rounded-full bg-white/92 px-1.5 py-0.5 text-[10px] font-semibold text-foreground shadow-sm"
+                                                    class="absolute top-1.5 left-1.5 rounded-full bg-white/92 px-1.5 py-0.5 text-[10px] font-semibold text-foreground shadow-sm dark:bg-card/92"
                                                 >
                                                     {{ plantAt(r, c)?.quantity ?? 1 }} tk
                                                 </span>

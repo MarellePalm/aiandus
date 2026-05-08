@@ -83,7 +83,7 @@ onBeforeUnmount(() => {
                         <div class="mt-6 flex flex-col gap-3">
                             <button
                                 type="button"
-                                class="rounded-2xl bg-red-600 px-4 py-3 font-medium text-white shadow-sm transition hover:bg-red-700 disabled:opacity-50"
+                                class="rounded-2xl bg-primary px-4 py-3 font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-50"
                                 :disabled="processing"
                                 @click="$emit('confirm')"
                             >
