@@ -22,12 +22,14 @@ return new class extends Migration
         }
 
         $beds = DB::table('beds')->select('id', 'user_id')->get();
+
         foreach ($beds as $bed) {
             if (! $bed->user_id) {
                 continue;
             }
 
             $userExists = DB::table('users')->where('id', $bed->user_id)->exists();
+
             if (! $userExists) {
                 continue;
             }
@@ -49,10 +51,15 @@ return new class extends Migration
                 ]);
             }
 
-            DB::table('beds')->where('id', $bed->id)->update(['garden_plan_id' => $planId]);
+            DB::table('beds')->where('id', $bed->id)->update([
+                'garden_plan_id' => $planId,
+            ]);
         }
 
+        $this->dropForeignKeysReferencing('garden_plans', 'user_id');
+
         $uniqueIndex = $this->getUniqueIndexName('garden_plans', 'user_id');
+
         if ($uniqueIndex) {
             Schema::table('garden_plans', function (Blueprint $table) use ($uniqueIndex) {
                 $table->dropUnique($uniqueIndex);
@@ -60,6 +67,7 @@ return new class extends Migration
         }
 
         $nullCount = DB::table('beds')->whereNull('garden_plan_id')->count();
+
         if ($nullCount === 0) {
             Schema::table('beds', function (Blueprint $table) {
                 $table->unsignedBigInteger('garden_plan_id')->nullable(false)->change();
@@ -70,6 +78,7 @@ return new class extends Migration
     public function down(): void
     {
         $uniqueIndex = $this->getUniqueIndexName('garden_plans', 'user_id');
+
         if (! $uniqueIndex) {
             Schema::table('garden_plans', function (Blueprint $table) {
                 $table->unique('user_id');
@@ -86,17 +95,18 @@ return new class extends Migration
     private function hasForeignKey(string $table, string $column): bool
     {
         $driver = DB::getDriverName();
+
         if (! in_array($driver, ['mysql', 'mariadb'], true)) {
             return false;
         }
 
         $row = DB::selectOne(
             'SELECT COUNT(*) AS cnt
-            FROM information_schema.KEY_COLUMN_USAGE
-            WHERE TABLE_SCHEMA = DATABASE()
-              AND TABLE_NAME = ?
-              AND COLUMN_NAME = ?
-              AND REFERENCED_TABLE_NAME IS NOT NULL',
+             FROM information_schema.KEY_COLUMN_USAGE
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = ?
+               AND COLUMN_NAME = ?
+               AND REFERENCED_TABLE_NAME IS NOT NULL',
             [$table, $column],
         );
 
@@ -106,16 +116,20 @@ return new class extends Migration
     private function getUniqueIndexName(string $table, string $column): ?string
     {
         $driver = DB::getDriverName();
+
         if ($driver === 'sqlite') {
             $indexes = DB::select("PRAGMA index_list('{$table}')");
+
             foreach ($indexes as $index) {
                 $isUnique = (int) ($index->unique ?? 0) === 1;
                 $indexName = (string) ($index->name ?? '');
+
                 if (! $isUnique || $indexName === '') {
                     continue;
                 }
 
                 $indexColumns = DB::select("PRAGMA index_info('{$indexName}')");
+
                 foreach ($indexColumns as $indexColumn) {
                     if ((string) ($indexColumn->name ?? '') === $column) {
                         return $indexName;
@@ -131,13 +145,40 @@ return new class extends Migration
         }
 
         $rows = DB::select("SHOW INDEX FROM `{$table}` WHERE Column_name = ? AND Non_unique = 0", [$column]);
+
         foreach ($rows as $row) {
             $keyName = (string) ($row->Key_name ?? '');
+
             if ($keyName !== 'PRIMARY') {
                 return $keyName;
             }
         }
 
         return null;
+    }
+
+    private function dropForeignKeysReferencing(string $referencedTable, string $referencedColumn): void
+    {
+        $driver = DB::getDriverName();
+
+        if (! in_array($driver, ['mysql', 'mariadb'], true)) {
+            return;
+        }
+
+        $rows = DB::select(
+            'SELECT TABLE_NAME, CONSTRAINT_NAME
+             FROM information_schema.KEY_COLUMN_USAGE
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND REFERENCED_TABLE_NAME = ?
+               AND REFERENCED_COLUMN_NAME = ?',
+            [$referencedTable, $referencedColumn],
+        );
+
+        foreach ($rows as $row) {
+            $tableName = $row->TABLE_NAME;
+            $constraintName = $row->CONSTRAINT_NAME;
+
+            DB::statement("ALTER TABLE `{$tableName}` DROP FOREIGN KEY `{$constraintName}`");
+        }
     }
 };
