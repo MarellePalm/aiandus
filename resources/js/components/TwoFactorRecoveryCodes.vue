@@ -43,11 +43,11 @@ onMounted(async () => {
     <Card class="w-full">
         <CardHeader>
             <CardTitle class="flex gap-3">
-                <LockKeyhole class="size-4" />2FA Recovery Codes
+                <LockKeyhole class="size-4" />Taastamiskoodid (2FA)
             </CardTitle>
             <CardDescription>
-                Recovery codes let you regain access if you lose your 2FA
-                device. Store them in a secure password manager.
+                Taastamiskoodid aitavad kontosse tagasi pääseda, kui kaotad 2FA
+                seadme. Hoiusta need turvaliselt (nt paroolihalduris).
             </CardDescription>
         </CardHeader>
         <CardContent>
@@ -59,8 +59,11 @@ onMounted(async () => {
                         :is="isRecoveryCodesVisible ? EyeOff : Eye"
                         class="size-4"
                     />
-                    {{ isRecoveryCodesVisible ? 'Hide' : 'View' }} Recovery
-                    Codes
+                    {{
+                        isRecoveryCodesVisible
+                            ? 'Peida taastamiskoodid'
+                            : 'Näita taastamiskoode'
+                    }}
                 </Button>
 
                 <Form
@@ -76,7 +79,7 @@ onMounted(async () => {
                         type="submit"
                         :disabled="processing"
                     >
-                        <RefreshCw /> Regenerate Codes
+                        <RefreshCw /> Genereeri uued koodid
                     </Button>
                 </Form>
             </div>
@@ -112,10 +115,10 @@ onMounted(async () => {
                         </div>
                     </div>
                     <p class="text-xs text-muted-foreground select-none">
-                        Each recovery code can be used once to access your
-                        account and will be removed after use. If you need more,
-                        click
-                        <span class="font-bold">Regenerate Codes</span> above.
+                        Iga taastamiskoodi saab kontosse sisenemiseks kasutada
+                        ühe korra; pärast kasutamist see kustutatakse. Kui vajad
+                        uusi, klõpsa ülal
+                        <span class="font-bold">Genereeri uued koodid</span>.
                     </p>
                 </div>
             </div>

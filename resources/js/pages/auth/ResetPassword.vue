@@ -21,7 +21,7 @@ const inputEmail = ref(props.email);
 <template>
     <AuthLayout
         title="Parooli lähtestamine"
-        description="Please enter your new password below"
+        description="Sisesta allpool oma uus parool"
     >
         <Head title="Parooli lähtestamine" />
 
@@ -33,7 +33,7 @@ const inputEmail = ref(props.email);
         >
             <div class="grid gap-6">
                 <div class="grid gap-2">
-                    <Label for="email">Email</Label>
+                    <Label for="email">E-post</Label>
                     <Input
                         id="email"
                         type="email"
@@ -47,7 +47,7 @@ const inputEmail = ref(props.email);
                 </div>
 
                 <div class="grid gap-2">
-                    <Label for="password">Password</Label>
+                    <Label for="password">Parool</Label>
                     <Input
                         id="password"
                         type="password"
@@ -55,22 +55,20 @@ const inputEmail = ref(props.email);
                         autocomplete="new-password"
                         class="mt-1 block w-full"
                         autofocus
-                        placeholder="Password"
+                        placeholder="Parool"
                     />
                     <InputError :message="errors.password" />
                 </div>
 
                 <div class="grid gap-2">
-                    <Label for="password_confirmation">
-                        Confirm Password
-                    </Label>
+                    <Label for="password_confirmation"> Kinnita parool </Label>
                     <Input
                         id="password_confirmation"
                         type="password"
                         name="password_confirmation"
                         autocomplete="new-password"
                         class="mt-1 block w-full"
-                        placeholder="Confirm password"
+                        placeholder="Kinnita parool"
                     />
                     <InputError :message="errors.password_confirmation" />
                 </div>
@@ -82,7 +80,7 @@ const inputEmail = ref(props.email);
                     data-test="reset-password-button"
                 >
                     <Spinner v-if="processing" />
-                    Reset password
+                    Lähtesta parool
                 </Button>
             </div>
         </Form>

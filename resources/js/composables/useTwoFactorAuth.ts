@@ -8,7 +8,7 @@ const fetchJson = async <T>(url: string): Promise<T> => {
     });
 
     if (!response.ok) {
-        throw new Error(`Failed to fetch: ${response.status}`);
+        throw new Error(`Päring ebaõnnestus: ${response.status}`);
     }
 
     return response.json();
@@ -32,7 +32,7 @@ export const useTwoFactorAuth = () => {
 
             qrCodeSvg.value = svg;
         } catch {
-            errors.value.push('Failed to fetch QR code');
+            errors.value.push('QR-koodi laadimine ebaõnnestus');
             qrCodeSvg.value = null;
         }
     };
@@ -45,7 +45,7 @@ export const useTwoFactorAuth = () => {
 
             manualSetupKey.value = key;
         } catch {
-            errors.value.push('Failed to fetch a setup key');
+            errors.value.push('Seadistusvõtme laadimine ebaõnnestus');
             manualSetupKey.value = null;
         }
     };
@@ -73,7 +73,7 @@ export const useTwoFactorAuth = () => {
                 recoveryCodes.url(),
             );
         } catch {
-            errors.value.push('Failed to fetch recovery codes');
+            errors.value.push('Taastamiskoodide laadimine ebaõnnestus');
             recoveryCodesList.value = [];
         }
     };
