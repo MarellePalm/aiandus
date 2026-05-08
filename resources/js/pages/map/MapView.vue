@@ -2133,7 +2133,7 @@ function saveGardenPlan() {
                                 </div>
 
                                 <div
-                                    class="rounded-xl border border-border/70 bg-white p-4 shadow-[0_8px_24px_rgba(0,0,0,0.05)] sm:p-5"
+                                    class="rounded-xl border border-border/70 bg-white p-4 shadow-[0_8px_24px_rgba(0,0,0,0.05)] dark:bg-card sm:p-5"
                                 >
                                     <div
                                         class="mb-4 flex flex-wrap items-start justify-between gap-3"
@@ -2688,7 +2688,7 @@ function saveGardenPlan() {
                                     >
                                         <button
                                             type="button"
-                                            class="hidden items-center justify-between rounded-xl border border-border/80 bg-white px-4 py-3 text-left shadow-sm"
+                                            class="hidden items-center justify-between rounded-xl border border-border/80 bg-white px-4 py-3 text-left shadow-sm dark:bg-card"
                                             @click="
                                                 toolDrawerOpen = !toolDrawerOpen
                                             "
@@ -2731,7 +2731,7 @@ function saveGardenPlan() {
                                         </button>
 
                                         <aside
-                                            class="hidden rounded-xl border border-border/80 bg-white p-4 shadow-sm xl:sticky xl:top-6 xl:self-start"
+                                            class="hidden rounded-xl border border-border/80 bg-white p-4 shadow-sm dark:bg-card xl:sticky xl:top-6 xl:self-start"
                                         >
                                             <div
                                                 class="flex items-start justify-between gap-3"
@@ -2958,7 +2958,7 @@ function saveGardenPlan() {
                                         <div class="relative flex gap-3">
                                             <aside
                                                 data-ui-overlay="true"
-                                                class="pointer-events-auto z-30 flex w-14 shrink-0 flex-col items-center gap-2 self-start rounded-2xl border border-border/80 bg-white/95 px-2 py-2 shadow-lg backdrop-blur"
+                                                class="pointer-events-auto z-30 flex w-14 shrink-0 flex-col items-center gap-2 self-start rounded-2xl border border-border/80 bg-white/95 px-2 py-2 shadow-lg backdrop-blur dark:bg-card/95"
                                             >
                                                 <button
                                                     v-for="category in toolCategories"
@@ -3006,7 +3006,7 @@ function saveGardenPlan() {
                                             <div
                                                 v-if="selectedQuickCategoryId"
                                                 data-ui-overlay="true"
-                                                class="pointer-events-auto absolute top-0 left-[68px] z-30 w-72 rounded-2xl border border-border/80 bg-white/96 p-3 shadow-xl backdrop-blur"
+                                                class="pointer-events-auto absolute top-0 left-[68px] z-30 w-72 rounded-2xl border border-border/80 bg-white/96 p-3 shadow-xl backdrop-blur dark:bg-card/96"
                                             >
                                                 <div class="mb-2 flex items-center justify-between">
                                                     <p class="text-sm font-semibold text-foreground">
@@ -3068,12 +3068,12 @@ function saveGardenPlan() {
 
                                             <div
                                                 ref="plannerViewport"
-                                                class="relative h-[min(58vh,560px)] flex-1 min-w-0 cursor-default touch-none overflow-hidden rounded-[1.75rem] border border-border/80 bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(244,239,229,0.98))] p-3 shadow-inner sm:p-4 md:h-[min(72vh,920px)]"
+                                                class="relative h-[min(58vh,560px)] flex-1 min-w-0 cursor-default touch-none overflow-hidden rounded-[1.75rem] border border-border/80 bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(244,239,229,0.98))] p-3 shadow-inner dark:bg-[linear-gradient(180deg,rgba(30,38,32,0.98),rgba(22,29,24,0.98))] sm:p-4 md:h-[min(72vh,920px)]"
                                                 @pointerdown="handleViewportPointerDown($event)"
                                                 @wheel.prevent="onPlannerWheel($event)"
                                             >
                                             <div
-                                                class="relative overflow-hidden rounded-[1.6rem] border border-emerald-900/10 bg-emerald-50/80"
+                                                class="relative overflow-hidden rounded-[1.6rem] border border-emerald-900/10 bg-emerald-50/80 dark:border-emerald-200/15 dark:bg-emerald-950/35"
                                                 :style="plannerSurfaceStyle()"
                                                 @click="
                                                     handlePlannerSurfaceClick(
@@ -3085,17 +3085,17 @@ function saveGardenPlan() {
                                                     class="pointer-events-none absolute inset-x-4 top-3 z-20 flex items-center justify-between text-[11px] font-semibold tracking-[0.18em] text-emerald-900/45 uppercase"
                                                 >
                                                     <span
-                                                        class="rounded-full bg-white/70 px-2.5 py-1 backdrop-blur-sm"
+                                                        class="rounded-full bg-white/70 px-2.5 py-1 backdrop-blur-sm dark:bg-card/70"
                                                         >Aed</span
                                                     >
                                                     <span
-                                                        class="rounded-full bg-white/70 px-2.5 py-1 backdrop-blur-sm"
+                                                        class="rounded-full bg-white/70 px-2.5 py-1 backdrop-blur-sm dark:bg-card/70"
                                                         >Lohista peenraid</span
                                                     >
                                                 </div>
 
                                                 <div
-                                                    class="pointer-events-none absolute bottom-4 left-4 z-20 rounded-2xl border border-emerald-900/10 bg-white/78 px-3 py-2 text-[11px] font-medium text-emerald-950/75 shadow-sm backdrop-blur-sm"
+                                                    class="pointer-events-none absolute bottom-4 left-4 z-20 rounded-2xl border border-emerald-900/10 bg-white/78 px-3 py-2 text-[11px] font-medium text-emerald-950/75 shadow-sm backdrop-blur-sm dark:border-emerald-200/20 dark:bg-card/78 dark:text-emerald-100/80"
                                                 >
                                                     <div
                                                         class="mb-1 tracking-[0.16em] text-emerald-900/55 uppercase"
@@ -3220,7 +3220,7 @@ function saveGardenPlan() {
                                                             v-if="
                                                                 showPlannerLabels
                                                             "
-                                                            class="pointer-events-none absolute top-full left-1/2 z-20 mt-2 -translate-x-1/2 rounded-full bg-white/88 px-2.5 py-1 text-[11px] font-semibold text-foreground shadow-sm backdrop-blur-sm"
+                                                            class="pointer-events-none absolute top-full left-1/2 z-20 mt-2 -translate-x-1/2 rounded-full bg-white/88 px-2.5 py-1 text-[11px] font-semibold text-foreground shadow-sm backdrop-blur-sm dark:bg-card/88"
                                                         >
                                                             {{ bed.name }}
                                                         </div>
@@ -3230,7 +3230,7 @@ function saveGardenPlan() {
                                                                 hoveredBedId ===
                                                                 bed.id
                                                             "
-                                                            class="absolute top-full left-1/2 z-30 mt-3 hidden w-44 -translate-x-1/2 rounded-[1.2rem] border border-emerald-900/10 bg-white/92 p-3 text-left shadow-lg backdrop-blur-sm md:block"
+                                                            class="absolute top-full left-1/2 z-30 mt-3 hidden w-44 -translate-x-1/2 rounded-[1.2rem] border border-emerald-900/10 bg-white/92 p-3 text-left shadow-lg backdrop-blur-sm dark:border-emerald-200/20 dark:bg-card/92 md:block"
                                                         >
                                                             <p
                                                                 class="truncate text-sm font-semibold text-foreground"
@@ -3387,7 +3387,7 @@ function saveGardenPlan() {
                                                                 v-if="
                                                                     showPlannerLabels
                                                                 "
-                                                                class="pointer-events-none max-w-[min(14rem,100%)] truncate rounded-full bg-white/88 px-2.5 py-0.5 text-center text-[11px] font-semibold text-foreground shadow-sm backdrop-blur-sm"
+                                                                class="pointer-events-none max-w-[min(14rem,100%)] truncate rounded-full bg-white/88 px-2.5 py-0.5 text-center text-[11px] font-semibold text-foreground shadow-sm backdrop-blur-sm dark:bg-card/88"
                                                             >
                                                                 {{ object.name }}
                                                             </div>
@@ -3399,7 +3399,7 @@ function saveGardenPlan() {
                                                                     selectedObject?.id !==
                                                                         object.id
                                                                 "
-                                                            class="z-30 hidden w-44 max-w-[min(14rem,calc(100vw-2rem))] rounded-[1.2rem] border border-emerald-900/10 bg-white/92 p-3 text-left shadow-lg backdrop-blur-sm md:block"
+                                                            class="z-30 hidden w-44 max-w-[min(14rem,calc(100vw-2rem))] rounded-[1.2rem] border border-emerald-900/10 bg-white/92 p-3 text-left shadow-lg backdrop-blur-sm dark:border-emerald-200/20 dark:bg-card/92 md:block"
                                                         >
                                                             <p
                                                                 class="truncate text-sm font-semibold text-foreground"

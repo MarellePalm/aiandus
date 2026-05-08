@@ -22,12 +22,14 @@ return new class extends Migration
         }
 
         $beds = DB::table('beds')->select('id', 'user_id')->get();
+
         foreach ($beds as $bed) {
             if (! $bed->user_id) {
                 continue;
             }
 
             $userExists = DB::table('users')->where('id', $bed->user_id)->exists();
+
             if (! $userExists) {
                 continue;
             }
@@ -49,17 +51,32 @@ return new class extends Migration
                 ]);
             }
 
-            DB::table('beds')->where('id', $bed->id)->update(['garden_plan_id' => $planId]);
+            DB::table('beds')->where('id', $bed->id)->update([
+                'garden_plan_id' => $planId,
+            ]);
+        }
+
+        if ($this->hasForeignKey('garden_plans', 'user_id')) {
+            Schema::table('garden_plans', function (Blueprint $table) {
+                $table->dropForeign(['user_id']);
+            });
         }
 
         $uniqueIndex = $this->getUniqueIndexName('garden_plans', 'user_id');
+
         if ($uniqueIndex) {
             Schema::table('garden_plans', function (Blueprint $table) use ($uniqueIndex) {
                 $table->dropUnique($uniqueIndex);
             });
         }
 
+        Schema::table('garden_plans', function (Blueprint $table) {
+            $table->index('user_id');
+            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+        });
+
         $nullCount = DB::table('beds')->whereNull('garden_plan_id')->count();
+
         if ($nullCount === 0) {
             Schema::table('beds', function (Blueprint $table) {
                 $table->unsignedBigInteger('garden_plan_id')->nullable(false)->change();
@@ -69,12 +86,23 @@ return new class extends Migration
 
     public function down(): void
     {
+        if ($this->hasForeignKey('garden_plans', 'user_id')) {
+            Schema::table('garden_plans', function (Blueprint $table) {
+                $table->dropForeign(['user_id']);
+            });
+        }
+
         $uniqueIndex = $this->getUniqueIndexName('garden_plans', 'user_id');
+
         if (! $uniqueIndex) {
             Schema::table('garden_plans', function (Blueprint $table) {
                 $table->unique('user_id');
             });
         }
+
+        Schema::table('garden_plans', function (Blueprint $table) {
+            $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+        });
 
         if (Schema::hasColumn('beds', 'garden_plan_id')) {
             Schema::table('beds', function (Blueprint $table) {
@@ -86,17 +114,18 @@ return new class extends Migration
     private function hasForeignKey(string $table, string $column): bool
     {
         $driver = DB::getDriverName();
+
         if (! in_array($driver, ['mysql', 'mariadb'], true)) {
             return false;
         }
 
         $row = DB::selectOne(
             'SELECT COUNT(*) AS cnt
-            FROM information_schema.KEY_COLUMN_USAGE
-            WHERE TABLE_SCHEMA = DATABASE()
-              AND TABLE_NAME = ?
-              AND COLUMN_NAME = ?
-              AND REFERENCED_TABLE_NAME IS NOT NULL',
+             FROM information_schema.KEY_COLUMN_USAGE
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = ?
+               AND COLUMN_NAME = ?
+               AND REFERENCED_TABLE_NAME IS NOT NULL',
             [$table, $column],
         );
 
@@ -106,16 +135,20 @@ return new class extends Migration
     private function getUniqueIndexName(string $table, string $column): ?string
     {
         $driver = DB::getDriverName();
+
         if ($driver === 'sqlite') {
             $indexes = DB::select("PRAGMA index_list('{$table}')");
+
             foreach ($indexes as $index) {
                 $isUnique = (int) ($index->unique ?? 0) === 1;
                 $indexName = (string) ($index->name ?? '');
+
                 if (! $isUnique || $indexName === '') {
                     continue;
                 }
 
                 $indexColumns = DB::select("PRAGMA index_info('{$indexName}')");
+
                 foreach ($indexColumns as $indexColumn) {
                     if ((string) ($indexColumn->name ?? '') === $column) {
                         return $indexName;
@@ -131,8 +164,10 @@ return new class extends Migration
         }
 
         $rows = DB::select("SHOW INDEX FROM `{$table}` WHERE Column_name = ? AND Non_unique = 0", [$column]);
+
         foreach ($rows as $row) {
             $keyName = (string) ($row->Key_name ?? '');
+
             if ($keyName !== 'PRIMARY') {
                 return $keyName;
             }

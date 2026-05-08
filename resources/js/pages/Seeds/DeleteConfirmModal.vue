@@ -26,25 +26,25 @@ defineEmits<{
             />
 
             <div
-                class="relative w-full max-w-sm rounded-3xl bg-[#FAF8F4] p-6 text-center shadow-xl ring-1 ring-black/5"
+                class="relative w-full max-w-sm rounded-3xl bg-card p-6 text-center shadow-xl ring-1 ring-border"
             >
                 <div
-                    class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#E6E2D5]"
+                    class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted"
                 >
                     <span
-                        class="material-symbols-outlined text-2xl text-[#6B8C68]"
+                        class="material-symbols-outlined text-2xl text-primary"
                         >delete</span
                     >
                 </div>
 
-                <h3 class="text-lg font-semibold text-[#2E2E2E]">
+                <h3 class="text-lg font-semibold text-foreground">
                     {{ title }}
                 </h3>
-                <p class="mt-2 text-sm text-[#2E2E2E]/70">{{ message }}</p>
+                <p class="mt-2 text-sm text-muted-foreground">{{ message }}</p>
 
                 <div class="mt-6 flex flex-col gap-3">
                     <button
-                        class="rounded-2xl bg-[#6B8C68] py-3 font-medium text-white transition hover:bg-[#4F6A52] disabled:opacity-60"
+                        class="rounded-2xl bg-primary py-3 font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
                         :disabled="processing"
                         @click="$emit('confirm')"
                     >
@@ -52,7 +52,7 @@ defineEmits<{
                     </button>
 
                     <button
-                        class="text-sm text-[#2E2E2E]/60 hover:text-[#2E2E2E]"
+                        class="text-sm text-muted-foreground hover:text-foreground"
                         :disabled="processing"
                         @click="$emit('close')"
                     >
