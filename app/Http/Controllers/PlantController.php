@@ -11,6 +11,21 @@ use Inertia\Inertia;
 
 class PlantController extends Controller
 {
+    public function create()
+    {
+        $user = request()->user();
+
+        $categories = Category::query()
+            ->where('user_id', $user->id)
+            ->where('scope', Category::SCOPE_PLANT)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return Inertia::render('AddPlant', [
+            'categories' => $categories,
+        ]);
+    }
+
     public function index()
     {
         $user = request()->user();

@@ -79,10 +79,10 @@ const showPasswordConfirmation = ref(false);
 
                     <div class="flex flex-col gap-2">
                         <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium text-muted-foreground">Email</span>
+                            <span class="text-sm font-medium text-muted-foreground">E-post</span>
                         </div>
                         <label class="auth-field">
-                            <span class="sr-only">Email</span>
+                            <span class="sr-only">E-post</span>
                             <input
                                 id="email-desktop"
                                 name="email"
@@ -90,7 +90,7 @@ const showPasswordConfirmation = ref(false);
                                 required
                                 :tabindex="2"
                                 autocomplete="email"
-                                placeholder="Email"
+                                placeholder="E-post"
                                 class="auth-input"
                             />
                         </label>
@@ -195,7 +195,7 @@ const showPasswordConfirmation = ref(false);
 
     <AuthBase
         title="Registreerimine"
-        description="Alusta oma rohelist teekonda ja loo isiklik aia paevik tana."
+        description="Alusta oma rohelist teekonda ja loo isiklik aiapäevik juba täna."
         :back-href="'/'"
         :show-logo="true"
         class="lg:hidden"
@@ -231,10 +231,10 @@ const showPasswordConfirmation = ref(false);
 
                     <div class="flex flex-col gap-2">
                         <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium text-muted-foreground">Email</span>
+                            <span class="text-sm font-medium text-muted-foreground">E-post</span>
                         </div>
                         <label class="auth-field">
-                            <span class="sr-only">Email</span>
+                            <span class="sr-only">E-post</span>
                             <input
                                 id="email"
                                 name="email"
@@ -242,7 +242,7 @@ const showPasswordConfirmation = ref(false);
                                 required
                                 :tabindex="2"
                                 autocomplete="email"
-                                placeholder="Email"
+                                placeholder="E-post"
                                 class="auth-input"
                             />
                         </label>

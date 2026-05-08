@@ -79,12 +79,20 @@ onMounted(() => {
 onBeforeUnmount(() => {
     if (coverTimer) clearInterval(coverTimer);
     if (inlineFeedbackTimer) clearTimeout(inlineFeedbackTimer);
+    if (typeof document !== 'undefined') {
+        document.body.style.overflow = '';
+    }
 });
 
 watch(cellModal, (value) => {
-    if (value) {
-        selectedPlantQuantity.value = 1;
+    if (typeof document !== 'undefined') {
+        document.body.style.overflow = value ? 'hidden' : '';
     }
+    if (!value) {
+        return;
+    }
+    const existing = plantAt(value.row, value.col);
+    selectedPlantQuantity.value = existing?.quantity ?? 1;
 });
 
 function bedCoverImage(): string | null {
@@ -331,7 +339,6 @@ function openFirstAvailableCell() {
                 !plantAt(row, col)
             ) {
                 cellModal.value = { row, col };
-                selectedPlantQuantity.value = 1;
                 return;
             }
         }
@@ -340,7 +347,6 @@ function openFirstAvailableCell() {
 
 function openCellModal(row: number, col: number) {
     cellModal.value = { row, col };
-    selectedPlantQuantity.value = plantAt(row, col)?.quantity ?? 1;
 }
 
 function plantedCellClass(row: number, col: number): string {
@@ -415,7 +421,7 @@ function handleBedStatusAction() {
                         <template #actions>
                             <Link
                                 :href="`/beds/${bed.id}/edit`"
-                                class="inline-flex h-9 max-w-full items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 text-sm font-semibold text-primary transition hover:bg-primary/15 sm:h-10 sm:gap-2 sm:px-4"
+                                class="inline-flex min-h-11 max-w-full items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 text-sm font-semibold text-primary transition hover:bg-primary/15 sm:h-10 sm:min-h-0 sm:gap-2 sm:px-4"
                                 aria-label="Muuda peenart"
                             >
                                 <span
@@ -537,7 +543,7 @@ function handleBedStatusAction() {
                                 <button
                                     v-if="plantsWithoutBed.length"
                                     type="button"
-                                    class="inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+                                    class="inline-flex min-h-11 items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 sm:min-h-0 sm:py-2"
                                     @click="openFirstAvailableCell"
                                 >
                                     Lisa esimene taim
@@ -545,7 +551,7 @@ function handleBedStatusAction() {
                                 <Link
                                     v-else
                                     href="/plants/create"
-                                    class="inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+                                    class="inline-flex min-h-11 items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 sm:min-h-0 sm:py-2"
                                 >
                                     Loo uus taim
                                 </Link>
@@ -578,7 +584,7 @@ function handleBedStatusAction() {
 
                                 <button
                                     type="button"
-                                    class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-3.5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 sm:w-auto"
+                                    class="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-3.5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 sm:w-auto sm:min-h-0"
                                     @click="handleBedStatusAction"
                                 >
                                     <span
@@ -684,7 +690,7 @@ function handleBedStatusAction() {
                                 >
                                     <Link
                                         :href="`/beds/${bed.id}/edit`"
-                                        class="inline-flex items-center justify-center gap-2 rounded-2xl border border-primary/35 bg-linear-to-r from-primary/15 via-primary/8 to-primary/5 px-4 py-2.5 text-sm font-semibold text-primary shadow-sm ring-1 ring-primary/15 transition hover:border-primary/45 hover:from-primary/22 hover:shadow-md sm:px-5"
+                                        class="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-primary/35 bg-linear-to-r from-primary/15 via-primary/8 to-primary/5 px-4 py-2.5 text-sm font-semibold text-primary shadow-sm ring-1 ring-primary/15 transition hover:border-primary/45 hover:from-primary/22 hover:shadow-md sm:min-h-0 sm:px-5"
                                     >
                                         <span
                                             class="material-symbols-outlined text-[22px] leading-none"
@@ -709,7 +715,7 @@ function handleBedStatusAction() {
                                 </div>
                             </div>
                             <div
-                                class="custom-scrollbar -mx-1 overflow-x-auto overflow-y-visible px-1 pb-1"
+                                class="custom-scrollbar touch-pan-x -mx-1 overflow-x-auto overflow-y-visible overscroll-x-contain px-1 pb-1"
                             >
                                 <div
                                     class="inline-grid w-max min-w-0 gap-2 rounded-2xl border border-primary/20 bg-linear-to-br from-primary/6 via-background to-muted/20 p-3 ring-1 shadow-soft ring-primary/10 sm:gap-2.5 sm:p-4"
@@ -726,16 +732,24 @@ function handleBedStatusAction() {
                                             v-for="c in range(getBedColumns())"
                                             :key="`${r}-${c}`"
                                         >
-                                            <button
+                                            <div
                                                 v-if="plantAt(r, c)"
-                                                type="button"
-                                                class="group relative overflow-hidden rounded-xl border-2 text-left transition-transform duration-200 hover:-translate-y-0.5"
+                                                role="button"
+                                                tabindex="0"
+                                                class="group relative cursor-pointer touch-manipulation overflow-hidden rounded-xl border-2 text-left transition-transform duration-200 outline-none hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 active:scale-[0.98]"
                                                 :class="plantedCellClass(r, c)"
                                                 :style="{
                                                     width: `${bedCellSize}px`,
                                                     height: `${bedCellSize}px`,
                                                 }"
+                                                :aria-label="`Ruut: ${plantAt(r, c)?.name ?? 'taim'}. Ava üksikasjad.`"
                                                 @click="openCellModal(r, c)"
+                                                @keydown.enter.prevent="
+                                                    openCellModal(r, c)
+                                                "
+                                                @keydown.space.prevent="
+                                                    openCellModal(r, c)
+                                                "
                                             >
                                                 <div
                                                     class="absolute inset-0 bg-cover bg-center"
@@ -771,7 +785,8 @@ function handleBedStatusAction() {
                                                 </span>
                                                 <button
                                                     type="button"
-                                                    class="absolute top-1 right-1 rounded-full bg-black/60 p-1 text-white opacity-0 group-hover:opacity-100"
+                                                    class="absolute top-1 right-1 z-20 flex min-h-9 min-w-9 items-center justify-center rounded-full bg-black/60 p-1.5 text-white opacity-100 shadow-sm md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+                                                    aria-label="Eemalda taim ruudust"
                                                     @click.stop="
                                                         removePlantFromBed(
                                                             plantAt(r, c)!,
@@ -779,11 +794,11 @@ function handleBedStatusAction() {
                                                     "
                                                 >
                                                     <span
-                                                        class="material-symbols-outlined text-sm"
+                                                        class="material-symbols-outlined text-base"
                                                         >close</span
                                                     >
                                                 </button>
-                                            </button>
+                                            </div>
                                             <div
                                                 v-else-if="
                                                     (gridLayout[r]?.[c] ?? 0) ===
@@ -809,13 +824,14 @@ function handleBedStatusAction() {
                                             <button
                                                 v-else
                                                 type="button"
-                                                class="flex items-center justify-center rounded-xl border border-dashed text-emerald-800/75 transition hover:-translate-y-0.5 hover:text-emerald-900"
+                                                class="flex touch-manipulation items-center justify-center rounded-xl border border-dashed text-emerald-800/75 transition hover:-translate-y-0.5 hover:text-emerald-900 active:scale-[0.98]"
                                                 :class="emptyCellClass(r, c)"
                                                 :style="{
                                                     width: `${bedCellSize}px`,
                                                     height: `${bedCellSize}px`,
                                                 }"
-                                                title="Lisa taim sellesse ruutu"
+                                                :title="`Lisa taim ruutu (rida ${r + 1}, veerg ${c + 1})`"
+                                                :aria-label="`Lisa taim ruutu, rida ${r + 1}, veerg ${c + 1}`"
                                                 @click="
                                                     openCellModal(r, c)
                                                 "
@@ -854,7 +870,7 @@ function handleBedStatusAction() {
                                 </div>
                                 <Link
                                     href="/plants/create"
-                                    class="inline-flex items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-3.5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+                                    class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-3.5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 sm:min-h-0"
                                 >
                                     <span class="material-symbols-outlined"
                                         >add</span
@@ -890,11 +906,12 @@ function handleBedStatusAction() {
                                     </span>
                                     <button
                                         type="button"
-                                        class="rounded-full p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                        class="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                        aria-label="Eemalda taim peenralt"
                                         @click="removePlantFromBed(p)"
                                     >
                                         <span
-                                            class="material-symbols-outlined text-lg"
+                                            class="material-symbols-outlined text-xl"
                                             >close</span
                                         >
                                     </button>
@@ -915,7 +932,7 @@ function handleBedStatusAction() {
                                 </h3>
                                 <Link
                                     :href="`/calendar/note-form?bed_id=${bed.id}&return_to=${encodeURIComponent(`/beds/${bed.id}`)}`"
-                                    class="inline-flex items-center gap-1.5 rounded-xl border border-primary bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+                                    class="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-primary bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 sm:min-h-0"
                                 >
                                     <span
                                         class="material-symbols-outlined text-base"
@@ -971,15 +988,15 @@ function handleBedStatusAction() {
             <Teleport to="body">
                 <div
                     v-if="cellModal"
-                    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+                    class="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:items-center sm:pb-4"
                     @click.self="cellModal = null"
                 >
                     <div
-                        class="flex max-h-[70vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-card shadow-xl ring-1 ring-black/5"
+                        class="flex max-h-[min(85dvh,32rem)] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-card shadow-xl ring-1 ring-black/5 sm:max-h-[min(70vh,36rem)]"
                         @click.stop
                     >
                         <div
-                            class="flex items-center justify-between border-b border-border p-4"
+                            class="flex items-center justify-between gap-3 border-b border-border p-4"
                         >
                             <div>
                                 <h3 class="font-semibold">
@@ -994,15 +1011,16 @@ function handleBedStatusAction() {
                             </div>
                             <button
                                 type="button"
-                                class="rounded-lg p-2 hover:bg-muted"
+                                class="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl hover:bg-muted"
+                                aria-label="Sulge"
                                 @click="cellModal = null"
                             >
-                                <span class="material-symbols-outlined"
+                                <span class="material-symbols-outlined text-xl"
                                     >close</span
                                 >
                             </button>
                         </div>
-                        <div class="overflow-y-auto p-2">
+                        <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-2">
                             <template v-if="modalPlant">
                                 <div
                                     class="mb-3 rounded-2xl border border-border/60 bg-background/70 px-3.5 py-3"
@@ -1055,7 +1073,8 @@ function handleBedStatusAction() {
                                         >
                                             <button
                                                 type="button"
-                                                class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-muted"
+                                                class="inline-flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-foreground transition hover:bg-muted sm:h-8 sm:w-8"
+                                                aria-label="Vähenda kogust"
                                                 @click="changeSelectedPlantQuantity(-1)"
                                             >
                                                 <span class="material-symbols-outlined text-base"
@@ -1069,7 +1088,8 @@ function handleBedStatusAction() {
                                             </span>
                                             <button
                                                 type="button"
-                                                class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-muted"
+                                                class="inline-flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-foreground transition hover:bg-muted sm:h-8 sm:w-8"
+                                                aria-label="Suurenda kogust"
                                                 @click="changeSelectedPlantQuantity(1)"
                                             >
                                                 <span class="material-symbols-outlined text-base"
@@ -1086,7 +1106,7 @@ function handleBedStatusAction() {
                                 <div class="grid gap-2 sm:grid-cols-2">
                                     <button
                                         type="button"
-                                        class="inline-flex items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-3.5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+                                        class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-3.5 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 sm:min-h-0"
                                         @click="
                                             cellModal &&
                                             updatePlantQuantityInCell(
@@ -1103,7 +1123,7 @@ function handleBedStatusAction() {
                                     </button>
                                     <button
                                         type="button"
-                                        class="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-3.5 py-3 text-sm font-semibold text-foreground transition hover:bg-muted"
+                                        class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3.5 py-3 text-sm font-semibold text-foreground transition hover:bg-muted sm:min-h-0"
                                         @click="removePlantFromBed(modalPlant)"
                                     >
                                         <span class="material-symbols-outlined text-base"
@@ -1123,7 +1143,7 @@ function handleBedStatusAction() {
                                 </p>
                                 <Link
                                     href="/plants/create"
-                                    class="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-primary/40 bg-primary/10 py-3.5 font-semibold text-primary"
+                                    class="flex min-h-11 w-full touch-manipulation items-center justify-center gap-2 rounded-xl border-2 border-primary/40 bg-primary/10 py-3.5 font-semibold text-primary sm:min-h-0"
                                 >
                                     <span class="material-symbols-outlined"
                                         >add_circle</span
@@ -1157,7 +1177,8 @@ function handleBedStatusAction() {
                                         >
                                             <button
                                                 type="button"
-                                                class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-muted"
+                                                class="inline-flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-foreground transition hover:bg-muted sm:h-8 sm:w-8"
+                                                aria-label="Vähenda kogust"
                                                 @click="changeSelectedPlantQuantity(-1)"
                                             >
                                                 <span class="material-symbols-outlined text-base"
@@ -1171,7 +1192,8 @@ function handleBedStatusAction() {
                                             </span>
                                             <button
                                                 type="button"
-                                                class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-muted"
+                                                class="inline-flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-foreground transition hover:bg-muted sm:h-8 sm:w-8"
+                                                aria-label="Suurenda kogust"
                                                 @click="changeSelectedPlantQuantity(1)"
                                             >
                                                 <span class="material-symbols-outlined text-base"
@@ -1204,7 +1226,7 @@ function handleBedStatusAction() {
                                         >
                                             <button
                                                 type="button"
-                                                class="flex w-full items-center gap-3 rounded-xl border border-transparent p-3 text-left transition hover:bg-primary/10"
+                                                class="flex min-h-[3.25rem] w-full touch-manipulation items-center gap-3 rounded-xl border border-transparent p-3.5 text-left transition hover:bg-primary/10 sm:min-h-0 sm:p-3"
                                                 @click="
                                                     cellModal &&
                                                     assignPlantToCell(

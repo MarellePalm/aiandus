@@ -142,6 +142,15 @@ const GARDEN_GRID_CELL_CM = 30;
 const MIN_ZOOM = 0.55;
 const MAX_ZOOM = 4.5;
 const ZOOM_STEP = 0.25;
+const MIN_PINCH_DISTANCE_PX = 10;
+
+const viewportPointerMap = new Map<number, { x: number; y: number }>();
+type ViewportPinchState = {
+    startDistance: number;
+    startZoom: number;
+    gx: number;
+    gy: number;
+};
 
 const localPositions = ref<Record<number, { x: number; y: number }>>({});
 const localObjectPositions = ref<Record<number, { x: number; y: number }>>({});
@@ -150,6 +159,9 @@ const draggingObjectId = ref<number | null>(null);
 const dragMoved = ref(false);
 const dragOffset = ref({ x: 0, y: 0 });
 const dragPointerId = ref<number | null>(null);
+const dragCaptureTarget = ref<HTMLElement | null>(null);
+const panPointerId = ref<number | null>(null);
+const pinchState = ref<ViewportPinchState | null>(null);
 const hoveredBedId = ref<number | null>(null);
 const hoveredObjectId = ref<number | null>(null);
 const selectedBedId = ref<number | null>(null);
@@ -159,9 +171,16 @@ const activeToolVariant = ref<ToolVariant | null>(null);
 const activeToolCategoryId = ref<ToolCategoryId | null>(null);
 const toolDrawerOpen = ref(false);
 const plannerControlsOpen = ref(false);
+const createGardenPlanModalOpen = ref(false);
+const confirmDialogOpen = ref(false);
 const toolSearch = ref('');
 const otherObjectNameDraft = ref('');
 const otherObjectNameError = ref('');
+const createGardenPlanNameInput = ref<HTMLInputElement | null>(null);
+const confirmDialogTitle = ref('');
+const confirmDialogMessage = ref('');
+const confirmDialogConfirmLabel = ref('Kinnita');
+let confirmDialogAction: (() => void) | null = null;
 const showBedsLayer = ref(true);
 const showStructuresLayer = ref(true);
 const showWaterLayer = ref(true);
@@ -419,7 +438,10 @@ const zoom = ref(1);
 const panX = ref(0);
 const panY = ref(0);
 const isPanning = ref(false);
+const panGestureMoved = ref(false);
+const suppressPlannerSurfaceClick = ref(false);
 const panStart = ref({ x: 0, y: 0, originX: 0, originY: 0 });
+const PAN_CLICK_SUPPRESS_PX = 8;
 let resizeObserver: ResizeObserver | null = null;
 const highlightSelectedObjectPanel = ref(false);
 const highlightSelectedBedPanel = ref(false);
@@ -439,6 +461,9 @@ const gardenForm = useForm({
     widthMeters: props.gardenPlan.width / 100,
     heightMeters: props.gardenPlan.height / 100,
 });
+const createGardenPlanForm = useForm({
+    name: '',
+});
 const objectForm = useForm({
     name: '',
     widthMeters: 0,
@@ -450,14 +475,14 @@ function openGardenPlanEditor() {
 }
 
 function deleteGardenPlan() {
-    if (
-        !confirm(
-            'Kustutada see aiaplaan koos selle peenarde ja aiaobjektidega? Sidumata taimed jäävad alles.',
-        )
-    ) {
-        return;
-    }
-    router.delete(`/garden-plans/${props.gardenPlan.id}`);
+    openConfirmDialog(
+        'Kustuta aiaplaan?',
+        'Kustutada see aiaplaan koos selle peenarde ja aiaobjektidega? Sidumata taimed jäävad alles.',
+        'Kustuta aiaplaan',
+        () => {
+            router.delete(`/garden-plans/${props.gardenPlan.id}`);
+        },
+    );
 }
 
 function onGardenPlanSelect(event: Event) {
@@ -467,12 +492,57 @@ function onGardenPlanSelect(event: Event) {
     router.visit(`/map/${id}`);
 }
 
-function createGardenPlan() {
-    const raw = window.prompt('Uue aiaplaani nimi (tühi = „Minu aed“):', '');
-    if (raw === null) return;
-    router.post('/garden-plans', {
-        name: raw.trim() || undefined,
-    });
+function openCreateGardenPlanModal() {
+    createGardenPlanForm.reset();
+    createGardenPlanForm.clearErrors();
+    createGardenPlanModalOpen.value = true;
+    nextTick(() => createGardenPlanNameInput.value?.focus());
+}
+
+function closeCreateGardenPlanModal() {
+    if (createGardenPlanForm.processing) return;
+    createGardenPlanModalOpen.value = false;
+}
+
+function submitCreateGardenPlan() {
+    createGardenPlanForm
+        .transform((data) => ({
+            name: data.name.trim() || undefined,
+        }))
+        .post('/garden-plans', {
+            preserveScroll: true,
+            onSuccess: () => {
+                createGardenPlanModalOpen.value = false;
+                createGardenPlanForm.reset();
+            },
+            onError: () => {
+                nextTick(() => createGardenPlanNameInput.value?.focus());
+            },
+        });
+}
+
+function openConfirmDialog(
+    title: string,
+    message: string,
+    confirmLabel: string,
+    action: () => void,
+) {
+    confirmDialogTitle.value = title;
+    confirmDialogMessage.value = message;
+    confirmDialogConfirmLabel.value = confirmLabel;
+    confirmDialogAction = action;
+    confirmDialogOpen.value = true;
+}
+
+function closeConfirmDialog() {
+    confirmDialogOpen.value = false;
+    confirmDialogAction = null;
+}
+
+function runConfirmDialogAction() {
+    const action = confirmDialogAction;
+    closeConfirmDialog();
+    action?.();
 }
 
 watch(
@@ -545,9 +615,13 @@ onBeforeUnmount(() => {
     window.removeEventListener('pointermove', onObjectPointerMove);
     window.removeEventListener('pointerup', stopObjectDragging);
     window.removeEventListener('pointercancel', stopObjectDragging);
-    window.removeEventListener('pointermove', onPanMove);
+    window.removeEventListener('pointermove', onPlannerWindowPointerMove);
     window.removeEventListener('pointerup', stopPanning);
     window.removeEventListener('pointercancel', stopPanning);
+    window.removeEventListener('pointerup', onPinchPointerUp);
+    window.removeEventListener('pointercancel', onPinchPointerUp);
+    viewportPointerMap.clear();
+    pinchState.value = null;
     resizeObserver?.disconnect();
     if (objectPanelHighlightTimeout) clearTimeout(objectPanelHighlightTimeout);
     if (bedPanelHighlightTimeout) clearTimeout(bedPanelHighlightTimeout);
@@ -823,8 +897,14 @@ function editBed(id: number) {
 }
 
 function deleteBed(id: number, name: string) {
-    if (!confirm(`Eemaldada peenar "${name}"? Taimed jäävad peenrata.`)) return;
-    router.delete(`/beds/${id}`, { preserveScroll: true });
+    openConfirmDialog(
+        'Eemalda peenar?',
+        `Eemaldada peenar "${name}"? Taimed jäävad peenrata.`,
+        'Eemalda peenar',
+        () => {
+            router.delete(`/beds/${id}`, { preserveScroll: true });
+        },
+    );
 }
 
 function getBedLayout(bed: Bed): number[][] {
@@ -1112,6 +1192,15 @@ function startDragging(bed: Bed, event: PointerEvent) {
     draggingBedId.value = bed.id;
     dragMoved.value = false;
     dragPointerId.value = event.pointerId;
+    const captureEl = event.currentTarget as HTMLElement | null;
+    dragCaptureTarget.value = captureEl;
+    if (captureEl) {
+        try {
+            captureEl.setPointerCapture(event.pointerId);
+        } catch {
+            /* noop */
+        }
+    }
     dragOffset.value = {
         x: pointer.x - current.x,
         y: pointer.y - current.y,
@@ -1123,7 +1212,12 @@ function startDragging(bed: Bed, event: PointerEvent) {
 }
 
 function onPointerMove(event: PointerEvent) {
-    if (draggingBedId.value === null) return;
+    if (
+        draggingBedId.value === null ||
+        event.pointerId !== dragPointerId.value
+    ) {
+        return;
+    }
 
     const bed = props.beds.find((item) => item.id === draggingBedId.value);
     if (!bed) return;
@@ -1150,6 +1244,14 @@ function stopDragging() {
     if (draggingBedId.value === null) return;
 
     const bedId = draggingBedId.value;
+    if (dragCaptureTarget.value && dragPointerId.value !== null) {
+        try {
+            dragCaptureTarget.value.releasePointerCapture(dragPointerId.value);
+        } catch {
+            /* noop */
+        }
+    }
+    dragCaptureTarget.value = null;
     draggingBedId.value = null;
     dragPointerId.value = null;
 
@@ -1184,6 +1286,15 @@ function startObjectDragging(object: GardenObject, event: PointerEvent) {
     draggingObjectId.value = object.id;
     dragMoved.value = false;
     dragPointerId.value = event.pointerId;
+    const captureEl = event.currentTarget as HTMLElement | null;
+    dragCaptureTarget.value = captureEl;
+    if (captureEl) {
+        try {
+            captureEl.setPointerCapture(event.pointerId);
+        } catch {
+            /* noop */
+        }
+    }
     dragOffset.value = {
         x: pointer.x - current.x,
         y: pointer.y - current.y,
@@ -1195,7 +1306,12 @@ function startObjectDragging(object: GardenObject, event: PointerEvent) {
 }
 
 function onObjectPointerMove(event: PointerEvent) {
-    if (draggingObjectId.value === null) return;
+    if (
+        draggingObjectId.value === null ||
+        event.pointerId !== dragPointerId.value
+    ) {
+        return;
+    }
 
     const object = props.gardenObjects.find(
         (item) => item.id === draggingObjectId.value,
@@ -1224,6 +1340,14 @@ function stopObjectDragging() {
     if (draggingObjectId.value === null) return;
 
     const objectId = draggingObjectId.value;
+    if (dragCaptureTarget.value && dragPointerId.value !== null) {
+        try {
+            dragCaptureTarget.value.releasePointerCapture(dragPointerId.value);
+        } catch {
+            /* noop */
+        }
+    }
+    dragCaptureTarget.value = null;
     draggingObjectId.value = null;
     dragPointerId.value = null;
 
@@ -1249,11 +1373,206 @@ function stopObjectDragging() {
     );
 }
 
-function startPanning(event: PointerEvent) {
-    void event;
-    // Planner surface panning is intentionally disabled:
-    // the grid stays fixed and only objects are moved.
-    return;
+function isPlannerPanBlockedTarget(target: EventTarget | null): boolean {
+    if (!target || !(target instanceof Element)) {
+        return false;
+    }
+    return Boolean(
+        target.closest(
+            '[data-bed-shape="true"], [data-object-shape="true"], [data-no-drag="true"], [data-ui-overlay="true"], button, a, input, select, textarea, label',
+        ),
+    );
+}
+
+function endPanGestureForPinch() {
+    if (!isPanning.value) {
+        return;
+    }
+    window.removeEventListener('pointermove', onPlannerWindowPointerMove);
+    window.removeEventListener('pointerup', stopPanning);
+    window.removeEventListener('pointercancel', stopPanning);
+    const vp = plannerViewport.value;
+    if (vp && panPointerId.value !== null) {
+        try {
+            vp.releasePointerCapture(panPointerId.value);
+        } catch {
+            /* noop */
+        }
+    }
+    panPointerId.value = null;
+    isPanning.value = false;
+    panGestureMoved.value = false;
+}
+
+function beginPinchGesture(vp: HTMLElement) {
+    const rect = vp.getBoundingClientRect();
+    const pts = [...viewportPointerMap.values()];
+    if (pts.length < 2) {
+        return;
+    }
+    const [p1, p2] = pts;
+    const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    if (dist < MIN_PINCH_DISTANCE_PX) {
+        return;
+    }
+    const mx = (p1.x + p2.x) / 2 - rect.left;
+    const my = (p1.y + p2.y) / 2 - rect.top;
+    const gx = (mx - panX.value) / zoom.value;
+    const gy = (my - panY.value) / zoom.value;
+    pinchState.value = {
+        startDistance: dist,
+        startZoom: zoom.value,
+        gx,
+        gy,
+    };
+    for (const id of viewportPointerMap.keys()) {
+        try {
+            vp.setPointerCapture(id);
+        } catch {
+            /* noop */
+        }
+    }
+    window.addEventListener('pointermove', onPlannerWindowPointerMove);
+    window.addEventListener('pointerup', onPinchPointerUp);
+    window.addEventListener('pointercancel', onPinchPointerUp);
+}
+
+function applyPinchFromMap() {
+    const state = pinchState.value;
+    const vp = plannerViewport.value;
+    if (!state || !vp || viewportPointerMap.size < 2) {
+        return;
+    }
+    const rect = vp.getBoundingClientRect();
+    const pts = [...viewportPointerMap.values()];
+    if (pts.length < 2) {
+        return;
+    }
+    const [a, b] = pts;
+    const dist = Math.hypot(b.x - a.x, b.y - a.y);
+    if (dist < 1) {
+        return;
+    }
+    const ratio = dist / state.startDistance;
+    const newZoom = Math.min(
+        MAX_ZOOM,
+        Math.max(MIN_ZOOM, Number((state.startZoom * ratio).toFixed(3))),
+    );
+    const mx = (a.x + b.x) / 2 - rect.left;
+    const my = (a.y + b.y) / 2 - rect.top;
+    panX.value = mx - state.gx * newZoom;
+    panY.value = my - state.gy * newZoom;
+    zoom.value = newZoom;
+}
+
+function onPlannerWindowPointerMove(event: PointerEvent) {
+    if (viewportPointerMap.has(event.pointerId)) {
+        viewportPointerMap.set(event.pointerId, {
+            x: event.clientX,
+            y: event.clientY,
+        });
+    }
+
+    if (pinchState.value) {
+        applyPinchFromMap();
+        return;
+    }
+
+    if (!isPanning.value || event.pointerId !== panPointerId.value) {
+        return;
+    }
+
+    const dx = event.clientX - panStart.value.x;
+    const dy = event.clientY - panStart.value.y;
+    if (
+        !panGestureMoved.value &&
+        (Math.abs(dx) > PAN_CLICK_SUPPRESS_PX ||
+            Math.abs(dy) > PAN_CLICK_SUPPRESS_PX)
+    ) {
+        panGestureMoved.value = true;
+    }
+
+    panX.value = panStart.value.originX + dx;
+    panY.value = panStart.value.originY + dy;
+}
+
+function onPinchPointerUp(event: PointerEvent) {
+    viewportPointerMap.delete(event.pointerId);
+    if (!pinchState.value) {
+        return;
+    }
+    const vp = plannerViewport.value;
+    if (vp) {
+        try {
+            vp.releasePointerCapture(event.pointerId);
+        } catch {
+            /* noop */
+        }
+    }
+    if (viewportPointerMap.size < 2) {
+        window.removeEventListener('pointermove', onPlannerWindowPointerMove);
+        window.removeEventListener('pointerup', onPinchPointerUp);
+        window.removeEventListener('pointercancel', onPinchPointerUp);
+        pinchState.value = null;
+        suppressPlannerSurfaceClick.value = true;
+        nextTick(() => {
+            suppressPlannerSurfaceClick.value = false;
+        });
+    }
+}
+
+function handleViewportPointerDown(event: PointerEvent) {
+    if (event.pointerType === 'mouse' && event.button !== 0) {
+        return;
+    }
+    if (isPlannerPanBlockedTarget(event.target)) {
+        return;
+    }
+
+    const vp = plannerViewport.value;
+    if (!vp) {
+        return;
+    }
+
+    viewportPointerMap.set(event.pointerId, {
+        x: event.clientX,
+        y: event.clientY,
+    });
+
+    if (viewportPointerMap.size === 2) {
+        const pts = [...viewportPointerMap.values()];
+        const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+        if (dist < MIN_PINCH_DISTANCE_PX) {
+            const ids = [...viewportPointerMap.keys()];
+            viewportPointerMap.delete(ids[ids.length - 1]);
+            return;
+        }
+        endPanGestureForPinch();
+        beginPinchGesture(vp);
+        return;
+    }
+
+    if (viewportPointerMap.size !== 1) {
+        return;
+    }
+
+    isPanning.value = true;
+    panGestureMoved.value = false;
+    panPointerId.value = event.pointerId;
+    panStart.value = {
+        x: event.clientX,
+        y: event.clientY,
+        originX: panX.value,
+        originY: panY.value,
+    };
+    try {
+        vp.setPointerCapture(event.pointerId);
+    } catch {
+        /* noop */
+    }
+    window.addEventListener('pointermove', onPlannerWindowPointerMove);
+    window.addEventListener('pointerup', stopPanning);
+    window.addEventListener('pointercancel', stopPanning);
 }
 
 function getDefaultToolVariant(type: GardenObjectType): ToolVariant {
@@ -1336,7 +1655,13 @@ function isGardenPresetActive(
 
 function handlePlannerSurfaceClick(event: MouseEvent) {
     if (!activeTool.value) return;
-    if (isPanning.value || dragMoved.value) return;
+    if (
+        isPanning.value ||
+        dragMoved.value ||
+        suppressPlannerSurfaceClick.value
+    ) {
+        return;
+    }
 
     const target = event.target as HTMLElement | null;
     if (
@@ -1406,17 +1731,21 @@ function handlePlannerSurfaceClick(event: MouseEvent) {
 
 function deleteSelectedObject() {
     if (!selectedObject.value) return;
-
-    if (!confirm(`Eemaldada aiaelement "${selectedObject.value.name}"?`))
-        return;
-
-    router.delete(`/garden-objects/${selectedObject.value.id}`, {
-        preserveScroll: true,
-        onSuccess: () => {
-            selectedObjectId.value = null;
-            hoveredObjectId.value = null;
+    const target = selectedObject.value;
+    openConfirmDialog(
+        'Eemalda aiaelement?',
+        `Eemaldada aiaelement "${target.name}"?`,
+        'Eemalda element',
+        () => {
+            router.delete(`/garden-objects/${target.id}`, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    selectedObjectId.value = null;
+                    hoveredObjectId.value = null;
+                },
+            });
         },
-    });
+    );
 }
 
 function duplicateSelectedObject() {
@@ -1561,18 +1890,44 @@ function objectVariantType(object: GardenObject): GardenObjectType {
     return object.type;
 }
 
-function onPanMove(event: PointerEvent) {
-    if (!isPanning.value) return;
+function stopPanning(event?: PointerEvent) {
+    if (
+        event &&
+        panPointerId.value !== null &&
+        event.pointerId !== panPointerId.value
+    ) {
+        return;
+    }
 
-    panX.value = panStart.value.originX + (event.clientX - panStart.value.x);
-    panY.value = panStart.value.originY + (event.clientY - panStart.value.y);
-}
+    if (!isPanning.value) {
+        return;
+    }
 
-function stopPanning() {
-    isPanning.value = false;
-    window.removeEventListener('pointermove', onPanMove);
+    window.removeEventListener('pointermove', onPlannerWindowPointerMove);
     window.removeEventListener('pointerup', stopPanning);
     window.removeEventListener('pointercancel', stopPanning);
+
+    const vp = plannerViewport.value;
+    if (vp && panPointerId.value !== null) {
+        try {
+            vp.releasePointerCapture(panPointerId.value);
+        } catch {
+            /* noop */
+        }
+        viewportPointerMap.delete(panPointerId.value);
+    }
+
+    panPointerId.value = null;
+    const moved = panGestureMoved.value;
+    isPanning.value = false;
+
+    if (moved) {
+        suppressPlannerSurfaceClick.value = true;
+        nextTick(() => {
+            suppressPlannerSurfaceClick.value = false;
+        });
+    }
+    panGestureMoved.value = false;
 }
 
 function plannerSurfaceStyle() {
@@ -1709,7 +2064,7 @@ function saveGardenPlan() {
                                     :class="
                                         plannerFeedback.tone === 'error'
                                             ? 'border-rose-200 bg-rose-50 text-rose-700'
-                                            : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                            : 'border-amber-200 bg-amber-50 text-amber-800'
                                     "
                                 >
                                     <p class="text-sm font-medium">
@@ -1840,7 +2195,7 @@ function saveGardenPlan() {
                                             >
                                                 <button
                                                     type="button"
-                                                    class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-foreground transition hover:bg-muted"
+                                                    class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border bg-card text-foreground transition hover:bg-muted sm:h-8 sm:w-8 sm:min-h-0 sm:min-w-0"
                                                     @click="
                                                         changeZoom(-ZOOM_STEP)
                                                     "
@@ -1852,14 +2207,14 @@ function saveGardenPlan() {
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    class="inline-flex rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted"
+                                                    class="inline-flex min-h-11 items-center justify-center rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted sm:min-h-0 sm:py-1.5"
                                                     @click="resetZoom"
                                                 >
                                                     {{ zoomPercent }}
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-foreground transition hover:bg-muted"
+                                                    class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border bg-card text-foreground transition hover:bg-muted sm:h-8 sm:w-8 sm:min-h-0 sm:min-w-0"
                                                     @click="
                                                         changeZoom(ZOOM_STEP)
                                                     "
@@ -1908,7 +2263,7 @@ function saveGardenPlan() {
                                         <button
                                             type="button"
                                             class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-4 py-2 text-xs font-semibold text-primary transition hover:bg-primary/15"
-                                            @click="createGardenPlan"
+                                            @click="openCreateGardenPlanModal"
                                         >
                                             <span
                                                 class="material-symbols-outlined text-base"
@@ -2713,12 +3068,9 @@ function saveGardenPlan() {
 
                                             <div
                                                 ref="plannerViewport"
-                                                class="relative flex-1 min-w-0 overflow-auto rounded-[1.75rem] border border-border/80 bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(244,239,229,0.98))] p-3 shadow-inner sm:p-4 cursor-default"
-                                                :style="{
-                                                    height: 'min(72vh, 920px)',
-                                                }"
-                                                @pointerdown="startPanning($event)"
-                                                @wheel="onPlannerWheel($event)"
+                                                class="relative h-[min(58vh,560px)] flex-1 min-w-0 cursor-default touch-none overflow-hidden rounded-[1.75rem] border border-border/80 bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(244,239,229,0.98))] p-3 shadow-inner sm:p-4 md:h-[min(72vh,920px)]"
+                                                @pointerdown="handleViewportPointerDown($event)"
+                                                @wheel.prevent="onPlannerWheel($event)"
                                             >
                                             <div
                                                 class="relative overflow-hidden rounded-[1.6rem] border border-emerald-900/10 bg-emerald-50/80"
@@ -2776,7 +3128,7 @@ function saveGardenPlan() {
                                                 <article
                                                     v-for="bed in plannerBeds"
                                                     :key="bed.id"
-                                                    class="group absolute transition-transform duration-150"
+                                                    class="group touch-none absolute transition-transform duration-150"
                                                     :class="[
                                                         draggingBedId === bed.id
                                                             ? 'z-30 scale-[1.02]'
@@ -2976,7 +3328,7 @@ function saveGardenPlan() {
                                                 <article
                                                     v-for="object in plannerObjects"
                                                     :key="`object-${object.id}`"
-                                                    class="group absolute transition-transform duration-150"
+                                                    class="group touch-none absolute transition-transform duration-150"
                                                     :class="
                                                         draggingObjectId ===
                                                         object.id
@@ -3126,6 +3478,53 @@ function saveGardenPlan() {
                                                         </div>
                                                     </div>
                                                 </article>
+                                            </div>
+                                            <div
+                                                class="pointer-events-none absolute bottom-2 right-2 z-40 md:hidden"
+                                            >
+                                                <div
+                                                    class="pointer-events-auto flex items-center gap-0.5 rounded-2xl border border-border/80 bg-card/95 p-1 shadow-lg backdrop-blur-sm"
+                                                    data-ui-overlay="true"
+                                                >
+                                                    <button
+                                                        type="button"
+                                                        class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background text-foreground active:bg-muted"
+                                                        @click.stop="
+                                                            changeZoom(-ZOOM_STEP)
+                                                        "
+                                                    >
+                                                        <span
+                                                            class="material-symbols-outlined text-xl"
+                                                            >remove</span
+                                                        >
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        class="inline-flex h-11 min-w-[3.25rem] items-center justify-center rounded-xl border border-border bg-background px-2 text-xs font-semibold text-foreground active:bg-muted"
+                                                        @click.stop="resetZoom"
+                                                    >
+                                                        {{ zoomPercent }}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background text-foreground active:bg-muted"
+                                                        @click.stop="
+                                                            changeZoom(ZOOM_STEP)
+                                                        "
+                                                    >
+                                                        <span
+                                                            class="material-symbols-outlined text-xl"
+                                                            >add</span
+                                                        >
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        class="inline-flex h-11 items-center justify-center rounded-xl border border-primary/25 bg-primary/15 px-2.5 text-xs font-semibold text-primary active:bg-primary/25"
+                                                        @click.stop="applyFitZoom"
+                                                    >
+                                                        Mahuta
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                         </div>
@@ -3611,6 +4010,114 @@ function saveGardenPlan() {
             @search="(q) => (searchQuery = q)"
             @clear="searchQuery = ''"
         />
+
+        <div
+            v-if="createGardenPlanModalOpen"
+            class="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 px-4"
+            @click.self="closeCreateGardenPlanModal"
+        >
+            <form
+                class="w-full max-w-md rounded-3xl border border-border/70 bg-background p-5 shadow-2xl"
+                @submit.prevent="submitCreateGardenPlan"
+            >
+                <div class="mb-4">
+                    <p
+                        class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                    >
+                        Uus aiaplaan
+                    </p>
+                    <h3 class="mt-1 text-lg font-semibold text-foreground">
+                        Lisa uue aia nimi
+                    </h3>
+                    <p class="mt-1 text-sm text-muted-foreground">
+                        Tühja nime korral kasutatakse vaikimisi nime "Minu aed".
+                    </p>
+                </div>
+
+                <label class="block">
+                    <span class="sr-only">Uue aia nimi</span>
+                    <input
+                        ref="createGardenPlanNameInput"
+                        v-model="createGardenPlanForm.name"
+                        type="text"
+                        class="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-foreground outline-none ring-primary/25 placeholder:text-muted-foreground focus:ring-2"
+                        placeholder="Minu aed"
+                        maxlength="120"
+                        @keydown.esc.prevent="closeCreateGardenPlanModal"
+                    />
+                </label>
+
+                <p
+                    v-if="createGardenPlanForm.errors.name"
+                    class="mt-2 text-sm text-red-600"
+                >
+                    {{ createGardenPlanForm.errors.name }}
+                </p>
+
+                <div class="mt-5 flex items-center justify-end gap-2">
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+                        :disabled="createGardenPlanForm.processing"
+                        @click="closeCreateGardenPlanModal"
+                    >
+                        Tühista
+                    </button>
+                    <button
+                        type="submit"
+                        class="inline-flex items-center rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70"
+                        :disabled="createGardenPlanForm.processing"
+                    >
+                        {{
+                            createGardenPlanForm.processing
+                                ? 'Loon aiaplaani...'
+                                : 'Loo aiaplaan'
+                        }}
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div
+            v-if="confirmDialogOpen"
+            class="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 px-4"
+            @click.self="closeConfirmDialog"
+        >
+            <form
+                class="w-full max-w-md rounded-3xl border border-border/70 bg-background p-5 shadow-2xl"
+                @submit.prevent="runConfirmDialogAction"
+            >
+                <div class="mb-4">
+                    <p
+                        class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                    >
+                        Kinnitus
+                    </p>
+                    <h3 class="mt-1 text-lg font-semibold text-foreground">
+                        {{ confirmDialogTitle }}
+                    </h3>
+                    <p class="mt-2 text-sm text-muted-foreground">
+                        {{ confirmDialogMessage }}
+                    </p>
+                </div>
+
+                <div class="mt-5 flex items-center justify-end gap-2">
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+                        @click="closeConfirmDialog"
+                    >
+                        Tühista
+                    </button>
+                    <button
+                        type="submit"
+                        class="inline-flex items-center rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+                    >
+                        {{ confirmDialogConfirmLabel }}
+                    </button>
+                </div>
+            </form>
+        </div>
     </AppLayout>
 </template>
 

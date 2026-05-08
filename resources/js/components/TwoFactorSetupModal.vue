@@ -50,26 +50,27 @@ const modalConfig = computed<{
 }>(() => {
     if (props.twoFactorEnabled) {
         return {
-            title: 'Two-Factor Authentication Enabled',
+            title: 'Kahefaktoriline autentimine on sees',
             description:
-                'Two-factor authentication is now enabled. Scan the QR code or enter the setup key in your authenticator app.',
-            buttonText: 'Close',
+                'Kahefaktoriline autentimine on nüüd lubatud. Skanni QR-kood või sisesta seadistusvõti autentimisrakenduses.',
+            buttonText: 'Sulge',
         };
     }
 
     if (showVerificationStep.value) {
         return {
-            title: 'Verify Authentication Code',
-            description: 'Enter the 6-digit code from your authenticator app',
-            buttonText: 'Continue',
+            title: 'Kinnita autentimiskood',
+            description:
+                'Sisesta 6-kohaline kood oma autentimisrakendusest.',
+            buttonText: 'Jätka',
         };
     }
 
     return {
-        title: 'Enable Two-Factor Authentication',
+        title: 'Luba kahefaktoriline autentimine',
         description:
-            'To finish enabling two-factor authentication, scan the QR code or enter the setup key in your authenticator app',
-        buttonText: 'Continue',
+            'Lõpetamiseks skanni QR-kood või sisesta seadistusvõti autentimisrakenduses.',
+        buttonText: 'Jätka',
     };
 });
 
@@ -200,7 +201,7 @@ watch(
                                 class="absolute inset-0 top-1/2 h-px w-full bg-border"
                             />
                             <span class="relative bg-card px-2 py-1"
-                                >or, enter the code manually</span
+                                >või sisesta kood käsitsi</span
                             >
                         </div>
 
@@ -285,14 +286,14 @@ watch(
                                     @click="showVerificationStep = false"
                                     :disabled="processing"
                                 >
-                                    Back
+                                    Tagasi
                                 </Button>
                                 <Button
                                     type="submit"
                                     class="w-auto flex-1"
                                     :disabled="processing || code.length < 6"
                                 >
-                                    Confirm
+                                    Kinnita
                                 </Button>
                             </div>
                         </div>

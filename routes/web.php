@@ -322,7 +322,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('overview');
 
     // Plants
-    Route::get('plants/create', fn () => Inertia::render('AddPlant'))->name('plants.create');
+    Route::get('plants/create', [PlantController::class, 'create'])->name('plants.create');
     Route::resource('plants', PlantController::class)->except(['create']);
     Route::patch('/plants/{plant}/favorite', [PlantController::class, 'toggleFavorite'])
         ->name('plants.favorite');
