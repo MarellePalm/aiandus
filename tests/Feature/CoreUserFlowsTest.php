@@ -124,8 +124,16 @@ test('authenticated user can create a bed', function () {
     ]);
 
     $response
-        ->assertRedirect(route('beds.show', $bed))
-        ->assertSessionHas('success', 'Peenar lisatud.');
+        ->assertRedirect(
+            route('map.show', [
+                'gardenPlan' => $plan->id,
+                'bed' => $bed->id,
+            ]),
+        )
+        ->assertSessionHas(
+            'success',
+            'Peenar lisatud. Lohista see aiaplaanil õigesse kohta.',
+        );
 });
 
 test('user can update bed garden position', function () {
@@ -215,7 +223,12 @@ test('authenticated user can create a bed from coordinate cells payload', functi
         [1, -1],
     ]);
 
-    $response->assertRedirect(route('beds.show', $bed));
+    $response->assertRedirect(
+        route('map.show', [
+            'gardenPlan' => $plan->id,
+            'bed' => $bed->id,
+        ]),
+    );
 });
 
 test('authenticated user can create a plant in own category', function () {

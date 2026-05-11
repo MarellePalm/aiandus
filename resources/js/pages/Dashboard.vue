@@ -77,8 +77,9 @@ type DashboardSummary = {
     notesCount: number;
 };
 const dashboardSummary = computed<DashboardSummary>(() => {
-    const fallbackNotes = recentNotes.value.filter((note) => note.done === false)
-        .length;
+    const fallbackNotes = recentNotes.value.filter(
+        (note) => note.done === false,
+    ).length;
 
     return {
         gardensCount: 0,
@@ -91,7 +92,9 @@ const dashboardSummary = computed<DashboardSummary>(() => {
         todayTasksCount: 0,
         overdueTasksCount: 0,
         notesCount: recentNotes.value.length,
-        ...(page.props.dashboardSummary as Partial<DashboardSummary> | undefined),
+        ...(page.props.dashboardSummary as
+            | Partial<DashboardSummary>
+            | undefined),
     };
 });
 
@@ -176,7 +179,10 @@ const dashboardHighlights = computed(() => {
     const summary = dashboardSummary.value;
     const totalBeds = Math.max(1, summary.bedsCount);
     const activeBeds = Math.max(0, summary.bedsCount - summary.emptyBedsCount);
-    const bedCoverage = Math.min(100, Math.round((activeBeds / totalBeds) * 100));
+    const bedCoverage = Math.min(
+        100,
+        Math.round((activeBeds / totalBeds) * 100),
+    );
     const plantsPlaced = Math.max(
         0,
         summary.plantsCount - summary.plantsWithoutBedCount,
@@ -189,7 +195,10 @@ const dashboardHighlights = computed(() => {
         summary.openTasksCount - summary.overdueTasksCount,
     );
     const taskPace = summary.openTasksCount
-        ? Math.min(100, Math.round((tasksClosed / summary.openTasksCount) * 100))
+        ? Math.min(
+              100,
+              Math.round((tasksClosed / summary.openTasksCount) * 100),
+          )
         : 100;
 
     return [
@@ -239,7 +248,8 @@ function noteRelativeDate(noteDate?: string | null): string {
     if (diffDays === -1) return 'Homme';
     if (diffDays > 1 && diffDays < 7) return `${diffDays} päeva tagasi`;
     if (diffDays >= 7 && diffDays < 14) return 'Eelmisel nädalal';
-    if (diffDays < 0 && diffDays > -7) return `${Math.abs(diffDays)} päeva pärast`;
+    if (diffDays < 0 && diffDays > -7)
+        return `${Math.abs(diffDays)} päeva pärast`;
 
     return new Intl.DateTimeFormat('et-EE', {
         day: 'numeric',
@@ -334,11 +344,7 @@ const animatedTodayValue = computed(() =>
 const STORAGE_KEY = 'dashboardSectionOrder';
 const COLLAPSED_KEY = 'dashboardSectionCollapsed';
 type SectionId = 'notes' | 'weather' | 'moon';
-const DEFAULT_ORDER: SectionId[] = [
-    'notes',
-    'weather',
-    'moon',
-];
+const DEFAULT_ORDER: SectionId[] = ['notes', 'weather', 'moon'];
 /** Ainult need kaks on kokku-volditavad; ülejäänud plokid on alati “lahti”. */
 const COLLAPSIBLE_SECTION_IDS: SectionId[] = ['weather', 'moon'];
 
@@ -354,7 +360,9 @@ const DESKTOP_SECTION_ORDER: SectionId[] = ['weather', 'moon', 'notes'];
 const displaySectionOrder = computed(() => {
     if (editLayout.value || !isDesktop.value) return sectionOrder.value;
 
-    return DESKTOP_SECTION_ORDER.filter((id) => sectionOrder.value.includes(id));
+    return DESKTOP_SECTION_ORDER.filter((id) =>
+        sectionOrder.value.includes(id),
+    );
 });
 
 function persistCollapsed(next: Iterable<SectionId>) {
@@ -508,8 +516,7 @@ onMounted(() => {
             const arr = JSON.parse(collapsedRaw) as unknown;
             if (Array.isArray(arr)) {
                 const valid = arr.filter(
-                    (id): id is SectionId =>
-                        id === 'weather' || id === 'moon',
+                    (id): id is SectionId => id === 'weather' || id === 'moon',
                 );
                 collapsedSectionIds.value = new Set(valid);
             }
@@ -556,12 +563,54 @@ onUnmounted(() => {
 
 // Õrnad hõljuvad lehed tervituskaardil (ambient).
 const wowLeaves = [
-    { icon: 'eco', left: '6%', top: '18%', size: 'text-base', delay: '0s', duration: '7s' },
-    { icon: 'spa', left: '88%', top: '24%', size: 'text-lg', delay: '1.2s', duration: '9s' },
-    { icon: 'local_florist', left: '22%', top: '68%', size: 'text-sm', delay: '2.5s', duration: '8s' },
-    { icon: 'eco', left: '72%', top: '78%', size: 'text-xl', delay: '0.8s', duration: '11s' },
-    { icon: 'spa', left: '52%', top: '6%', size: 'text-sm', delay: '3.2s', duration: '7.5s' },
-    { icon: 'local_florist', left: '14%', top: '88%', size: 'text-base', delay: '1.8s', duration: '10s' },
+    {
+        icon: 'eco',
+        left: '6%',
+        top: '18%',
+        size: 'text-base',
+        delay: '0s',
+        duration: '7s',
+    },
+    {
+        icon: 'spa',
+        left: '88%',
+        top: '24%',
+        size: 'text-lg',
+        delay: '1.2s',
+        duration: '9s',
+    },
+    {
+        icon: 'local_florist',
+        left: '22%',
+        top: '68%',
+        size: 'text-sm',
+        delay: '2.5s',
+        duration: '8s',
+    },
+    {
+        icon: 'eco',
+        left: '72%',
+        top: '78%',
+        size: 'text-xl',
+        delay: '0.8s',
+        duration: '11s',
+    },
+    {
+        icon: 'spa',
+        left: '52%',
+        top: '6%',
+        size: 'text-sm',
+        delay: '3.2s',
+        duration: '7.5s',
+    },
+    {
+        icon: 'local_florist',
+        left: '14%',
+        top: '88%',
+        size: 'text-base',
+        delay: '1.8s',
+        duration: '10s',
+    },
 ] as const;
 
 // Lumememma-stiilis + nupp: väikesed ümarad kiirtegevused selle kohal
@@ -625,8 +674,12 @@ const dashboardSectionHeaderStrip =
                             class="wow-hero wow-fade-up relative overflow-hidden rounded-[1.7rem] border border-primary/20 bg-linear-to-br from-primary/16 via-background to-primary/6 px-3.5 py-3 shadow-[0_12px_24px_rgba(43,74,52,0.1)] sm:px-4 sm:py-3.5"
                             style="--wow-delay: 0ms"
                         >
-                            <div class="wow-blob wow-blob-a pointer-events-none absolute -top-12 -right-10 h-32 w-32 rounded-full bg-primary/15 blur-2xl" />
-                            <div class="wow-blob wow-blob-b pointer-events-none absolute -bottom-14 -left-10 h-28 w-28 rounded-full bg-emerald-300/20 blur-2xl" />
+                            <div
+                                class="wow-blob wow-blob-a pointer-events-none absolute -top-12 -right-10 h-32 w-32 rounded-full bg-primary/15 blur-2xl"
+                            />
+                            <div
+                                class="wow-blob wow-blob-b pointer-events-none absolute -bottom-14 -left-10 h-28 w-28 rounded-full bg-emerald-300/20 blur-2xl"
+                            />
 
                             <div
                                 class="pointer-events-none absolute inset-0 overflow-hidden"
@@ -648,27 +701,46 @@ const dashboardSectionHeaderStrip =
                                 </span>
                             </div>
 
-                            <div class="wow-shimmer pointer-events-none absolute inset-0" aria-hidden="true" />
+                            <div
+                                class="wow-shimmer pointer-events-none absolute inset-0"
+                                aria-hidden="true"
+                            />
 
                             <div class="relative z-10">
-                                <p class="text-xs font-semibold tracking-[0.16em] text-primary/75 uppercase">
+                                <p
+                                    class="text-xs font-semibold tracking-[0.16em] text-primary/75 uppercase"
+                                >
                                     {{ greeting }}
                                 </p>
-                                <h2 class="mt-1 text-lg font-bold tracking-tight text-foreground sm:text-xl">
+                                <h2
+                                    class="mt-1 text-lg font-bold tracking-tight text-foreground sm:text-xl"
+                                >
                                     Sinu aiapäeviku tänane ülevaade
                                 </h2>
-                                <p class="mt-1 text-sm text-muted-foreground lg:text-[13px]">
+                                <p
+                                    class="mt-1 text-sm text-muted-foreground lg:text-[13px]"
+                                >
                                     {{ todayLabel }}
                                 </p>
-                                <div class="mt-3 grid grid-cols-3 gap-1.5 sm:gap-2">
+                                <div
+                                    class="mt-3 grid grid-cols-3 gap-1.5 sm:gap-2"
+                                >
                                     <div
-                                        v-for="(item, itemIndex) in animatedHighlights"
+                                        v-for="(
+                                            item, itemIndex
+                                        ) in animatedHighlights"
                                         :key="item.id"
                                         class="wow-fade-up rounded-xl border border-border/60 bg-card/85 px-2.5 py-2 shadow-sm"
-                                        :style="{ '--wow-delay': `${120 + itemIndex * 90}ms` }"
+                                        :style="{
+                                            '--wow-delay': `${120 + itemIndex * 90}ms`,
+                                        }"
                                     >
-                                        <div class="flex items-center justify-between gap-2">
-                                            <p class="text-[10px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
+                                        <div
+                                            class="flex items-center justify-between gap-2"
+                                        >
+                                            <p
+                                                class="text-[10px] font-semibold tracking-[0.1em] text-muted-foreground uppercase"
+                                            >
                                                 {{ item.label }}
                                             </p>
                                             <span
@@ -678,16 +750,24 @@ const dashboardSectionHeaderStrip =
                                                 {{ item.icon }}
                                             </span>
                                         </div>
-                                        <p class="mt-1 text-lg font-bold tracking-tight text-foreground tabular-nums">
+                                        <p
+                                            class="mt-1 text-lg font-bold tracking-tight text-foreground tabular-nums"
+                                        >
                                             {{ item.animatedLabel }}
                                         </p>
-                                        <p class="mt-0.5 text-[11px] text-muted-foreground">
+                                        <p
+                                            class="mt-0.5 text-[11px] text-muted-foreground"
+                                        >
                                             {{ item.hint }}
                                         </p>
-                                        <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted/70">
+                                        <div
+                                            class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted/70"
+                                        >
                                             <div
                                                 class="h-full rounded-full bg-linear-to-r from-primary/70 via-primary to-emerald-400/80"
-                                                :style="{ width: `${item.animatedProgress}%` }"
+                                                :style="{
+                                                    width: `${item.animatedProgress}%`,
+                                                }"
                                             />
                                         </div>
                                     </div>
@@ -697,8 +777,12 @@ const dashboardSectionHeaderStrip =
                                     v-if="recentNotePhotos.length"
                                     class="mt-3 rounded-2xl border border-border/60 bg-card/85 p-3"
                                 >
-                                    <div class="mb-2 flex items-center justify-between gap-2">
-                                        <p class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                                    <div
+                                        class="mb-2 flex items-center justify-between gap-2"
+                                    >
+                                        <p
+                                            class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
+                                        >
                                             Viimased aiapildid
                                         </p>
                                         <Link
@@ -708,16 +792,13 @@ const dashboardSectionHeaderStrip =
                                             Ava märkmed
                                         </Link>
                                     </div>
-                                    <div class="flex gap-2.5 overflow-x-auto pb-1">
+                                    <div
+                                        class="flex gap-2.5 overflow-x-auto pb-1"
+                                    >
                                         <div
-                                            v-for="(photo, index) in notePhotoTimeline"
+                                            v-for="photo in notePhotoTimeline"
                                             :key="photo.key"
-                                            class="relative shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted/30"
-                                            :class="
-                                                index === 0
-                                                    ? 'h-24 w-28 sm:h-28 sm:w-36'
-                                                    : 'h-20 w-20 sm:h-24 sm:w-24'
-                                            "
+                                            class="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted/30 sm:h-28 sm:w-28"
                                         >
                                             <img
                                                 :src="photo.url"
@@ -735,25 +816,36 @@ const dashboardSectionHeaderStrip =
                                 </div>
 
                                 <div
-                                    v-if="todayWorkSummary.showValue || todayTasks.length"
+                                    v-if="
+                                        todayWorkSummary.showValue ||
+                                        todayTasks.length
+                                    "
                                     class="mt-3"
                                 >
                                     <Link
                                         :href="todayWorkSummary.href"
                                         class="block rounded-[1.2rem] border border-border/70 bg-card/90 p-3.5 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"
                                     >
-                                        <div class="flex items-start justify-between gap-3">
+                                        <div
+                                            class="flex items-start justify-between gap-3"
+                                        >
                                             <div class="min-w-0">
-                                                <p class="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+                                                <p
+                                                    class="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                >
                                                     {{ todayWorkSummary.title }}
                                                 </p>
                                                 <p
-                                                    v-if="todayWorkSummary.showValue"
+                                                    v-if="
+                                                        todayWorkSummary.showValue
+                                                    "
                                                     class="mt-1.5 text-2xl font-bold tracking-tight text-foreground tabular-nums"
                                                 >
                                                     {{ animatedTodayValue }}
                                                 </p>
-                                                <p class="mt-1.5 text-sm text-muted-foreground">
+                                                <p
+                                                    class="mt-1.5 text-sm text-muted-foreground"
+                                                >
                                                     {{ todayWorkSummary.body }}
                                                 </p>
                                             </div>
@@ -775,10 +867,17 @@ const dashboardSectionHeaderStrip =
                                                 class="flex items-center justify-between gap-3 rounded-2xl bg-muted/60 px-3 py-2"
                                             >
                                                 <div class="min-w-0">
-                                                    <p class="truncate text-sm font-medium text-foreground">
-                                                        {{ task.title || 'Tänane aiatöö' }}
+                                                    <p
+                                                        class="truncate text-sm font-medium text-foreground"
+                                                    >
+                                                        {{
+                                                            task.title ||
+                                                            'Tänane aiatöö'
+                                                        }}
                                                     </p>
-                                                    <p class="text-xs text-muted-foreground">
+                                                    <p
+                                                        class="text-xs text-muted-foreground"
+                                                    >
                                                         {{ task.note_date }}
                                                     </p>
                                                 </div>
@@ -802,7 +901,8 @@ const dashboardSectionHeaderStrip =
                     >
                         <p class="min-w-0">
                             <span class="font-semibold text-foreground/90"
-                                >Muuda plokkide järjekorda kasutades nooli:</span
+                                >Muuda plokkide järjekorda kasutades
+                                nooli:</span
                             >
                         </p>
 
@@ -844,13 +944,20 @@ const dashboardSectionHeaderStrip =
                                 : 'lg:columns-2 lg:space-y-0 lg:[column-gap:1rem]'
                         "
                     >
-                        <template v-for="(id, sectionIndex) in displaySectionOrder" :key="id">
+                        <template
+                            v-for="(id, sectionIndex) in displaySectionOrder"
+                            :key="id"
+                        >
                             <!-- Viimased märkmed -->
                             <section
                                 v-if="id === 'notes'"
                                 class="wow-fade-up overflow-hidden rounded-[1.6rem] border border-border bg-card/90 shadow-sm lg:mb-4 lg:break-inside-avoid"
-                                :class="editLayout ? 'ring-1 ring-primary/25' : ''"
-                                :style="{ '--wow-delay': `${260 + sectionIndex * 110}ms` }"
+                                :class="
+                                    editLayout ? 'ring-1 ring-primary/25' : ''
+                                "
+                                :style="{
+                                    '--wow-delay': `${260 + sectionIndex * 110}ms`,
+                                }"
                             >
                                 <div
                                     class="flex items-center justify-between gap-3 border-b border-border bg-linear-to-r px-4 py-3"
@@ -887,15 +994,10 @@ const dashboardSectionHeaderStrip =
                                                 type="button"
                                                 class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
                                                 :disabled="
-                                                    !canMoveSectionDown(
-                                                        'notes',
-                                                    )
+                                                    !canMoveSectionDown('notes')
                                                 "
                                                 @click.stop="
-                                                    moveSection(
-                                                        'notes',
-                                                        'down',
-                                                    )
+                                                    moveSection('notes', 'down')
                                                 "
                                             >
                                                 <span
@@ -919,7 +1021,9 @@ const dashboardSectionHeaderStrip =
                                     class="note-paper space-y-1.5 p-2.5 lg:space-y-2 lg:p-3"
                                 >
                                     <Link
-                                        v-for="(note, noteIndex) in recentNotes.slice(0, 5)"
+                                        v-for="(
+                                            note, noteIndex
+                                        ) in recentNotes.slice(0, 5)"
                                         :key="note.id"
                                         href="/calendar/overview"
                                         class="note-row group relative block overflow-hidden rounded-xl border border-border/60 bg-card/85 px-2.5 py-2 transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-card hover:shadow-[0_4px_14px_rgba(43,74,52,0.12)] lg:rounded-2xl lg:px-3 lg:py-2.5"
@@ -986,7 +1090,9 @@ const dashboardSectionHeaderStrip =
                                                         }}
                                                     </span>
                                                     <span
-                                                        v-if="note.done === true"
+                                                        v-if="
+                                                            note.done === true
+                                                        "
                                                         class="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-emerald-500/10 px-1.5 py-px text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300"
                                                     >
                                                         <span
@@ -1019,207 +1125,203 @@ const dashboardSectionHeaderStrip =
                                     class="m-4 rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-4"
                                 >
                                     <p class="text-sm text-muted-foreground">
-                                        Esimene märge aitab hiljem paremini meenutada, mis peenras toimus ja mida tasub järgmisel hooajal korrata.
+                                        Esimene märge aitab hiljem paremini
+                                        meenutada, mis peenras toimus ja mida
+                                        tasub järgmisel hooajal korrata.
                                     </p>
                                     <Link
                                         href="/calendar/note-form"
                                         class="mt-3 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm"
                                     >
                                         Lisa esimene märge
-                                        <span class="material-symbols-outlined text-base">arrow_forward</span>
+                                        <span
+                                            class="material-symbols-outlined text-base"
+                                            >arrow_forward</span
+                                        >
                                     </Link>
                                 </div>
                             </section>
 
                             <!-- Weather -->
-                                <section
-                                    v-if="id === 'weather'"
-                                    class="wow-fade-up overflow-hidden rounded-[1.6rem] border border-border bg-card/95 shadow-sm lg:mb-4 lg:break-inside-avoid"
-                                    :class="editLayout ? 'ring-1 ring-primary/25' : ''"
-                                    :style="{ '--wow-delay': `${260 + sectionIndex * 110}ms` }"
+                            <section
+                                v-if="id === 'weather'"
+                                class="wow-fade-up overflow-hidden rounded-[1.6rem] border border-border bg-card/95 shadow-sm lg:mb-4 lg:break-inside-avoid"
+                                :class="
+                                    editLayout ? 'ring-1 ring-primary/25' : ''
+                                "
+                                :style="{
+                                    '--wow-delay': `${260 + sectionIndex * 110}ms`,
+                                }"
+                            >
+                                <div
+                                    class="group flex cursor-pointer items-center justify-between gap-3 border-b border-border bg-linear-to-r px-4 py-3"
+                                    :class="dashboardSectionHeaderStrip"
+                                    @click="toggleSectionCollapsed('weather')"
                                 >
-                                    <div
-                                        class="group flex cursor-pointer items-center justify-between gap-3 border-b border-border bg-linear-to-r px-4 py-3"
-                                        :class="dashboardSectionHeaderStrip"
-                                        @click="
-                                            toggleSectionCollapsed('weather')
-                                        "
+                                    <h3
+                                        class="min-w-0 flex-1 text-sm font-semibold text-foreground"
                                     >
-                                        <h3
-                                            class="min-w-0 flex-1 text-sm font-semibold text-foreground"
+                                        {{ sectionTitle('weather') }}
+                                    </h3>
+                                    <div
+                                        class="flex shrink-0 items-center gap-1"
+                                    >
+                                        <span
+                                            v-if="editLayout"
+                                            class="material-symbols-outlined text-lg text-muted-foreground transition"
+                                            :class="[
+                                                'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100',
+                                                {
+                                                    'rotate-180':
+                                                        isSectionExpanded(
+                                                            'weather',
+                                                        ),
+                                                },
+                                            ]"
+                                            aria-hidden="true"
                                         >
-                                            {{ sectionTitle('weather') }}
-                                        </h3>
+                                            expand_more
+                                        </span>
                                         <div
-                                            class="flex shrink-0 items-center gap-1"
+                                            v-if="editLayout"
+                                            class="flex items-center gap-1"
                                         >
-                                            <span
-                                                v-if="editLayout"
-                                                class="material-symbols-outlined text-lg text-muted-foreground transition"
-                                                :class="[
-                                                    'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100',
-                                                    {
-                                                        'rotate-180':
-                                                            isSectionExpanded(
-                                                                'weather',
-                                                            ),
-                                                    },
-                                                ]"
-                                                aria-hidden="true"
+                                            <button
+                                                type="button"
+                                                class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+                                                :disabled="
+                                                    !canMoveSectionUp('weather')
+                                                "
+                                                @click.stop="
+                                                    moveSection('weather', 'up')
+                                                "
                                             >
-                                                expand_more
-                                            </span>
-                                            <div
-                                                v-if="editLayout"
-                                                class="flex items-center gap-1"
+                                                <span
+                                                    class="material-symbols-outlined text-sm"
+                                                    >arrow_upward</span
+                                                >
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+                                                :disabled="
+                                                    !canMoveSectionDown(
+                                                        'weather',
+                                                    )
+                                                "
+                                                @click.stop="
+                                                    moveSection(
+                                                        'weather',
+                                                        'down',
+                                                    )
+                                                "
                                             >
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
-                                                    :disabled="
-                                                        !canMoveSectionUp(
-                                                            'weather',
-                                                        )
-                                                    "
-                                                    @click.stop="
-                                                        moveSection(
-                                                            'weather',
-                                                            'up',
-                                                        )
-                                                    "
+                                                <span
+                                                    class="material-symbols-outlined text-sm"
+                                                    >arrow_downward</span
                                                 >
-                                                    <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >arrow_upward</span
-                                                    >
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
-                                                    :disabled="
-                                                        !canMoveSectionDown(
-                                                            'weather',
-                                                        )
-                                                    "
-                                                    @click.stop="
-                                                        moveSection(
-                                                            'weather',
-                                                            'down',
-                                                        )
-                                                    "
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >arrow_downward</span
-                                                    >
-                                                </button>
-                                            </div>
+                                            </button>
                                         </div>
                                     </div>
-                                    <div
-                                        v-show="isSectionExpanded('weather')"
-                                        class="p-3 sm:p-4"
-                                    >
-                                        <DashboardWeather />
-                                    </div>
-                                </section>
+                                </div>
+                                <div
+                                    v-show="isSectionExpanded('weather')"
+                                    class="p-3 sm:p-4"
+                                >
+                                    <DashboardWeather />
+                                </div>
+                            </section>
 
-                                <!-- Moon -->
-                                <section
-                                    v-if="id === 'moon'"
-                                    class="wow-fade-up overflow-hidden rounded-[1.6rem] border border-border bg-card/95 shadow-sm lg:mb-4 lg:break-inside-avoid"
-                                    :class="editLayout ? 'ring-1 ring-primary/25' : ''"
-                                    :style="{ '--wow-delay': `${260 + sectionIndex * 110}ms` }"
+                            <!-- Moon -->
+                            <section
+                                v-if="id === 'moon'"
+                                class="wow-fade-up overflow-hidden rounded-[1.6rem] border border-border bg-card/95 shadow-sm lg:mb-4 lg:break-inside-avoid"
+                                :class="
+                                    editLayout ? 'ring-1 ring-primary/25' : ''
+                                "
+                                :style="{
+                                    '--wow-delay': `${260 + sectionIndex * 110}ms`,
+                                }"
+                            >
+                                <div
+                                    class="group flex cursor-pointer items-center justify-between gap-3 border-b border-border bg-linear-to-r px-4 py-3"
+                                    :class="dashboardSectionHeaderStrip"
+                                    @click="toggleSectionCollapsed('moon')"
                                 >
-                                    <div
-                                        class="group flex cursor-pointer items-center justify-between gap-3 border-b border-border bg-linear-to-r px-4 py-3"
-                                        :class="dashboardSectionHeaderStrip"
-                                        @click="toggleSectionCollapsed('moon')"
+                                    <h3
+                                        class="min-w-0 flex-1 text-sm font-semibold text-foreground"
                                     >
-                                        <h3
-                                            class="min-w-0 flex-1 text-sm font-semibold text-foreground"
+                                        {{ sectionTitle('moon') }}
+                                    </h3>
+                                    <div
+                                        class="flex shrink-0 items-center gap-1"
+                                    >
+                                        <span
+                                            v-if="editLayout"
+                                            class="material-symbols-outlined text-lg text-muted-foreground transition"
+                                            :class="[
+                                                'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100',
+                                                {
+                                                    'rotate-180':
+                                                        isSectionExpanded(
+                                                            'moon',
+                                                        ),
+                                                },
+                                            ]"
+                                            aria-hidden="true"
                                         >
-                                            {{ sectionTitle('moon') }}
-                                        </h3>
+                                            expand_more
+                                        </span>
                                         <div
-                                            class="flex shrink-0 items-center gap-1"
+                                            v-if="editLayout"
+                                            class="flex items-center gap-1"
                                         >
-                                            <span
-                                                v-if="editLayout"
-                                                class="material-symbols-outlined text-lg text-muted-foreground transition"
-                                                :class="[
-                                                    'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100',
-                                                    {
-                                                        'rotate-180':
-                                                            isSectionExpanded(
-                                                                'moon',
-                                                            ),
-                                                    },
-                                                ]"
-                                                aria-hidden="true"
+                                            <button
+                                                type="button"
+                                                class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+                                                :disabled="
+                                                    !canMoveSectionUp('moon')
+                                                "
+                                                @click.stop="
+                                                    moveSection('moon', 'up')
+                                                "
                                             >
-                                                expand_more
-                                            </span>
-                                            <div
-                                                v-if="editLayout"
-                                                class="flex items-center gap-1"
-                                            >
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
-                                                    :disabled="
-                                                        !canMoveSectionUp(
-                                                            'moon',
-                                                        )
-                                                    "
-                                                    @click.stop="
-                                                        moveSection(
-                                                            'moon',
-                                                            'up',
-                                                        )
-                                                    "
+                                                <span
+                                                    class="material-symbols-outlined text-sm"
+                                                    >arrow_upward</span
                                                 >
-                                                    <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >arrow_upward</span
-                                                    >
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
-                                                    :disabled="
-                                                        !canMoveSectionDown(
-                                                            'moon',
-                                                        )
-                                                    "
-                                                    @click.stop="
-                                                        moveSection(
-                                                            'moon',
-                                                            'down',
-                                                        )
-                                                    "
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >arrow_downward</span
-                                                    >
-                                                </button>
-                                            </div>
-                                            <Link
-                                                v-if="!editLayout"
-                                                href="/calendar/moon"
-                                                class="text-sm font-medium text-primary transition hover:text-primary/80"
-                                                @click.stop
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+                                                :disabled="
+                                                    !canMoveSectionDown('moon')
+                                                "
+                                                @click.stop="
+                                                    moveSection('moon', 'down')
+                                                "
                                             >
-                                                Ava kõik
-                                            </Link>
+                                                <span
+                                                    class="material-symbols-outlined text-sm"
+                                                    >arrow_downward</span
+                                                >
+                                            </button>
                                         </div>
+                                        <Link
+                                            v-if="!editLayout"
+                                            href="/calendar/moon"
+                                            class="text-sm font-medium text-primary transition hover:text-primary/80"
+                                            @click.stop
+                                        >
+                                            Ava kõik
+                                        </Link>
                                     </div>
-                                    <div v-show="isSectionExpanded('moon')">
-                                        <Moon />
-                                    </div>
-                                </section>
-                            </template>
+                                </div>
+                                <div v-show="isSectionExpanded('moon')">
+                                    <Moon />
+                                </div>
+                            </section>
+                        </template>
                     </div>
                 </div>
             </div>
@@ -1361,12 +1463,11 @@ const dashboardSectionHeaderStrip =
 }
 
 .note-paper {
-    background-image:
-        radial-gradient(
-            circle at 1px 1px,
-            rgba(43, 74, 52, 0.05) 1px,
-            transparent 0
-        );
+    background-image: radial-gradient(
+        circle at 1px 1px,
+        rgba(43, 74, 52, 0.05) 1px,
+        transparent 0
+    );
     background-size: 14px 14px;
     background-position: 0 0;
 }

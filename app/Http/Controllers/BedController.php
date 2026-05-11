@@ -196,9 +196,12 @@ class BedController extends Controller
 
         $bed = Bed::create($payload);
 
-        Session::flash('success', 'Peenar lisatud.');
+        Session::flash('success', 'Peenar lisatud. Lohista see aiaplaanil õigesse kohta.');
 
-        return redirect()->route('beds.show', $bed);
+        return redirect()->route('map.show', [
+            'gardenPlan' => $gardenPlanId,
+            'bed' => $bed->id,
+        ]);
     }
 
     public function update(Request $request, Bed $bed)
