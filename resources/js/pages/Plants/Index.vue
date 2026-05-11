@@ -156,7 +156,7 @@ const resetToAll = () => {
 </script>
 
 <template>
-    <Head title="Minu Taimed" />
+    <Head title="Taimed" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="page page-with-bottomnav">

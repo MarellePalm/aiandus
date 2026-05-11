@@ -249,7 +249,7 @@ function onPlantImageError(event: Event) {
 </script>
 
 <template>
-    <Head :title="`Minu Taimed - ${props.category.name}`" />
+    <Head :title="`Taimed - ${props.category.name}`" />
 
     <AppLayout
         :breadcrumbs="[

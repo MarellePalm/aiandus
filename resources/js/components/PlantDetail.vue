@@ -149,7 +149,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
 
 <template>
     <div
-        class="bg-background-light dark:bg-background-dark font-display min-h-screen text-[#141514] antialiased dark:text-gray-100"
+        class="bg-background-light dark:bg-background-dark font-display min-h-screen text-foreground antialiased"
     >
         <div class="relative flex w-full flex-col pt-20">
             <!-- Top App Bar -->

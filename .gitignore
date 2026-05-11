@@ -1,6 +1,8 @@
 /.phpunit.cache
 /bootstrap/ssr
 /node_modules
+/.venv-favicon
+/.venv-pwa-icons
 /public/build
 /public/hot
 /public/storage

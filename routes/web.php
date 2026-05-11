@@ -25,6 +25,8 @@ use Inertia\Inertia;
 use Laravel\Fortify\Features;
 use Laravel\Socialite\Facades\Socialite;
 
+Route::permanentRedirect('/favicon.ico', '/favicon.png');
+
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canRegister' => Features::enabled(Features::registration()),

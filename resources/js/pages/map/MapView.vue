@@ -3900,8 +3900,6 @@ function saveGardenPlan() {
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
 
                                     <div
                                         v-if="selectedObject"
