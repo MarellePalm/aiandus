@@ -68,7 +68,7 @@ onBeforeUnmount(() => {
             />
             <span
                 v-else
-                class="material-symbols-outlined text-xl text-primary/80"
+                class="material-symbols-outlined text-xl text-primary/80 dark:text-foreground/80"
                 >person</span
             >
         </button>

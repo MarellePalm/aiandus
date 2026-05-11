@@ -254,13 +254,13 @@ const openEditCategory = (category: Category) => {
 
                         <div
                             v-else
-                            class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-5 xl:grid-cols-5"
+                            class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6"
                         >
                             <Link
                                 v-for="cat in filteredCategories"
                                 :key="cat.id"
                                 :href="`/seeds/category/${cat.slug}`"
-                                class="group relative aspect-square overflow-hidden rounded-2xl shadow-lg"
+                                class="group relative aspect-[1/1] overflow-hidden rounded-2xl shadow-lg"
                             >
                                 <img
                                     :alt="cat.name"
@@ -323,7 +323,7 @@ const openEditCategory = (category: Category) => {
                             </Link>
                             <button
                                 type="button"
-                                class="group relative hidden aspect-square items-center justify-center rounded-2xl border-2 border-dashed border-primary/20 bg-primary/5 text-primary transition hover:border-primary/35 hover:bg-primary/10 lg:flex"
+                                class="group relative hidden aspect-[1/1] items-center justify-center rounded-2xl border-2 border-dashed border-primary/20 bg-primary/5 text-primary transition hover:border-primary/35 hover:bg-primary/10 lg:flex"
                                 @click="showCreateCategory = true"
                             >
                                 <div class="text-center">

@@ -3,14 +3,33 @@
     "short_name": "Aiap\u00e4evik",
     "background_color": "#faf8f4",
     "display": "fullscreen",
-    "description": "Sinu aiapäevik: kalender, märkmed, taimed ja aia plaan ühes kohas.",
+    "description": "Sinu aiap\u00e4evik: kalender, m\u00e4rkmed, taimed ja aia plaan \u00fches kohas.",
     "theme_color": "#679263",
     "start_url": "/",
     "icons": [
         {
-            "src": "logo.png",
+            "src": "pwa-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "pwa-512.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "pwa-192-maskable.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "pwa-512-maskable.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
         }
     ]
 }

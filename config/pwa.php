@@ -19,17 +19,36 @@ return [
     */
 
     'manifest' => [
-        'name' => 'Aiapäevik',
-        'short_name' => 'Aiapäevik',
-        'background_color' => '#6777ef',
+        'name' => env('APP_NAME', 'Aiapäevik'),
+        'short_name' => env('APP_NAME', 'Aiapäevik'),
+        'background_color' => '#faf8f4',
         'display' => 'fullscreen',
-        'description' => 'A Progressive Web Application setup for Laravel projects.',
-        'theme_color' => '#6777ef',
+        'description' => 'Sinu aiapäevik: kalender, märkmed, taimed ja aia plaan ühes kohas.',
+        'theme_color' => '#679263',
         'icons' => [
             [
-                'src' => 'logo.png',
+                'src' => 'pwa-192.png',
+                'sizes' => '192x192',
+                'type' => 'image/png',
+                'purpose' => 'any',
+            ],
+            [
+                'src' => 'pwa-512.png',
                 'sizes' => '512x512',
                 'type' => 'image/png',
+                'purpose' => 'any',
+            ],
+            [
+                'src' => 'pwa-192-maskable.png',
+                'sizes' => '192x192',
+                'type' => 'image/png',
+                'purpose' => 'maskable',
+            ],
+            [
+                'src' => 'pwa-512-maskable.png',
+                'sizes' => '512x512',
+                'type' => 'image/png',
+                'purpose' => 'maskable',
             ],
         ],
     ],

@@ -30,11 +30,16 @@
             }
         </style>
         @PwaHead <!-- This includes the PWA meta tags -->
-        <title inertia>{{ config('app.name', 'Laravel') }}</title>
+        <meta name="application-name" content="{{ config('app.name', 'Aiapäevik') }}">
+        <meta name="apple-mobile-web-app-title" content="{{ config('app.name', 'Aiapäevik') }}">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="mobile-web-app-capable" content="yes">
+        <title inertia>{{ config('app.name', 'Aiapäevik') }}</title>
 
-        <link rel="icon" href="/favicon.ico" sizes="any">
+        <link rel="icon" href="/favicon.png" type="image/png" sizes="64x64">
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        <link rel="icon" href="/logo.png" type="image/png">
+        <link rel="apple-touch-icon" href="/logo.png">
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
@@ -44,7 +49,10 @@
         @inertiaHead
     </head>
     <body class="font-sans antialiased">
-        @inertia
+        <a class="skip-to-main" href="#main">Liigu põhisisu juurde</a>
+        <main id="main" tabindex="-1">
+            @inertia
+        </main>
         @RegisterServiceWorkerScript <!-- This registers the service worker -->
     </body>
 </html>
