@@ -108,6 +108,7 @@ type ToolVariant = {
     requiresCustomName?: boolean;
 };
 type ToolCategoryId = 'buildings' | 'water' | 'paths' | 'maintenance';
+type PlannerListView = 'beds' | 'objects';
 type ToolCategory = {
     id: ToolCategoryId;
     label: string;
@@ -145,7 +146,7 @@ const searchQuery = ref('');
 const GARDEN_PADDING = 24;
 const CM_TO_PX = 0.5;
 const GARDEN_GRID_CELL_CM = 30;
-const MIN_ZOOM = 0.55;
+const MIN_ZOOM = 0.1;
 /** "Mahuta sisu" / "Kogu aed" may go lower so large plans actually fit on screen. */
 const FIT_VIEW_MIN_ZOOM = 0.001;
 /** When fitting content, zoom must be at least high enough that items are still visible pixels. */
@@ -155,6 +156,8 @@ const ZOOM_STEP = 0.25;
 const MIN_PINCH_DISTANCE_PX = 10;
 const CONTENT_FIT_PADDING = 160;
 const CONTENT_FIT_SIDE_PADDING = 40;
+const INITIAL_GARDEN_MIN_VIEWPORT_WIDTH = 0.86;
+const INITIAL_GARDEN_MIN_VIEWPORT_HEIGHT = 0.82;
 const MIN_BED_VISUAL_SIZE = 44;
 const MIN_OBJECT_VISUAL_SIZE = 48;
 const MAX_GARDEN_SURFACE_WIDTH = 3200;
@@ -184,9 +187,11 @@ const initialFocusedBedId = getInitialFocusedBedId();
 const selectedBedId = ref<number | null>(initialFocusedBedId);
 const selectedObjectId = ref<number | null>(null);
 const isLayoutEditing = ref(initialFocusedBedId !== null);
+const plannerListView = ref<PlannerListView | null>(null);
 const activeTool = ref<GardenObjectType | null>(null);
 const activeToolVariant = ref<ToolVariant | null>(null);
 const activeToolCategoryId = ref<ToolCategoryId | null>(null);
+const createMenuOpen = ref(false);
 const toolDrawerOpen = ref(false);
 const plannerControlsOpen = ref(false);
 const createGardenPlanModalOpen = ref(false);
@@ -456,6 +461,7 @@ function onGardenPlanSelect(event: Event) {
 }
 
 function openCreateGardenPlanModal() {
+    createMenuOpen.value = false;
     createGardenPlanForm.reset();
     createGardenPlanForm.clearErrors();
     createGardenPlanModalOpen.value = true;
@@ -1199,11 +1205,8 @@ function clearSelectionDetails() {
     hoveredObjectId.value = null;
 }
 
-function toggleLayoutEditing() {
-    isLayoutEditing.value = !isLayoutEditing.value;
-    if (!isLayoutEditing.value) {
-        clearToolSelection();
-    }
+function togglePlannerListView(view: PlannerListView) {
+    plannerListView.value = plannerListView.value === view ? null : view;
 }
 
 function startDragging(bed: Bed, event: PointerEvent) {
@@ -1468,7 +1471,6 @@ function applyPinchFromMap() {
     if (!state || !vp || viewportPointerMap.size < 2) {
         return;
     }
-    const rect = vp.getBoundingClientRect();
     const pts = [...viewportPointerMap.values()];
     if (pts.length < 2) {
         return;
@@ -1483,11 +1485,9 @@ function applyPinchFromMap() {
         MAX_ZOOM,
         Math.max(MIN_ZOOM, Number((state.startZoom * ratio).toFixed(3))),
     );
-    const mx = (a.x + b.x) / 2 - rect.left;
-    const my = (a.y + b.y) / 2 - rect.top;
-    panX.value = mx - state.gx * newZoom;
-    panY.value = my - state.gy * newZoom;
     zoom.value = newZoom;
+    panX.value = 0;
+    panY.value = 0;
 }
 
 function onPlannerWindowPointerMove(event: PointerEvent) {
@@ -1524,6 +1524,10 @@ function onPlannerWindowPointerMove(event: PointerEvent) {
 function onPinchPointerUp(event: PointerEvent) {
     viewportPointerMap.delete(event.pointerId);
     if (!pinchState.value) {
+        if (viewportPointerMap.size === 0) {
+            window.removeEventListener('pointerup', onPinchPointerUp);
+            window.removeEventListener('pointercancel', onPinchPointerUp);
+        }
         return;
     }
     const vp = plannerViewport.value;
@@ -1580,24 +1584,8 @@ function handleViewportPointerDown(event: PointerEvent) {
     if (viewportPointerMap.size !== 1) {
         return;
     }
-
-    isPanning.value = true;
-    panGestureMoved.value = false;
-    panPointerId.value = event.pointerId;
-    panStart.value = {
-        x: event.clientX,
-        y: event.clientY,
-        originX: panX.value,
-        originY: panY.value,
-    };
-    try {
-        vp.setPointerCapture(event.pointerId);
-    } catch {
-        /* noop */
-    }
-    window.addEventListener('pointermove', onPlannerWindowPointerMove);
-    window.addEventListener('pointerup', stopPanning);
-    window.addEventListener('pointercancel', stopPanning);
+    window.addEventListener('pointerup', onPinchPointerUp);
+    window.addEventListener('pointercancel', onPinchPointerUp);
 }
 
 function getDefaultToolVariant(type: GardenObjectType): ToolVariant {
@@ -1646,6 +1634,7 @@ function clearToolSelection() {
 }
 
 function openCreateBed() {
+    createMenuOpen.value = false;
     router.get(`/map/${props.gardenPlan.id}/beds/new`);
 }
 
@@ -1986,10 +1975,6 @@ function goToSelectedBed() {
     router.get(`/beds/${selectedBed.value.id}`);
 }
 
-function applyFitZoom() {
-    applyFitContentZoom();
-}
-
 function clampFitViewZoom(fitWidth: number, fitHeight: number): number {
     const raw = Math.min(fitWidth, fitHeight);
     if (!Number.isFinite(raw) || raw <= 0) {
@@ -2084,17 +2069,34 @@ function applyFitGardenZoom() {
     panY.value = 0;
 }
 
+function applyInitialGardenZoom() {
+    if (!viewportSize.value.width || !viewportSize.value.height) return;
+
+    const fitWidth = viewportSize.value.width / gardenSurfaceWidth.value;
+    const fitHeight = viewportSize.value.height / gardenSurfaceHeight.value;
+    const fullGardenZoom = clampFitViewZoom(fitWidth, fitHeight);
+    const minUsefulZoom = Math.max(
+        (viewportSize.value.width * INITIAL_GARDEN_MIN_VIEWPORT_WIDTH) /
+            gardenSurfaceWidth.value,
+        (viewportSize.value.height * INITIAL_GARDEN_MIN_VIEWPORT_HEIGHT) /
+            gardenSurfaceHeight.value,
+    );
+    const nextZoom = Math.min(
+        MAX_ZOOM,
+        Math.max(fullGardenZoom, minUsefulZoom),
+    );
+
+    zoom.value = Number.isFinite(nextZoom) ? nextZoom : 1;
+    panX.value = 0;
+    panY.value = 0;
+}
+
 function centerBedInViewport(bed: Bed) {
     if (!viewportSize.value.width || !viewportSize.value.height) return;
 
-    const position = getBedPosition(bed);
-    const size = bedCardSize(bed);
-    panX.value =
-        viewportSize.value.width / 2 -
-        (position.x + size.width / 2) * zoom.value;
-    panY.value =
-        viewportSize.value.height / 2 -
-        (position.y + size.height / 2) * zoom.value;
+    void bed;
+    panX.value = 0;
+    panY.value = 0;
 }
 
 function runPlannerInitialViewportFit() {
@@ -2105,7 +2107,7 @@ function runPlannerInitialViewportFit() {
         return;
     }
 
-    applyFitZoom();
+    applyInitialGardenZoom();
     plannerInitialViewportFitDone.value = true;
     const focusedBed = selectedBed.value;
     if (focusedBed) {
@@ -2122,7 +2124,7 @@ function runPlannerInitialViewportFit() {
             ) {
                 return;
             }
-            applyFitContentZoom();
+            applyInitialGardenZoom();
         });
     });
 }
@@ -2152,7 +2154,6 @@ function onPlannerWheel(event: WheelEvent) {
     const target = event.target as HTMLElement | null;
     if (target?.closest('[data-ui-overlay="true"]')) return;
     event.preventDefault();
-    const pointer = getPlannerLocalPoint(event);
     const delta = event.deltaY > 0 ? -0.12 : 0.12;
     const nextZoom = Math.min(
         MAX_ZOOM,
@@ -2161,9 +2162,9 @@ function onPlannerWheel(event: WheelEvent) {
 
     if (nextZoom === zoom.value) return;
 
-    panX.value -= pointer.x * (nextZoom - zoom.value);
-    panY.value -= pointer.y * (nextZoom - zoom.value);
     zoom.value = nextZoom;
+    panX.value = 0;
+    panY.value = 0;
 }
 
 function saveGardenPlan() {
@@ -2228,9 +2229,9 @@ function saveGardenPlan() {
                         </template>
                     </DiaryHeader>
 
-                    <main class="flex-1 px-6 py-4 md:px-8">
-                        <div class="space-y-6 sm:space-y-8">
-                            <section class="space-y-6">
+                    <main class="flex-1 px-4 py-3 sm:px-6 md:px-8">
+                        <div class="space-y-4 sm:space-y-6">
+                            <section class="space-y-4 sm:space-y-6">
                                 <div
                                     v-if="plannerFeedback"
                                     class="rounded-[1.5rem] border px-4 py-3 shadow-sm"
@@ -2310,219 +2311,318 @@ function saveGardenPlan() {
                                     </div>
                                 </div>
 
-                                <div
-                                    class="rounded-xl border border-border/70 bg-white p-4 shadow-[0_8px_24px_rgba(0,0,0,0.05)] sm:p-5 dark:bg-card"
-                                >
+                                <div class="min-w-0">
                                     <div
-                                        class="mb-4 flex flex-wrap items-start justify-between gap-3"
+                                        class="mb-4 border-b border-border/70 pb-4"
                                     >
-                                        <div>
-                                            <h3
-                                                class="text-lg font-semibold text-foreground"
-                                            >
-                                                {{ gardenPlan.name }} aiaplaan
-                                            </h3>
-                                        </div>
                                         <div
-                                            class="flex flex-wrap items-center gap-2"
+                                            class="flex flex-wrap items-end justify-between gap-3"
                                         >
-                                            <button
-                                                type="button"
-                                                class="inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition"
-                                                :class="
-                                                    isLayoutEditing
-                                                        ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90'
-                                                        : 'border border-primary/25 bg-primary/10 text-primary hover:bg-primary/15'
-                                                "
-                                                @click="toggleLayoutEditing"
-                                            >
-                                                <span
-                                                    class="material-symbols-outlined text-base"
+                                            <div class="min-w-0">
+                                                <label
+                                                    class="sr-only"
+                                                    for="garden-plan-select"
                                                 >
-                                                    {{
-                                                        isLayoutEditing
-                                                            ? 'check'
-                                                            : 'open_with'
-                                                    }}
-                                                </span>
-                                                {{
-                                                    isLayoutEditing
-                                                        ? 'Valmis'
-                                                        : 'Muuda paigutust'
-                                                }}
-                                            </button>
-                                            <div
-                                                class="flex items-center gap-2 rounded-2xl border border-border/70 bg-background/80 px-3 py-2 text-xs text-muted-foreground shadow-xs"
-                                            >
-                                                <span
-                                                    class="material-symbols-outlined rounded-xl bg-primary/10 p-2 text-primary"
-                                                    >forest</span
+                                                    Vali aiaplaan
+                                                </label>
+                                                <div
+                                                    class="relative w-full max-w-full sm:w-auto"
                                                 >
-                                                <div>
-                                                    Peenraid aias
-                                                    <div
-                                                        class="text-base font-semibold text-foreground"
+                                                    <select
+                                                        id="garden-plan-select"
+                                                        class="block w-full max-w-full appearance-none truncate bg-transparent pr-8 text-2xl leading-tight font-semibold text-foreground transition outline-none hover:text-primary focus:text-primary sm:w-auto [&_option]:text-sm [&_option]:font-medium"
+                                                        :value="gardenPlan.id"
+                                                        @change="
+                                                            onGardenPlanSelect
+                                                        "
+                                                    >
+                                                        <option
+                                                            v-for="p in gardenPlans"
+                                                            :key="p.id"
+                                                            :value="p.id"
+                                                        >
+                                                            {{ p.name }}
+                                                        </option>
+                                                    </select>
+                                                    <span
+                                                        class="material-symbols-outlined pointer-events-none absolute top-1/2 right-0 -translate-y-1/2 text-xl text-muted-foreground"
+                                                        >expand_more</span
+                                                    >
+                                                </div>
+                                                <div
+                                                    class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted-foreground"
+                                                >
+                                                    <button
+                                                        type="button"
+                                                        class="inline-flex items-center gap-0.5 rounded-full transition hover:text-primary"
+                                                        :class="
+                                                            plannerListView ===
+                                                            'beds'
+                                                                ? 'text-primary'
+                                                                : ''
+                                                        "
+                                                        @click="
+                                                            togglePlannerListView(
+                                                                'beds',
+                                                            )
+                                                        "
                                                     >
                                                         {{ plannerBeds.length }}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div
-                                                class="flex items-center gap-2 rounded-2xl border border-border/70 bg-background/80 px-3 py-2 text-xs text-muted-foreground shadow-xs"
-                                            >
-                                                <span
-                                                    class="material-symbols-outlined rounded-xl bg-primary/10 p-2 text-primary"
-                                                    >architecture</span
-                                                >
-                                                <div>
-                                                    Aiaobjekte
-                                                    <div
-                                                        class="text-base font-semibold text-foreground"
+                                                        peenart
+                                                        <span
+                                                            class="material-symbols-outlined text-sm transition-transform"
+                                                            :class="
+                                                                plannerListView ===
+                                                                'beds'
+                                                                    ? 'rotate-180'
+                                                                    : ''
+                                                            "
+                                                            >expand_more</span
+                                                        >
+                                                    </button>
+                                                    <span
+                                                        class="h-1 w-1 rounded-full bg-muted-foreground/35"
+                                                    ></span>
+                                                    <button
+                                                        type="button"
+                                                        class="inline-flex items-center gap-0.5 rounded-full transition hover:text-primary"
+                                                        :class="
+                                                            plannerListView ===
+                                                            'objects'
+                                                                ? 'text-primary'
+                                                                : ''
+                                                        "
+                                                        @click="
+                                                            togglePlannerListView(
+                                                                'objects',
+                                                            )
+                                                        "
                                                     >
                                                         {{
                                                             visibleObjectsCount
                                                         }}
-                                                    </div>
+                                                        objekti
+                                                        <span
+                                                            class="material-symbols-outlined text-sm transition-transform"
+                                                            :class="
+                                                                plannerListView ===
+                                                                'objects'
+                                                                    ? 'rotate-180'
+                                                                    : ''
+                                                            "
+                                                            >expand_more</span
+                                                        >
+                                                    </button>
+                                                    <span
+                                                        class="h-1 w-1 rounded-full bg-muted-foreground/35"
+                                                    ></span>
+                                                    <span>
+                                                        {{
+                                                            gardenDimensionLabel
+                                                        }}
+                                                    </span>
                                                 </div>
                                             </div>
                                             <div
-                                                class="flex items-center gap-1 rounded-2xl border border-border/70 bg-background/85 px-2 py-2 shadow-xs"
+                                                class="flex items-center gap-1"
                                             >
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border bg-card text-foreground transition hover:bg-muted sm:h-8 sm:min-h-0 sm:w-8 sm:min-w-0"
-                                                    @click="
-                                                        changeZoom(-ZOOM_STEP)
-                                                    "
+                                                <div
+                                                    class="inline-flex items-center gap-0.5 rounded-full bg-muted/55 p-1 ring-1 ring-border/70"
                                                 >
-                                                    <span
-                                                        class="material-symbols-outlined text-base"
-                                                        >remove</span
+                                                    <button
+                                                        type="button"
+                                                        class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-background"
+                                                        @click="
+                                                            changeZoom(
+                                                                -ZOOM_STEP,
+                                                            )
+                                                        "
                                                     >
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex min-h-11 items-center justify-center rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-muted sm:min-h-0 sm:py-1.5"
-                                                    @click="applyFitContentZoom"
-                                                >
-                                                    {{ zoomPercent }}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border bg-card text-foreground transition hover:bg-muted sm:h-8 sm:min-h-0 sm:w-8 sm:min-w-0"
-                                                    @click="
-                                                        changeZoom(ZOOM_STEP)
-                                                    "
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-base"
-                                                        >add</span
+                                                        <span
+                                                            class="material-symbols-outlined text-base"
+                                                            >remove</span
+                                                        >
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        class="inline-flex h-8 min-w-11 items-center justify-center rounded-full bg-background px-2 text-xs font-semibold text-foreground shadow-xs"
+                                                        @click="
+                                                            applyFitContentZoom
+                                                        "
                                                     >
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="ml-1 inline-flex rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/15"
-                                                    @click="applyFitZoom"
-                                                >
-                                                    Mahuta sisu
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                                                    @click="applyFitGardenZoom"
-                                                >
-                                                    Kogu aed
-                                                </button>
+                                                        {{ zoomPercent }}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-background"
+                                                        @click="
+                                                            changeZoom(
+                                                                ZOOM_STEP,
+                                                            )
+                                                        "
+                                                    >
+                                                        <span
+                                                            class="material-symbols-outlined text-base"
+                                                            >add</span
+                                                        >
+                                                    </button>
+                                                </div>
+                                                <CardActionsMenu
+                                                    placement="inline"
+                                                    @edit="openGardenPlanEditor"
+                                                    @delete="deleteGardenPlan"
+                                                />
                                             </div>
                                         </div>
                                     </div>
 
                                     <div
-                                        class="mb-4 rounded-[1.25rem] px-4 py-3 text-sm leading-6 ring-1"
-                                        :class="
-                                            isLayoutEditing
-                                                ? 'bg-primary/8 text-primary ring-primary/15'
-                                                : 'bg-secondary/55 text-muted-foreground ring-border/70'
-                                        "
-                                    >
-                                        <span class="font-semibold">
-                                            {{
-                                                isLayoutEditing
-                                                    ? 'Paigutuse muutmine on sees.'
-                                                    : 'Vaatamise režiim.'
-                                            }}
-                                        </span>
-                                        {{
-                                            isLayoutEditing
-                                                ? ' Lohista peenraid ja aiaobjekte õigesse kohta.'
-                                                : ' Peenrad ja objektid ei liigu kogemata.'
-                                        }}
-                                    </div>
-
-                                    <div
-                                        class="mb-4 flex flex-col gap-3 rounded-[1.5rem] border border-border/70 bg-background/75 px-3 py-3 lg:flex-row lg:items-center lg:justify-between"
+                                        v-if="plannerListView"
+                                        class="mb-3 rounded-2xl bg-background/60 p-2 ring-1 ring-border/70"
                                     >
                                         <div
-                                            class="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,18rem)_minmax(0,1fr)] sm:items-end"
+                                            class="mb-1 flex items-center justify-between px-2 py-1"
                                         >
-                                            <div class="min-w-0">
-                                                <label
-                                                    class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                                                    for="garden-plan-select"
-                                                >
-                                                    Vaheta plaani
-                                                </label>
-                                                <select
-                                                    id="garden-plan-select"
-                                                    class="mt-1.5 block h-11 w-full rounded-xl border border-border bg-card px-3 text-sm font-medium text-foreground"
-                                                    :value="gardenPlan.id"
-                                                    @change="onGardenPlanSelect"
-                                                >
-                                                    <option
-                                                        v-for="p in gardenPlans"
-                                                        :key="p.id"
-                                                        :value="p.id"
-                                                    >
-                                                        {{ p.name }}
-                                                    </option>
-                                                </select>
-                                            </div>
-
-                                            <div class="min-w-0">
-                                                <p
-                                                    class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                                                >
-                                                    Mõõt
-                                                </p>
-                                                <p
-                                                    class="mt-1.5 text-sm font-medium text-foreground"
-                                                >
-                                                    {{ gardenDimensionLabel }}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div
-                                            class="flex flex-wrap items-center gap-2"
-                                        >
+                                            <p
+                                                class="text-xs font-semibold text-foreground"
+                                            >
+                                                {{
+                                                    plannerListView === 'beds'
+                                                        ? 'Peenrad kaardil'
+                                                        : 'Objektid kaardil'
+                                                }}
+                                            </p>
                                             <button
                                                 type="button"
-                                                class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-4 py-2 text-xs font-semibold text-primary transition hover:bg-primary/15"
-                                                @click="
-                                                    openCreateGardenPlanModal
-                                                "
+                                                class="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                                @click="plannerListView = null"
                                             >
                                                 <span
-                                                    class="material-symbols-outlined text-base"
-                                                    >add</span
+                                                    class="material-symbols-outlined text-sm"
+                                                    >close</span
                                                 >
-                                                Uus plaan
                                             </button>
-                                            <CardActionsMenu
-                                                placement="inline"
-                                                @edit="openGardenPlanEditor"
-                                                @delete="deleteGardenPlan"
-                                            />
+                                        </div>
+
+                                        <div
+                                            v-if="plannerListView === 'beds'"
+                                            class="max-h-56 space-y-1 overflow-y-auto pr-1"
+                                        >
+                                            <div
+                                                v-for="bed in plannerBeds"
+                                                :key="`bed-list-${bed.id}`"
+                                                class="flex items-center gap-1 rounded-xl transition hover:bg-muted"
+                                                :class="
+                                                    selectedBed?.id === bed.id
+                                                        ? 'bg-primary/8'
+                                                        : ''
+                                                "
+                                            >
+                                                <button
+                                                    type="button"
+                                                    class="min-w-0 flex-1 px-3 py-2 text-left"
+                                                    @click="
+                                                        focusBedDetails(bed.id)
+                                                    "
+                                                >
+                                                    <span
+                                                        class="block truncate text-sm font-semibold text-foreground"
+                                                        >{{ bed.name }}</span
+                                                    >
+                                                    <span
+                                                        class="mt-0.5 block truncate text-xs text-muted-foreground"
+                                                    >
+                                                        {{
+                                                            formatCentimeters(
+                                                                getBedPhysicalWidthCm(
+                                                                    bed,
+                                                                ),
+                                                            )
+                                                        }}
+                                                        ×
+                                                        {{
+                                                            formatCentimeters(
+                                                                getBedPhysicalHeightCm(
+                                                                    bed,
+                                                                ),
+                                                            )
+                                                        }}
+                                                    </span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    class="mr-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-background hover:text-foreground"
+                                                    @click="openBedPage(bed.id)"
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined text-base"
+                                                        >arrow_forward</span
+                                                    >
+                                                </button>
+                                            </div>
+                                            <p
+                                                v-if="plannerBeds.length === 0"
+                                                class="px-3 py-4 text-center text-sm text-muted-foreground"
+                                            >
+                                                Peenraid ei ole nähtaval.
+                                            </p>
+                                        </div>
+
+                                        <div
+                                            v-if="plannerListView === 'objects'"
+                                            class="max-h-56 space-y-1 overflow-y-auto pr-1"
+                                        >
+                                            <button
+                                                v-for="object in plannerObjects"
+                                                :key="`object-list-${object.id}`"
+                                                type="button"
+                                                class="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-muted"
+                                                :class="
+                                                    selectedObject?.id ===
+                                                    object.id
+                                                        ? 'bg-primary/8'
+                                                        : ''
+                                                "
+                                                @click="
+                                                    focusObjectDetails(
+                                                        object.id,
+                                                    )
+                                                "
+                                            >
+                                                <span class="min-w-0">
+                                                    <span
+                                                        class="block truncate text-sm font-semibold text-foreground"
+                                                        >{{ object.name }}</span
+                                                    >
+                                                    <span
+                                                        class="mt-0.5 block truncate text-xs text-muted-foreground"
+                                                    >
+                                                        {{
+                                                            formatCentimeters(
+                                                                object.width,
+                                                            )
+                                                        }}
+                                                        ×
+                                                        {{
+                                                            formatCentimeters(
+                                                                object.height,
+                                                            )
+                                                        }}
+                                                    </span>
+                                                </span>
+                                                <span
+                                                    class="material-symbols-outlined shrink-0 text-base text-muted-foreground"
+                                                    >my_location</span
+                                                >
+                                            </button>
+                                            <p
+                                                v-if="
+                                                    plannerObjects.length === 0
+                                                "
+                                                class="px-3 py-4 text-center text-sm text-muted-foreground"
+                                            >
+                                                Objekte ei ole nähtaval.
+                                            </p>
                                         </div>
                                     </div>
 
@@ -3216,11 +3316,11 @@ function saveGardenPlan() {
                                             </button>
                                         </aside>
 
-                                        <div class="relative flex gap-3">
+                                        <div class="relative min-w-0">
                                             <aside
                                                 v-if="isLayoutEditing"
                                                 data-ui-overlay="true"
-                                                class="pointer-events-auto z-30 flex w-14 shrink-0 flex-col items-center gap-2 self-start rounded-2xl border border-border/80 bg-white/95 px-2 py-2 shadow-lg backdrop-blur dark:bg-card/95"
+                                                class="pointer-events-auto absolute top-3 left-3 z-30 flex flex-col items-center gap-2 rounded-2xl border border-white/70 bg-white/82 px-2 py-2 shadow-xl shadow-emerald-950/10 backdrop-blur-xl dark:border-emerald-200/10 dark:bg-card/82"
                                             >
                                                 <button
                                                     v-for="category in toolCategories"
@@ -3280,7 +3380,7 @@ function saveGardenPlan() {
                                                     selectedQuickCategoryId
                                                 "
                                                 data-ui-overlay="true"
-                                                class="pointer-events-auto absolute top-0 left-[68px] z-30 w-72 rounded-2xl border border-border/80 bg-white/96 p-3 shadow-xl backdrop-blur dark:bg-card/96"
+                                                class="pointer-events-auto absolute top-3 left-[76px] z-30 w-[min(18rem,calc(100%-5.5rem))] rounded-2xl border border-white/70 bg-white/94 p-3 shadow-xl shadow-emerald-950/10 backdrop-blur-xl dark:border-emerald-200/10 dark:bg-card/94"
                                             >
                                                 <div
                                                     class="mb-2 flex items-center justify-between"
@@ -3374,7 +3474,7 @@ function saveGardenPlan() {
 
                                             <div
                                                 ref="plannerViewport"
-                                                class="relative h-[min(58vh,560px)] min-w-0 flex-1 cursor-default touch-none overflow-hidden rounded-[1.75rem] border bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(244,239,229,0.98))] p-3 shadow-inner transition sm:p-4 md:h-[min(72vh,920px)] dark:bg-[linear-gradient(180deg,rgba(30,38,32,0.98),rgba(22,29,24,0.98))]"
+                                                class="relative h-[min(62vh,620px)] w-full max-w-full min-w-0 cursor-default touch-none overflow-hidden rounded-[1.75rem] border bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(241,247,235,0.98))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_22px_60px_rgba(47,67,44,0.12)] transition sm:p-3 md:h-[min(72vh,920px)] dark:bg-[linear-gradient(180deg,rgba(30,38,32,0.98),rgba(22,29,24,0.98))]"
                                                 :class="
                                                     isLayoutEditing
                                                         ? 'border-primary/25 ring-2 ring-primary/10'
@@ -3390,7 +3490,7 @@ function saveGardenPlan() {
                                                 "
                                             >
                                                 <div
-                                                    class="relative overflow-hidden rounded-[1.6rem] border border-emerald-900/10 bg-emerald-50/80 dark:border-emerald-200/15 dark:bg-emerald-950/35"
+                                                    class="relative overflow-hidden rounded-[1.45rem] border border-emerald-900/10 bg-emerald-50/80 dark:border-emerald-200/15 dark:bg-emerald-950/35"
                                                     :style="
                                                         plannerSurfaceStyle()
                                                     "
@@ -3487,7 +3587,7 @@ function saveGardenPlan() {
                                                             class="relative z-10"
                                                         >
                                                             <div
-                                                                class="grid place-content-center gap-[2px] rounded-[0.9rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(241,250,232,0.96),rgba(228,240,217,0.98))] p-1 transition"
+                                                                class="grid place-content-center gap-[2px] overflow-hidden rounded-[0.9rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(241,250,232,0.96),rgba(228,240,217,0.98))] p-1 transition"
                                                                 :class="
                                                                     selectedBed?.id ===
                                                                     bed.id
@@ -3834,70 +3934,6 @@ function saveGardenPlan() {
                                                             </div>
                                                         </div>
                                                     </article>
-                                                </div>
-                                                <div
-                                                    class="pointer-events-none absolute right-2 bottom-2 z-40 md:hidden"
-                                                >
-                                                    <div
-                                                        class="pointer-events-auto flex items-center gap-0.5 rounded-2xl border border-border/80 bg-card/95 p-1 shadow-lg backdrop-blur-sm"
-                                                        data-ui-overlay="true"
-                                                    >
-                                                        <button
-                                                            type="button"
-                                                            class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background text-foreground active:bg-muted"
-                                                            @click.stop="
-                                                                changeZoom(
-                                                                    -ZOOM_STEP,
-                                                                )
-                                                            "
-                                                        >
-                                                            <span
-                                                                class="material-symbols-outlined text-xl"
-                                                                >remove</span
-                                                            >
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            class="inline-flex h-11 min-w-[3.25rem] items-center justify-center rounded-xl border border-border bg-background px-2 text-xs font-semibold text-foreground active:bg-muted"
-                                                            @click.stop="
-                                                                applyFitContentZoom
-                                                            "
-                                                        >
-                                                            {{ zoomPercent }}
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background text-foreground active:bg-muted"
-                                                            @click.stop="
-                                                                changeZoom(
-                                                                    ZOOM_STEP,
-                                                                )
-                                                            "
-                                                        >
-                                                            <span
-                                                                class="material-symbols-outlined text-xl"
-                                                                >add</span
-                                                            >
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            class="inline-flex h-11 items-center justify-center rounded-xl border border-primary/25 bg-primary/15 px-2.5 text-xs font-semibold text-primary active:bg-primary/25"
-                                                            @click.stop="
-                                                                applyFitZoom
-                                                            "
-                                                        >
-                                                            Sisu
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            class="inline-flex h-11 items-center justify-center rounded-xl border border-border bg-background px-2.5 text-xs font-semibold text-muted-foreground active:bg-muted"
-                                                            @click.stop="
-                                                                applyFitGardenZoom
-                                                            "
-                                                        >
-                                                            Aed
-                                                        </button>
-                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -4356,12 +4392,40 @@ function saveGardenPlan() {
                     </main>
                 </div>
 
+                <div
+                    v-if="createMenuOpen"
+                    class="fixed right-6 bottom-[176px] z-40 w-44 rounded-2xl border border-border/80 bg-card/96 p-2 shadow-xl shadow-emerald-950/10 backdrop-blur"
+                >
+                    <button
+                        type="button"
+                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold text-foreground transition hover:bg-muted"
+                        @click="openCreateBed"
+                    >
+                        <span
+                            class="material-symbols-outlined text-base text-primary"
+                            >grid_view</span
+                        >
+                        Uus peenar
+                    </button>
+                    <button
+                        type="button"
+                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold text-foreground transition hover:bg-muted"
+                        @click="openCreateGardenPlanModal"
+                    >
+                        <span
+                            class="material-symbols-outlined text-base text-primary"
+                            >map</span
+                        >
+                        Uus aed
+                    </button>
+                </div>
+
                 <FloatingPlusButton
-                    aria-label="Lisa peenar"
+                    aria-label="Lisa"
                     :size-px="52"
                     :icon-size-px="30"
                     :bottom-px="112"
-                    @click="router.visit(`/map/${gardenPlan.id}/beds/new`)"
+                    @click="createMenuOpen = !createMenuOpen"
                 />
 
                 <BottomNav active="map" />
