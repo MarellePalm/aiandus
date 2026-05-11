@@ -3082,23 +3082,23 @@ function saveGardenPlan() {
                                                 "
                                             >
                                                 <div
-                                                    class="pointer-events-none absolute inset-x-4 top-3 z-20 flex items-center justify-between text-[11px] font-semibold tracking-[0.18em] text-emerald-900/45 uppercase"
+                                                    class="pointer-events-none absolute inset-x-4 top-3 z-20 flex items-center justify-between text-[11px] font-semibold tracking-[0.18em] text-emerald-900/60 uppercase dark:text-foreground/85"
                                                 >
                                                     <span
-                                                        class="rounded-full bg-white/70 px-2.5 py-1 backdrop-blur-sm dark:bg-card/70"
+                                                        class="rounded-full bg-white/70 px-2.5 py-1 backdrop-blur-sm dark:bg-card/80"
                                                         >Aed</span
                                                     >
                                                     <span
-                                                        class="rounded-full bg-white/70 px-2.5 py-1 backdrop-blur-sm dark:bg-card/70"
+                                                        class="rounded-full bg-white/70 px-2.5 py-1 backdrop-blur-sm dark:bg-card/80"
                                                         >Lohista peenraid</span
                                                     >
                                                 </div>
 
                                                 <div
-                                                    class="pointer-events-none absolute bottom-4 left-4 z-20 rounded-2xl border border-emerald-900/10 bg-white/78 px-3 py-2 text-[11px] font-medium text-emerald-950/75 shadow-sm backdrop-blur-sm dark:border-emerald-200/20 dark:bg-card/78 dark:text-emerald-100/80"
+                                                    class="pointer-events-none absolute bottom-4 left-4 z-20 rounded-2xl border border-emerald-900/10 bg-white/78 px-3 py-2 text-[11px] font-medium text-emerald-950/80 shadow-sm backdrop-blur-sm dark:border-emerald-200/20 dark:bg-card/85 dark:text-foreground/90"
                                                 >
                                                     <div
-                                                        class="mb-1 tracking-[0.16em] text-emerald-900/55 uppercase"
+                                                        class="mb-1 tracking-[0.16em] text-emerald-900/60 uppercase dark:text-foreground/65"
                                                     >
                                                         Mõõtkava
                                                     </div>
@@ -3106,16 +3106,16 @@ function saveGardenPlan() {
                                                         class="flex items-center gap-2"
                                                     >
                                                         <div
-                                                            class="relative h-2 rounded-full bg-emerald-700/75"
+                                                            class="relative h-2 rounded-full bg-emerald-700/75 dark:bg-foreground/35"
                                                             :style="{
                                                                 width: `${scaleBarWidthPx}px`,
                                                             }"
                                                         >
                                                             <span
-                                                                class="absolute -top-1.5 -left-px h-5 w-px bg-emerald-900/55"
+                                                                class="absolute -top-1.5 -left-px h-5 w-px bg-emerald-900/55 dark:bg-foreground/45"
                                                             ></span>
                                                             <span
-                                                                class="absolute -top-1.5 -right-px h-5 w-px bg-emerald-900/55"
+                                                                class="absolute -top-1.5 -right-px h-5 w-px bg-emerald-900/55 dark:bg-foreground/45"
                                                             ></span>
                                                         </div>
                                                         <span
@@ -3160,7 +3160,7 @@ function saveGardenPlan() {
                                                             :class="
                                                                 selectedBed?.id ===
                                                                 bed.id
-                                                                    ? 'ring-2 ring-emerald-400/55 ring-offset-4 ring-offset-[#eef4e6]'
+                                                                    ? 'ring-2 ring-emerald-400/55 ring-offset-4 ring-offset-[#eef4e6] dark:ring-emerald-300/45 dark:ring-offset-background'
                                                                     : ''
                                                             "
                                                             :style="
