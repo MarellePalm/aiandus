@@ -6,6 +6,7 @@ import BackIconButton from '@/components/BackIconButton.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
+import type { AppPageProps } from '@/types';
 
 type PlantInBed = {
     id: number;
@@ -47,12 +48,14 @@ const props = defineProps<{
     bedNotes?: BedNote[];
 }>();
 
-const page = usePage<{
+type BedPageProps = AppPageProps<{
     flash?: {
         success?: string | null;
         error?: string | null;
     };
-}>();
+}>;
+
+const page = usePage<BedPageProps>();
 const mapHref = `/map/${props.bed.garden_plan_id}`;
 
 const breadcrumbs = [
@@ -181,10 +184,7 @@ function assignPlantToCell(plantId: number, row: number, col: number) {
             onSuccess: () => {
                 cellModal.value = null;
                 selectedPlantQuantity.value = 1;
-                setInlineFeedback(
-                    'success',
-                    'Taim lisati valitud ruutu.',
-                );
+                setInlineFeedback('success', 'Taim lisati valitud ruutu.');
             },
             onError: () => {
                 setInlineFeedback(
@@ -269,7 +269,9 @@ const bedStatus = computed(() => {
             actionLabel: availablePlantsCount.value
                 ? 'Lisa taim peenrasse'
                 : 'Loo uus taim',
-            actionType: availablePlantsCount.value ? 'add-first-plant' : 'create-plant',
+            actionType: availablePlantsCount.value
+                ? 'add-first-plant'
+                : 'create-plant',
         };
     }
 
@@ -280,7 +282,9 @@ const bedStatus = computed(() => {
             actionLabel: availablePlantsCount.value
                 ? 'Täida järgmine ruut'
                 : 'Loo uus taim',
-            actionType: availablePlantsCount.value ? 'fill-next-cell' : 'create-plant',
+            actionType: availablePlantsCount.value
+                ? 'fill-next-cell'
+                : 'create-plant',
         };
     }
 
@@ -318,10 +322,7 @@ const pageFeedback = computed(() => {
     return null;
 });
 
-function setInlineFeedback(
-    tone: 'success' | 'error',
-    message: string,
-) {
+function setInlineFeedback(tone: 'success' | 'error', message: string) {
     inlineFeedback.value = { tone, message };
     if (inlineFeedbackTimer) clearTimeout(inlineFeedbackTimer);
     inlineFeedbackTimer = setTimeout(() => {
@@ -334,10 +335,7 @@ function openFirstAvailableCell() {
 
     for (let row = 0; row < layout.length; row += 1) {
         for (let col = 0; col < (layout[row]?.length ?? 0); col += 1) {
-            if (
-                (layout[row]?.[col] ?? 0) === 1 &&
-                !plantAt(row, col)
-            ) {
+            if ((layout[row]?.[col] ?? 0) === 1 && !plantAt(row, col)) {
                 cellModal.value = { row, col };
                 return;
             }
@@ -435,7 +433,7 @@ function handleBedStatusAction() {
                         </template>
                     </DiaryHeader>
 
-                    <main class="flex-1 space-y-5 px-6 py-4 md:px-8">
+                    <main class="flex-1 space-y-4 px-4 py-3 sm:px-6 md:px-8">
                         <div
                             v-if="pageFeedback"
                             class="rounded-[1.5rem] border px-4 py-3 shadow-sm"
@@ -451,7 +449,7 @@ function handleBedStatusAction() {
                         </div>
 
                         <section
-                            class="relative overflow-hidden rounded-3xl border border-border/70 bg-card shadow-[0_10px_30px_rgba(16,24,40,0.08)]"
+                            class="relative overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm"
                         >
                             <div
                                 v-if="bed.image_url"
@@ -467,7 +465,7 @@ function handleBedStatusAction() {
                                 aria-hidden="true"
                             />
                             <div
-                                class="relative z-10 h-38 overflow-hidden rounded-t-2xl bg-cover bg-center ring-1 ring-black/10"
+                                class="relative z-10 h-32 overflow-hidden bg-cover bg-center ring-1 ring-black/10 sm:h-36"
                                 :style="
                                     bedCoverImage()
                                         ? {
@@ -517,12 +515,11 @@ function handleBedStatusAction() {
                                     </p>
                                 </div>
                             </div>
-                            <div class="relative z-10 px-4 pt-2 pb-3" />
                         </section>
 
                         <section
                             v-if="!hasPlantsInBed"
-                            class="rounded-[1.75rem] border border-primary/20 bg-linear-to-r from-primary/10 via-primary/5 to-transparent p-5 shadow-sm"
+                            class="rounded-2xl border border-primary/20 bg-primary/6 p-4 shadow-sm"
                         >
                             <div
                                 class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
@@ -559,7 +556,7 @@ function handleBedStatusAction() {
                         </section>
 
                         <section
-                            class="rounded-[1.75rem] border border-border/70 bg-card/95 p-4 shadow-[0_8px_20px_rgba(16,24,40,0.05)]"
+                            class="rounded-2xl border border-border/70 bg-card/95 p-4 shadow-sm"
                         >
                             <div
                                 class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"
@@ -584,7 +581,7 @@ function handleBedStatusAction() {
 
                                 <button
                                     type="button"
-                                    class="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-3.5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 sm:w-auto sm:min-h-0"
+                                    class="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-3.5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 sm:min-h-0 sm:w-auto"
                                     @click="handleBedStatusAction"
                                 >
                                     <span
@@ -596,56 +593,65 @@ function handleBedStatusAction() {
                             </div>
 
                             <div
-                                class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+                                class="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4"
                             >
                                 <div
-                                    class="rounded-[1.25rem] border border-border/70 bg-background/75 px-4 py-3"
+                                    class="rounded-xl border border-border/70 bg-background/70 px-3 py-2.5"
                                 >
                                     <p
                                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                                     >
                                         Taimi peenras
                                     </p>
-                                    <p class="mt-1 text-lg font-semibold text-foreground">
+                                    <p
+                                        class="mt-1 text-lg font-semibold text-foreground"
+                                    >
                                         {{ bed.plants.length }}
                                     </p>
                                 </div>
 
                                 <div
-                                    class="rounded-[1.25rem] border border-border/70 bg-background/75 px-4 py-3"
+                                    class="rounded-xl border border-border/70 bg-background/70 px-3 py-2.5"
                                 >
                                     <p
                                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                                     >
                                         Täidetud ruudud
                                     </p>
-                                    <p class="mt-1 text-lg font-semibold text-foreground">
-                                        {{ plantedCellCount }} / {{ totalBedCells }}
+                                    <p
+                                        class="mt-1 text-lg font-semibold text-foreground"
+                                    >
+                                        {{ plantedCellCount }} /
+                                        {{ totalBedCells }}
                                     </p>
                                 </div>
 
                                 <div
-                                    class="rounded-[1.25rem] border border-border/70 bg-background/75 px-4 py-3"
+                                    class="rounded-xl border border-border/70 bg-background/70 px-3 py-2.5"
                                 >
                                     <p
                                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                                     >
                                         Vabad ruudud
                                     </p>
-                                    <p class="mt-1 text-lg font-semibold text-foreground">
+                                    <p
+                                        class="mt-1 text-lg font-semibold text-foreground"
+                                    >
                                         {{ emptyCellCount }}
                                     </p>
                                 </div>
 
                                 <div
-                                    class="rounded-[1.25rem] border border-border/70 bg-background/75 px-4 py-3"
+                                    class="rounded-xl border border-border/70 bg-background/70 px-3 py-2.5"
                                 >
                                     <p
                                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                                     >
                                         Viimane märge
                                     </p>
-                                    <p class="mt-1 text-sm font-semibold text-foreground">
+                                    <p
+                                        class="mt-1 text-sm font-semibold text-foreground"
+                                    >
                                         {{
                                             latestBedNote?.title ||
                                             'Märkmeid veel ei ole'
@@ -655,14 +661,18 @@ function handleBedStatusAction() {
                                         v-if="latestBedNote?.note_date"
                                         class="mt-1 text-xs text-muted-foreground"
                                     >
-                                        {{ formatNoteDate(latestBedNote.note_date) }}
+                                        {{
+                                            formatNoteDate(
+                                                latestBedNote.note_date,
+                                            )
+                                        }}
                                     </p>
                                 </div>
                             </div>
                         </section>
 
                         <section
-                            class="rounded-3xl border border-border/70 bg-card p-3 shadow-[0_10px_24px_rgba(16,24,40,0.06)] sm:p-4"
+                            class="rounded-2xl border border-border/70 bg-card p-3 shadow-sm sm:p-4"
                         >
                             <div
                                 class="mb-3 flex flex-col gap-3 px-1 sm:flex-row sm:items-start sm:justify-between"
@@ -676,46 +686,27 @@ function handleBedStatusAction() {
                                     <p
                                         class="mt-0.5 text-xs leading-relaxed text-muted-foreground"
                                     >
-                                        Puuduta ruutu, et lisada või eemaldada
-                                        taim. Nime, asukohta, ruudu suurust ja
-                                        kuju saad muuta nupust
-                                        <span class="font-medium text-foreground"
-                                            >„Muuda peenart”</span
-                                        >
-                                        (üks vaade).
+                                        Puuduta ruutu, et lisada, muuta või
+                                        eemaldada taim.
                                     </p>
                                 </div>
                                 <div
-                                    class="flex flex-col items-stretch gap-2 sm:shrink-0 sm:flex-row sm:items-center"
+                                    class="rounded-xl border border-border/70 bg-background/70 px-3 py-2 text-center shadow-xs sm:min-w-[5.5rem] sm:text-right"
                                 >
-                                    <Link
-                                        :href="`/beds/${bed.id}/edit`"
-                                        class="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-primary/35 bg-linear-to-r from-primary/15 via-primary/8 to-primary/5 px-4 py-2.5 text-sm font-semibold text-primary shadow-sm ring-1 ring-primary/15 transition hover:border-primary/45 hover:from-primary/22 hover:shadow-md sm:min-h-0 sm:px-5"
+                                    <p
+                                        class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                                     >
-                                        <span
-                                            class="material-symbols-outlined text-[22px] leading-none"
-                                            >edit_square</span
-                                        >
-                                        Muuda peenart
-                                    </Link>
-                                    <div
-                                        class="rounded-2xl border border-border/70 bg-background/75 px-3 py-2 text-center shadow-xs sm:min-w-[5.5rem] sm:text-right"
+                                        Vabu taimi
+                                    </p>
+                                    <p
+                                        class="mt-1 text-sm font-semibold text-foreground"
                                     >
-                                        <p
-                                            class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
-                                        >
-                                            Vabu taimi
-                                        </p>
-                                        <p
-                                            class="mt-1 text-sm font-semibold text-foreground"
-                                        >
-                                            {{ availablePlantsCount }}
-                                        </p>
-                                    </div>
+                                        {{ availablePlantsCount }}
+                                    </p>
                                 </div>
                             </div>
                             <div
-                                class="custom-scrollbar touch-pan-x -mx-1 overflow-x-auto overflow-y-visible overscroll-x-contain px-1 pb-1"
+                                class="custom-scrollbar -mx-1 touch-pan-x overflow-x-auto overflow-y-visible overscroll-x-contain px-1 pb-1"
                             >
                                 <div
                                     class="inline-grid w-max min-w-0 gap-2 rounded-2xl border border-primary/20 bg-linear-to-br from-primary/6 via-background to-muted/20 p-3 ring-1 shadow-soft ring-primary/10 sm:gap-2.5 sm:p-4"
@@ -768,12 +759,46 @@ function handleBedStatusAction() {
                                                     class="pointer-events-none absolute inset-0 opacity-[0.22]"
                                                     style="
                                                         background-image:
-                                                            radial-gradient(circle at 18% 22%, rgba(255,255,255,0.45) 0, rgba(255,255,255,0.02) 38%),
-                                                            radial-gradient(circle at 84% 76%, rgba(255,255,255,0.24) 0, rgba(255,255,255,0.02) 42%);
+                                                            radial-gradient(
+                                                                circle at 18%
+                                                                    22%,
+                                                                rgba(
+                                                                        255,
+                                                                        255,
+                                                                        255,
+                                                                        0.45
+                                                                    )
+                                                                    0,
+                                                                rgba(
+                                                                        255,
+                                                                        255,
+                                                                        255,
+                                                                        0.02
+                                                                    )
+                                                                    38%
+                                                            ),
+                                                            radial-gradient(
+                                                                circle at 84%
+                                                                    76%,
+                                                                rgba(
+                                                                        255,
+                                                                        255,
+                                                                        255,
+                                                                        0.24
+                                                                    )
+                                                                    0,
+                                                                rgba(
+                                                                        255,
+                                                                        255,
+                                                                        255,
+                                                                        0.02
+                                                                    )
+                                                                    42%
+                                                            );
                                                     "
                                                 />
-                                                        <span
-                                                            class="absolute right-1.5 bottom-1.5 left-1.5 truncate text-[11px] font-semibold text-white"
+                                                <span
+                                                    class="absolute right-1.5 bottom-1.5 left-1.5 truncate text-[11px] font-semibold text-white"
                                                     >{{
                                                         plantAt(r, c)?.name
                                                     }}</span
@@ -781,11 +806,15 @@ function handleBedStatusAction() {
                                                 <span
                                                     class="absolute top-1.5 left-1.5 rounded-full bg-white/92 px-1.5 py-0.5 text-[10px] font-semibold text-foreground shadow-sm dark:bg-card/92"
                                                 >
-                                                    {{ plantAt(r, c)?.quantity ?? 1 }} tk
+                                                    {{
+                                                        plantAt(r, c)
+                                                            ?.quantity ?? 1
+                                                    }}
+                                                    tk
                                                 </span>
                                                 <button
                                                     type="button"
-                                                    class="absolute top-1 right-1 z-20 flex min-h-9 min-w-9 items-center justify-center rounded-full bg-black/60 p-1.5 text-white opacity-100 shadow-sm md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+                                                    class="absolute top-1 right-1 z-20 flex min-h-9 min-w-9 items-center justify-center rounded-full bg-black/60 p-1.5 text-white opacity-100 shadow-sm md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100"
                                                     aria-label="Eemalda taim ruudust"
                                                     @click.stop="
                                                         removePlantFromBed(
@@ -801,8 +830,8 @@ function handleBedStatusAction() {
                                             </div>
                                             <div
                                                 v-else-if="
-                                                    (gridLayout[r]?.[c] ?? 0) ===
-                                                    -1
+                                                    (gridLayout[r]?.[c] ??
+                                                        0) === -1
                                                 "
                                                 class="rounded-xl border border-border/70 bg-muted/35"
                                                 :style="{
@@ -812,8 +841,8 @@ function handleBedStatusAction() {
                                             />
                                             <div
                                                 v-else-if="
-                                                    (gridLayout[r]?.[c] ?? 1) ===
-                                                    0
+                                                    (gridLayout[r]?.[c] ??
+                                                        1) === 0
                                                 "
                                                 class="pointer-events-none rounded-xl opacity-0"
                                                 :style="{
@@ -832,9 +861,7 @@ function handleBedStatusAction() {
                                                 }"
                                                 :title="`Lisa taim ruutu (rida ${r + 1}, veerg ${c + 1})`"
                                                 :aria-label="`Lisa taim ruutu, rida ${r + 1}, veerg ${c + 1}`"
-                                                @click="
-                                                    openCellModal(r, c)
-                                                "
+                                                @click="openCellModal(r, c)"
                                             >
                                                 <span
                                                     class="material-symbols-outlined text-xl"
@@ -896,7 +923,7 @@ function handleBedStatusAction() {
                                     class="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/35 py-1.5 pr-1.5 pl-3"
                                 >
                                     <span
-                                    class="text-sm font-medium text-foreground"
+                                        class="text-sm font-medium text-foreground"
                                         >{{ p.name }}</span
                                     >
                                     <span
@@ -1020,7 +1047,9 @@ function handleBedStatusAction() {
                                 >
                             </button>
                         </div>
-                        <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-2">
+                        <div
+                            class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-2"
+                        >
                             <template v-if="modalPlant">
                                 <div
                                     class="mb-3 rounded-2xl border border-border/60 bg-background/70 px-3.5 py-3"
@@ -1075,9 +1104,14 @@ function handleBedStatusAction() {
                                                 type="button"
                                                 class="inline-flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-foreground transition hover:bg-muted sm:h-8 sm:w-8"
                                                 aria-label="Vähenda kogust"
-                                                @click="changeSelectedPlantQuantity(-1)"
+                                                @click="
+                                                    changeSelectedPlantQuantity(
+                                                        -1,
+                                                    )
+                                                "
                                             >
-                                                <span class="material-symbols-outlined text-base"
+                                                <span
+                                                    class="material-symbols-outlined text-base"
                                                     >remove</span
                                                 >
                                             </button>
@@ -1090,15 +1124,23 @@ function handleBedStatusAction() {
                                                 type="button"
                                                 class="inline-flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-foreground transition hover:bg-muted sm:h-8 sm:w-8"
                                                 aria-label="Suurenda kogust"
-                                                @click="changeSelectedPlantQuantity(1)"
+                                                @click="
+                                                    changeSelectedPlantQuantity(
+                                                        1,
+                                                    )
+                                                "
                                             >
-                                                <span class="material-symbols-outlined text-base"
+                                                <span
+                                                    class="material-symbols-outlined text-base"
                                                     >add</span
                                                 >
                                             </button>
                                         </div>
-                                        <p class="text-xs leading-5 text-muted-foreground">
-                                            Muuda kogust ilma taime ruudust eemaldamata.
+                                        <p
+                                            class="text-xs leading-5 text-muted-foreground"
+                                        >
+                                            Muuda kogust ilma taime ruudust
+                                            eemaldamata.
                                         </p>
                                     </div>
                                 </div>
@@ -1116,7 +1158,8 @@ function handleBedStatusAction() {
                                             )
                                         "
                                     >
-                                        <span class="material-symbols-outlined text-base"
+                                        <span
+                                            class="material-symbols-outlined text-base"
                                             >check</span
                                         >
                                         Salvesta kogus
@@ -1126,7 +1169,8 @@ function handleBedStatusAction() {
                                         class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3.5 py-3 text-sm font-semibold text-foreground transition hover:bg-muted sm:min-h-0"
                                         @click="removePlantFromBed(modalPlant)"
                                     >
-                                        <span class="material-symbols-outlined text-base"
+                                        <span
+                                            class="material-symbols-outlined text-base"
                                             >delete</span
                                         >
                                         Eemalda taim
@@ -1179,9 +1223,14 @@ function handleBedStatusAction() {
                                                 type="button"
                                                 class="inline-flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-foreground transition hover:bg-muted sm:h-8 sm:w-8"
                                                 aria-label="Vähenda kogust"
-                                                @click="changeSelectedPlantQuantity(-1)"
+                                                @click="
+                                                    changeSelectedPlantQuantity(
+                                                        -1,
+                                                    )
+                                                "
                                             >
-                                                <span class="material-symbols-outlined text-base"
+                                                <span
+                                                    class="material-symbols-outlined text-base"
                                                     >remove</span
                                                 >
                                             </button>
@@ -1194,15 +1243,23 @@ function handleBedStatusAction() {
                                                 type="button"
                                                 class="inline-flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-foreground transition hover:bg-muted sm:h-8 sm:w-8"
                                                 aria-label="Suurenda kogust"
-                                                @click="changeSelectedPlantQuantity(1)"
+                                                @click="
+                                                    changeSelectedPlantQuantity(
+                                                        1,
+                                                    )
+                                                "
                                             >
-                                                <span class="material-symbols-outlined text-base"
+                                                <span
+                                                    class="material-symbols-outlined text-base"
                                                     >add</span
                                                 >
                                             </button>
                                         </div>
-                                        <p class="text-xs leading-5 text-muted-foreground">
-                                            Kasuta seda, kui ühes ruudus on mitu sama taime.
+                                        <p
+                                            class="text-xs leading-5 text-muted-foreground"
+                                        >
+                                            Kasuta seda, kui ühes ruudus on mitu
+                                            sama taime.
                                         </p>
                                     </div>
                                 </div>
@@ -1260,7 +1317,11 @@ function handleBedStatusAction() {
                                                     <span
                                                         class="mt-0.5 block text-xs text-muted-foreground"
                                                     >
-                                                        Praegu kokku {{ plant.quantity ?? 1 }} tk
+                                                        Praegu kokku
+                                                        {{
+                                                            plant.quantity ?? 1
+                                                        }}
+                                                        tk
                                                     </span>
                                                 </span>
                                                 <span

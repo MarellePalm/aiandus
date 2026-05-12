@@ -60,8 +60,7 @@ const modalConfig = computed<{
     if (showVerificationStep.value) {
         return {
             title: 'Kinnita autentimiskood',
-            description:
-                'Sisesta 6-kohaline kood oma autentimisrakendusest.',
+            description: 'Sisesta 6-kohaline kood oma autentimisrakendusest.',
             buttonText: 'Jätka',
         };
     }
@@ -273,7 +272,6 @@ watch(
                                 <InputError
                                     :message="
                                         errors?.confirmTwoFactorAuthentication
-                                            ?.code
                                     "
                                 />
                             </div>

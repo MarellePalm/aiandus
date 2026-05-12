@@ -160,11 +160,7 @@ function isWeekendCol(idx: number): boolean {
 }
 
 function jumpToToday() {
-    viewDate.value = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        1,
-    );
+    viewDate.value = new Date(today.getFullYear(), today.getMonth(), 1);
     selectedDay.value = today.getDate();
 }
 
@@ -223,14 +219,16 @@ type DayFeedItem = {
 };
 const dayFeedItems = computed<DayFeedItem[]>(() =>
     selectedNotes.value
-        .map((note, index) => ({
-            key: `note-${String(note.id ?? index)}`,
-            kind:
-                note.due_at || note.reminder_enabled || note.reminder_time
-                    ? 'reminder'
-                    : 'note',
-            note,
-        }))
+        .map(
+            (note, index): DayFeedItem => ({
+                key: `note-${String(note.id ?? index)}`,
+                kind:
+                    note.due_at || note.reminder_enabled || note.reminder_time
+                        ? 'reminder'
+                        : 'note',
+                note,
+            }),
+        )
         .sort((a, b) => {
             if (a.kind !== b.kind) return a.kind === 'reminder' ? -1 : 1;
 
@@ -328,7 +326,7 @@ onMounted(() => {
                             >
                                 <button
                                     type="button"
-                                    class="flex h-10 w-10 items-center justify-center rounded-full bg-card text-foreground/85 ring-1 shadow-sm ring-border transition hover:bg-primary/8 hover:text-primary hover:ring-primary/30"
+                                    class="flex h-10 w-10 items-center justify-center rounded-full bg-card text-foreground/85 shadow-sm ring-1 ring-border transition hover:bg-primary/8 hover:text-primary hover:ring-primary/30"
                                     @click="prevMonth"
                                     aria-label="Eelmine kuu"
                                 >
@@ -364,7 +362,7 @@ onMounted(() => {
 
                                 <button
                                     type="button"
-                                    class="flex h-10 w-10 items-center justify-center rounded-full bg-card text-foreground/85 ring-1 shadow-sm ring-border transition hover:bg-primary/8 hover:text-primary hover:ring-primary/30"
+                                    class="flex h-10 w-10 items-center justify-center rounded-full bg-card text-foreground/85 shadow-sm ring-1 ring-border transition hover:bg-primary/8 hover:text-primary hover:ring-primary/30"
                                     @click="nextMonth"
                                     aria-label="Järgmine kuu"
                                 >
@@ -401,8 +399,12 @@ onMounted(() => {
                                     >
                                         Valitud päev
                                     </p>
-                                    <p class="mt-0.5 text-sm font-medium text-foreground capitalize">
-                                        {{ selectedWeekday }}, {{ selectedDay }}. {{ selectedMonthLabel }}
+                                    <p
+                                        class="mt-0.5 text-sm font-medium text-foreground capitalize"
+                                    >
+                                        {{ selectedWeekday }},
+                                        {{ selectedDay }}.
+                                        {{ selectedMonthLabel }}
                                     </p>
                                 </div>
                                 <Link
@@ -472,14 +474,20 @@ onMounted(() => {
                                     </span>
 
                                     <span
-                                        v-if="hasReminderForDay(day) && day !== selectedDay"
+                                        v-if="
+                                            hasReminderForDay(day) &&
+                                            day !== selectedDay
+                                        "
                                         class="material-symbols-outlined absolute top-0.5 right-0.5 text-[12px] text-primary/70"
                                         aria-hidden="true"
                                     >
                                         notifications
                                     </span>
                                     <span
-                                        v-else-if="hasReminderForDay(day) && day === selectedDay"
+                                        v-else-if="
+                                            hasReminderForDay(day) &&
+                                            day === selectedDay
+                                        "
                                         class="material-symbols-outlined absolute top-0.5 right-0.5 text-[12px] text-primary-foreground/85"
                                         aria-hidden="true"
                                     >
@@ -508,7 +516,7 @@ onMounted(() => {
                                             notesCountForDay(day) > 3 &&
                                             day !== selectedDay
                                         "
-                                        class="absolute bottom-0.5 right-1 text-[9px] font-bold text-primary/70"
+                                        class="absolute right-1 bottom-0.5 text-[9px] font-bold text-primary/70"
                                         aria-hidden="true"
                                     >
                                         +{{ notesCountForDay(day) - 3 }}
@@ -544,7 +552,7 @@ onMounted(() => {
 
                         <!-- Valitud päev: ülesanded ja märkmed -->
                         <section
-                            class="rounded-2xl border border-border bg-card/90 p-3.5 shadow-soft sm:p-4 lg:order-2 lg:sticky lg:top-6"
+                            class="rounded-2xl border border-border bg-card/90 p-3.5 shadow-soft sm:p-4 lg:sticky lg:top-6 lg:order-2"
                         >
                             <div class="mb-3 hidden lg:block">
                                 <div
@@ -559,7 +567,9 @@ onMounted(() => {
                                         <p
                                             class="mt-0.5 text-sm font-medium text-foreground capitalize"
                                         >
-                                            {{ selectedWeekday }}, {{ selectedDay }}. {{ selectedMonthLabel }}
+                                            {{ selectedWeekday }},
+                                            {{ selectedDay }}.
+                                            {{ selectedMonthLabel }}
                                         </p>
                                         <p
                                             class="mt-1 text-xs text-muted-foreground"
@@ -587,10 +597,20 @@ onMounted(() => {
                                         class="cursor-pointer rounded-xl border border-border/60 bg-card px-3 py-2.5 shadow-soft hover:border-primary/30"
                                         role="button"
                                         tabindex="0"
-                                        @click="router.visit(`/calendar/notes/${item.note.id}`)"
-                                        @keydown.enter="router.visit(`/calendar/notes/${item.note.id}`)"
+                                        @click="
+                                            router.visit(
+                                                `/calendar/notes/${item.note.id}`,
+                                            )
+                                        "
+                                        @keydown.enter="
+                                            router.visit(
+                                                `/calendar/notes/${item.note.id}`,
+                                            )
+                                        "
                                     >
-                                        <div class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                                        <div
+                                            class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3"
+                                        >
                                             <div class="min-w-0">
                                                 <div
                                                     class="mb-1.5 flex items-start justify-between gap-2"
@@ -599,7 +619,8 @@ onMounted(() => {
                                                         class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary"
                                                     >
                                                         {{
-                                                            item.kind === 'reminder'
+                                                            item.kind ===
+                                                            'reminder'
                                                                 ? 'Meeldetuletus'
                                                                 : 'Märge'
                                                         }}
@@ -622,20 +643,31 @@ onMounted(() => {
                                                     class="mt-0.5 line-clamp-2 text-xs text-muted-foreground"
                                                 >
                                                     {{
-                                                        previewText(item.note.body, 90)
+                                                        previewText(
+                                                            item.note.body,
+                                                            90,
+                                                        )
                                                     }}
                                                 </p>
                                                 <p
                                                     v-if="item.note.due_at"
                                                     class="mt-1 line-clamp-1 text-[11px] font-semibold text-primary"
                                                 >
-                                                    {{ formatDueAt(item.note.due_at) }}
+                                                    {{
+                                                        formatDueAt(
+                                                            item.note.due_at,
+                                                        )
+                                                    }}
                                                 </p>
                                                 <p
-                                                    v-else-if="item.note.reminder_time"
+                                                    v-else-if="
+                                                        item.note.reminder_time
+                                                    "
                                                     class="mt-1 line-clamp-1 text-[11px] font-semibold text-primary"
                                                 >
-                                                    {{ item.note.reminder_time }}
+                                                    {{
+                                                        item.note.reminder_time
+                                                    }}
                                                 </p>
                                             </div>
 
