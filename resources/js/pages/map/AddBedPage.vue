@@ -25,10 +25,10 @@ const breadcrumbs = [
     <Head title="Lisa peenar" />
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="page page-with-bottomnav">
-            <main class="mx-auto w-full max-w-5xl space-y-5 px-4 pb-6">
+            <main class="mx-auto w-full max-w-5xl space-y-4 px-4 pb-6">
                 <DiaryHeader
                     title="Lisa peenar"
-                    title-class="text-foreground text-2xl font-bold tracking-tight sm:text-3xl"
+                    title-class="text-foreground text-2xl font-semibold tracking-tight"
                     header-class="pt-5 px-0 md:px-0"
                     top-row-class="mb-2"
                     bottom-row-class="mb-0"
@@ -42,7 +42,7 @@ const breadcrumbs = [
                 </DiaryHeader>
                 <p
                     v-if="props.showGuide"
-                    class="rounded-[1.25rem] bg-primary/8 px-4 py-3 text-sm leading-6 text-muted-foreground ring-1 ring-primary/15"
+                    class="rounded-xl bg-primary/8 px-4 py-3 text-sm leading-6 text-muted-foreground ring-1 ring-primary/15"
                 >
                     Alusta nimest ja asukohast. Peenra kuju saad kohe allpool
                     ruutudest kokku puudutada.

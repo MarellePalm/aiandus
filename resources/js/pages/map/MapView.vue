@@ -153,6 +153,7 @@ const FIT_VIEW_MIN_ZOOM = 0.001;
 const CONTENT_FIT_MIN_VISIBLE_ITEM_PX = 14;
 const MAX_ZOOM = 4.5;
 const ZOOM_STEP = 0.25;
+const FOCUSED_BED_MIN_ZOOM = 0.75;
 const MIN_PINCH_DISTANCE_PX = 10;
 const CONTENT_FIT_PADDING = 160;
 const CONTENT_FIT_SIDE_PADDING = 40;
@@ -207,7 +208,6 @@ let confirmDialogAction: (() => void) | null = null;
 const showBedsLayer = ref(true);
 const showStructuresLayer = ref(true);
 const showWaterLayer = ref(true);
-const showPlannerLabels = ref(true);
 const selectedQuickCategoryId = ref<ToolCategoryId | null>(null);
 const toolCategories: ToolCategory[] = [
     {
@@ -295,6 +295,15 @@ const toolCategories: ToolCategory[] = [
                 width: 120,
                 height: 120,
                 icon: 'droplets',
+            },
+            {
+                id: 'pond-fountain',
+                type: 'pond',
+                label: 'Purskkaev',
+                description: 'Väike purskkaev või dekoratiivne veepunkt.',
+                width: 50,
+                height: 50,
+                icon: 'droplet',
             },
         ],
     },
@@ -391,7 +400,6 @@ const toolCategories: ToolCategory[] = [
 const allToolVariants = toolCategories.flatMap((category) => category.variants);
 const plannerViewport = ref<HTMLElement | null>(null);
 const selectedObjectPanel = ref<HTMLElement | null>(null);
-const selectedBedPanel = ref<HTMLElement | null>(null);
 const objectWidthInput = ref<HTMLInputElement | null>(null);
 const viewportSize = ref({ width: 0, height: 0 });
 /** First fit after mount/plan change; retries when ResizeObserver gets non-zero size. */
@@ -406,9 +414,7 @@ const panStart = ref({ x: 0, y: 0, originX: 0, originY: 0 });
 const PAN_CLICK_SUPPRESS_PX = 8;
 let resizeObserver: ResizeObserver | null = null;
 const highlightSelectedObjectPanel = ref(false);
-const highlightSelectedBedPanel = ref(false);
 let objectPanelHighlightTimeout: ReturnType<typeof setTimeout> | null = null;
-let bedPanelHighlightTimeout: ReturnType<typeof setTimeout> | null = null;
 const plannerLandscapeHintDismissed = ref(false);
 const PLANNER_LANDSCAPE_HINT_KEY = 'planner-landscape-hint-dismissed';
 
@@ -622,7 +628,6 @@ onBeforeUnmount(() => {
     pinchState.value = null;
     resizeObserver?.disconnect();
     if (objectPanelHighlightTimeout) clearTimeout(objectPanelHighlightTimeout);
-    if (bedPanelHighlightTimeout) clearTimeout(bedPanelHighlightTimeout);
 });
 
 function syncPositionsFromProps() {
@@ -727,9 +732,7 @@ const plannerGridSizePx = computed(() =>
     Math.max(10, Math.round(GARDEN_GRID_CELL_CM * CM_TO_PX)),
 );
 const scaleBarWidthPx = computed(() => Math.round(100 * CM_TO_PX));
-const plannerBeds = computed(() =>
-    showBedsLayer.value ? filteredBeds.value : [],
-);
+const plannerBeds = computed(() => (showBedsLayer.value ? props.beds : []));
 const plannerObjects = computed(() =>
     props.gardenObjects.filter((object) => {
         if (object.type === 'pond') return showWaterLayer.value;
@@ -805,22 +808,6 @@ watch(
     { immediate: true },
 );
 
-watch(selectedBed, (bed) => {
-    if (!bed) return;
-
-    nextTick(() => {
-        selectedBedPanel.value?.scrollIntoView({
-            block: 'nearest',
-            behavior: 'smooth',
-        });
-        highlightSelectedBedPanel.value = true;
-        if (bedPanelHighlightTimeout) clearTimeout(bedPanelHighlightTimeout);
-        bedPanelHighlightTimeout = setTimeout(() => {
-            highlightSelectedBedPanel.value = false;
-        }, 1200);
-    });
-});
-
 watch(plannerBeds, (beds) => {
     if (
         selectedBedId.value !== null &&
@@ -829,6 +816,29 @@ watch(plannerBeds, (beds) => {
         selectedBedId.value = beds[0]?.id ?? null;
     }
 });
+
+watch(
+    () =>
+        props.beds.map((bed) => [
+            bed.id,
+            bed.garden_x ?? GARDEN_PADDING,
+            bed.garden_y ?? GARDEN_PADDING,
+        ]),
+    () => {
+        const current = localPositions.value;
+        const next: Record<number, { x: number; y: number }> = {};
+
+        props.beds.forEach((bed) => {
+            next[bed.id] = current[bed.id] ?? {
+                x: bed.garden_x ?? GARDEN_PADDING,
+                y: bed.garden_y ?? GARDEN_PADDING,
+            };
+        });
+
+        localPositions.value = next;
+    },
+    { deep: true },
+);
 
 watch(plannerObjects, (objects) => {
     if (
@@ -904,10 +914,6 @@ const categoryButtonToneClass = (
             'border-border/70 bg-background text-foreground hover:bg-muted/70',
     }[categoryId];
 };
-
-function editBed(id: number) {
-    router.get(`/beds/${id}/edit`);
-}
 
 function deleteBed(id: number, name: string) {
     openConfirmDialog(
@@ -1019,6 +1025,11 @@ function getPlantPreviewImageAtVisibleCell(
     return plant.image_url || '/logo.png';
 }
 
+function getBedPreviewImage(bed: Bed): string | null {
+    if (bed.image_url) return bed.image_url;
+    return bed.plants.find((plant) => plant.image_url)?.image_url ?? null;
+}
+
 function getBedPhysicalWidthCm(bed: Bed): number {
     return getBedWidthInCells(bed) * getBedCellSizeCm(bed);
 }
@@ -1034,12 +1045,25 @@ function formatCentimeters(cm: number): string {
 function bedPreviewGridStyle(bed: Bed) {
     const cols = getBedWidthInCells(bed);
     const rows = getBedHeightInCells(bed);
-    const cellPx = Math.max(10, Math.round(getBedCellSizeCm(bed) * CM_TO_PX));
 
     return {
-        gridTemplateColumns: `repeat(${cols}, ${cellPx}px)`,
-        gridTemplateRows: `repeat(${rows}, ${cellPx}px)`,
+        width: '100%',
+        height: '100%',
+        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+        gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
     };
+}
+
+function bedPreviewCellClass(cell: number): string {
+    if (cell === 1) {
+        return 'border-emerald-900/18 bg-[linear-gradient(180deg,rgba(131,171,116,0.98),rgba(89,132,78,0.98))]';
+    }
+
+    if (cell === 0) {
+        return 'border-emerald-700/15 bg-emerald-100/55';
+    }
+
+    return 'border-transparent bg-transparent';
 }
 
 function bedCardSize(bed: Bed) {
@@ -1056,6 +1080,8 @@ function bedCardSize(bed: Bed) {
 }
 
 function getObjectPixelWidth(object: GardenObject): number {
+    if (isIconOnlyObject(object)) return MIN_OBJECT_VISUAL_SIZE;
+
     return Math.max(
         MIN_OBJECT_VISUAL_SIZE,
         Math.round(object.width * CM_TO_PX),
@@ -1063,9 +1089,23 @@ function getObjectPixelWidth(object: GardenObject): number {
 }
 
 function getObjectPixelHeight(object: GardenObject): number {
+    if (isIconOnlyObject(object)) return MIN_OBJECT_VISUAL_SIZE;
+
     return Math.max(
         MIN_OBJECT_VISUAL_SIZE,
         Math.round(object.height * CM_TO_PX),
+    );
+}
+
+function isIconOnlyObject(object: GardenObject): boolean {
+    const variantId =
+        object.meta && typeof object.meta === 'object'
+            ? (object.meta['variant_id'] as string | undefined)
+            : undefined;
+
+    return (
+        variantId === 'pond-fountain' ||
+        object.name.trim().toLowerCase() === 'purskkaev'
     );
 }
 
@@ -1188,6 +1228,7 @@ function hideObjectInfo(objectId: number) {
 
 function focusBedDetails(bedId: number) {
     if (dragMoved.value) return;
+    isLayoutEditing.value = true;
     selectedObjectId.value = null;
     selectedBedId.value = bedId;
 }
@@ -1212,7 +1253,9 @@ function togglePlannerListView(view: PlannerListView) {
 function startDragging(bed: Bed, event: PointerEvent) {
     const target = event.target as HTMLElement | null;
     if (target?.closest('[data-no-drag="true"]')) return;
-    if (!isLayoutEditing.value) return;
+    event.preventDefault();
+    event.stopPropagation();
+    isLayoutEditing.value = true;
 
     const current = getBedPosition(bed);
     const pointer = getPlannerLocalPoint(event);
@@ -1271,6 +1314,7 @@ function stopDragging() {
     if (draggingBedId.value === null) return;
 
     const bedId = draggingBedId.value;
+    const moved = dragMoved.value;
     if (dragCaptureTarget.value && dragPointerId.value !== null) {
         try {
             dragCaptureTarget.value.releasePointerCapture(dragPointerId.value);
@@ -1281,6 +1325,8 @@ function stopDragging() {
     dragCaptureTarget.value = null;
     draggingBedId.value = null;
     dragPointerId.value = null;
+
+    if (!moved) return;
 
     const position = localPositions.value[bedId];
     if (!position) return;
@@ -1368,6 +1414,7 @@ function stopObjectDragging() {
     if (draggingObjectId.value === null) return;
 
     const objectId = draggingObjectId.value;
+    const moved = dragMoved.value;
     if (dragCaptureTarget.value && dragPointerId.value !== null) {
         try {
             dragCaptureTarget.value.releasePointerCapture(dragPointerId.value);
@@ -1378,6 +1425,8 @@ function stopObjectDragging() {
     dragCaptureTarget.value = null;
     draggingObjectId.value = null;
     dragPointerId.value = null;
+
+    if (!moved) return;
 
     const position = localObjectPositions.value[objectId];
     if (!position) return;
@@ -1642,7 +1691,6 @@ function resetPlannerFilters() {
     showBedsLayer.value = true;
     showStructuresLayer.value = true;
     showWaterLayer.value = true;
-    showPlannerLabels.value = true;
     toolSearch.value = '';
     searchQuery.value = '';
 }
@@ -1961,18 +2009,13 @@ function plannerSurfaceStyle() {
     return {
         width: `${gardenSurfaceWidth.value}px`,
         height: `${gardenSurfaceHeight.value}px`,
-        transform: `translate(${panX.value}px, ${panY.value}px) scale(${zoom.value})`,
+        transform: `scale(${zoom.value})`,
         transformOrigin: 'top left',
         backgroundImage: [
             'linear-gradient(180deg, rgba(243, 251, 234, 0.98), rgba(222, 238, 208, 0.99))',
             'radial-gradient(circle at 50% 0%, rgba(185, 214, 160, 0.22), transparent 42%)',
         ].join(', '),
     };
-}
-
-function goToSelectedBed() {
-    if (!selectedBed.value) return;
-    router.get(`/beds/${selectedBed.value.id}`);
 }
 
 function clampFitViewZoom(fitWidth: number, fitHeight: number): number {
@@ -2094,9 +2137,14 @@ function applyInitialGardenZoom() {
 function centerBedInViewport(bed: Bed) {
     if (!viewportSize.value.width || !viewportSize.value.height) return;
 
-    void bed;
-    panX.value = 0;
-    panY.value = 0;
+    zoom.value = Math.min(MAX_ZOOM, Math.max(zoom.value, FOCUSED_BED_MIN_ZOOM));
+    const position = getBedPosition(bed);
+    const size = bedCardSize(bed);
+    const bedCenterX = position.x + size.width / 2;
+    const bedCenterY = position.y + size.height / 2;
+
+    panX.value = viewportSize.value.width / 2 - bedCenterX * zoom.value;
+    panY.value = viewportSize.value.height / 2 - bedCenterY * zoom.value;
 }
 
 function runPlannerInitialViewportFit() {
@@ -2124,6 +2172,11 @@ function runPlannerInitialViewportFit() {
             ) {
                 return;
             }
+            const currentFocusedBed = selectedBed.value;
+            if (currentFocusedBed) {
+                centerBedInViewport(currentFocusedBed);
+                return;
+            }
             applyInitialGardenZoom();
         });
     });
@@ -2138,6 +2191,18 @@ watch(
         ] as const,
     () => {
         nextTick(() => {
+            const focusedBedId = getInitialFocusedBedId();
+            if (focusedBedId !== null) {
+                selectedObjectId.value = null;
+                selectedBedId.value = focusedBedId;
+                isLayoutEditing.value = true;
+                const focusedBed = props.beds.find(
+                    (bed) => bed.id === focusedBedId,
+                );
+                if (focusedBed) {
+                    centerBedInViewport(focusedBed);
+                }
+            }
             runPlannerInitialViewportFit();
         });
     },
@@ -2354,7 +2419,7 @@ function saveGardenPlan() {
                                                 >
                                                     <button
                                                         type="button"
-                                                        class="inline-flex items-center gap-0.5 rounded-full transition hover:text-primary"
+                                                        class="inline-flex min-h-8 items-center gap-0.5 rounded-full transition hover:text-primary"
                                                         :class="
                                                             plannerListView ===
                                                             'beds'
@@ -2385,7 +2450,7 @@ function saveGardenPlan() {
                                                     ></span>
                                                     <button
                                                         type="button"
-                                                        class="inline-flex items-center gap-0.5 rounded-full transition hover:text-primary"
+                                                        class="inline-flex min-h-8 items-center gap-0.5 rounded-full transition hover:text-primary"
                                                         :class="
                                                             plannerListView ===
                                                             'objects'
@@ -2427,7 +2492,7 @@ function saveGardenPlan() {
                                                 class="flex items-center gap-1"
                                             >
                                                 <div
-                                                    class="inline-flex items-center gap-0.5 rounded-full bg-muted/55 p-1 ring-1 ring-border/70"
+                                                    class="inline-flex items-center gap-0.5 rounded-full bg-muted/45 p-1 ring-1 ring-border/70"
                                                 >
                                                     <button
                                                         type="button"
@@ -2509,7 +2574,7 @@ function saveGardenPlan() {
                                             class="max-h-56 space-y-1 overflow-y-auto pr-1"
                                         >
                                             <div
-                                                v-for="bed in plannerBeds"
+                                                v-for="bed in filteredBeds"
                                                 :key="`bed-list-${bed.id}`"
                                                 class="flex items-center gap-1 rounded-xl transition hover:bg-muted"
                                                 :class="
@@ -2559,9 +2624,25 @@ function saveGardenPlan() {
                                                         >arrow_forward</span
                                                     >
                                                 </button>
+                                                <button
+                                                    type="button"
+                                                    class="mr-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-rose-50 hover:text-rose-700"
+                                                    :aria-label="`Kustuta ${bed.name}`"
+                                                    @click.stop="
+                                                        deleteBed(
+                                                            bed.id,
+                                                            bed.name,
+                                                        )
+                                                    "
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined text-base"
+                                                        >delete</span
+                                                    >
+                                                </button>
                                             </div>
                                             <p
-                                                v-if="plannerBeds.length === 0"
+                                                v-if="filteredBeds.length === 0"
                                                 class="px-3 py-4 text-center text-sm text-muted-foreground"
                                             >
                                                 Peenraid ei ole nähtaval.
@@ -2934,24 +3015,6 @@ function saveGardenPlan() {
                                                         >
                                                         Vesi
                                                     </button>
-                                                    <button
-                                                        type="button"
-                                                        :class="
-                                                            layerButtonClass(
-                                                                showPlannerLabels,
-                                                            )
-                                                        "
-                                                        @click="
-                                                            showPlannerLabels =
-                                                                !showPlannerLabels
-                                                        "
-                                                    >
-                                                        <span
-                                                            class="material-symbols-outlined text-sm"
-                                                            >label</span
-                                                        >
-                                                        Nimed
-                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
@@ -3320,13 +3383,13 @@ function saveGardenPlan() {
                                             <aside
                                                 v-if="isLayoutEditing"
                                                 data-ui-overlay="true"
-                                                class="pointer-events-auto absolute top-3 left-3 z-30 flex flex-col items-center gap-2 rounded-2xl border border-white/70 bg-white/82 px-2 py-2 shadow-xl shadow-emerald-950/10 backdrop-blur-xl dark:border-emerald-200/10 dark:bg-card/82"
+                                                class="pointer-events-auto absolute top-3 left-3 z-30 flex flex-col items-center gap-1.5 rounded-xl border border-white/70 bg-white/82 px-1.5 py-1.5 shadow-lg shadow-emerald-950/10 backdrop-blur-xl dark:border-emerald-200/10 dark:bg-card/82"
                                             >
                                                 <button
                                                     v-for="category in toolCategories"
                                                     :key="`quick-tool-${category.id}`"
                                                     type="button"
-                                                    class="inline-flex h-10 w-10 items-center justify-center rounded-xl border transition"
+                                                    class="inline-flex h-9 w-9 items-center justify-center rounded-lg border transition"
                                                     :class="
                                                         categoryButtonToneClass(
                                                             category.id,
@@ -3380,7 +3443,7 @@ function saveGardenPlan() {
                                                     selectedQuickCategoryId
                                                 "
                                                 data-ui-overlay="true"
-                                                class="pointer-events-auto absolute top-3 left-[76px] z-30 w-[min(18rem,calc(100%-5.5rem))] rounded-2xl border border-white/70 bg-white/94 p-3 shadow-xl shadow-emerald-950/10 backdrop-blur-xl dark:border-emerald-200/10 dark:bg-card/94"
+                                                class="pointer-events-auto absolute top-3 left-[64px] z-30 w-[min(17rem,calc(100%-4.75rem))] rounded-xl border border-white/70 bg-white/94 p-3 shadow-lg shadow-emerald-950/10 backdrop-blur-xl dark:border-emerald-200/10 dark:bg-card/94"
                                             >
                                                 <div
                                                     class="mb-2 flex items-center justify-between"
@@ -3474,7 +3537,7 @@ function saveGardenPlan() {
 
                                             <div
                                                 ref="plannerViewport"
-                                                class="relative h-[min(62vh,620px)] w-full max-w-full min-w-0 cursor-default touch-none overflow-hidden rounded-[1.75rem] border bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(241,247,235,0.98))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_22px_60px_rgba(47,67,44,0.12)] transition sm:p-3 md:h-[min(72vh,920px)] dark:bg-[linear-gradient(180deg,rgba(30,38,32,0.98),rgba(22,29,24,0.98))]"
+                                                class="relative h-[min(62vh,620px)] w-full max-w-full min-w-0 cursor-default touch-none overflow-hidden rounded-[1.5rem] border bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(241,247,235,0.98))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_14px_34px_rgba(47,67,44,0.10)] transition sm:p-3 md:h-[min(72vh,920px)] dark:bg-[linear-gradient(180deg,rgba(30,38,32,0.98),rgba(22,29,24,0.98))]"
                                                 :class="
                                                     isLayoutEditing
                                                         ? 'border-primary/25 ring-2 ring-primary/10'
@@ -3578,16 +3641,14 @@ function saveGardenPlan() {
                                                             hideBedInfo(bed.id)
                                                         "
                                                         @click="
-                                                            focusBedDetails(
-                                                                bed.id,
-                                                            )
+                                                            openBedPage(bed.id)
                                                         "
                                                     >
                                                         <div
-                                                            class="relative z-10"
+                                                            class="relative z-10 h-full w-full"
                                                         >
                                                             <div
-                                                                class="grid place-content-center gap-[2px] overflow-hidden rounded-[0.9rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(241,250,232,0.96),rgba(228,240,217,0.98))] p-1 transition"
+                                                                class="grid h-full w-full place-content-center gap-[2px] overflow-hidden rounded-[0.9rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(241,250,232,0.96),rgba(228,240,217,0.98))] p-1 transition"
                                                                 :class="
                                                                     selectedBed?.id ===
                                                                     bed.id
@@ -3616,12 +3677,11 @@ function saveGardenPlan() {
                                                                         :key="`plan-cell-${bed.id}-${r}-${c}`"
                                                                         class="rounded-[3px] border"
                                                                         :class="
-                                                                            rowData[
-                                                                                c
-                                                                            ] ===
-                                                                            1
-                                                                                ? 'border-emerald-900/15 bg-[linear-gradient(180deg,rgba(131,171,116,0.95),rgba(95,139,84,0.98))]'
-                                                                                : 'border-emerald-700/15 bg-emerald-100/55'
+                                                                            bedPreviewCellClass(
+                                                                                rowData[
+                                                                                    c
+                                                                                ],
+                                                                            )
                                                                         "
                                                                         :style="
                                                                             rowData[
@@ -3652,113 +3712,58 @@ function saveGardenPlan() {
 
                                                             <div
                                                                 v-if="
-                                                                    showPlannerLabels
-                                                                "
-                                                                class="pointer-events-none absolute top-full left-1/2 z-20 mt-2 -translate-x-1/2 rounded-full bg-white/88 px-2.5 py-1 text-[11px] font-semibold text-foreground shadow-sm backdrop-blur-sm dark:bg-card/88"
-                                                            >
-                                                                {{ bed.name }}
-                                                            </div>
-
-                                                            <div
-                                                                v-if="
                                                                     hoveredBedId ===
                                                                     bed.id
                                                                 "
-                                                                class="absolute top-full left-1/2 z-30 mt-3 hidden w-44 -translate-x-1/2 rounded-[1.2rem] border border-emerald-900/10 bg-white/92 p-3 text-left shadow-lg backdrop-blur-sm md:block dark:border-emerald-200/20 dark:bg-card/92"
+                                                                class="absolute top-full left-1/2 z-30 mt-3 hidden w-48 -translate-x-1/2 rounded-xl border border-border/70 bg-card/95 p-2.5 text-left shadow-lg backdrop-blur-sm md:block"
                                                             >
-                                                                <p
-                                                                    class="truncate text-sm font-semibold text-foreground"
-                                                                >
-                                                                    {{
-                                                                        bed.name
-                                                                    }}
-                                                                </p>
-                                                                <p
-                                                                    class="mt-1 text-xs text-muted-foreground"
-                                                                >
-                                                                    {{
-                                                                        bed.location ||
-                                                                        'Asukoht lisamata'
-                                                                    }}
-                                                                </p>
                                                                 <div
-                                                                    class="mt-3 grid grid-cols-2 gap-2 text-[11px]"
+                                                                    class="flex items-center gap-2.5"
                                                                 >
                                                                     <div
-                                                                        class="rounded-xl bg-muted/60 px-2 py-2"
+                                                                        class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/70 bg-muted/50"
                                                                     >
-                                                                        <div
-                                                                            class="text-muted-foreground"
-                                                                        >
-                                                                            Mõõt
-                                                                        </div>
-                                                                        <div
-                                                                            class="mt-1 font-semibold text-foreground"
-                                                                        >
-                                                                            {{
-                                                                                formatCentimeters(
-                                                                                    getBedPhysicalWidthCm(
-                                                                                        bed,
-                                                                                    ),
+                                                                        <img
+                                                                            v-if="
+                                                                                getBedPreviewImage(
+                                                                                    bed,
                                                                                 )
-                                                                            }}
-                                                                            ×
-                                                                            {{
-                                                                                formatCentimeters(
-                                                                                    getBedPhysicalHeightCm(
-                                                                                        bed,
-                                                                                    ),
-                                                                                )
-                                                                            }}
-                                                                        </div>
+                                                                            "
+                                                                            :src="
+                                                                                getBedPreviewImage(
+                                                                                    bed,
+                                                                                )!
+                                                                            "
+                                                                            :alt="
+                                                                                bed.name
+                                                                            "
+                                                                            class="h-full w-full object-cover"
+                                                                        />
+                                                                        <span
+                                                                            v-else
+                                                                            class="material-symbols-outlined text-lg text-muted-foreground"
+                                                                            >yard</span
+                                                                        >
                                                                     </div>
-                                                                    <div
-                                                                        class="rounded-xl bg-muted/60 px-2 py-2"
+                                                                    <p
+                                                                        class="min-w-0 truncate text-sm font-semibold text-foreground"
                                                                     >
-                                                                        <div
-                                                                            class="text-muted-foreground"
-                                                                        >
-                                                                            Taimi
-                                                                        </div>
-                                                                        <div
-                                                                            class="mt-1 font-semibold text-foreground"
-                                                                        >
-                                                                            {{
-                                                                                bed
-                                                                                    .plants
-                                                                                    .length
-                                                                            }}
-                                                                        </div>
-                                                                    </div>
+                                                                        {{
+                                                                            bed.name
+                                                                        }}
+                                                                    </p>
                                                                 </div>
-                                                                <div
-                                                                    class="mt-3 grid gap-2"
+                                                                <button
+                                                                    type="button"
+                                                                    class="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/15"
+                                                                    @click.stop="
+                                                                        openBedPage(
+                                                                            bed.id,
+                                                                        )
+                                                                    "
                                                                 >
-                                                                    <button
-                                                                        type="button"
-                                                                        class="inline-flex w-full items-center justify-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-2 text-[11px] font-semibold text-primary transition hover:bg-primary/15"
-                                                                        @click.stop="
-                                                                            focusBedDetails(
-                                                                                bed.id,
-                                                                            )
-                                                                        "
-                                                                    >
-                                                                        Ava
-                                                                        vaade
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        class="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border/70 bg-background px-3 py-2 text-[11px] font-semibold text-foreground transition hover:bg-muted"
-                                                                        @click.stop="
-                                                                            openBedPage(
-                                                                                bed.id,
-                                                                            )
-                                                                        "
-                                                                    >
-                                                                        Ava
-                                                                        peenar
-                                                                    </button>
-                                                                </div>
+                                                                    Ava vaade
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     </article>
@@ -3838,23 +3843,12 @@ function saveGardenPlan() {
 
                                                                 <div
                                                                     v-if="
-                                                                        showPlannerLabels
-                                                                    "
-                                                                    class="pointer-events-none max-w-[min(14rem,100%)] truncate rounded-full bg-white/88 px-2.5 py-0.5 text-center text-[11px] font-semibold text-foreground shadow-sm backdrop-blur-sm dark:bg-card/88"
-                                                                >
-                                                                    {{
-                                                                        object.name
-                                                                    }}
-                                                                </div>
-
-                                                                <div
-                                                                    v-if="
                                                                         hoveredObjectId ===
                                                                             object.id &&
                                                                         selectedObject?.id !==
                                                                             object.id
                                                                     "
-                                                                    class="z-30 hidden w-44 max-w-[min(14rem,calc(100vw-2rem))] rounded-[1.2rem] border border-emerald-900/10 bg-white/92 p-3 text-left shadow-lg backdrop-blur-sm md:block dark:border-emerald-200/20 dark:bg-card/92"
+                                                                    class="z-30 hidden w-40 max-w-[min(12rem,calc(100vw-2rem))] rounded-xl border border-border/70 bg-card/95 p-2.5 text-left shadow-lg backdrop-blur-sm md:block"
                                                                 >
                                                                     <p
                                                                         class="truncate text-sm font-semibold text-foreground"
@@ -3863,72 +3857,16 @@ function saveGardenPlan() {
                                                                             object.name
                                                                         }}
                                                                     </p>
-                                                                    <p
-                                                                        class="mt-1 text-xs text-muted-foreground"
-                                                                    >
-                                                                        {{
-                                                                            objectTypeLabel(
-                                                                                object.type,
-                                                                            )
-                                                                        }}
-                                                                    </p>
-                                                                    <div
-                                                                        class="mt-3 grid grid-cols-2 gap-2 text-[11px]"
-                                                                    >
-                                                                        <div
-                                                                            class="rounded-xl bg-muted/60 px-2 py-2"
-                                                                        >
-                                                                            <div
-                                                                                class="text-muted-foreground"
-                                                                            >
-                                                                                Mõõt
-                                                                            </div>
-                                                                            <div
-                                                                                class="mt-1 font-semibold text-foreground"
-                                                                            >
-                                                                                {{
-                                                                                    formatCentimeters(
-                                                                                        object.width,
-                                                                                    )
-                                                                                }}
-                                                                                ×
-                                                                                {{
-                                                                                    formatCentimeters(
-                                                                                        object.height,
-                                                                                    )
-                                                                                }}
-                                                                            </div>
-                                                                        </div>
-                                                                        <div
-                                                                            class="rounded-xl bg-muted/60 px-2 py-2"
-                                                                        >
-                                                                            <div
-                                                                                class="text-muted-foreground"
-                                                                            >
-                                                                                Tüüp
-                                                                            </div>
-                                                                            <div
-                                                                                class="mt-1 font-semibold text-foreground"
-                                                                            >
-                                                                                {{
-                                                                                    objectTypeLabel(
-                                                                                        object.type,
-                                                                                    )
-                                                                                }}
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
                                                                     <button
                                                                         type="button"
-                                                                        class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-2 text-[11px] font-semibold text-primary transition hover:bg-primary/15"
+                                                                        class="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/15"
                                                                         @click.stop="
                                                                             focusObjectDetails(
                                                                                 object.id,
                                                                             )
                                                                         "
                                                                     >
-                                                                        Ava
-                                                                        vaade
+                                                                        Muuda
                                                                     </button>
                                                                 </div>
                                                             </div>
@@ -3942,7 +3880,7 @@ function saveGardenPlan() {
                                     <div
                                         v-if="selectedObject"
                                         ref="selectedObjectPanel"
-                                        class="xl:backdrop-blur-0 sticky bottom-20 z-20 mt-3 rounded-[1.5rem] border border-border/80 bg-card/95 p-4 shadow-lg backdrop-blur xl:static xl:bottom-auto xl:z-auto xl:shadow-sm"
+                                        class="xl:backdrop-blur-0 sticky bottom-20 z-20 mt-3 rounded-[1.25rem] border border-border/80 bg-card/95 p-3 shadow-lg backdrop-blur xl:static xl:bottom-auto xl:z-auto xl:p-4 xl:shadow-sm"
                                         :class="
                                             highlightSelectedObjectPanel
                                                 ? 'ring-2 ring-primary/35 ring-offset-2 ring-offset-background transition'
@@ -4213,179 +4151,6 @@ function saveGardenPlan() {
                                         </div>
                                     </div>
 
-                                    <div
-                                        v-else-if="selectedBed"
-                                        ref="selectedBedPanel"
-                                        class="xl:backdrop-blur-0 sticky bottom-20 z-20 mt-3 rounded-[1.5rem] border border-border/80 bg-card/95 p-4 shadow-lg backdrop-blur xl:static xl:bottom-auto xl:z-auto xl:shadow-sm"
-                                        :class="
-                                            highlightSelectedBedPanel
-                                                ? 'ring-2 ring-primary/35 ring-offset-2 ring-offset-background transition'
-                                                : ''
-                                        "
-                                    >
-                                        <div
-                                            class="mb-2 flex justify-center xl:hidden"
-                                        >
-                                            <span
-                                                class="h-1 w-10 rounded-full bg-foreground/15"
-                                            ></span>
-                                        </div>
-                                        <div
-                                            class="flex flex-wrap items-start justify-between gap-2"
-                                        >
-                                            <div class="min-w-0">
-                                                <p
-                                                    class="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
-                                                >
-                                                    Valitud peenar
-                                                </p>
-                                                <h4
-                                                    class="mt-0.5 text-base font-semibold text-foreground"
-                                                >
-                                                    {{ selectedBed.name }}
-                                                </h4>
-                                                <p
-                                                    class="mt-0.5 text-[11px] text-muted-foreground"
-                                                >
-                                                    {{
-                                                        selectedBed.location ||
-                                                        'Asukoht lisamata'
-                                                    }}
-                                                </p>
-                                                <p
-                                                    class="mt-1 text-xs leading-5 text-muted-foreground"
-                                                >
-                                                    Ava peenar, et taimi
-                                                    ruutudesse paigutada ja
-                                                    märkmeid hallata.
-                                                </p>
-                                            </div>
-                                            <div
-                                                class="flex flex-wrap items-center gap-1.5"
-                                                data-no-drag="true"
-                                            >
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-foreground transition hover:bg-muted xl:hidden"
-                                                    @click="
-                                                        clearSelectionDetails
-                                                    "
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >close</span
-                                                    >
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1.5 text-[11px] font-semibold text-primary transition hover:bg-primary/15"
-                                                    @click="goToSelectedBed"
-                                                >
-                                                    Ava peenar
-                                                    <span
-                                                        class="material-symbols-outlined text-base"
-                                                        >arrow_forward</span
-                                                    >
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1.5 text-[11px] font-semibold text-foreground transition hover:bg-muted"
-                                                    @click="
-                                                        editBed(selectedBed.id)
-                                                    "
-                                                >
-                                                    Muuda peenart
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100"
-                                                    @click="
-                                                        deleteBed(
-                                                            selectedBed.id,
-                                                            selectedBed.name,
-                                                        )
-                                                    "
-                                                >
-                                                    Kustuta
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <div
-                                            class="mt-2.5 grid grid-cols-3 gap-2"
-                                        >
-                                            <div
-                                                class="min-w-0 rounded-lg border border-border/70 bg-background/70 px-2 py-2"
-                                            >
-                                                <p
-                                                    class="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
-                                                >
-                                                    Kuju
-                                                </p>
-                                                <p
-                                                    class="mt-1 text-xs leading-snug font-semibold text-foreground"
-                                                >
-                                                    {{
-                                                        getBedHeightInCells(
-                                                            selectedBed,
-                                                        )
-                                                    }}
-                                                    ×
-                                                    {{
-                                                        getBedWidthInCells(
-                                                            selectedBed,
-                                                        )
-                                                    }}
-                                                    ruutu
-                                                </p>
-                                            </div>
-                                            <div
-                                                class="min-w-0 rounded-lg border border-border/70 bg-background/70 px-2 py-2"
-                                            >
-                                                <p
-                                                    class="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
-                                                >
-                                                    Päris mõõt
-                                                </p>
-                                                <p
-                                                    class="mt-1 text-xs leading-snug font-semibold text-foreground"
-                                                >
-                                                    {{
-                                                        formatCentimeters(
-                                                            getBedPhysicalWidthCm(
-                                                                selectedBed,
-                                                            ),
-                                                        )
-                                                    }}
-                                                    ×
-                                                    {{
-                                                        formatCentimeters(
-                                                            getBedPhysicalHeightCm(
-                                                                selectedBed,
-                                                            ),
-                                                        )
-                                                    }}
-                                                </p>
-                                            </div>
-                                            <div
-                                                class="min-w-0 rounded-lg border border-border/70 bg-background/70 px-2 py-2"
-                                            >
-                                                <p
-                                                    class="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
-                                                >
-                                                    Taimi
-                                                </p>
-                                                <p
-                                                    class="mt-1 text-xs font-semibold text-foreground"
-                                                >
-                                                    {{
-                                                        selectedBed.plants
-                                                            .length
-                                                    }}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             </section>
                         </div>

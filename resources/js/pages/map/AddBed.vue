@@ -485,46 +485,40 @@ watch(selectedCellId, async () => {
 
 <template>
     <section class="mb-8">
-        <form class="space-y-5" @submit.prevent="submit">
+        <form class="space-y-4" @submit.prevent="submit">
             <section
                 class="overflow-hidden rounded-[1.75rem] bg-card ring-1 shadow-soft ring-border/70"
             >
-                <div class="bg-primary/8 px-4 py-4 sm:px-6">
+                <div class="border-b border-border/60 px-4 py-4 sm:px-6">
                     <div
                         class="flex flex-wrap items-center justify-between gap-3"
                     >
                         <div class="flex items-center gap-3">
                             <span
-                                class="material-symbols-outlined flex size-11 items-center justify-center rounded-full bg-primary/12 text-primary"
+                                class="material-symbols-outlined flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary"
                             >
                                 yard
                             </span>
                             <div>
-                                <p
-                                    class="text-xs font-semibold tracking-[0.16em] text-primary uppercase"
-                                >
-                                    {{
-                                        mode === 'edit'
-                                            ? 'Peenra muutmine'
-                                            : 'Samm 1'
-                                    }}
-                                </p>
                                 <h2
-                                    class="mt-1 text-xl font-semibold tracking-tight text-foreground sm:text-2xl"
+                                    class="text-lg font-semibold tracking-tight text-foreground"
                                 >
-                                    Anna peenrale nimi
+                                    Peenra andmed
                                 </h2>
+                                <p class="mt-0.5 text-sm text-muted-foreground">
+                                    Nimi, asukoht ja soovi korral pilt.
+                                </p>
                             </div>
                         </div>
                         <div
-                            class="rounded-full bg-background/80 px-3 py-1.5 text-sm font-medium text-muted-foreground ring-1 ring-border/70"
+                            class="rounded-full bg-background/80 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/70"
                         >
                             {{ activeCells.length }} ruutu
                         </div>
                     </div>
                 </div>
 
-                <div class="space-y-5 p-4 sm:p-6">
+                <div class="space-y-4 p-4 sm:p-5">
                     <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
                         <div>
                             <label class="form-label text-foreground"
@@ -533,7 +527,7 @@ watch(selectedCellId, async () => {
                             <input
                                 v-model="form.name"
                                 type="text"
-                                class="h-14 w-full rounded-2xl border border-input bg-background px-4 text-base text-foreground transition placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                                class="h-12 w-full rounded-xl border border-input bg-background px-4 text-base text-foreground transition placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
                                 placeholder="Nt Ürdipeenar"
                                 maxlength="120"
                                 @input="form.clearErrors('name')"
@@ -547,7 +541,7 @@ watch(selectedCellId, async () => {
                         </div>
 
                         <details
-                            class="group rounded-2xl bg-secondary/45 ring-1 ring-border/70"
+                            class="group rounded-xl bg-secondary/40 ring-1 ring-border/70"
                         >
                             <summary
                                 class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3"
@@ -572,17 +566,17 @@ watch(selectedCellId, async () => {
                                 <input
                                     type="file"
                                     accept="image/*"
-                                    class="w-full rounded-2xl border border-border/80 bg-card px-3 py-3 text-sm text-foreground file:mr-3 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:font-semibold file:text-primary hover:file:bg-primary/20"
+                                    class="w-full rounded-xl border border-border/80 bg-card px-3 py-2.5 text-sm text-foreground file:mr-3 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:font-semibold file:text-primary hover:file:bg-primary/20"
                                     @change="onImageChange"
                                 />
                                 <div
                                     v-if="
                                         newBedImagePreview || existingImageUrl
                                     "
-                                    class="overflow-hidden rounded-2xl ring-1 ring-border/80"
+                                    class="overflow-hidden rounded-xl ring-1 ring-border/80"
                                 >
                                     <div
-                                        class="h-36 w-full bg-cover bg-center"
+                                        class="h-28 w-full bg-cover bg-center"
                                         :style="{
                                             backgroundImage: `url('${newBedImagePreview ?? existingImageUrl}')`,
                                         }"
@@ -600,30 +594,24 @@ watch(selectedCellId, async () => {
                 </div>
             </section>
 
-            <section class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_18rem]">
+            <section class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_17rem]">
                 <div
-                    class="rounded-[1.75rem] bg-card p-4 ring-1 shadow-soft ring-border/70 sm:p-6"
+                    class="rounded-[1.5rem] bg-card p-4 ring-1 shadow-soft ring-border/70 sm:p-5"
                 >
                     <div
                         class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
                     >
                         <div>
-                            <p
-                                class="text-xs font-semibold tracking-[0.16em] text-primary uppercase"
-                            >
-                                Samm 2
-                            </p>
                             <h3
-                                class="mt-1 text-xl font-semibold tracking-tight text-foreground"
+                                class="text-lg font-semibold tracking-tight text-foreground"
                             >
-                                Puuduta ruute ja kasvata kuju
+                                Peenra kuju
                             </h3>
                             <p
-                                class="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground"
+                                class="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground"
                             >
                                 Vali ruut, lisa kõrvale uus või puuduta tühja
-                                kohta. Ruudu mõõt aitab kaardil peenra suurust
-                                hoida.
+                                kohta.
                             </p>
                         </div>
                         <div
@@ -636,12 +624,12 @@ watch(selectedCellId, async () => {
                         </div>
                     </div>
 
-                    <div class="mt-5 max-w-sm">
+                    <div class="mt-4 max-w-sm">
                         <label class="form-label text-foreground"
                             >Ühe ruudu mõõt</label
                         >
                         <div
-                            class="flex items-center rounded-2xl border border-input bg-background px-4 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
+                            class="flex items-center rounded-xl border border-input bg-background px-4 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
                         >
                             <input
                                 v-model="form.cell_size_cm"
@@ -649,7 +637,7 @@ watch(selectedCellId, async () => {
                                 min="10"
                                 max="200"
                                 step="10"
-                                class="h-14 min-w-0 flex-1 border-0 bg-transparent text-base text-foreground outline-none"
+                                class="h-12 min-w-0 flex-1 border-0 bg-transparent text-base text-foreground outline-none"
                                 placeholder="30"
                                 @input="form.clearErrors('cell_size_cm')"
                             />
@@ -671,7 +659,7 @@ watch(selectedCellId, async () => {
 
                     <div
                         ref="gridScroller"
-                        class="mt-5 overflow-x-auto rounded-[1.5rem] bg-background p-3 ring-1 ring-border/70 sm:p-4"
+                        class="mt-4 overflow-x-auto rounded-[1.25rem] bg-background p-3 ring-1 ring-border/70 sm:p-4"
                     >
                         <div
                             class="inline-grid gap-2.5"
@@ -872,7 +860,7 @@ watch(selectedCellId, async () => {
                     </div>
 
                     <div
-                        class="mt-5 rounded-[1.5rem] bg-secondary/45 p-4 ring-1 ring-border/70 xl:hidden"
+                        class="mt-4 rounded-[1.25rem] bg-secondary/40 p-4 ring-1 ring-border/70 xl:hidden"
                     >
                         <div class="flex items-start justify-between gap-3">
                             <div>
@@ -977,7 +965,7 @@ watch(selectedCellId, async () => {
 
                 <aside class="hidden space-y-4 xl:block">
                     <div
-                        class="rounded-[1.75rem] bg-card p-4 ring-1 shadow-soft ring-border/70"
+                        class="rounded-[1.5rem] bg-card p-4 ring-1 shadow-soft ring-border/70"
                     >
                         <p class="text-sm font-semibold text-foreground">
                             Valitud ruut
@@ -1045,7 +1033,7 @@ watch(selectedCellId, async () => {
                     </div>
 
                     <div
-                        class="rounded-[1.75rem] bg-secondary/45 p-4 ring-1 ring-border/70"
+                        class="rounded-[1.5rem] bg-secondary/40 p-4 ring-1 ring-border/70"
                     >
                         <div class="flex items-center justify-between gap-3">
                             <p class="text-sm font-semibold text-foreground">
@@ -1103,7 +1091,7 @@ watch(selectedCellId, async () => {
             </div>
 
             <div
-                class="sticky bottom-3 z-10 -mx-1 rounded-[1.5rem] bg-card/95 p-3 shadow-lg ring-1 ring-border/80 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:p-0 sm:shadow-none sm:ring-0"
+                class="sticky bottom-[5.25rem] z-10 -mx-1 rounded-[1.25rem] bg-card/95 p-3 shadow-lg ring-1 ring-border/80 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:p-0 sm:shadow-none sm:ring-0"
             >
                 <div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
                     <button
