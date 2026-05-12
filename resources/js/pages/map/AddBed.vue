@@ -485,511 +485,585 @@ watch(selectedCellId, async () => {
 
 <template>
     <section class="mb-8">
-        <form class="space-y-5" @submit.prevent="submit">
+        <form class="space-y-4" @submit.prevent="submit">
+
+            <!-- ─── Põhiandmed ─── -->
             <section
                 class="overflow-hidden rounded-[1.75rem] bg-card ring-1 shadow-soft ring-border/70"
             >
-                <div class="bg-primary/8 px-4 py-4 sm:px-6">
-                    <div
-                        class="flex flex-wrap items-center justify-between gap-3"
-                    >
-                        <div class="flex items-center gap-3">
-                            <span
-                                class="material-symbols-outlined flex size-11 items-center justify-center rounded-full bg-primary/12 text-primary"
-                            >
-                                yard
-                            </span>
-                            <div>
-                                <p
-                                    class="text-xs font-semibold tracking-[0.16em] text-primary uppercase"
-                                >
-                                    {{
-                                        mode === 'edit'
-                                            ? 'Peenra muutmine'
-                                            : 'Samm 1'
-                                    }}
-                                </p>
-                                <h2
-                                    class="mt-1 text-xl font-semibold tracking-tight text-foreground sm:text-2xl"
-                                >
-                                    Anna peenrale nimi
-                                </h2>
-                            </div>
-                        </div>
-                        <div
-                            class="rounded-full bg-background/80 px-3 py-1.5 text-sm font-medium text-muted-foreground ring-1 ring-border/70"
+                <div class="border-b border-border/50 px-5 py-4 sm:px-6">
+                    <div class="flex items-center gap-3">
+                        <span
+                            class="material-symbols-outlined flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary"
                         >
-                            {{ activeCells.length }} ruutu
+                            yard
+                        </span>
+                        <div>
+                            <h2
+                                class="text-lg font-semibold tracking-tight text-foreground"
+                            >
+                                {{
+                                    mode === 'edit'
+                                        ? 'Peenra andmed'
+                                        : 'Anna peenrale nimi'
+                                }}
+                            </h2>
+                            <p class="mt-0.5 text-sm text-muted-foreground">
+                                {{
+                                    mode === 'edit'
+                                        ? 'Muuda nime, asukohta või pilti.'
+                                        : 'Nimi aitab sind kaardil orienteeruda.'
+                                }}
+                            </p>
                         </div>
                     </div>
                 </div>
 
-                <div class="space-y-5 p-4 sm:p-6">
-                    <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-                        <div>
-                            <label class="form-label text-foreground"
-                                >Peenra nimi</label
-                            >
-                            <input
-                                v-model="form.name"
-                                type="text"
-                                class="h-14 w-full rounded-2xl border border-input bg-background px-4 text-base text-foreground transition placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                                placeholder="Nt Ürdipeenar"
-                                maxlength="120"
-                                @input="form.clearErrors('name')"
-                            />
-                            <p
-                                v-if="form.errors.name"
-                                class="mt-2 text-sm text-red-600"
-                            >
-                                {{ form.errors.name }}
-                            </p>
-                        </div>
-
-                        <details
-                            class="group rounded-2xl bg-secondary/45 ring-1 ring-border/70"
+                <div class="space-y-4 p-5 sm:p-6">
+                    <!-- Nimi -->
+                    <div>
+                        <label
+                            class="mb-1.5 block text-sm font-medium text-foreground"
                         >
-                            <summary
-                                class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3"
+                            Peenra nimi
+                            <span class="text-rose-500" aria-hidden="true"
+                                >*</span
                             >
-                                <span>
+                        </label>
+                        <input
+                            v-model="form.name"
+                            type="text"
+                            class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-base text-foreground transition placeholder:text-muted-foreground/55 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                            placeholder="Nt Ürdipeenar"
+                            maxlength="120"
+                            @input="form.clearErrors('name')"
+                        />
+                        <p
+                            v-if="form.errors.name"
+                            class="mt-1.5 text-sm text-rose-600"
+                        >
+                            {{ form.errors.name }}
+                        </p>
+                    </div>
+
+                    <!-- Asukoht -->
+                    <div>
+                        <label
+                            class="mb-1.5 block text-sm font-medium text-foreground"
+                        >
+                            Asukoht
+                            <span
+                                class="ml-1 text-xs font-normal text-muted-foreground"
+                                >(valikuline)</span
+                            >
+                        </label>
+                        <input
+                            v-model="form.location"
+                            type="text"
+                            class="h-12 w-full rounded-2xl border border-input bg-background px-4 text-base text-foreground transition placeholder:text-muted-foreground/55 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                            placeholder="Nt lõunaküljel, kasvuhoone kõrval"
+                            maxlength="255"
+                        />
+                    </div>
+
+                    <!-- Pilt (kokkupandav) -->
+                    <details
+                        class="group rounded-2xl bg-secondary/40 ring-1 ring-border/60"
+                    >
+                        <summary
+                            class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3"
+                        >
+                            <div class="flex items-center gap-2.5">
+                                <span
+                                    class="material-symbols-outlined text-[18px] text-muted-foreground"
+                                    >image</span
+                                >
+                                <div>
                                     <span
-                                        class="block text-sm font-semibold text-foreground"
+                                        class="block text-sm font-medium text-foreground"
                                         >Peenra pilt</span
                                     >
                                     <span
-                                        class="mt-0.5 block text-xs text-muted-foreground"
-                                        >Valikuline</span
+                                        class="block text-xs text-muted-foreground"
+                                        >Valikuline · kuvatakse peenra
+                                        päises</span
                                     >
-                                </span>
-                                <span
-                                    class="material-symbols-outlined text-primary transition group-open:rotate-180"
-                                >
-                                    expand_more
-                                </span>
-                            </summary>
-                            <div class="space-y-3 px-4 pb-4">
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    class="w-full rounded-2xl border border-border/80 bg-card px-3 py-3 text-sm text-foreground file:mr-3 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:font-semibold file:text-primary hover:file:bg-primary/20"
-                                    @change="onImageChange"
-                                />
-                                <div
-                                    v-if="
-                                        newBedImagePreview || existingImageUrl
-                                    "
-                                    class="overflow-hidden rounded-2xl ring-1 ring-border/80"
-                                >
-                                    <div
-                                        class="h-36 w-full bg-cover bg-center"
-                                        :style="{
-                                            backgroundImage: `url('${newBedImagePreview ?? existingImageUrl}')`,
-                                        }"
-                                    />
                                 </div>
-                                <p
-                                    v-if="form.errors.image"
-                                    class="text-sm text-red-600"
-                                >
-                                    {{ form.errors.image }}
-                                </p>
                             </div>
-                        </details>
-                    </div>
+                            <span
+                                class="material-symbols-outlined shrink-0 text-primary transition group-open:rotate-180"
+                                >expand_more</span
+                            >
+                        </summary>
+                        <div class="space-y-3 px-4 pb-4">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                class="w-full rounded-xl border border-border/70 bg-card px-3 py-2.5 text-sm text-foreground file:mr-3 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary hover:file:bg-primary/15"
+                                @change="onImageChange"
+                            />
+                            <div
+                                v-if="newBedImagePreview || existingImageUrl"
+                                class="overflow-hidden rounded-xl ring-1 ring-border/70"
+                            >
+                                <div
+                                    class="h-32 w-full bg-cover bg-center"
+                                    :style="{
+                                        backgroundImage: `url('${newBedImagePreview ?? existingImageUrl}')`,
+                                    }"
+                                />
+                            </div>
+                            <p
+                                v-if="form.errors.image"
+                                class="text-sm text-rose-600"
+                            >
+                                {{ form.errors.image }}
+                            </p>
+                        </div>
+                    </details>
                 </div>
             </section>
 
-            <section class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_18rem]">
-                <div
-                    class="rounded-[1.75rem] bg-card p-4 ring-1 shadow-soft ring-border/70 sm:p-6"
+            <!-- ─── Peenra kuju ─── -->
+            <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_17rem]">
+
+                <!-- Ruudustiku kaart -->
+                <section
+                    class="rounded-[1.75rem] bg-card ring-1 shadow-soft ring-border/70"
                 >
-                    <div
-                        class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
-                    >
-                        <div>
-                            <p
-                                class="text-xs font-semibold tracking-[0.16em] text-primary uppercase"
-                            >
-                                Samm 2
-                            </p>
-                            <h3
-                                class="mt-1 text-xl font-semibold tracking-tight text-foreground"
-                            >
-                                Puuduta ruute ja kasvata kuju
-                            </h3>
-                            <p
-                                class="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground"
-                            >
-                                Vali ruut, lisa kõrvale uus või puuduta tühja
-                                kohta. Ruudu mõõt aitab kaardil peenra suurust
-                                hoida.
-                            </p>
-                        </div>
+                    <div class="border-b border-border/50 px-5 py-4 sm:px-6">
                         <div
-                            class="inline-flex w-fit items-center gap-2 rounded-full bg-primary/8 px-3 py-1.5 text-sm font-medium text-primary"
+                            class="flex flex-wrap items-start justify-between gap-3"
                         >
-                            <span class="material-symbols-outlined text-base"
-                                >grid_view</span
+                            <div>
+                                <h2
+                                    class="text-lg font-semibold tracking-tight text-foreground"
+                                >
+                                    {{
+                                        mode === 'edit'
+                                            ? 'Peenra kuju'
+                                            : 'Joonista peenra kuju'
+                                    }}
+                                </h2>
+                                <p
+                                    class="mt-0.5 text-sm text-muted-foreground"
+                                >
+                                    Vali ruut ja lisa kõrvale uus. Tühjale
+                                    kohale puudutades lisandub ruut sinna.
+                                </p>
+                            </div>
+                            <div
+                                class="inline-flex items-center gap-1.5 rounded-full bg-primary/8 px-3 py-1.5 text-sm font-medium text-primary"
                             >
-                            {{ selectedCellLabel }}
+                                <span
+                                    class="material-symbols-outlined text-base"
+                                    >grid_view</span
+                                >
+                                {{ activeCells.length }} ruutu
+                            </div>
+                        </div>
+
+                        <!-- Ruudu suurus – kompaktne rida -->
+                        <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+                            <label
+                                class="text-sm font-medium text-foreground"
+                                >Ühe ruudu suurus:</label
+                            >
+                            <div
+                                class="inline-flex items-center gap-1 rounded-xl border border-input bg-background px-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
+                            >
+                                <input
+                                    v-model="form.cell_size_cm"
+                                    type="number"
+                                    min="10"
+                                    max="200"
+                                    step="10"
+                                    class="h-9 w-14 border-0 bg-transparent text-sm text-foreground outline-none"
+                                    placeholder="30"
+                                    @input="form.clearErrors('cell_size_cm')"
+                                />
+                                <span class="text-sm text-muted-foreground"
+                                    >cm</span
+                                >
+                            </div>
+                            <p
+                                v-if="form.errors.cell_size_cm"
+                                class="text-sm text-rose-600"
+                            >
+                                {{ form.errors.cell_size_cm }}
+                            </p>
+                            <span class="text-xs text-muted-foreground"
+                                >· ühe ruudu tegelik suurus aias</span
+                            >
                         </div>
                     </div>
 
-                    <div class="mt-5 max-w-sm">
-                        <label class="form-label text-foreground"
-                            >Ühe ruudu mõõt</label
-                        >
+                    <div class="p-4 sm:p-5">
+                        <!-- Ruudustik -->
                         <div
-                            class="flex items-center rounded-2xl border border-input bg-background px-4 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
+                            ref="gridScroller"
+                            class="overflow-x-auto rounded-2xl bg-background p-3 ring-1 ring-border/60 sm:p-4"
                         >
-                            <input
-                                v-model="form.cell_size_cm"
-                                type="number"
-                                min="10"
-                                max="200"
-                                step="10"
-                                class="h-14 min-w-0 flex-1 border-0 bg-transparent text-base text-foreground outline-none"
-                                placeholder="30"
-                                @input="form.clearErrors('cell_size_cm')"
-                            />
-                            <span
-                                class="text-sm font-medium text-muted-foreground"
-                                >cm</span
-                            >
-                        </div>
-                        <p class="mt-2 text-sm leading-6 text-muted-foreground">
-                            See on ühe peenraruudu suurus päris aias.
-                        </p>
-                        <p
-                            v-if="form.errors.cell_size_cm"
-                            class="mt-2 text-sm text-red-600"
-                        >
-                            {{ form.errors.cell_size_cm }}
-                        </p>
-                    </div>
-
-                    <div
-                        ref="gridScroller"
-                        class="mt-5 overflow-x-auto rounded-[1.5rem] bg-background p-3 ring-1 ring-border/70 sm:p-4"
-                    >
-                        <div
-                            class="inline-grid gap-2.5"
-                            :style="{
-                                gridTemplateColumns: `repeat(${displayColumns.length}, minmax(0, 3.35rem))`,
-                            }"
-                        >
-                            <template
-                                v-for="y in displayRows"
-                                :key="`row-${y}`"
+                            <div
+                                class="inline-grid gap-2.5"
+                                :style="{
+                                    gridTemplateColumns: `repeat(${displayColumns.length}, minmax(0, 3.35rem))`,
+                                }"
                             >
                                 <template
-                                    v-for="x in displayColumns"
-                                    :key="`cell-${x}-${y}`"
+                                    v-for="y in displayRows"
+                                    :key="`row-${y}`"
                                 >
-                                    <div
-                                        class="relative size-[3.35rem]"
-                                        :ref="
-                                            (el) => {
-                                                const cell = getCellAt(x, y);
-                                                if (cell)
-                                                    setSelectedCellRef(
-                                                        el,
-                                                        cell.id,
-                                                    );
-                                            }
-                                        "
+                                    <template
+                                        v-for="x in displayColumns"
+                                        :key="`cell-${x}-${y}`"
                                     >
-                                        <template v-if="getCellAt(x, y)">
-                                            <button
-                                                type="button"
-                                                class="relative size-full overflow-hidden rounded-2xl border transition duration-200"
-                                                :class="[
-                                                    selectedCell?.id ===
-                                                    getCellAt(x, y)?.id
-                                                        ? 'border-primary bg-primary/18 shadow-sm ring-2 ring-primary/25 ring-offset-2 ring-offset-background'
-                                                        : 'border-amber-900/10 bg-[linear-gradient(180deg,rgba(136,96,60,0.9),rgba(97,69,47,0.96))] shadow-sm hover:-translate-y-0.5 hover:shadow-md',
-                                                    highlightedCellId ===
-                                                    getCellAt(x, y)?.id
-                                                        ? 'scale-[1.04] shadow-lg shadow-primary/20'
-                                                        : '',
-                                                ]"
-                                                @click="
-                                                    getCellAt(x, y) &&
-                                                    selectCell(getCellAt(x, y)!)
-                                                "
-                                            >
-                                                <div
-                                                    class="absolute inset-x-0 top-0 h-1/2 bg-linear-to-b from-white/15 to-transparent"
-                                                />
-                                                <div
-                                                    v-if="
-                                                        getCellAt(x, y)?.plants
-                                                            .length
+                                        <div
+                                            class="relative size-[3.35rem]"
+                                            :ref="
+                                                (el) => {
+                                                    const cell = getCellAt(
+                                                        x,
+                                                        y,
+                                                    );
+                                                    if (cell)
+                                                        setSelectedCellRef(
+                                                            el,
+                                                            cell.id,
+                                                        );
+                                                }
+                                            "
+                                        >
+                                            <template v-if="getCellAt(x, y)">
+                                                <button
+                                                    type="button"
+                                                    class="relative size-full overflow-hidden rounded-2xl border transition duration-200"
+                                                    :class="[
+                                                        selectedCell?.id ===
+                                                        getCellAt(x, y)?.id
+                                                            ? 'border-primary bg-primary/18 shadow-sm ring-2 ring-primary/25 ring-offset-2 ring-offset-background'
+                                                            : 'border-amber-900/10 bg-[linear-gradient(180deg,rgba(136,96,60,0.9),rgba(97,69,47,0.96))] shadow-sm hover:-translate-y-0.5 hover:shadow-md',
+                                                        highlightedCellId ===
+                                                        getCellAt(x, y)?.id
+                                                            ? 'scale-[1.04] shadow-lg shadow-primary/20'
+                                                            : '',
+                                                    ]"
+                                                    @click="
+                                                        getCellAt(x, y) &&
+                                                        selectCell(
+                                                            getCellAt(x, y)!,
+                                                        )
                                                     "
-                                                    class="absolute inset-0 bg-linear-to-t from-black/45 via-black/15 to-transparent"
-                                                />
-                                                <div
-                                                    class="relative z-10 flex size-full flex-col items-center justify-center px-1 text-center"
                                                 >
-                                                    <span
-                                                        class="material-symbols-outlined text-lg"
-                                                        :class="
-                                                            getCellAt(x, y)
-                                                                ?.plants.length
-                                                                ? 'text-white'
-                                                                : selectedCell?.id ===
-                                                                    getCellAt(
-                                                                        x,
-                                                                        y,
-                                                                    )?.id
-                                                                  ? 'text-primary'
-                                                                  : 'text-amber-50/90'
-                                                        "
-                                                    >
-                                                        {{
-                                                            getCellAt(x, y)
-                                                                ?.plants.length
-                                                                ? 'eco'
-                                                                : 'grid_view'
-                                                        }}
-                                                    </span>
-                                                    <span
+                                                    <div
+                                                        class="absolute inset-x-0 top-0 h-1/2 bg-linear-to-b from-white/15 to-transparent"
+                                                    />
+                                                    <div
                                                         v-if="
                                                             getCellAt(x, y)
                                                                 ?.plants.length
                                                         "
-                                                        class="mt-1 line-clamp-2 text-[9px] leading-tight font-semibold text-white"
+                                                        class="absolute inset-0 bg-linear-to-t from-black/45 via-black/15 to-transparent"
+                                                    />
+                                                    <div
+                                                        class="relative z-10 flex size-full flex-col items-center justify-center px-1 text-center"
+                                                    >
+                                                        <span
+                                                            class="material-symbols-outlined text-lg"
+                                                            :class="
+                                                                getCellAt(x, y)
+                                                                    ?.plants
+                                                                    .length
+                                                                    ? 'text-white'
+                                                                    : selectedCell?.id ===
+                                                                        getCellAt(
+                                                                            x,
+                                                                            y,
+                                                                        )?.id
+                                                                      ? 'text-primary'
+                                                                      : 'text-amber-50/90'
+                                                            "
+                                                        >
+                                                            {{
+                                                                getCellAt(x, y)
+                                                                    ?.plants
+                                                                    .length
+                                                                    ? 'eco'
+                                                                    : 'grid_view'
+                                                            }}
+                                                        </span>
+                                                        <span
+                                                            v-if="
+                                                                getCellAt(x, y)
+                                                                    ?.plants
+                                                                    .length
+                                                            "
+                                                            class="mt-1 line-clamp-2 text-[9px] leading-tight font-semibold text-white"
+                                                        >
+                                                            {{
+                                                                getPlantNames(
+                                                                    getCellAt(
+                                                                        x,
+                                                                        y,
+                                                                    )!,
+                                                                ).join(', ')
+                                                            }}
+                                                        </span>
+                                                    </div>
+
+                                                    <span
+                                                        class="absolute right-1.5 bottom-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
+                                                        :class="
+                                                            selectedCell?.id ===
+                                                            getCellAt(x, y)?.id
+                                                                ? 'bg-card/95 text-primary'
+                                                                : 'bg-black/15 text-amber-50/85'
+                                                        "
                                                     >
                                                         {{
-                                                            getPlantNames(
-                                                                getCellAt(
-                                                                    x,
-                                                                    y,
-                                                                )!,
-                                                            ).join(', ')
+                                                            displayColumnNumber(
+                                                                x,
+                                                            )
+                                                        }},{{
+                                                            displayRowNumber(y)
                                                         }}
                                                     </span>
-                                                </div>
+                                                </button>
 
-                                                <span
-                                                    class="absolute right-1.5 bottom-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
-                                                    :class="
+                                                <template
+                                                    v-if="
                                                         selectedCell?.id ===
                                                         getCellAt(x, y)?.id
-                                                            ? 'bg-card/95 text-primary'
-                                                            : 'bg-black/15 text-amber-50/85'
                                                     "
                                                 >
-                                                    {{
-                                                        displayColumnNumber(x)
-                                                    }},{{ displayRowNumber(y) }}
-                                                </span>
-                                            </button>
+                                                    <button
+                                                        type="button"
+                                                        class="absolute -top-3 left-1/2 z-20 hidden size-7 -translate-x-1/2 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 sm:flex"
+                                                        @click.stop="
+                                                            handleDirectionalAdd(
+                                                                'up',
+                                                            )
+                                                        "
+                                                    >
+                                                        <span
+                                                            class="material-symbols-outlined text-sm"
+                                                            >arrow_upward</span
+                                                        >
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        class="absolute -bottom-3 left-1/2 z-20 hidden size-7 -translate-x-1/2 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 sm:flex"
+                                                        @click.stop="
+                                                            handleDirectionalAdd(
+                                                                'down',
+                                                            )
+                                                        "
+                                                    >
+                                                        <span
+                                                            class="material-symbols-outlined text-sm"
+                                                            >arrow_downward</span
+                                                        >
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        class="absolute top-1/2 -left-3 z-20 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 sm:flex"
+                                                        @click.stop="
+                                                            handleDirectionalAdd(
+                                                                'left',
+                                                            )
+                                                        "
+                                                    >
+                                                        <span
+                                                            class="material-symbols-outlined text-sm"
+                                                            >arrow_back</span
+                                                        >
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        class="absolute top-1/2 -right-3 z-20 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 sm:flex"
+                                                        @click.stop="
+                                                            handleDirectionalAdd(
+                                                                'right',
+                                                            )
+                                                        "
+                                                    >
+                                                        <span
+                                                            class="material-symbols-outlined text-sm"
+                                                            >arrow_forward</span
+                                                        >
+                                                    </button>
+                                                </template>
+                                            </template>
 
-                                            <template
-                                                v-if="
-                                                    selectedCell?.id ===
-                                                    getCellAt(x, y)?.id
+                                            <button
+                                                v-else
+                                                type="button"
+                                                class="size-full rounded-2xl border border-dashed border-primary/20 bg-card/70 text-muted-foreground transition hover:border-primary/35 hover:bg-primary/8 hover:text-primary"
+                                                @click="
+                                                    addCellFromPlaceholder(
+                                                        x,
+                                                        y,
+                                                    )
                                                 "
                                             >
-                                                <button
-                                                    type="button"
-                                                    class="absolute -top-3 left-1/2 z-20 hidden size-7 -translate-x-1/2 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 sm:flex"
-                                                    @click.stop="
-                                                        handleDirectionalAdd(
-                                                            'up',
-                                                        )
-                                                    "
+                                                <span
+                                                    class="material-symbols-outlined text-lg"
+                                                    >add</span
                                                 >
-                                                    <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >arrow_upward</span
-                                                    >
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="absolute -bottom-3 left-1/2 z-20 hidden size-7 -translate-x-1/2 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 sm:flex"
-                                                    @click.stop="
-                                                        handleDirectionalAdd(
-                                                            'down',
-                                                        )
-                                                    "
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >arrow_downward</span
-                                                    >
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="absolute top-1/2 -left-3 z-20 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 sm:flex"
-                                                    @click.stop="
-                                                        handleDirectionalAdd(
-                                                            'left',
-                                                        )
-                                                    "
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >arrow_back</span
-                                                    >
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="absolute top-1/2 -right-3 z-20 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 sm:flex"
-                                                    @click.stop="
-                                                        handleDirectionalAdd(
-                                                            'right',
-                                                        )
-                                                    "
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >arrow_forward</span
-                                                    >
-                                                </button>
-                                            </template>
-                                        </template>
-
-                                        <button
-                                            v-else
-                                            type="button"
-                                            class="size-full rounded-2xl border border-dashed border-primary/20 bg-card/70 text-muted-foreground transition hover:border-primary/35 hover:bg-primary/8 hover:text-primary"
-                                            @click="
-                                                addCellFromPlaceholder(x, y)
-                                            "
-                                        >
-                                            <span
-                                                class="material-symbols-outlined text-lg"
-                                                >add</span
-                                            >
-                                        </button>
-                                    </div>
+                                            </button>
+                                        </div>
+                                    </template>
                                 </template>
-                            </template>
-                        </div>
-                    </div>
-
-                    <div
-                        class="mt-5 rounded-[1.5rem] bg-secondary/45 p-4 ring-1 ring-border/70 xl:hidden"
-                    >
-                        <div class="flex items-start justify-between gap-3">
-                            <div>
-                                <p
-                                    class="text-sm font-semibold text-foreground"
-                                >
-                                    Valitud ruut
-                                </p>
-                                <p class="mt-1 text-sm text-muted-foreground">
-                                    {{ selectedCellLabel }}
-                                </p>
                             </div>
-                            <span
-                                class="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
-                            >
-                                {{ selectedPlantCount }} taimekirjet
-                            </span>
                         </div>
 
-                        <div class="mt-4 grid place-items-center">
-                            <button
-                                type="button"
-                                class="mb-2 flex size-12 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                :disabled="!selectedCell"
-                                @click="handleDirectionalAdd('up')"
+                        <!-- Mobiili suunanupud (xl: peidetud) -->
+                        <div
+                            class="mt-4 rounded-2xl bg-secondary/40 p-4 ring-1 ring-border/60 xl:hidden"
+                        >
+                            <div
+                                class="mb-3 flex items-center justify-between gap-3"
                             >
+                                <div>
+                                    <p
+                                        class="text-sm font-medium text-foreground"
+                                    >
+                                        Valitud ruut
+                                    </p>
+                                    <p
+                                        class="mt-0.5 text-xs text-muted-foreground"
+                                    >
+                                        {{ selectedCellLabel }}
+                                    </p>
+                                </div>
                                 <span
-                                    class="material-symbols-outlined text-base"
-                                    >arrow_upward</span
+                                    class="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary"
                                 >
-                            </button>
-                            <div class="flex items-center gap-2">
+                                    {{ selectedPlantCount }}
+                                    {{
+                                        selectedPlantCount === 1
+                                            ? 'taim'
+                                            : 'taime'
+                                    }}
+                                </span>
+                            </div>
+
+                            <div class="grid place-items-center">
                                 <button
                                     type="button"
-                                    class="flex size-12 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                    class="mb-2 flex size-11 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
                                     :disabled="!selectedCell"
-                                    @click="handleDirectionalAdd('left')"
+                                    @click="handleDirectionalAdd('up')"
                                 >
                                     <span
                                         class="material-symbols-outlined text-base"
-                                        >arrow_back</span
+                                        >arrow_upward</span
                                     >
                                 </button>
-                                <div
-                                    class="flex size-12 items-center justify-center rounded-2xl bg-primary/12 text-primary"
-                                >
-                                    <span
-                                        class="material-symbols-outlined text-base"
-                                        >grid_view</span
+                                <div class="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        class="flex size-11 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
+                                        :disabled="!selectedCell"
+                                        @click="handleDirectionalAdd('left')"
                                     >
+                                        <span
+                                            class="material-symbols-outlined text-base"
+                                            >arrow_back</span
+                                        >
+                                    </button>
+                                    <div
+                                        class="flex size-11 items-center justify-center rounded-2xl bg-primary/12 text-primary"
+                                    >
+                                        <span
+                                            class="material-symbols-outlined text-base"
+                                            >grid_view</span
+                                        >
+                                    </div>
+                                    <button
+                                        type="button"
+                                        class="flex size-11 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
+                                        :disabled="!selectedCell"
+                                        @click="handleDirectionalAdd('right')"
+                                    >
+                                        <span
+                                            class="material-symbols-outlined text-base"
+                                            >arrow_forward</span
+                                        >
+                                    </button>
                                 </div>
                                 <button
                                     type="button"
-                                    class="flex size-12 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                    class="mt-2 flex size-11 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
                                     :disabled="!selectedCell"
-                                    @click="handleDirectionalAdd('right')"
+                                    @click="handleDirectionalAdd('down')"
                                 >
                                     <span
                                         class="material-symbols-outlined text-base"
-                                        >arrow_forward</span
+                                        >arrow_downward</span
                                     >
                                 </button>
                             </div>
+
+                            <p
+                                v-if="selectedHasPlants"
+                                class="mt-3 rounded-xl bg-primary/8 px-3 py-2.5 text-sm leading-6 text-primary ring-1 ring-primary/15"
+                            >
+                                Taimedega ruutu ei saa enne ümberpaigutamist
+                                eemaldada.
+                            </p>
+
                             <button
                                 type="button"
-                                class="mt-2 flex size-12 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                :disabled="!selectedCell"
-                                @click="handleDirectionalAdd('down')"
+                                class="mt-3 h-11 w-full rounded-full px-4 text-sm font-semibold transition"
+                                :class="
+                                    selectedHasPlants ||
+                                    activeCells.length <= 1
+                                        ? 'cursor-not-allowed bg-muted/40 text-muted-foreground'
+                                        : 'bg-card text-foreground shadow-sm ring-1 ring-border hover:bg-secondary/70'
+                                "
+                                :disabled="
+                                    selectedHasPlants ||
+                                    activeCells.length <= 1
+                                "
+                                @click="removeSelectedCell"
                             >
-                                <span
-                                    class="material-symbols-outlined text-base"
-                                    >arrow_downward</span
-                                >
+                                Eemalda valitud ruut
                             </button>
                         </div>
-
-                        <p
-                            v-if="selectedHasPlants"
-                            class="mt-4 rounded-2xl bg-primary/8 p-3 text-sm leading-6 text-primary ring-1 ring-primary/15"
-                        >
-                            Valitud ruudus on taim(ed). Seda ruutu ei saa
-                            eemaldada enne, kui taimed on ümber paigutatud.
-                        </p>
-
-                        <button
-                            type="button"
-                            class="mt-4 h-12 w-full rounded-full px-4 text-sm font-semibold transition"
-                            :class="
-                                selectedHasPlants || activeCells.length <= 1
-                                    ? 'cursor-not-allowed bg-muted/40 text-muted-foreground'
-                                    : 'bg-card text-foreground shadow-sm ring-1 ring-border hover:bg-secondary/70'
-                            "
-                            :disabled="
-                                selectedHasPlants || activeCells.length <= 1
-                            "
-                            @click="removeSelectedCell"
-                        >
-                            Eemalda valitud ruut
-                        </button>
                     </div>
-                </div>
+                </section>
 
-                <aside class="hidden space-y-4 xl:block">
+                <!-- Sidebar (xl) -->
+                <aside class="hidden xl:block">
                     <div
-                        class="rounded-[1.75rem] bg-card p-4 ring-1 shadow-soft ring-border/70"
+                        class="rounded-[1.75rem] bg-card p-5 ring-1 shadow-soft ring-border/70"
                     >
-                        <p class="text-sm font-semibold text-foreground">
-                            Valitud ruut
-                        </p>
-                        <p class="mt-1 text-sm leading-6 text-muted-foreground">
+                        <!-- Valitud ruut -->
+                        <div class="flex items-center justify-between gap-3">
+                            <p class="text-sm font-medium text-foreground">
+                                Valitud ruut
+                            </p>
+                            <span
+                                class="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary"
+                            >
+                                {{ selectedPlantCount }}
+                                {{
+                                    selectedPlantCount === 1 ? 'taim' : 'taime'
+                                }}
+                            </span>
+                        </div>
+                        <p
+                            class="mt-1.5 text-sm leading-6 text-muted-foreground"
+                        >
                             {{ selectedCellLabel }}
                         </p>
 
+                        <!-- Suunanupud -->
                         <div class="mt-5 grid place-items-center">
                             <button
                                 type="button"
-                                class="mb-2 flex size-11 items-center justify-center rounded-full bg-background text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                class="mb-2 flex size-10 items-center justify-center rounded-full bg-background text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
                                 :disabled="!selectedCell"
                                 @click="handleDirectionalAdd('up')"
                             >
@@ -1001,7 +1075,7 @@ watch(selectedCellId, async () => {
                             <div class="flex items-center gap-2">
                                 <button
                                     type="button"
-                                    class="flex size-11 items-center justify-center rounded-full bg-background text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                    class="flex size-10 items-center justify-center rounded-full bg-background text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
                                     :disabled="!selectedCell"
                                     @click="handleDirectionalAdd('left')"
                                 >
@@ -1011,7 +1085,7 @@ watch(selectedCellId, async () => {
                                     >
                                 </button>
                                 <div
-                                    class="flex size-12 items-center justify-center rounded-2xl bg-primary/12 text-primary"
+                                    class="flex size-11 items-center justify-center rounded-2xl bg-primary/12 text-primary"
                                 >
                                     <span
                                         class="material-symbols-outlined text-base"
@@ -1020,7 +1094,7 @@ watch(selectedCellId, async () => {
                                 </div>
                                 <button
                                     type="button"
-                                    class="flex size-11 items-center justify-center rounded-full bg-background text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                    class="flex size-10 items-center justify-center rounded-full bg-background text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
                                     :disabled="!selectedCell"
                                     @click="handleDirectionalAdd('right')"
                                 >
@@ -1032,7 +1106,7 @@ watch(selectedCellId, async () => {
                             </div>
                             <button
                                 type="button"
-                                class="mt-2 flex size-11 items-center justify-center rounded-full bg-background text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                class="mt-2 flex size-10 items-center justify-center rounded-full bg-background text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
                                 :disabled="!selectedCell"
                                 @click="handleDirectionalAdd('down')"
                             >
@@ -1042,54 +1116,39 @@ watch(selectedCellId, async () => {
                                 >
                             </button>
                         </div>
-                    </div>
 
-                    <div
-                        class="rounded-[1.75rem] bg-secondary/45 p-4 ring-1 ring-border/70"
-                    >
-                        <div class="flex items-center justify-between gap-3">
-                            <p class="text-sm font-semibold text-foreground">
-                                Ruudu sisu
-                            </p>
-                            <span
-                                class="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
+                        <!-- Ruudu eemaldamine -->
+                        <div class="mt-5 border-t border-border/50 pt-4">
+                            <p
+                                v-if="selectedHasPlants"
+                                class="mb-3 rounded-xl bg-primary/8 px-3 py-2.5 text-sm leading-6 text-primary ring-1 ring-primary/15"
                             >
-                                {{ selectedPlantCount }}
-                            </span>
+                                Taimedega ruutu ei saa enne ümberpaigutamist
+                                eemaldada.
+                            </p>
+                            <button
+                                type="button"
+                                class="h-10 w-full rounded-full px-4 text-sm font-semibold transition"
+                                :class="
+                                    selectedHasPlants ||
+                                    activeCells.length <= 1
+                                        ? 'cursor-not-allowed bg-muted/40 text-muted-foreground'
+                                        : 'bg-card text-foreground shadow-sm ring-1 ring-border hover:bg-secondary/70'
+                                "
+                                :disabled="
+                                    selectedHasPlants ||
+                                    activeCells.length <= 1
+                                "
+                                @click="removeSelectedCell"
+                            >
+                                Eemalda ruut
+                            </button>
                         </div>
-                        <p class="mt-3 text-sm leading-6 text-muted-foreground">
-                            {{
-                                selectedHasPlants
-                                    ? 'Valitud ruudus on juba taim(ed).'
-                                    : 'Ruudus ei ole veel taimi.'
-                            }}
-                        </p>
-                        <p
-                            v-if="selectedHasPlants"
-                            class="mt-4 rounded-2xl bg-primary/8 p-3 text-sm leading-6 text-primary ring-1 ring-primary/15"
-                        >
-                            Taimedega ruutu ei saa enne ümberpaigutamist
-                            eemaldada.
-                        </p>
-                        <button
-                            type="button"
-                            class="mt-4 h-12 w-full rounded-full px-4 text-sm font-semibold transition"
-                            :class="
-                                selectedHasPlants || activeCells.length <= 1
-                                    ? 'cursor-not-allowed bg-muted/40 text-muted-foreground'
-                                    : 'bg-card text-foreground shadow-sm ring-1 ring-border hover:bg-secondary/70'
-                            "
-                            :disabled="
-                                selectedHasPlants || activeCells.length <= 1
-                            "
-                            @click="removeSelectedCell"
-                        >
-                            Eemalda ruut
-                        </button>
                     </div>
                 </aside>
-            </section>
+            </div>
 
+            <!-- Tagasiside -->
             <div
                 v-if="formFeedback"
                 class="rounded-[1.5rem] px-4 py-3 ring-1"
@@ -1102,6 +1161,7 @@ watch(selectedCellId, async () => {
                 <p class="text-sm font-medium">{{ formFeedback.message }}</p>
             </div>
 
+            <!-- Nupud -->
             <div
                 class="sticky bottom-3 z-10 -mx-1 rounded-[1.5rem] bg-card/95 p-3 shadow-lg ring-1 ring-border/80 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:p-0 sm:shadow-none sm:ring-0"
             >
