@@ -40,13 +40,19 @@ const breadcrumbs = [
                         />
                     </template>
                 </DiaryHeader>
-                <p
+                <div
                     v-if="props.showGuide"
-                    class="rounded-[1.25rem] bg-primary/8 px-4 py-3 text-sm leading-6 text-muted-foreground ring-1 ring-primary/15"
+                    class="flex items-start gap-3 rounded-[1.25rem] bg-primary/8 px-4 py-3.5 ring-1 ring-primary/15"
                 >
-                    Alusta nimest ja asukohast. Peenra kuju saad kohe allpool
-                    ruutudest kokku puudutada.
-                </p>
+                    <span
+                        class="material-symbols-outlined mt-0.5 shrink-0 text-[18px] text-primary"
+                        >info</span
+                    >
+                    <p class="text-sm leading-6 text-muted-foreground">
+                        Alusta nimest ja asukohast. Peenra kuju saad kohe
+                        allpool ruutudest kokku joonistada.
+                    </p>
+                </div>
 
                 <AddBed :garden-plan-id="props.gardenPlanId" />
             </main>
