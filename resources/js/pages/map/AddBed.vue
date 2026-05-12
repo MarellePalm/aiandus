@@ -200,6 +200,40 @@ function getCellAt(x: number, y: number): BedCell | null {
     return occupiedCellMap.value.get(occupiedKey(x, y)) ?? null;
 }
 
+function addBedEditorCellClasses(x: number, y: number): string[] {
+    const cell = getCellAt(x, y);
+    if (!cell) {
+        return [];
+    }
+    const isSelected = selectedCell.value?.id === cell.id;
+    const hasPlants = cell.plants.length > 0;
+    const warm = (x + y) % 2 === 0;
+    const classes: string[] = [
+        'bed-cell',
+        'relative',
+        'size-full',
+        'overflow-hidden',
+        'border',
+        'transition',
+        'duration-200',
+    ];
+    if (highlightedCellId.value === cell.id) {
+        classes.push('scale-[1.04]', 'shadow-lg', 'shadow-primary/20');
+    }
+    if (isSelected) {
+        classes.push('bed-cell--editor-selected');
+        return classes;
+    }
+    if (hasPlants) {
+        classes.push('bed-cell--planted');
+        classes.push('hover:-translate-y-0.5', 'hover:shadow-md');
+        return classes;
+    }
+    classes.push(warm ? 'bed-cell--empty bed-cell--warm' : 'bed-cell--empty');
+    classes.push('hover:-translate-y-0.5', 'hover:shadow-md');
+    return classes;
+}
+
 function getPlantNames(cell: BedCell): string[] {
     const plantIds = cell.plants.map((plant) => plant.plant_id);
     return plantIds
@@ -662,7 +696,7 @@ watch(selectedCellId, async () => {
                         class="mt-4 overflow-x-auto rounded-[1.25rem] bg-background p-3 ring-1 ring-border/70 sm:p-4"
                     >
                         <div
-                            class="inline-grid gap-2.5"
+                            class="bed-grid-frame inline-grid gap-2.5 rounded-[1.15rem] p-2 sm:p-2.5"
                             :style="{
                                 gridTemplateColumns: `repeat(${displayColumns.length}, minmax(0, 3.35rem))`,
                             }"
@@ -691,17 +725,7 @@ watch(selectedCellId, async () => {
                                         <template v-if="getCellAt(x, y)">
                                             <button
                                                 type="button"
-                                                class="relative size-full overflow-hidden rounded-2xl border transition duration-200"
-                                                :class="[
-                                                    selectedCell?.id ===
-                                                    getCellAt(x, y)?.id
-                                                        ? 'border-primary bg-primary/18 shadow-sm ring-2 ring-primary/25 ring-offset-2 ring-offset-background'
-                                                        : 'border-amber-900/10 bg-[linear-gradient(180deg,rgba(136,96,60,0.9),rgba(97,69,47,0.96))] shadow-sm hover:-translate-y-0.5 hover:shadow-md',
-                                                    highlightedCellId ===
-                                                    getCellAt(x, y)?.id
-                                                        ? 'scale-[1.04] shadow-lg shadow-primary/20'
-                                                        : '',
-                                                ]"
+                                                :class="addBedEditorCellClasses(x, y)"
                                                 @click="
                                                     getCellAt(x, y) &&
                                                     selectCell(getCellAt(x, y)!)
@@ -732,7 +756,7 @@ watch(selectedCellId, async () => {
                                                                         y,
                                                                     )?.id
                                                                   ? 'text-primary'
-                                                                  : 'text-amber-50/90'
+                                                                  : 'text-emerald-900/45'
                                                         "
                                                     >
                                                         {{
@@ -766,7 +790,7 @@ watch(selectedCellId, async () => {
                                                         selectedCell?.id ===
                                                         getCellAt(x, y)?.id
                                                             ? 'bg-card/95 text-primary'
-                                                            : 'bg-black/15 text-amber-50/85'
+                                                            : 'bg-white/55 text-emerald-950/75'
                                                     "
                                                 >
                                                     {{

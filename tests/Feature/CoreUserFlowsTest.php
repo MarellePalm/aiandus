@@ -440,7 +440,7 @@ test('user can assign plant to bed with quantity', function () {
         'user_id' => $user->id,
         'name' => 'Redis',
         'subtitle' => 'Redis',
-        'quantity' => 1,
+        'quantity' => 10,
     ]);
 
     $this->actingAs($user)
@@ -454,6 +454,78 @@ test('user can assign plant to bed with quantity', function () {
     expect($plant->fresh()->bed_id)->toBe($bed->id);
     expect($plant->fresh()->position_in_bed)->toBe('0,0');
     expect($plant->fresh()->quantity)->toBe(8);
+
+    $stock = Plant::query()->where('user_id', $user->id)->whereNull('bed_id')->first();
+    expect($stock)->not->toBeNull();
+    expect($stock->quantity)->toBe(2);
+    expect(Plant::query()->where('user_id', $user->id)->count())->toBe(2);
+});
+
+test('assigning more plants than stock to bed caps to available quantity', function () {
+    $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
+
+    $bed = Bed::query()->create([
+        'user_id' => $user->id,
+        'garden_plan_id' => $plan->id,
+        'name' => 'Peenar',
+        'location' => null,
+        'sort_order' => 1,
+    ]);
+
+    $plant = Plant::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Hernes',
+        'subtitle' => 'Herne',
+        'quantity' => 3,
+    ]);
+
+    $this->actingAs($user)
+        ->put(route('plants.update', $plant), [
+            'bed_id' => $bed->id,
+            'position_in_bed' => '0,0',
+            'quantity' => 99,
+        ])
+        ->assertSessionHas('success', 'Taim peenrale määratud.');
+
+    expect($plant->fresh()->quantity)->toBe(3);
+    expect($plant->fresh()->bed_id)->toBe($bed->id);
+    expect(Plant::query()->where('user_id', $user->id)->count())->toBe(1);
+});
+
+test('assigning one plant from larger stock to bed keeps remainder unassigned', function () {
+    $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
+
+    $bed = Bed::query()->create([
+        'user_id' => $user->id,
+        'garden_plan_id' => $plan->id,
+        'name' => 'Vaarikapeenar',
+        'location' => null,
+        'sort_order' => 1,
+    ]);
+
+    $plant = Plant::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Vaarikas',
+        'subtitle' => 'Vaarikas',
+        'quantity' => 10,
+    ]);
+
+    $this->actingAs($user)
+        ->put(route('plants.update', $plant), [
+            'bed_id' => $bed->id,
+            'position_in_bed' => '0,0',
+            'quantity' => 1,
+        ])
+        ->assertSessionHas('success', 'Taim peenrale määratud.');
+
+    expect($plant->fresh()->bed_id)->toBe($bed->id);
+    expect($plant->fresh()->quantity)->toBe(1);
+
+    $stock = Plant::query()->where('user_id', $user->id)->whereNull('bed_id')->sole();
+    expect($stock->quantity)->toBe(9);
+    expect($stock->name)->toBe('Vaarikas');
 });
 
 test('user cannot update bed layout to remove planted cell', function () {

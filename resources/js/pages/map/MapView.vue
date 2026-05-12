@@ -1015,16 +1015,6 @@ function getPlantAtVisibleCell(
     return bed.plants.find((item) => item.position_in_bed === key) ?? null;
 }
 
-function getPlantPreviewImageAtVisibleCell(
-    bed: Bed,
-    visibleRow: number,
-    visibleCol: number,
-): string | null {
-    const plant = getPlantAtVisibleCell(bed, visibleRow, visibleCol);
-    if (!plant) return null;
-    return plant.image_url || '/logo.png';
-}
-
 function getBedPreviewImage(bed: Bed): string | null {
     if (bed.image_url) return bed.image_url;
     return bed.plants.find((plant) => plant.image_url)?.image_url ?? null;
@@ -1054,16 +1044,31 @@ function bedPreviewGridStyle(bed: Bed) {
     };
 }
 
-function bedPreviewCellClass(cell: number): string {
-    if (cell === 1) {
-        return 'border-emerald-900/18 bg-[linear-gradient(180deg,rgba(131,171,116,0.98),rgba(89,132,78,0.98))]';
+function mapPlannerBedCellClass(
+    cell: number,
+    bed: Bed,
+    visibleRow: number,
+    visibleCol: number,
+): string {
+    if (cell === -1) {
+        return 'bed-cell bed-cell--walkway min-h-0 min-w-0';
     }
-
     if (cell === 0) {
-        return 'border-emerald-700/15 bg-emerald-100/55';
+        return 'pointer-events-none min-h-0 min-w-0 opacity-0';
     }
-
-    return 'border-transparent bg-transparent';
+    const plant = getPlantAtVisibleCell(bed, visibleRow, visibleCol);
+    if (plant?.image_url) {
+        return 'bed-cell bed-cell--planted bed-cell--photo min-h-0 min-w-0';
+    }
+    if (plant) {
+        return 'bed-cell bed-cell--planted min-h-0 min-w-0';
+    }
+    const warm = (visibleRow + visibleCol) % 2 === 0;
+    return (
+        (warm
+            ? 'bed-cell bed-cell--empty bed-cell--warm'
+            : 'bed-cell bed-cell--empty') + ' min-h-0 min-w-0'
+    );
 }
 
 function bedCardSize(bed: Bed) {
@@ -3648,7 +3653,7 @@ function saveGardenPlan() {
                                                             class="relative z-10 h-full w-full"
                                                         >
                                                             <div
-                                                                class="grid h-full w-full place-content-center gap-[2px] overflow-hidden rounded-[0.9rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(241,250,232,0.96),rgba(228,240,217,0.98))] p-1 transition"
+                                                                class="bed-grid-frame bed-grid-frame--map relative z-10 grid h-full w-full place-content-center gap-0.5 overflow-hidden rounded-[0.9rem] border border-emerald-900/10 p-0.5 transition"
                                                                 :class="
                                                                     selectedBed?.id ===
                                                                     bed.id
@@ -3675,12 +3680,15 @@ function saveGardenPlan() {
                                                                             _, c
                                                                         ) in rowData"
                                                                         :key="`plan-cell-${bed.id}-${r}-${c}`"
-                                                                        class="rounded-[3px] border"
+                                                                        class="block"
                                                                         :class="
-                                                                            bedPreviewCellClass(
+                                                                            mapPlannerBedCellClass(
                                                                                 rowData[
                                                                                     c
                                                                                 ],
+                                                                                bed,
+                                                                                r,
+                                                                                c,
                                                                             )
                                                                         "
                                                                         :style="
@@ -3688,17 +3696,18 @@ function saveGardenPlan() {
                                                                                 c
                                                                             ] ===
                                                                                 1 &&
-                                                                            getPlantPreviewImageAtVisibleCell(
+                                                                            getPlantAtVisibleCell(
                                                                                 bed,
                                                                                 r,
                                                                                 c,
                                                                             )
+                                                                                ?.image_url
                                                                                 ? {
-                                                                                      backgroundImage: `linear-gradient(180deg,rgba(32,44,30,0.18),rgba(32,44,30,0.32)), url('${getPlantPreviewImageAtVisibleCell(
+                                                                                      backgroundImage: `linear-gradient(180deg,rgba(32,44,30,0.18),rgba(32,44,30,0.32)), url('${getPlantAtVisibleCell(
                                                                                           bed,
                                                                                           r,
                                                                                           c,
-                                                                                      )}')`,
+                                                                                      )!.image_url!}')`,
                                                                                       backgroundSize:
                                                                                           'cover',
                                                                                       backgroundPosition:
