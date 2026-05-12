@@ -23,6 +23,7 @@ type BedCell = {
     x: number;
     y: number;
     active: boolean;
+    kind: 'plantable' | 'walkway' | 'empty';
     plants: CellPlant[];
 };
 
@@ -64,6 +65,7 @@ const selectedCellElement = ref<HTMLElement | null>(null);
 const highlightedCellId = ref<string | null>(null);
 let highlightTimeout: ReturnType<typeof setTimeout> | null = null;
 type WizardStep = 1 | 2 | 3;
+type DesignBrush = 'plantable' | 'walkway' | 'empty';
 type BedPreset = {
     id: string;
     label: string;
@@ -73,10 +75,36 @@ type BedPreset = {
 };
 
 const currentStep = ref<WizardStep>(1);
+const designBrush = ref<DesignBrush>('plantable');
 const wizardSteps = [
     { id: 1 as const, label: 'Peenar nimeta', icon: 'edit' },
     { id: 2 as const, label: 'Kujunda kuju', icon: 'grid_view' },
     { id: 3 as const, label: 'Viimistlus', icon: 'photo_camera' },
+];
+const designBrushes: Array<{
+    id: DesignBrush;
+    label: string;
+    icon: string;
+    description: string;
+}> = [
+    {
+        id: 'plantable',
+        label: 'Peenraruut',
+        icon: 'psychiatry',
+        description: 'Siia saab taime istutada.',
+    },
+    {
+        id: 'walkway',
+        label: 'Tee / kivi',
+        icon: 'texture',
+        description: 'Kivitee või vahekäik.',
+    },
+    {
+        id: 'empty',
+        label: 'Tühi',
+        icon: 'crop_free',
+        description: 'Auk või vaba ala kujus.',
+    },
 ];
 const bedPresets: BedPreset[] = [
     {
@@ -125,27 +153,55 @@ function createInitialCells(): BedCell[] {
     });
 
     if (!layout || !Array.isArray(layout) || layout.length === 0) {
-        return [{ id: makeCellId(0, 0), x: 0, y: 0, active: true, plants: [] }];
+        return [
+            {
+                id: makeCellId(0, 0),
+                x: 0,
+                y: 0,
+                active: true,
+                kind: 'plantable',
+                plants: [],
+            },
+        ];
     }
 
     const cells: BedCell[] = [];
     layout.forEach((row, y) => {
         if (!Array.isArray(row)) return;
         row.forEach((rawCell, x) => {
-            if (Number(rawCell) !== 1) return;
+            const cellValue = Number(rawCell);
+            if (![1, 0, -1].includes(cellValue)) return;
             cells.push({
                 id: makeCellId(x, y),
                 x,
                 y,
-                active: true,
-                plants: [...(plantMap.get(`${y},${x}`) ?? [])],
+                active: cellValue === 1,
+                kind:
+                    cellValue === 1
+                        ? 'plantable'
+                        : cellValue === -1
+                          ? 'walkway'
+                          : 'empty',
+                plants:
+                    cellValue === 1
+                        ? [...(plantMap.get(`${y},${x}`) ?? [])]
+                        : [],
             });
         });
     });
 
     return cells.length
         ? cells
-        : [{ id: makeCellId(0, 0), x: 0, y: 0, active: true, plants: [] }];
+        : [
+              {
+                  id: makeCellId(0, 0),
+                  x: 0,
+                  y: 0,
+                  active: true,
+                  kind: 'plantable',
+                  plants: [],
+              },
+          ];
 }
 
 const cells = ref<BedCell[]>(createInitialCells());
@@ -157,21 +213,32 @@ const form = useForm<{
     cell_size_cm: number;
     image: File | null;
     cells: SubmitCell[];
+    layout: number[][];
 }>({
     name: props.mode === 'edit' ? (props.bed?.name ?? '') : '',
     location: props.mode === 'edit' ? (props.bed?.location ?? '') : '',
     cell_size_cm: props.mode === 'edit' ? (props.bed?.cell_size_cm ?? 30) : 30,
     image: null,
     cells: [],
+    layout: [],
 });
 
 const selectedCell = computed(
     () => cells.value.find((cell) => cell.id === selectedCellId.value) ?? null,
 );
-const activeCells = computed(() => cells.value.filter((cell) => cell.active));
+const activeCells = computed(() =>
+    cells.value.filter((cell) => cell.active && cell.kind === 'plantable'),
+);
+const layoutCells = computed(() => cells.value);
 
 const selectedPlantCount = computed(
     () => selectedCell.value?.plants.length ?? 0,
+);
+const walkwayCellCount = computed(
+    () => cells.value.filter((cell) => cell.kind === 'walkway').length,
+);
+const emptyDesignCellCount = computed(
+    () => cells.value.filter((cell) => cell.kind === 'empty').length,
 );
 const selectedCellLabel = computed(() =>
     selectedCell.value
@@ -180,8 +247,8 @@ const selectedCellLabel = computed(() =>
 );
 
 const bounds = computed(() => {
-    const source = activeCells.value.length
-        ? activeCells.value
+    const source = layoutCells.value.length
+        ? layoutCells.value
         : [{ x: 0, y: 0 }];
     const xs = source.map((cell) => cell.x);
     const ys = source.map((cell) => cell.y);
@@ -247,7 +314,7 @@ function occupiedKey(x: number, y: number): string {
 
 const occupiedCellMap = computed(() => {
     const map = new Map<string, BedCell>();
-    activeCells.value.forEach((cell) => {
+    layoutCells.value.forEach((cell) => {
         map.set(occupiedKey(cell.x, cell.y), cell);
     });
     return map;
@@ -281,6 +348,16 @@ function addBedEditorCellClasses(x: number, y: number): string[] {
         classes.push('bed-cell--editor-selected');
         return classes;
     }
+    if (cell.kind === 'walkway') {
+        classes.push('bed-cell--walkway');
+        classes.push('hover:-translate-y-0.5', 'hover:shadow-md');
+        return classes;
+    }
+    if (cell.kind === 'empty') {
+        classes.push('bed-cell--void');
+        classes.push('hover:-translate-y-0.5', 'hover:shadow-md');
+        return classes;
+    }
     if (hasPlants) {
         classes.push('bed-cell--planted');
         classes.push('hover:-translate-y-0.5', 'hover:shadow-md');
@@ -300,6 +377,19 @@ function getPlantNames(cell: BedCell): string[] {
                 'Taim',
         )
         .slice(0, 3);
+}
+
+function cellIcon(cell: BedCell): string {
+    if (cell.plants.length) return 'eco';
+    if (cell.kind === 'walkway') return 'texture';
+    if (cell.kind === 'empty') return 'crop_free';
+    return 'grid_view';
+}
+
+function cellKindLabel(cell: BedCell): string {
+    if (cell.kind === 'walkway') return 'tee või kivi';
+    if (cell.kind === 'empty') return 'tühi ala';
+    return 'peenraruut';
 }
 
 function selectCell(cell: BedCell) {
@@ -326,6 +416,13 @@ function setSelectedCellRef(el: unknown, cellId: string) {
 function addCellAt(x: number, y: number) {
     const existing = getCellAt(x, y);
     if (existing) {
+        if (existing.kind !== 'plantable') {
+            cells.value = cells.value.map((cell) =>
+                cell.id === existing.id
+                    ? { ...cell, active: true, kind: 'plantable' }
+                    : cell,
+            );
+        }
         selectCell(existing);
         return;
     }
@@ -335,6 +432,7 @@ function addCellAt(x: number, y: number) {
         x,
         y,
         active: true,
+        kind: 'plantable',
         plants: [],
     };
 
@@ -458,7 +556,61 @@ function removeSelectedCell() {
 }
 
 function addCellFromPlaceholder(x: number, y: number) {
-    addCellAt(x, y);
+    setCellKindAt(x, y, designBrush.value);
+}
+
+function setCellKindAt(x: number, y: number, kind: DesignBrush) {
+    const existing = getCellAt(x, y);
+    if (existing?.plants.length && kind !== 'plantable') {
+        form.setError(
+            'cells',
+            'Taimedega ruutu ei saa muuta teeks või tühjaks alaks.',
+        );
+        selectCell(existing);
+        return;
+    }
+
+    if (existing) {
+        cells.value = cells.value.map((cell) =>
+            cell.id === existing.id
+                ? {
+                      ...cell,
+                      active: kind === 'plantable',
+                      kind,
+                      plants: kind === 'plantable' ? cell.plants : [],
+                  }
+                : cell,
+        );
+        selectCell({ ...existing, active: kind === 'plantable', kind });
+        form.clearErrors('cells');
+        return;
+    }
+
+    const newCell: BedCell = {
+        id: makeCellId(x, y),
+        x,
+        y,
+        active: kind === 'plantable',
+        kind,
+        plants: [],
+    };
+    cells.value = [...cells.value, newCell];
+    selectCell(newCell);
+    form.clearErrors('cells');
+}
+
+function paintCell(cell: BedCell) {
+    setCellKindAt(cell.x, cell.y, designBrush.value);
+}
+
+function cycleCellKind(cell: BedCell) {
+    const nextKind: DesignBrush =
+        cell.kind === 'plantable'
+            ? 'walkway'
+            : cell.kind === 'walkway'
+              ? 'empty'
+              : 'plantable';
+    setCellKindAt(cell.x, cell.y, nextKind);
 }
 
 function applyPreset(preset: BedPreset) {
@@ -470,6 +622,7 @@ function applyPreset(preset: BedPreset) {
                 x,
                 y,
                 active: true,
+                kind: 'plantable',
                 plants: [],
             });
         }
@@ -493,13 +646,16 @@ function fillVisibleRectangle() {
         ) {
             const existing = getCellAt(x, y);
             next.push(
-                existing ?? {
-                    id: makeCellId(x, y),
-                    x,
-                    y,
-                    active: true,
-                    plants: [],
-                },
+                existing
+                    ? { ...existing, active: true, kind: 'plantable' }
+                    : {
+                          id: makeCellId(x, y),
+                          x,
+                          y,
+                          active: true,
+                          kind: 'plantable',
+                          plants: [],
+                      },
             );
         }
     }
@@ -521,6 +677,7 @@ function resetToSingleCell() {
         x: 0,
         y: 0,
         active: true,
+        kind: 'plantable',
         plants: [],
     };
     cells.value = [cell];
@@ -551,16 +708,27 @@ function previousStep() {
 }
 
 function syncCellsToForm() {
-    form.cells = activeCells.value.map((cell) => ({
-        x: cell.x,
-        y: cell.y,
-        plants: cell.plants.map((plant) => ({
-            plant_id: plant.plant_id,
-            quantity: plant.quantity,
-            size: plant.size,
-            note: plant.note,
-        })),
-    }));
+    form.layout = displayRows.value.map((y) =>
+        displayColumns.value.map((x) => {
+            const cell = getCellAt(x, y);
+            if (!cell) return 0;
+            if (cell.kind === 'walkway') return -1;
+            if (cell.kind === 'empty') return 0;
+            return 1;
+        }),
+    );
+    form.cells = activeCells.value
+        .filter((cell) => cell.plants.length > 0)
+        .map((cell) => ({
+            x: cell.x - displayBounds.value.minX,
+            y: cell.y - displayBounds.value.minY,
+            plants: cell.plants.map((plant) => ({
+                plant_id: plant.plant_id,
+                quantity: plant.quantity,
+                size: plant.size,
+                note: plant.note,
+            })),
+        }));
 }
 
 function resetForm() {
@@ -806,8 +974,8 @@ watch(selectedCellId, async () => {
                             <p
                                 class="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground"
                             >
-                                Vali ruut, lisa kõrvale uus või puuduta tühja
-                                kohta.
+                                Vali pintsel ja puuduta ruute: peenraruut,
+                                kivitee või tühi ala.
                             </p>
                         </div>
                         <div
@@ -818,6 +986,41 @@ watch(selectedCellId, async () => {
                             >
                             {{ selectedCellLabel }}
                         </div>
+                    </div>
+                    <div class="mt-4 grid gap-2 sm:grid-cols-3">
+                        <button
+                            v-for="brush in designBrushes"
+                            :key="brush.id"
+                            type="button"
+                            class="design-brush"
+                            :class="
+                                designBrush === brush.id
+                                    ? 'design-brush--active'
+                                    : ''
+                            "
+                            @click="designBrush = brush.id"
+                        >
+                            <span class="material-symbols-outlined">{{
+                                brush.icon
+                            }}</span>
+                            <span>
+                                <strong>{{ brush.label }}</strong>
+                                <small>{{ brush.description }}</small>
+                            </span>
+                        </button>
+                    </div>
+                    <div
+                        class="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-muted-foreground"
+                    >
+                        <span class="legend-pill legend-pill--plantable"
+                            >{{ activeCells.length }} peenraruutu</span
+                        >
+                        <span class="legend-pill legend-pill--walkway"
+                            >{{ walkwayCellCount }} teed/kivi</span
+                        >
+                        <span class="legend-pill legend-pill--empty"
+                            >{{ emptyDesignCellCount }} tühja ala</span
+                        >
                     </div>
                     <div class="mt-4 flex flex-wrap gap-2">
                         <button
@@ -909,6 +1112,7 @@ watch(selectedCellId, async () => {
                                         <template v-if="getCellAt(x, y)">
                                             <button
                                                 type="button"
+                                                :aria-label="`${cellKindLabel(getCellAt(x, y)!)}: veerg ${displayColumnNumber(x)}, rida ${displayRowNumber(y)}`"
                                                 :class="
                                                     addBedEditorCellClasses(
                                                         x,
@@ -917,7 +1121,13 @@ watch(selectedCellId, async () => {
                                                 "
                                                 @click="
                                                     getCellAt(x, y) &&
-                                                    selectCell(getCellAt(x, y)!)
+                                                    paintCell(getCellAt(x, y)!)
+                                                "
+                                                @dblclick="
+                                                    getCellAt(x, y) &&
+                                                    cycleCellKind(
+                                                        getCellAt(x, y)!,
+                                                    )
                                                 "
                                             >
                                                 <div
@@ -949,10 +1159,12 @@ watch(selectedCellId, async () => {
                                                         "
                                                     >
                                                         {{
-                                                            getCellAt(x, y)
-                                                                ?.plants.length
-                                                                ? 'eco'
-                                                                : 'grid_view'
+                                                            cellIcon(
+                                                                getCellAt(
+                                                                    x,
+                                                                    y,
+                                                                )!,
+                                                            )
                                                         }}
                                                     </span>
                                                     <span
@@ -1638,6 +1850,242 @@ watch(selectedCellId, async () => {
 .preset-preview i {
     border-radius: 0.18rem;
     background: linear-gradient(145deg, rgb(134, 191, 120), rgb(70, 128, 74));
+}
+
+.design-brush {
+    display: flex;
+    min-height: 4.35rem;
+    align-items: center;
+    gap: 0.75rem;
+    border: 1px solid rgba(70, 95, 57, 0.14);
+    border-radius: 1.1rem;
+    padding: 0.75rem;
+    text-align: left;
+    color: var(--foreground);
+    background:
+        radial-gradient(
+            circle at 18% 18%,
+            rgba(255, 255, 255, 0.82),
+            transparent 34%
+        ),
+        color-mix(in srgb, var(--card), var(--primary) 4%);
+    transition:
+        transform 160ms ease,
+        border-color 160ms ease,
+        box-shadow 180ms ease,
+        background-color 160ms ease;
+}
+
+.design-brush:hover,
+.design-brush:focus-visible {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--primary), transparent 55%);
+    box-shadow: 0 12px 24px rgba(44, 70, 46, 0.1);
+}
+
+.design-brush--active {
+    border-color: color-mix(in srgb, var(--primary), transparent 35%);
+    background:
+        linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--primary), white 88%),
+            rgba(255, 251, 235, 0.78)
+        ),
+        var(--card);
+    box-shadow:
+        0 14px 30px rgba(44, 70, 46, 0.14),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+}
+
+.design-brush .material-symbols-outlined {
+    display: grid;
+    width: 2.35rem;
+    height: 2.35rem;
+    flex-shrink: 0;
+    place-items: center;
+    border-radius: 999px;
+    color: var(--primary);
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.design-brush strong,
+.design-brush small {
+    display: block;
+}
+
+.design-brush strong {
+    font-size: 0.86rem;
+    line-height: 1.1;
+}
+
+.design-brush small {
+    margin-top: 0.18rem;
+    color: var(--muted-foreground);
+    font-size: 0.72rem;
+    line-height: 1.25;
+}
+
+.legend-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    padding: 0.35rem 0.65rem;
+    border: 1px solid transparent;
+}
+
+.legend-pill::before {
+    content: '';
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 999px;
+}
+
+.legend-pill--plantable {
+    color: rgb(22, 101, 52);
+    border-color: rgba(34, 197, 94, 0.24);
+    background: rgba(220, 252, 231, 0.68);
+}
+
+.legend-pill--plantable::before {
+    background: linear-gradient(145deg, rgb(134, 191, 120), rgb(70, 128, 74));
+}
+
+.legend-pill--walkway {
+    color: rgb(87, 83, 78);
+    border-color: rgba(120, 113, 108, 0.24);
+    background: rgba(245, 245, 244, 0.82);
+}
+
+.legend-pill--walkway::before {
+    background:
+        radial-gradient(
+            circle at 30% 30%,
+            rgba(255, 255, 255, 0.8),
+            transparent 25%
+        ),
+        rgb(168, 162, 158);
+}
+
+.legend-pill--empty {
+    color: rgb(100, 116, 139);
+    border-color: rgba(148, 163, 184, 0.28);
+    background: rgba(248, 250, 252, 0.86);
+}
+
+.legend-pill--empty::before {
+    border: 1px dashed rgba(100, 116, 139, 0.65);
+    background: rgba(255, 255, 255, 0.52);
+}
+
+.bed-grid-frame {
+    border: 1px solid rgba(70, 95, 57, 0.12);
+    background:
+        linear-gradient(rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.38)),
+        radial-gradient(
+            circle at 20% 0%,
+            color-mix(in srgb, var(--primary), transparent 82%),
+            transparent 36%
+        ),
+        color-mix(in srgb, var(--background), var(--primary) 5%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.7),
+        0 16px 34px rgba(44, 70, 46, 0.1);
+}
+
+.bed-cell {
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 0.9rem;
+}
+
+.bed-cell--empty {
+    border-color: rgba(84, 112, 65, 0.16);
+    color: rgba(34, 78, 44, 0.68);
+    background:
+        radial-gradient(
+            circle at 28% 24%,
+            rgba(255, 255, 255, 0.5),
+            transparent 26%
+        ),
+        linear-gradient(145deg, rgb(190, 220, 159), rgb(143, 185, 122));
+    box-shadow:
+        inset 0 2px 5px rgba(255, 255, 255, 0.28),
+        inset 0 -8px 14px rgba(59, 99, 50, 0.16);
+}
+
+.bed-cell--warm {
+    background:
+        radial-gradient(
+            circle at 28% 24%,
+            rgba(255, 255, 255, 0.52),
+            transparent 26%
+        ),
+        linear-gradient(145deg, rgb(203, 224, 168), rgb(153, 191, 128));
+}
+
+.bed-cell--planted {
+    border-color: rgba(21, 128, 61, 0.32);
+    background:
+        radial-gradient(
+            circle at 50% 28%,
+            rgba(220, 252, 231, 0.9),
+            transparent 44%
+        ),
+        linear-gradient(145deg, rgb(79, 151, 83), rgb(34, 99, 54));
+    box-shadow:
+        0 10px 22px rgba(34, 197, 94, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.bed-cell--walkway {
+    border-color: rgba(120, 113, 108, 0.22);
+    color: rgb(87, 83, 78);
+    background:
+        radial-gradient(
+            circle at 18% 22%,
+            rgba(255, 255, 255, 0.52) 0 10%,
+            transparent 11%
+        ),
+        radial-gradient(
+            circle at 74% 28%,
+            rgba(120, 113, 108, 0.28) 0 10%,
+            transparent 11%
+        ),
+        radial-gradient(
+            circle at 45% 72%,
+            rgba(87, 83, 78, 0.18) 0 8%,
+            transparent 9%
+        ),
+        linear-gradient(145deg, rgb(231, 229, 228), rgb(196, 190, 184));
+}
+
+.bed-cell--void {
+    border-color: rgba(148, 163, 184, 0.28);
+    color: rgba(100, 116, 139, 0.58);
+    background:
+        repeating-linear-gradient(
+            -45deg,
+            rgba(148, 163, 184, 0.1) 0 6px,
+            transparent 6px 12px
+        ),
+        rgba(248, 250, 252, 0.84);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.64);
+}
+
+.bed-cell--editor-selected {
+    border-color: color-mix(in srgb, var(--primary), transparent 20%);
+    color: var(--primary);
+    background:
+        radial-gradient(
+            circle at 50% 20%,
+            rgba(255, 255, 255, 0.82),
+            transparent 42%
+        ),
+        color-mix(in srgb, var(--primary), white 84%);
+    box-shadow:
+        0 0 0 3px color-mix(in srgb, var(--primary), transparent 78%),
+        0 14px 26px rgba(44, 70, 46, 0.16);
 }
 
 .photo-drop-zone {
