@@ -2246,156 +2246,68 @@ function saveGardenPlan() {
                                     </p>
                                 </div>
 
-                                <!-- Maastikuhoiatus -->
                                 <div
                                     v-if="shouldShowLandscapeHint"
-                                    class="flex items-start gap-3 rounded-[1.25rem] bg-amber-50 px-4 py-3.5 ring-1 ring-amber-200 dark:bg-amber-950/30 dark:ring-amber-800/50"
+                                    class="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 shadow-sm"
                                 >
-                                    <span
-                                        class="material-symbols-outlined mt-0.5 shrink-0 text-[18px] text-amber-600 dark:text-amber-400"
-                                        >screen_rotation</span
+                                    <div
+                                        class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
                                     >
-                                    <div class="min-w-0 flex-1">
-                                        <p
-                                            class="text-sm font-semibold text-amber-900 dark:text-amber-200"
+                                        <div>
+                                            <p
+                                                class="text-sm font-semibold text-foreground"
+                                            >
+                                                Aiaplaan töötab paremini laiemas
+                                                vaates
+                                            </p>
+                                            <p
+                                                class="mt-1 text-sm leading-6 text-muted-foreground"
+                                            >
+                                                Lohistamine ja paigutus on
+                                                mugavam, kui kasutad
+                                                horisontaalrežiimi või avad akna
+                                                laiemaks.
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            class="inline-flex shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+                                            @click="dismissLandscapeHint"
                                         >
-                                            Aiaplaan töötab paremini laiemas
-                                            vaates
-                                        </p>
-                                        <p
-                                            class="mt-0.5 text-sm text-amber-800/80 dark:text-amber-300/80"
-                                        >
-                                            Lohista mugavamalt, kui pöörad
-                                            telefoni külili või avad akna
-                                            laiemaks.
-                                        </p>
+                                            Sain aru
+                                        </button>
                                     </div>
-                                    <button
-                                        type="button"
-                                        class="shrink-0 rounded-full border border-amber-300 bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-200 dark:border-amber-700 dark:bg-amber-900/50 dark:text-amber-200"
-                                        @click="dismissLandscapeHint"
-                                    >
-                                        Sain aru
-                                    </button>
                                 </div>
 
-                                <!-- Sissejuhatuskaart (esimene külastus, peenraid pole) -->
                                 <div
                                     v-if="showOnboardingHint"
-                                    class="overflow-hidden rounded-[1.75rem] bg-card ring-1 shadow-soft ring-border/70"
+                                    class="rounded-xl border border-primary/20 bg-primary/5 p-5 shadow-sm"
                                 >
                                     <div
-                                        class="border-b border-border/50 bg-primary/5 px-5 py-4"
+                                        class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
                                     >
-                                        <div
-                                            class="flex flex-wrap items-center justify-between gap-4"
+                                        <div class="max-w-2xl">
+                                            <p
+                                                class="text-base font-semibold text-foreground"
+                                            >
+                                                Alusta esimesest peenrast.
+                                            </p>
+                                            <p
+                                                class="mt-1 text-sm leading-6 text-muted-foreground"
+                                            >
+                                                Kui peenar on loodud, saad selle
+                                                siia aeda paigutada ja hiljem
+                                                avada, et ruudustik ning taimed
+                                                täpsemalt paika panna.
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            class="inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+                                            @click="openCreateBed"
                                         >
-                                            <div class="flex items-center gap-3">
-                                                <span
-                                                    class="material-symbols-outlined flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"
-                                                    >yard</span
-                                                >
-                                                <div>
-                                                    <p
-                                                        class="text-xs font-semibold tracking-[0.14em] text-primary uppercase"
-                                                    >
-                                                        Alustame
-                                                    </p>
-                                                    <h2
-                                                        class="mt-0.5 text-base font-semibold text-foreground"
-                                                    >
-                                                        Loo oma esimene peenar
-                                                    </h2>
-                                                </div>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                class="btn-primary text-sm"
-                                                @click="openCreateBed"
-                                            >
-                                                Loo peenar
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div
-                                        class="grid divide-y divide-border/40 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4"
-                                    >
-                                        <div class="flex gap-3 px-4 py-4">
-                                            <span
-                                                class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary"
-                                                >1</span
-                                            >
-                                            <div>
-                                                <p
-                                                    class="text-sm font-semibold text-foreground"
-                                                >
-                                                    Lisa peenar
-                                                </p>
-                                                <p
-                                                    class="mt-0.5 text-xs leading-5 text-muted-foreground"
-                                                >
-                                                    Anna nimi ja joonista kuju
-                                                    ruutudest.
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div class="flex gap-3 px-4 py-4">
-                                            <span
-                                                class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary"
-                                                >2</span
-                                            >
-                                            <div>
-                                                <p
-                                                    class="text-sm font-semibold text-foreground"
-                                                >
-                                                    Paiguta aeda
-                                                </p>
-                                                <p
-                                                    class="mt-0.5 text-xs leading-5 text-muted-foreground"
-                                                >
-                                                    Lohista peenar kaardil
-                                                    sobivasse kohta.
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div class="flex gap-3 px-4 py-4">
-                                            <span
-                                                class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary"
-                                                >3</span
-                                            >
-                                            <div>
-                                                <p
-                                                    class="text-sm font-semibold text-foreground"
-                                                >
-                                                    Lisa taimed
-                                                </p>
-                                                <p
-                                                    class="mt-0.5 text-xs leading-5 text-muted-foreground"
-                                                >
-                                                    Ava peenar ja pane taimed
-                                                    ruutudesse.
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div class="flex gap-3 px-4 py-4">
-                                            <span
-                                                class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary"
-                                                >4</span
-                                            >
-                                            <div>
-                                                <p
-                                                    class="text-sm font-semibold text-foreground"
-                                                >
-                                                    Muuda ja hoola
-                                                </p>
-                                                <p
-                                                    class="mt-0.5 text-xs leading-5 text-muted-foreground"
-                                                >
-                                                    Lisa märkmeid ja jälgi
-                                                    peenra seisu.
-                                                </p>
-                                            </div>
-                                        </div>
+                                            Loo esimene peenar
+                                        </button>
                                     </div>
                                 </div>
 
@@ -3050,32 +2962,25 @@ function saveGardenPlan() {
                                             !props.beds.length &&
                                             !props.gardenObjects.length
                                         "
-                                        class="rounded-[1.75rem] border border-dashed border-primary/25 bg-background/60 px-6 py-10 text-center"
+                                        class="rounded-xl border-2 border-dashed border-primary/25 bg-background p-8 text-center"
                                     >
-                                        <span
-                                            class="material-symbols-outlined mx-auto mb-3 block text-4xl text-primary/40"
-                                            >grass</span
-                                        >
                                         <p
                                             class="text-base font-semibold text-foreground"
                                         >
-                                            Aiaplaan on veel tühi
+                                            Aiaplaan on veel tühi.
                                         </p>
                                         <p
-                                            class="mx-auto mt-2 max-w-xs text-sm leading-6 text-muted-foreground"
+                                            class="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground"
                                         >
-                                            Loo esimene peenar. Saad selle siia
-                                            paigutada ja taimede kaupa täita.
+                                            Loo kõigepealt peenar. Kui peenar on
+                                            olemas, saad selle siia paigutada ja
+                                            selle sees taimi hallata.
                                         </p>
                                         <button
                                             type="button"
-                                            class="mt-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+                                            class="mt-4 inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
                                             @click="openCreateBed"
                                         >
-                                            <span
-                                                class="material-symbols-outlined text-base"
-                                                >add</span
-                                            >
                                             Loo esimene peenar
                                         </button>
                                     </div>
@@ -3085,26 +2990,23 @@ function saveGardenPlan() {
                                             plannerBeds.length === 0 &&
                                             visibleObjectsCount === 0
                                         "
-                                        class="rounded-[1.75rem] border border-dashed border-border/60 bg-background/60 px-6 py-10 text-center"
+                                        class="rounded-xl border border-dashed border-primary/25 bg-background px-6 py-8 text-center"
                                     >
-                                        <span
-                                            class="material-symbols-outlined mx-auto mb-3 block text-4xl text-muted-foreground/40"
-                                            >filter_list_off</span
-                                        >
                                         <p
                                             class="text-base font-semibold text-foreground"
                                         >
-                                            Praegu ei ole midagi nähtaval
+                                            Praegu ei ole midagi nähtaval.
                                         </p>
                                         <p
                                             class="mt-2 text-sm leading-6 text-muted-foreground"
                                         >
-                                            Kihid või otsing peidavad kõik
-                                            elemendid.
+                                            Vaata üle kihid ja otsing, et näha
+                                            jälle kõiki peenraid ning
+                                            aiaelemente.
                                         </p>
                                         <button
                                             type="button"
-                                            class="mt-5 inline-flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-sm transition hover:bg-muted"
+                                            class="mt-4 inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
                                             @click="resetPlannerFilters"
                                         >
                                             Näita kõike
@@ -4314,29 +4216,26 @@ function saveGardenPlan() {
                                     <div
                                         v-else-if="selectedBed"
                                         ref="selectedBedPanel"
-                                        class="xl:backdrop-blur-0 sticky bottom-20 z-20 mt-3 overflow-hidden rounded-[1.75rem] border border-border/80 bg-card/97 shadow-lg backdrop-blur xl:static xl:bottom-auto xl:z-auto xl:shadow-sm"
+                                        class="xl:backdrop-blur-0 sticky bottom-20 z-20 mt-3 rounded-[1.5rem] border border-border/80 bg-card/95 p-4 shadow-lg backdrop-blur xl:static xl:bottom-auto xl:z-auto xl:shadow-sm"
                                         :class="
                                             highlightSelectedBedPanel
                                                 ? 'ring-2 ring-primary/35 ring-offset-2 ring-offset-background transition'
                                                 : ''
                                         "
                                     >
-                                        <!-- Drag handle (mobile) -->
                                         <div
-                                            class="flex justify-center pt-3 xl:hidden"
+                                            class="mb-2 flex justify-center xl:hidden"
                                         >
                                             <span
-                                                class="h-1 w-10 rounded-full bg-foreground/12"
+                                                class="h-1 w-10 rounded-full bg-foreground/15"
                                             ></span>
                                         </div>
-
-                                        <!-- Peenra info + peamised tegevused -->
                                         <div
-                                            class="flex flex-wrap items-start justify-between gap-3 px-4 pt-3 pb-4"
+                                            class="flex flex-wrap items-start justify-between gap-2"
                                         >
                                             <div class="min-w-0">
                                                 <p
-                                                    class="text-[10px] font-semibold tracking-[0.14em] text-primary uppercase"
+                                                    class="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                                                 >
                                                     Valitud peenar
                                                 </p>
@@ -4346,14 +4245,19 @@ function saveGardenPlan() {
                                                     {{ selectedBed.name }}
                                                 </h4>
                                                 <p
-                                                    v-if="selectedBed.location"
-                                                    class="mt-0.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground"
+                                                    class="mt-0.5 text-[11px] text-muted-foreground"
                                                 >
-                                                    <span
-                                                        class="material-symbols-outlined text-[13px]"
-                                                        >location_on</span
-                                                    >
-                                                    {{ selectedBed.location }}
+                                                    {{
+                                                        selectedBed.location ||
+                                                        'Asukoht lisamata'
+                                                    }}
+                                                </p>
+                                                <p
+                                                    class="mt-1 text-xs leading-5 text-muted-foreground"
+                                                >
+                                                    Ava peenar, et taimi
+                                                    ruutudesse paigutada ja
+                                                    märkmeid hallata.
                                                 </p>
                                             </div>
                                             <div
@@ -4362,7 +4266,7 @@ function saveGardenPlan() {
                                             >
                                                 <button
                                                     type="button"
-                                                    class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:bg-muted xl:hidden"
+                                                    class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-foreground transition hover:bg-muted xl:hidden"
                                                     @click="
                                                         clearSelectionDetails
                                                     "
@@ -4374,7 +4278,7 @@ function saveGardenPlan() {
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    class="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+                                                    class="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1.5 text-[11px] font-semibold text-primary transition hover:bg-primary/15"
                                                     @click="goToSelectedBed"
                                                 >
                                                     Ava peenar
@@ -4390,11 +4294,7 @@ function saveGardenPlan() {
                                                         editBed(selectedBed.id)
                                                     "
                                                 >
-                                                    <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >edit</span
-                                                    >
-                                                    Muuda
+                                                    Muuda peenart
                                                 </button>
                                                 <button
                                                     type="button"
@@ -4411,18 +4311,19 @@ function saveGardenPlan() {
                                             </div>
                                         </div>
 
-                                        <!-- Statistika -->
                                         <div
-                                            class="grid grid-cols-3 divide-x divide-border/50 border-t border-border/50 bg-secondary/30"
+                                            class="mt-2.5 grid grid-cols-3 gap-2"
                                         >
-                                            <div class="px-3 py-2.5">
+                                            <div
+                                                class="min-w-0 rounded-lg border border-border/70 bg-background/70 px-2 py-2"
+                                            >
                                                 <p
                                                     class="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                                                 >
                                                     Kuju
                                                 </p>
                                                 <p
-                                                    class="mt-0.5 text-xs font-semibold text-foreground"
+                                                    class="mt-1 text-xs leading-snug font-semibold text-foreground"
                                                 >
                                                     {{
                                                         getBedHeightInCells(
@@ -4438,14 +4339,16 @@ function saveGardenPlan() {
                                                     ruutu
                                                 </p>
                                             </div>
-                                            <div class="px-3 py-2.5">
+                                            <div
+                                                class="min-w-0 rounded-lg border border-border/70 bg-background/70 px-2 py-2"
+                                            >
                                                 <p
                                                     class="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                                                 >
-                                                    Mõõt
+                                                    Päris mõõt
                                                 </p>
                                                 <p
-                                                    class="mt-0.5 text-xs font-semibold text-foreground"
+                                                    class="mt-1 text-xs leading-snug font-semibold text-foreground"
                                                 >
                                                     {{
                                                         formatCentimeters(
@@ -4464,14 +4367,16 @@ function saveGardenPlan() {
                                                     }}
                                                 </p>
                                             </div>
-                                            <div class="px-3 py-2.5">
+                                            <div
+                                                class="min-w-0 rounded-lg border border-border/70 bg-background/70 px-2 py-2"
+                                            >
                                                 <p
                                                     class="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
                                                 >
                                                     Taimi
                                                 </p>
                                                 <p
-                                                    class="mt-0.5 text-xs font-semibold text-foreground"
+                                                    class="mt-1 text-xs font-semibold text-foreground"
                                                 >
                                                     {{
                                                         selectedBed.plants
