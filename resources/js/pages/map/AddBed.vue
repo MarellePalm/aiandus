@@ -63,6 +63,44 @@ const gridScroller = ref<HTMLElement | null>(null);
 const selectedCellElement = ref<HTMLElement | null>(null);
 const highlightedCellId = ref<string | null>(null);
 let highlightTimeout: ReturnType<typeof setTimeout> | null = null;
+type WizardStep = 1 | 2 | 3;
+type BedPreset = {
+    id: string;
+    label: string;
+    description: string;
+    columns: number;
+    rows: number;
+};
+
+const currentStep = ref<WizardStep>(1);
+const wizardSteps = [
+    { id: 1 as const, label: 'Peenar nimeta', icon: 'edit' },
+    { id: 2 as const, label: 'Kujunda kuju', icon: 'grid_view' },
+    { id: 3 as const, label: 'Viimistlus', icon: 'photo_camera' },
+];
+const bedPresets: BedPreset[] = [
+    {
+        id: 'small',
+        label: 'Väike 2×4',
+        description: 'Kompaktne ürdi- või salatipeenar.',
+        columns: 2,
+        rows: 4,
+    },
+    {
+        id: 'medium',
+        label: 'Keskmine 3×6',
+        description: 'Mõnus põhivalik köögiviljadele.',
+        columns: 3,
+        rows: 6,
+    },
+    {
+        id: 'large',
+        label: 'Suur 4×8',
+        description: 'Rohkem ruumi segapeenrale.',
+        columns: 4,
+        rows: 8,
+    },
+];
 
 function makeCellId(x: number, y: number): string {
     return `cell-${x}-${y}-${Math.random().toString(36).slice(2, 8)}`;
@@ -175,6 +213,20 @@ const displayColumns = computed(() =>
         (_, index) => displayBounds.value.minX + index,
     ),
 );
+const bedSummaryLabel = computed(
+    () => `${displayColumns.value.length} × ${displayRows.value.length} ruutu`,
+);
+const bedPhysicalSizeLabel = computed(() => {
+    const cellSize = Math.max(10, Number(form.cell_size_cm || 30));
+    const widthMeters = (displayColumns.value.length * cellSize) / 100;
+    const heightMeters = (displayRows.value.length * cellSize) / 100;
+    return `${formatMeters(widthMeters)} × ${formatMeters(heightMeters)} m`;
+});
+const canContinueFromStep = computed(() => {
+    if (currentStep.value === 1) return Boolean(form.name.trim());
+    if (currentStep.value === 2) return activeCells.value.length > 0;
+    return true;
+});
 
 function displayColumnNumber(x: number): number {
     return x - displayBounds.value.minX + 1;
@@ -182,6 +234,11 @@ function displayColumnNumber(x: number): number {
 
 function displayRowNumber(y: number): number {
     return y - displayBounds.value.minY + 1;
+}
+
+function formatMeters(value: number): string {
+    const rounded = Math.round(value * 10) / 10;
+    return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(1);
 }
 
 function occupiedKey(x: number, y: number): string {
@@ -404,6 +461,95 @@ function addCellFromPlaceholder(x: number, y: number) {
     addCellAt(x, y);
 }
 
+function applyPreset(preset: BedPreset) {
+    const next: BedCell[] = [];
+    for (let y = 0; y < preset.rows; y += 1) {
+        for (let x = 0; x < preset.columns; x += 1) {
+            next.push({
+                id: makeCellId(x, y),
+                x,
+                y,
+                active: true,
+                plants: [],
+            });
+        }
+    }
+    cells.value = next;
+    selectedCellId.value = next[0]?.id ?? '';
+    form.clearErrors('cells');
+}
+
+function fillVisibleRectangle() {
+    const next: BedCell[] = [];
+    for (
+        let y = displayBounds.value.minY;
+        y <= displayBounds.value.maxY;
+        y += 1
+    ) {
+        for (
+            let x = displayBounds.value.minX;
+            x <= displayBounds.value.maxX;
+            x += 1
+        ) {
+            const existing = getCellAt(x, y);
+            next.push(
+                existing ?? {
+                    id: makeCellId(x, y),
+                    x,
+                    y,
+                    active: true,
+                    plants: [],
+                },
+            );
+        }
+    }
+    cells.value = next;
+    selectedCellId.value = next[0]?.id ?? '';
+    form.clearErrors('cells');
+}
+
+function resetToSingleCell() {
+    if (activeCells.value.some((cell) => cell.plants.length > 0)) {
+        form.setError(
+            'cells',
+            'Taimedega peenart ei saa ühe nupuga tühjendada.',
+        );
+        return;
+    }
+    const cell: BedCell = {
+        id: makeCellId(0, 0),
+        x: 0,
+        y: 0,
+        active: true,
+        plants: [],
+    };
+    cells.value = [cell];
+    selectedCellId.value = cell.id;
+}
+
+function goToStep(step: WizardStep) {
+    if (step > currentStep.value && !canContinueFromStep.value) {
+        if (currentStep.value === 1) {
+            form.setError('name', 'Pane peenrale nimi, siis liigume edasi.');
+        }
+        if (currentStep.value === 2) {
+            form.setError('cells', 'Peenras peab olema vähemalt üks ruut.');
+        }
+        return;
+    }
+    currentStep.value = step;
+}
+
+function nextStep() {
+    if (currentStep.value === 3) return;
+    goToStep((currentStep.value + 1) as WizardStep);
+}
+
+function previousStep() {
+    if (currentStep.value === 1) return;
+    currentStep.value = (currentStep.value - 1) as WizardStep;
+}
+
 function syncCellsToForm() {
     form.cells = activeCells.value.map((cell) => ({
         x: cell.x,
@@ -519,8 +665,36 @@ watch(selectedCellId, async () => {
 
 <template>
     <section class="mb-8">
-        <form class="space-y-4" @submit.prevent="submit">
+        <form class="space-y-4 pb-24 sm:pb-0" @submit.prevent="submit">
+            <nav
+                class="rounded-[1.5rem] border border-emerald-900/10 bg-[linear-gradient(135deg,rgba(236,253,245,0.92),rgba(255,251,235,0.82))] p-3 shadow-[0_16px_36px_rgba(49,79,55,0.12)]"
+                aria-label="Peenra loomise sammud"
+            >
+                <ol class="grid grid-cols-3 gap-2">
+                    <li v-for="step in wizardSteps" :key="step.id">
+                        <button
+                            type="button"
+                            class="wizard-step"
+                            :class="
+                                currentStep === step.id
+                                    ? 'wizard-step--active'
+                                    : currentStep > step.id
+                                      ? 'wizard-step--done'
+                                      : ''
+                            "
+                            @click="goToStep(step.id)"
+                        >
+                            <span class="material-symbols-outlined">{{
+                                step.icon
+                            }}</span>
+                            <span>{{ step.label }}</span>
+                        </button>
+                    </li>
+                </ol>
+            </nav>
+
             <section
+                v-show="currentStep === 1"
                 class="overflow-hidden rounded-[1.75rem] bg-card ring-1 shadow-soft ring-border/70"
             >
                 <div class="border-b border-border/60 px-4 py-4 sm:px-6">
@@ -537,10 +711,11 @@ watch(selectedCellId, async () => {
                                 <h2
                                     class="text-lg font-semibold tracking-tight text-foreground"
                                 >
-                                    Peenra andmed
+                                    Peenar nimeta
                                 </h2>
                                 <p class="mt-0.5 text-sm text-muted-foreground">
-                                    Nimi, asukoht ja soovi korral pilt.
+                                    Pane peenrale nimi ja vali kiire suuruse
+                                    algus.
                                 </p>
                             </div>
                         </div>
@@ -553,19 +728,18 @@ watch(selectedCellId, async () => {
                 </div>
 
                 <div class="space-y-4 p-4 sm:p-5">
-                    <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+                    <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
                         <div>
-                            <label class="form-label text-foreground"
-                                >Peenra nimi</label
-                            >
-                            <input
-                                v-model="form.name"
-                                type="text"
-                                class="h-12 w-full rounded-xl border border-input bg-background px-4 text-base text-foreground transition placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                                placeholder="Nt Ürdipeenar"
-                                maxlength="120"
-                                @input="form.clearErrors('name')"
-                            />
+                            <label class="floating-field">
+                                <input
+                                    v-model="form.name"
+                                    type="text"
+                                    placeholder=" "
+                                    maxlength="120"
+                                    @input="form.clearErrors('name')"
+                                />
+                                <span>Peenra nimi</span>
+                            </label>
                             <p
                                 v-if="form.errors.name"
                                 class="mt-2 text-sm text-red-600"
@@ -574,61 +748,49 @@ watch(selectedCellId, async () => {
                             </p>
                         </div>
 
-                        <details
-                            class="group rounded-xl bg-secondary/40 ring-1 ring-border/70"
-                        >
-                            <summary
-                                class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3"
+                        <div class="space-y-2">
+                            <p
+                                class="text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase"
                             >
-                                <span>
+                                Suuruse presetid
+                            </p>
+                            <button
+                                v-for="preset in bedPresets"
+                                :key="preset.id"
+                                type="button"
+                                class="preset-card"
+                                @click="applyPreset(preset)"
+                            >
+                                <span class="preset-preview">
+                                    <i
+                                        v-for="index in Math.min(
+                                            preset.rows * preset.columns,
+                                            18,
+                                        )"
+                                        :key="index"
+                                    ></i>
+                                </span>
+                                <span class="min-w-0">
                                     <span
                                         class="block text-sm font-semibold text-foreground"
-                                        >Peenra pilt</span
                                     >
+                                        {{ preset.label }}
+                                    </span>
                                     <span
-                                        class="mt-0.5 block text-xs text-muted-foreground"
-                                        >Valikuline</span
+                                        class="mt-0.5 block text-xs leading-5 text-muted-foreground"
+                                        >{{ preset.description }}</span
                                     >
                                 </span>
-                                <span
-                                    class="material-symbols-outlined text-primary transition group-open:rotate-180"
-                                >
-                                    expand_more
-                                </span>
-                            </summary>
-                            <div class="space-y-3 px-4 pb-4">
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    class="w-full rounded-xl border border-border/80 bg-card px-3 py-2.5 text-sm text-foreground file:mr-3 file:rounded-full file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:font-semibold file:text-primary hover:file:bg-primary/20"
-                                    @change="onImageChange"
-                                />
-                                <div
-                                    v-if="
-                                        newBedImagePreview || existingImageUrl
-                                    "
-                                    class="overflow-hidden rounded-xl ring-1 ring-border/80"
-                                >
-                                    <div
-                                        class="h-28 w-full bg-cover bg-center"
-                                        :style="{
-                                            backgroundImage: `url('${newBedImagePreview ?? existingImageUrl}')`,
-                                        }"
-                                    />
-                                </div>
-                                <p
-                                    v-if="form.errors.image"
-                                    class="text-sm text-red-600"
-                                >
-                                    {{ form.errors.image }}
-                                </p>
-                            </div>
-                        </details>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            <section class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_17rem]">
+            <section
+                v-show="currentStep === 2"
+                class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_17rem]"
+            >
                 <div
                     class="rounded-[1.5rem] bg-card p-4 ring-1 shadow-soft ring-border/70 sm:p-5"
                 >
@@ -656,6 +818,28 @@ watch(selectedCellId, async () => {
                             >
                             {{ selectedCellLabel }}
                         </div>
+                    </div>
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 sm:min-h-0 sm:py-2"
+                            @click="fillVisibleRectangle"
+                        >
+                            <span class="material-symbols-outlined text-base"
+                                >select_all</span
+                            >
+                            Täida kõik
+                        </button>
+                        <button
+                            type="button"
+                            class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-background px-3 text-sm font-semibold text-foreground transition hover:bg-muted sm:min-h-0 sm:py-2"
+                            @click="resetToSingleCell"
+                        >
+                            <span class="material-symbols-outlined text-base"
+                                >ink_eraser</span
+                            >
+                            Tühjenda
+                        </button>
                     </div>
 
                     <div class="mt-4 max-w-sm">
@@ -725,7 +909,12 @@ watch(selectedCellId, async () => {
                                         <template v-if="getCellAt(x, y)">
                                             <button
                                                 type="button"
-                                                :class="addBedEditorCellClasses(x, y)"
+                                                :class="
+                                                    addBedEditorCellClasses(
+                                                        x,
+                                                        y,
+                                                    )
+                                                "
                                                 @click="
                                                     getCellAt(x, y) &&
                                                     selectCell(getCellAt(x, y)!)
@@ -1102,6 +1291,147 @@ watch(selectedCellId, async () => {
                 </aside>
             </section>
 
+            <section
+                v-show="currentStep === 3"
+                class="overflow-hidden rounded-[1.75rem] bg-card ring-1 shadow-soft ring-border/70"
+            >
+                <div class="border-b border-border/60 px-4 py-4 sm:px-6">
+                    <div class="flex items-center gap-3">
+                        <span
+                            class="material-symbols-outlined flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary"
+                        >
+                            auto_awesome
+                        </span>
+                        <div>
+                            <h2
+                                class="text-lg font-semibold tracking-tight text-foreground"
+                            >
+                                Viimistlus
+                            </h2>
+                            <p class="mt-0.5 text-sm text-muted-foreground">
+                                Lisa pilt, asukoht ja kontrolli kokkuvõtet.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_20rem]"
+                >
+                    <div class="space-y-4">
+                        <label class="floating-field">
+                            <input
+                                v-model="form.location"
+                                type="text"
+                                placeholder=" "
+                                maxlength="255"
+                                @input="form.clearErrors('location')"
+                            />
+                            <span>Asukoht aias</span>
+                        </label>
+
+                        <div>
+                            <label class="form-label text-foreground"
+                                >Ühe ruudu mõõt</label
+                            >
+                            <div
+                                class="flex items-center rounded-xl border border-input bg-background px-4 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
+                            >
+                                <input
+                                    v-model="form.cell_size_cm"
+                                    type="number"
+                                    min="10"
+                                    max="200"
+                                    step="10"
+                                    class="h-12 min-w-0 flex-1 border-0 bg-transparent text-base text-foreground outline-none"
+                                    placeholder="30"
+                                    @input="form.clearErrors('cell_size_cm')"
+                                />
+                                <span
+                                    class="text-sm font-medium text-muted-foreground"
+                                    >cm</span
+                                >
+                            </div>
+                            <p
+                                class="mt-2 inline-flex items-center gap-2 rounded-full bg-primary/8 px-3 py-1.5 text-sm font-semibold text-primary"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-base"
+                                    >straighten</span
+                                >
+                                1 ruut = {{ form.cell_size_cm || 30 }} cm
+                            </p>
+                        </div>
+
+                        <label class="photo-drop-zone">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                class="sr-only"
+                                @change="onImageChange"
+                            />
+                            <span class="material-symbols-outlined"
+                                >photo_camera</span
+                            >
+                            <strong>Lisa peenra foto</strong>
+                            <small>Puuduta, et valida pilt galeriist.</small>
+                        </label>
+                    </div>
+
+                    <aside class="summary-card">
+                        <div
+                            class="h-28 overflow-hidden rounded-2xl bg-[linear-gradient(135deg,rgba(187,247,208,0.72),rgba(254,243,199,0.68))]"
+                        >
+                            <div
+                                v-if="newBedImagePreview || existingImageUrl"
+                                class="h-full w-full bg-cover bg-center"
+                                :style="{
+                                    backgroundImage: `url('${newBedImagePreview ?? existingImageUrl}')`,
+                                }"
+                            />
+                            <div
+                                v-else
+                                class="grid h-full place-items-center text-primary"
+                            >
+                                <span class="material-symbols-outlined text-4xl"
+                                    >yard</span
+                                >
+                            </div>
+                        </div>
+                        <p
+                            class="mt-4 text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase"
+                        >
+                            Kokkuvõte
+                        </p>
+                        <h3 class="mt-1 text-lg font-semibold text-foreground">
+                            {{ form.name || 'Uus peenar' }}
+                        </h3>
+                        <dl class="mt-3 grid gap-2 text-sm">
+                            <div class="flex justify-between gap-3">
+                                <dt class="text-muted-foreground">Kuju</dt>
+                                <dd class="font-semibold text-foreground">
+                                    {{ bedSummaryLabel }}
+                                </dd>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <dt class="text-muted-foreground">Mõõt</dt>
+                                <dd class="font-semibold text-foreground">
+                                    {{ bedPhysicalSizeLabel }}
+                                </dd>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <dt class="text-muted-foreground">Asukoht</dt>
+                                <dd
+                                    class="text-right font-semibold text-foreground"
+                                >
+                                    {{ form.location || 'Lisamata' }}
+                                </dd>
+                            </div>
+                        </dl>
+                    </aside>
+                </div>
+            </section>
+
             <div
                 v-if="formFeedback"
                 class="rounded-[1.5rem] px-4 py-3 ring-1"
@@ -1115,18 +1445,36 @@ watch(selectedCellId, async () => {
             </div>
 
             <div
-                class="sticky bottom-[5.25rem] z-10 -mx-1 rounded-[1.25rem] bg-card/95 p-3 shadow-lg ring-1 ring-border/80 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:p-0 sm:shadow-none sm:ring-0"
+                class="fixed right-4 bottom-[4.85rem] left-4 z-40 rounded-[1.25rem] bg-card/95 p-3 shadow-lg ring-1 ring-border/80 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:p-0 sm:shadow-none sm:ring-0"
             >
-                <div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <div class="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
                     <button
                         type="button"
                         class="btn-primary-outline bg-background/80 sm:order-1"
                         :disabled="form.processing"
-                        @click="resetForm"
+                        @click="
+                            currentStep === 1 ? resetForm() : previousStep()
+                        "
                     >
-                        {{ mode === 'edit' ? 'Tagasi' : 'Tühista' }}
+                        {{
+                            currentStep === 1
+                                ? mode === 'edit'
+                                    ? 'Tagasi'
+                                    : 'Tühista'
+                                : 'Tagasi'
+                        }}
                     </button>
                     <button
+                        v-if="currentStep < 3"
+                        type="button"
+                        class="btn-primary shadow-sm sm:order-2"
+                        :disabled="!canContinueFromStep"
+                        @click="nextStep"
+                    >
+                        Järgmine
+                    </button>
+                    <button
+                        v-else
                         type="submit"
                         class="btn-primary shadow-sm sm:order-2"
                         :disabled="form.processing"
@@ -1144,3 +1492,198 @@ watch(selectedCellId, async () => {
         </form>
     </section>
 </template>
+
+<style scoped>
+.wizard-step {
+    display: flex;
+    min-height: 3rem;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    border: 1px solid rgba(70, 95, 57, 0.14);
+    border-radius: 1rem;
+    padding: 0.55rem 0.45rem;
+    color: var(--muted-foreground);
+    background: rgba(255, 255, 255, 0.58);
+    font-size: 0.68rem;
+    font-weight: 800;
+    line-height: 1.15;
+    transition:
+        transform 180ms ease,
+        border-color 180ms ease,
+        background-color 180ms ease,
+        color 180ms ease;
+}
+
+.wizard-step .material-symbols-outlined {
+    font-size: 1rem;
+}
+
+.wizard-step--active {
+    color: var(--primary);
+    border-color: color-mix(in srgb, var(--primary), transparent 58%);
+    background: color-mix(in srgb, var(--primary), white 90%);
+    box-shadow: 0 10px 22px rgba(49, 79, 55, 0.12);
+    transform: translateY(-1px);
+}
+
+.wizard-step--done {
+    color: rgb(22, 101, 52);
+    background: rgba(220, 252, 231, 0.74);
+}
+
+.floating-field {
+    position: relative;
+    display: block;
+}
+
+.floating-field input {
+    width: 100%;
+    height: 4rem;
+    border: 1px solid var(--input);
+    border-radius: 1.25rem;
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.72),
+            rgba(236, 253, 245, 0.48)
+        ),
+        var(--background);
+    padding: 1.45rem 1rem 0.55rem;
+    color: var(--foreground);
+    font-size: 1.08rem;
+    font-weight: 700;
+    outline: none;
+    transition:
+        border-color 180ms ease,
+        box-shadow 180ms ease,
+        transform 180ms ease;
+}
+
+.floating-field span {
+    position: absolute;
+    top: 1.25rem;
+    left: 1rem;
+    color: var(--muted-foreground);
+    font-size: 0.95rem;
+    font-weight: 700;
+    pointer-events: none;
+    transition:
+        transform 180ms ease,
+        color 180ms ease,
+        font-size 180ms ease;
+}
+
+.floating-field input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary), transparent 82%);
+    transform: translateY(-1px);
+}
+
+.floating-field input:focus + span,
+.floating-field input:not(:placeholder-shown) + span {
+    color: var(--primary);
+    font-size: 0.72rem;
+    transform: translateY(-0.85rem);
+}
+
+.preset-card {
+    display: flex;
+    width: 100%;
+    min-height: 4.25rem;
+    align-items: center;
+    gap: 0.8rem;
+    border: 1px solid rgba(70, 95, 57, 0.14);
+    border-radius: 1.1rem;
+    padding: 0.75rem;
+    text-align: left;
+    background:
+        radial-gradient(
+            circle at 20% 15%,
+            rgba(255, 255, 255, 0.72),
+            transparent 35%
+        ),
+        linear-gradient(
+            135deg,
+            rgba(236, 253, 245, 0.82),
+            rgba(255, 251, 235, 0.62)
+        );
+    transition:
+        transform 180ms ease,
+        border-color 180ms ease,
+        box-shadow 220ms ease;
+}
+
+.preset-card:hover,
+.preset-card:focus-visible {
+    transform: translateY(-2px);
+    border-color: rgba(16, 185, 129, 0.42);
+    box-shadow: 0 14px 28px rgba(44, 70, 46, 0.12);
+}
+
+.preset-preview {
+    display: grid;
+    width: 3.2rem;
+    height: 3.2rem;
+    flex-shrink: 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.16rem;
+    border-radius: 0.9rem;
+    padding: 0.45rem;
+    background: rgba(255, 255, 255, 0.7);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.preset-preview i {
+    border-radius: 0.18rem;
+    background: linear-gradient(145deg, rgb(134, 191, 120), rgb(70, 128, 74));
+}
+
+.photo-drop-zone {
+    display: grid;
+    min-height: 8.5rem;
+    place-items: center;
+    border: 1px dashed color-mix(in srgb, var(--primary), transparent 45%);
+    border-radius: 1.35rem;
+    padding: 1rem;
+    text-align: center;
+    color: var(--primary);
+    background:
+        radial-gradient(
+            circle at 50% 10%,
+            rgba(187, 247, 208, 0.44),
+            transparent 36%
+        ),
+        rgba(236, 253, 245, 0.48);
+    cursor: pointer;
+}
+
+.photo-drop-zone .material-symbols-outlined {
+    font-size: 2rem;
+}
+
+.photo-drop-zone strong {
+    display: block;
+    margin-top: 0.35rem;
+    color: var(--foreground);
+}
+
+.photo-drop-zone small {
+    color: var(--muted-foreground);
+}
+
+.summary-card {
+    border: 1px solid rgba(70, 95, 57, 0.14);
+    border-radius: 1.35rem;
+    padding: 1rem;
+    background:
+        linear-gradient(
+            145deg,
+            rgba(255, 255, 255, 0.76),
+            rgba(236, 253, 245, 0.52)
+        ),
+        var(--card);
+    box-shadow: 0 14px 30px rgba(44, 70, 46, 0.1);
+}
+</style>
