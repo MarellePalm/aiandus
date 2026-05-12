@@ -28,6 +28,7 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+/.claude
 
 # Lõputöö päevik hoitakse mujal (nt Google Drive); repot ei ummista
 /loputoo_aianduspaevik.md
