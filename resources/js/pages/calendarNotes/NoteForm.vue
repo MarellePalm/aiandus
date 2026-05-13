@@ -308,22 +308,27 @@ function cancel() {
                             <div>
                                 <label
                                     class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
-                                    for="reminder_preset"
                                     >Meeldetuletus</label
                                 >
-                                <select
-                                    id="reminder_preset"
-                                    v-model="reminderPreset"
-                                    class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                >
-                                    <option
+                                <div class="mt-3 grid grid-cols-2 gap-2">
+                                    <button
                                         v-for="opt in reminderOptions"
                                         :key="opt.value"
-                                        :value="opt.value"
+                                        type="button"
+                                        class="rounded-2xl border px-3 py-2.5 text-left text-sm transition"
+                                        :class="
+                                            reminderPreset === opt.value
+                                                ? 'border-primary bg-primary/8 font-semibold text-primary ring-1 ring-primary/30'
+                                                : 'border-border bg-background text-foreground/70 hover:border-primary/30 hover:bg-muted/40'
+                                        "
+                                        @click="
+                                            reminderPreset = opt.value;
+                                            applyReminderPreset();
+                                        "
                                     >
                                         {{ opt.label }}
-                                    </option>
-                                </select>
+                                    </button>
+                                </div>
                             </div>
 
                             <div

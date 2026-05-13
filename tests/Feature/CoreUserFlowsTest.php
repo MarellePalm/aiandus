@@ -265,6 +265,56 @@ test('authenticated user can create a plant in own category', function () {
     $response->assertRedirect(route('plants.category', ['slug' => $category->slug]));
 });
 
+test('plant category page merges rows with same subtitle even if internal names differ', function () {
+    $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
+    $bed = Bed::query()->create([
+        'user_id' => $user->id,
+        'garden_plan_id' => $plan->id,
+        'name' => 'Peenar',
+        'location' => null,
+        'sort_order' => 1,
+    ]);
+
+    $category = Category::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Ürdid',
+        'slug' => 'urdid',
+        'scope' => Category::SCOPE_PLANT,
+        'count' => 0,
+        'is_favorite' => false,
+    ]);
+
+    Plant::query()->create([
+        'user_id' => $user->id,
+        'category_id' => $category->id,
+        'bed_id' => $bed->id,
+        'name' => 'internal-name-a',
+        'subtitle' => 'Basiilik',
+        'quantity' => 1,
+    ]);
+
+    Plant::query()->create([
+        'user_id' => $user->id,
+        'category_id' => $category->id,
+        'bed_id' => null,
+        'name' => 'internal-name-b',
+        'subtitle' => 'Basiilik',
+        'quantity' => 2,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('plants.category', ['slug' => $category->slug]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Plants/SortView')
+            ->has('plants', 1)
+            ->where('plants.0.subtitle', 'Basiilik')
+            ->where('plants.0.quantity', 3)
+            ->where('plants.0.in_bed', 1)
+            ->where('plants.0.in_stock', 2));
+});
+
 test('user cannot create plant in another users category', function () {
     $user = User::factory()->create();
     $otherUser = User::factory()->create();

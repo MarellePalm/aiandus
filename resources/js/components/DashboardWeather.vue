@@ -122,7 +122,8 @@ const humidity = computed(() => q.data.value?.humidity ?? null);
 const windSpeed = computed(() => q.data.value?.windSpeed ?? null);
 
 const daily = computed<WeatherDailyItem[]>(() => q.data.value?.daily ?? []);
-const forecastDays = computed(() => daily.value.slice(1, 6));
+/** Tänane on daily[0]; näitame kõiki järgnevaid päevi (OpenWeather ~5–6 päeva). */
+const forecastDays = computed(() => daily.value.slice(1));
 
 const todayWeatherLabel = computed(
     () => q.data.value?.openWeatherLabel ?? null,
@@ -359,7 +360,9 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                 v-if="q.isSuccess.value"
                 class="mt-2.5 grid grid-cols-4 border-t border-border/30"
             >
-                <div class="border-r border-border/30 px-2 py-1.5 last:border-r-0">
+                <div
+                    class="border-r border-border/30 px-2 py-1.5 last:border-r-0"
+                >
                     <p
                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                     >
@@ -381,7 +384,9 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                     </div>
                 </div>
 
-                <div class="border-r border-border/30 px-2 py-1.5 last:border-r-0">
+                <div
+                    class="border-r border-border/30 px-2 py-1.5 last:border-r-0"
+                >
                     <p
                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                     >
@@ -399,7 +404,9 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                     </div>
                 </div>
 
-                <div class="border-r border-border/30 px-2 py-1.5 last:border-r-0">
+                <div
+                    class="border-r border-border/30 px-2 py-1.5 last:border-r-0"
+                >
                     <p
                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                     >
@@ -417,7 +424,9 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                     </div>
                 </div>
 
-                <div class="border-r border-border/30 px-2 py-1.5 last:border-r-0">
+                <div
+                    class="border-r border-border/30 px-2 py-1.5 last:border-r-0"
+                >
                     <p
                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                     >
@@ -439,15 +448,15 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
 
         <div
             v-if="q.isSuccess.value && forecastDays.length"
-            class="mt-2 border-t border-border/30 px-4 pt-2 pb-3"
+            class="mt-2 border-t border-border/30 pt-2 pb-3"
         >
             <div
-                class="grid grid-cols-5 gap-1"
+                class="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-gutter:stable]"
             >
                 <div
                     v-for="d in forecastDays"
                     :key="d.date"
-                    class="flex flex-col items-center px-1 py-1 text-center"
+                    class="flex w-[4.75rem] shrink-0 snap-start flex-col items-center rounded-lg px-1 py-1 text-center sm:w-[5.25rem]"
                 >
                     <span
                         class="text-[11px] font-semibold tracking-wide text-foreground/85 uppercase"

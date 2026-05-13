@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
 import BackIconButton from '@/components/BackIconButton.vue';
+import CardActionsMenu from '@/components/CardActionsMenu.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import BottomNav from '@/pages/BottomNav.vue';
@@ -74,14 +75,6 @@ const chips: { key: ChipKey; label: string }[] = [
 const query = ref(props.filters?.q ?? '');
 const activeChip = ref<ChipKey>(props.filters?.chip ?? 'all');
 
-function chipClass(key: ChipKey) {
-    const base =
-        'min-h-9 w-full rounded-full px-1.5 py-1 text-center text-[11px] leading-tight font-semibold whitespace-nowrap transition-colors';
-    return key === activeChip.value
-        ? `${base} bg-primary text-white`
-        : `${base} bg-primary/10 text-primary hover:bg-primary/15`;
-}
-
 function parseISODate(iso: string) {
     const [y, m, d] = iso.split('-').map(Number);
     return new Date(y, (m ?? 1) - 1, d ?? 1);
@@ -90,9 +83,15 @@ function parseISODate(iso: string) {
 function humanLabel(dateISO: string) {
     const d = parseISODate(dateISO);
     const today = new Date();
-    const tomorrowBase = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const tomorrowBase = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+    );
     const dayOnly = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const diffDays = Math.round((dayOnly.getTime() - tomorrowBase.getTime()) / 86400000);
+    const diffDays = Math.round(
+        (dayOnly.getTime() - tomorrowBase.getTime()) / 86400000,
+    );
 
     if (diffDays === 0) return 'Täna';
     if (diffDays === -1) return 'Eile';
@@ -236,6 +235,25 @@ function onAdd() {
     window.location.href = '/calendar/note-form';
 }
 
+function overviewReturnTo(): string {
+    const params = new URLSearchParams();
+    const q = query.value.trim();
+    if (q) params.set('q', q);
+    if (activeChip.value !== 'all') params.set('chip', activeChip.value);
+    const qs = params.toString();
+    return qs ? `/calendar/overview?${qs}` : '/calendar/overview';
+}
+
+function editOverviewNote(id: string) {
+    router.visit(`/calendar/notes/${id}/edit`);
+}
+
+function deleteOverviewNote(id: string) {
+    if (!window.confirm('Kas kustutada see märge?')) return;
+    const returnTo = encodeURIComponent(overviewReturnTo());
+    router.delete(`/calendar/notes/${id}?return_to=${returnTo}`);
+}
+
 // debounce-lite: refresh 300ms pärast trükkimist
 let t: number | undefined;
 watch(query, () => {
@@ -273,30 +291,45 @@ watch(query, () => {
                     </template>
                 </DiaryHeader>
 
-                <main class="flex-1 px-6 py-4 pb-24 md:px-8">
-                    <div
-                        class="rounded-2xl border border-primary/10 bg-white/70 p-4 shadow-soft"
-                    >
-                        <div class="relative mb-3">
+                <main class="flex-1 px-6 py-4 pb-40 md:px-8">
+                    <div class="mb-4 space-y-2.5">
+                        <div class="relative">
                             <span
-                                class="material-symbols-outlined absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+                                class="material-symbols-outlined absolute top-1/2 left-3.5 -translate-y-1/2 text-[20px] text-muted-foreground"
                             >
                                 search
                             </span>
                             <input
                                 v-model.trim="query"
-                                class="h-11 w-full rounded-xl border-none bg-secondary/60 pr-4 pl-10 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                                class="h-11 w-full rounded-2xl border border-border bg-card pr-4 pl-11 text-sm shadow-sm outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
                                 placeholder="Otsi märkmeid..."
                                 type="text"
                             />
+                            <button
+                                v-if="query"
+                                type="button"
+                                class="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                aria-label="Tühjenda"
+                                @click="clearQuery"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-[18px]"
+                                    >close</span
+                                >
+                            </button>
                         </div>
 
-                        <div class="grid grid-cols-3 gap-2 pb-1">
+                        <div class="flex gap-2">
                             <button
                                 v-for="chip in chips"
                                 :key="chip.key"
                                 type="button"
-                                :class="chipClass(chip.key)"
+                                class="flex-1 rounded-full py-1.5 text-[11px] font-semibold transition"
+                                :class="
+                                    chip.key === activeChip
+                                        ? 'bg-primary text-white shadow-sm'
+                                        : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+                                "
                                 @click="
                                     activeChip = chip.key;
                                     refresh();
@@ -307,7 +340,7 @@ watch(query, () => {
                         </div>
                     </div>
 
-                    <div class="space-y-4 pt-4 sm:space-y-6 sm:pt-6">
+                    <div class="space-y-5 pt-2">
                         <!-- Tühi olek -->
                         <div
                             v-if="filteredGroups.length === 0"
@@ -366,11 +399,12 @@ watch(query, () => {
                                 </span>
                             </h3>
 
-                            <div class="space-y-2.5 sm:space-y-3">
+                            <div class="space-y-2">
                                 <article
                                     v-for="note in group.items"
                                     :key="note.id"
-                                    class="cursor-pointer border-b border-border/60 py-2.5 transition hover:bg-muted/20 sm:rounded-xl sm:border sm:bg-card sm:px-3 sm:shadow-soft sm:hover:border-primary/30"
+                                    class="relative cursor-pointer rounded-xl border border-border/50 bg-card py-2.5 pr-4 pl-4 transition hover:border-primary/30 hover:bg-muted/20"
+                                    :class="note.done ? 'opacity-60' : ''"
                                     role="button"
                                     tabindex="0"
                                     @click="
@@ -384,21 +418,21 @@ watch(query, () => {
                                         )
                                     "
                                 >
-                                    <div class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                                    <span
+                                        class="absolute inset-y-0 left-0 w-[3px] rounded-l-xl"
+                                        :class="
+                                            note.done
+                                                ? 'bg-emerald-400'
+                                                : note.kind === 'reminder'
+                                                  ? 'bg-primary'
+                                                  : 'bg-primary/40'
+                                        "
+                                        aria-hidden="true"
+                                    />
+                                    <div
+                                        class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3"
+                                    >
                                         <div class="min-w-0">
-                                            <div class="mb-1.5 flex items-start justify-between gap-2">
-                                                <span
-                                                    class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                                                    :class="
-                                                        note.kind === 'journal'
-                                                            ? 'bg-primary/10 text-primary'
-                                                            : 'bg-secondary text-muted-foreground'
-                                                    "
-                                                >
-                                                    {{ note.tag }}
-                                                </span>
-                                            </div>
-
                                             <h4
                                                 class="line-clamp-2 text-[15px] leading-snug font-semibold"
                                                 :class="
@@ -406,33 +440,80 @@ watch(query, () => {
                                                         ? 'line-through opacity-60'
                                                         : ''
                                                 "
-                                                v-html="highlightHtml(note.title || 'Nimetu kirje')"
-                                            >
-                                            </h4>
+                                                v-html="
+                                                    highlightHtml(
+                                                        note.title ||
+                                                            'Nimetu kirje',
+                                                    )
+                                                "
+                                            ></h4>
                                             <p
                                                 v-if="note.body"
                                                 class="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground"
-                                                v-html="highlightHtml(snippetFromBody(note.body, 90))"
-                                            >
-                                            </p>
+                                                v-html="
+                                                    highlightHtml(
+                                                        snippetFromBody(
+                                                            note.body,
+                                                            90,
+                                                        ),
+                                                    )
+                                                "
+                                            ></p>
 
-                                            <p
-                                                v-if="note.time"
-                                                class="mt-1 text-[11px] font-semibold text-primary"
+                                            <div
+                                                class="mt-1 flex items-center gap-2"
                                             >
-                                                {{ note.time }}
-                                            </p>
+                                                <span
+                                                    v-if="note.done"
+                                                    class="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/10 px-1.5 py-px text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-500/20"
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined text-[11px]"
+                                                        >check</span
+                                                    >
+                                                    Tehtud
+                                                </span>
+                                                <span
+                                                    v-else-if="
+                                                        note.kind === 'reminder'
+                                                    "
+                                                    class="text-[10px] font-semibold text-primary"
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined align-middle text-[11px]"
+                                                        >notifications</span
+                                                    >
+                                                    {{
+                                                        note.time ??
+                                                        'Meeldetuletus'
+                                                    }}
+                                                </span>
+                                            </div>
                                         </div>
 
                                         <div
-                                            v-if="note.images?.[0]"
-                                            class="h-20 w-20 shrink-0 rounded-xl border border-border/70 bg-cover bg-center sm:h-24 sm:w-24"
-                                            :style="{
-                                                backgroundImage: `url('${note.images[0]}')`,
-                                            }"
-                                            role="img"
-                                            aria-label="Märkme pilt"
-                                        />
+                                            class="flex shrink-0 flex-col items-end gap-2"
+                                        >
+                                            <CardActionsMenu
+                                                placement="inline"
+                                                appearance="listRow"
+                                                @edit="
+                                                    editOverviewNote(note.id)
+                                                "
+                                                @delete="
+                                                    deleteOverviewNote(note.id)
+                                                "
+                                            />
+                                            <div
+                                                v-if="note.images?.[0]"
+                                                class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-cover bg-center"
+                                                :style="{
+                                                    backgroundImage: `url('${note.images[0]}')`,
+                                                }"
+                                                role="img"
+                                                aria-label="Märkme pilt"
+                                            />
+                                        </div>
                                     </div>
                                 </article>
 

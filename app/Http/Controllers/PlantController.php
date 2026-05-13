@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Plant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
@@ -69,16 +70,33 @@ class PlantController extends Controller
             ->where('category_id', $category->id)
             ->orderByDesc('created_at')
             ->get()
-            ->map(fn ($p) => [
-                'id' => $p->id,
-                'subtitle' => $p->subtitle,
-                'name' => $p->name,
-                'planted_at' => $p->planted_at ? date('d.m.Y', strtotime($p->planted_at)) : '',
-                'status' => $p->status ?? 'ISTIK',
-                'image_url' => $p->image_url,
-                'is_favorite' => (bool) $p->is_favorite,
-                'quantity' => $p->quantity,
-            ]);
+            ->groupBy(function (Plant $p): string {
+                $label = filled($p->subtitle) ? (string) $p->subtitle : (string) $p->name;
+
+                return Str::lower(trim($label));
+            })
+            ->map(function ($group) {
+                $first = $group->sortByDesc(
+                    fn (Plant $p) => $p->created_at?->getTimestamp() ?? 0,
+                )->first();
+                $totalQty = $group->sum(fn ($p) => $p->quantity ?? 1);
+                $inBed = $group->filter(fn ($p) => $p->bed_id !== null)->sum(fn ($p) => $p->quantity ?? 1);
+                $inStock = $group->filter(fn ($p) => $p->bed_id === null)->sum(fn ($p) => $p->quantity ?? 1);
+
+                return [
+                    'id' => $first->id,
+                    'subtitle' => $first->subtitle,
+                    'name' => $first->name,
+                    'planted_at' => $first->planted_at ? date('d.m.Y', strtotime($first->planted_at)) : '',
+                    'status' => $first->status ?? 'ISTIK',
+                    'image_url' => $first->image_url,
+                    'is_favorite' => (bool) $first->is_favorite,
+                    'quantity' => $totalQty,
+                    'in_bed' => $inBed,
+                    'in_stock' => $inStock,
+                ];
+            })
+            ->values();
 
         return Inertia::render('Plants/SortView', [
             'category' => [

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
+import { useMediaQuery } from '@vueuse/core';
 import {
     Bird,
     Box,
@@ -302,6 +303,9 @@ const activeTool = ref<GardenObjectType | null>(null);
 const activeToolVariant = ref<ToolVariant | null>(null);
 const activeToolCategoryId = ref<ToolCategoryId | null>(null);
 const createMenuOpen = ref(false);
+const isMdUp = useMediaQuery('(min-width: 768px)');
+const mobileBedListPanelRef = ref<HTMLElement | null>(null);
+const mobileBedListPanelInView = ref(false);
 const toolDrawerOpen = ref(false);
 const plannerControlsOpen = ref(false);
 const createGardenPlanModalOpen = ref(false);
@@ -522,6 +526,7 @@ const suppressPlannerSurfaceClick = ref(false);
 const panStart = ref({ x: 0, y: 0, originX: 0, originY: 0 });
 const PAN_CLICK_SUPPRESS_PX = 8;
 let resizeObserver: ResizeObserver | null = null;
+let mobileBedListIntersectionObserver: IntersectionObserver | null = null;
 const highlightSelectedObjectPanel = ref(false);
 let objectPanelHighlightTimeout: ReturnType<typeof setTimeout> | null = null;
 const plannerLandscapeHintDismissed = ref(false);
@@ -669,6 +674,28 @@ watch(
     { deep: true },
 );
 
+watch(
+    mobileBedListPanelRef,
+    (el) => {
+        mobileBedListIntersectionObserver?.disconnect();
+        mobileBedListIntersectionObserver = null;
+        mobileBedListPanelInView.value = false;
+        if (!el || typeof IntersectionObserver === 'undefined') return;
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const entry = entries[0];
+                mobileBedListPanelInView.value = Boolean(
+                    entry?.isIntersecting && entry.intersectionRatio > 0.12,
+                );
+            },
+            { root: null, threshold: [0, 0.12, 0.2, 0.35, 0.5, 0.75, 1] },
+        );
+        observer.observe(el);
+        mobileBedListIntersectionObserver = observer;
+    },
+    { flush: 'post' },
+);
+
 onMounted(() => {
     if (typeof window !== 'undefined') {
         plannerLandscapeHintDismissed.value =
@@ -736,6 +763,7 @@ onBeforeUnmount(() => {
     viewportPointerMap.clear();
     pinchState.value = null;
     resizeObserver?.disconnect();
+    mobileBedListIntersectionObserver?.disconnect();
     if (objectPanelHighlightTimeout) clearTimeout(objectPanelHighlightTimeout);
 });
 
@@ -822,6 +850,13 @@ const plannerFeedback = computed(() => {
     }
 
     return null;
+});
+
+/** Arvutil on lohistamine mõistlik; mobiilis ei kuva seda teadet. */
+const isBedAddedDragHintFlash = computed(() => {
+    const fb = plannerFeedback.value;
+    if (!fb || fb.tone !== 'success') return false;
+    return fb.message.includes('Lohista see aiaplaanil');
 });
 
 const gardenWidthCm = computed(() =>
@@ -1838,6 +1873,17 @@ function openCreateBed() {
     router.get(`/map/${props.gardenPlan.id}/beds/new`);
 }
 
+function onFloatingPlusClick() {
+    const inBedListContext =
+        plannerListView.value === 'beds' ||
+        (!isMdUp.value && mobileBedListPanelInView.value);
+    if (inBedListContext) {
+        openCreateBed();
+        return;
+    }
+    createMenuOpen.value = !createMenuOpen.value;
+}
+
 function resetPlannerFilters() {
     showBedsLayer.value = true;
     showStructuresLayer.value = true;
@@ -2457,11 +2503,14 @@ function saveGardenPlan() {
                                 <div
                                     v-if="plannerFeedback"
                                     class="rounded-[1.5rem] border px-4 py-3 shadow-sm"
-                                    :class="
+                                    :class="[
                                         plannerFeedback.tone === 'error'
                                             ? 'border-rose-200 bg-rose-50 text-rose-700'
-                                            : 'border-amber-200 bg-amber-50 text-amber-800'
-                                    "
+                                            : 'border-amber-200 bg-amber-50 text-amber-800',
+                                        isBedAddedDragHintFlash
+                                            ? 'hidden md:block'
+                                            : '',
+                                    ]"
                                 >
                                     <p class="text-sm font-medium">
                                         {{ plannerFeedback.message }}
@@ -2533,14 +2582,18 @@ function saveGardenPlan() {
                                     </div>
                                 </div>
 
-                                <div class="flex min-h-0 min-w-0 flex-1 flex-col">
+                                <div
+                                    class="flex min-h-0 min-w-0 flex-1 flex-col"
+                                >
                                     <div
                                         class="mb-2 shrink-0 border-b border-border/70 pb-2 md:mb-4 md:pb-4"
                                     >
                                         <div
                                             class="flex flex-wrap items-end justify-between gap-3"
                                         >
-                                            <div class="min-w-0 flex-1 md:flex-initial">
+                                            <div
+                                                class="min-w-0 flex-1 md:flex-initial"
+                                            >
                                                 <label
                                                     class="sr-only"
                                                     for="garden-plan-select"
@@ -2554,12 +2607,14 @@ function saveGardenPlan() {
                                                     class="flex min-w-0 flex-wrap items-end gap-x-2.5 gap-y-1.5 md:block"
                                                 >
                                                     <div
-                                                        class="relative inline-block w-max min-w-0 max-w-full md:block md:w-full"
+                                                        class="relative inline-block w-max max-w-full min-w-0 md:block md:w-full"
                                                     >
                                                         <select
                                                             id="garden-plan-select"
-                                                            class="block w-max min-w-0 max-w-full appearance-none truncate bg-transparent pr-8 text-2xl leading-tight font-semibold text-foreground transition outline-none hover:text-primary focus:text-primary max-md:[field-sizing:content] md:block md:w-full [&_option]:text-sm [&_option]:font-medium"
-                                                            :value="gardenPlan.id"
+                                                            class="block w-max max-w-full min-w-0 appearance-none truncate bg-transparent pr-8 text-2xl leading-tight font-semibold text-foreground transition outline-none hover:text-primary focus:text-primary max-md:[field-sizing:content] md:block md:w-full [&_option]:text-sm [&_option]:font-medium"
+                                                            :value="
+                                                                gardenPlan.id
+                                                            "
                                                             @change="
                                                                 onGardenPlanSelect
                                                             "
@@ -2590,13 +2645,13 @@ function saveGardenPlan() {
                                                                 >grid_view</span
                                                             >
                                                             <span
-                                                                class="text-lg font-bold leading-none tabular-nums text-foreground"
+                                                                class="text-lg leading-none font-bold text-foreground tabular-nums"
                                                                 >{{
                                                                     mobileListBeds.length
                                                                 }}</span
                                                             >
                                                             <span
-                                                                class="max-w-[7rem] truncate text-[11px] font-semibold leading-tight text-muted-foreground"
+                                                                class="max-w-[7rem] truncate text-[11px] leading-tight font-semibold text-muted-foreground"
                                                                 >{{
                                                                     mobileBedCountSuffix
                                                                 }}</span
@@ -2606,7 +2661,7 @@ function saveGardenPlan() {
                                                 </div>
                                                 <p
                                                     v-if="searchQuery.trim()"
-                                                    class="mt-1.5 text-xs font-normal leading-snug text-muted-foreground/85 md:hidden"
+                                                    class="mt-1.5 text-xs leading-snug font-normal text-muted-foreground/85 md:hidden"
                                                 >
                                                     Otsingule vastavalt
                                                 </p>
@@ -2826,7 +2881,9 @@ function saveGardenPlan() {
                                                     <span
                                                         v-if="bed.location"
                                                         class="mt-0.5 block truncate text-xs text-muted-foreground"
-                                                        >{{ bed.location }}</span
+                                                        >{{
+                                                            bed.location
+                                                        }}</span
                                                     >
                                                     <span
                                                         class="mt-0.5 block truncate text-xs text-muted-foreground"
@@ -3304,6 +3361,7 @@ function saveGardenPlan() {
                                         class="mb-3 flex min-h-0 flex-1 flex-col md:mb-3 md:block md:flex-none"
                                     >
                                         <div
+                                            ref="mobileBedListPanelRef"
                                             class="flex min-h-0 flex-1 flex-col md:hidden"
                                         >
                                             <div
@@ -3358,7 +3416,7 @@ function saveGardenPlan() {
                                                 </div>
 
                                                 <div
-                                                    class="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-y-contain px-2 pb-3 pt-1.5"
+                                                    class="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-y-contain px-2 pt-1.5 pb-3"
                                                 >
                                                     <div
                                                         v-for="bed in mobileListBeds"
@@ -3416,7 +3474,7 @@ function saveGardenPlan() {
                                                                     class="min-w-0 flex-1"
                                                                 >
                                                                     <div
-                                                                        class="text-text-main min-w-0 truncate text-base font-bold leading-snug"
+                                                                        class="min-w-0 truncate text-base leading-snug font-bold text-text-main"
                                                                     >
                                                                         {{
                                                                             bed.name
@@ -3553,7 +3611,10 @@ function saveGardenPlan() {
                                                     </div>
 
                                                     <div
-                                                        v-if="mobileListBeds.length === 0"
+                                                        v-if="
+                                                            mobileListBeds.length ===
+                                                            0
+                                                        "
                                                         class="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center"
                                                     >
                                                         <template
@@ -3576,14 +3637,15 @@ function saveGardenPlan() {
                                                                 class="text-sm font-medium text-foreground"
                                                             >
                                                                 Lemmikpeenraid
-                                                                pole veel valitud
+                                                                pole veel
+                                                                valitud
                                                             </p>
                                                             <p
                                                                 class="max-w-[16rem] text-xs leading-relaxed text-muted-foreground"
                                                             >
                                                                 Puuduta südant
-                                                                peenra juures, et
-                                                                see kuvataks
+                                                                peenra juures,
+                                                                et see kuvataks
                                                                 siin.
                                                             </p>
                                                         </template>
@@ -3617,57 +3679,15 @@ function saveGardenPlan() {
                                         </div>
 
                                         <div
-                                            class="hidden min-h-0 grid gap-3 md:grid"
+                                            class="grid hidden min-h-0 gap-3 md:grid"
                                         >
                                             <button
-                                            type="button"
-                                            class="hidden items-center justify-between rounded-xl border border-border/80 bg-white px-4 py-3 text-left shadow-sm dark:bg-card"
-                                            @click="
-                                                toolDrawerOpen = !toolDrawerOpen
-                                            "
-                                        >
-                                            <div>
-                                                <p
-                                                    class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                                                >
-                                                    Tööriistad
-                                                </p>
-                                                <p
-                                                    class="mt-1 text-sm font-semibold text-foreground"
-                                                >
-                                                    {{
-                                                        activeTool
-                                                            ? selectedToolDisplayLabel
-                                                            : 'Lisa aeda objekt'
-                                                    }}
-                                                </p>
-                                            </div>
-                                            <div
-                                                class="flex items-center gap-2"
-                                            >
-                                                <span
-                                                    v-if="activeTool"
-                                                    class="rounded-full border border-primary/15 bg-primary/8 px-2.5 py-1 text-[11px] font-semibold text-primary"
-                                                >
-                                                    Valitud
-                                                </span>
-                                                <span
-                                                    class="material-symbols-outlined text-primary"
-                                                >
-                                                    {{
-                                                        toolDrawerOpen
-                                                            ? 'expand_less'
-                                                            : 'expand_more'
-                                                    }}
-                                                </span>
-                                            </div>
-                                        </button>
-
-                                        <aside
-                                            class="hidden rounded-xl border border-border/80 bg-white p-4 shadow-sm xl:sticky xl:top-6 xl:self-start dark:bg-card"
-                                        >
-                                            <div
-                                                class="flex items-start justify-between gap-3"
+                                                type="button"
+                                                class="hidden items-center justify-between rounded-xl border border-border/80 bg-white px-4 py-3 text-left shadow-sm dark:bg-card"
+                                                @click="
+                                                    toolDrawerOpen =
+                                                        !toolDrawerOpen
+                                                "
                                             >
                                                 <div>
                                                     <p
@@ -3675,57 +3695,77 @@ function saveGardenPlan() {
                                                     >
                                                         Tööriistad
                                                     </p>
-                                                    <h4
-                                                        class="mt-1 text-lg font-semibold text-foreground"
-                                                    >
-                                                        Lisa aeda
-                                                    </h4>
                                                     <p
-                                                        v-if="!activeTool"
-                                                        class="mt-2 text-xs leading-relaxed text-muted-foreground"
+                                                        class="mt-1 text-sm font-semibold text-foreground"
                                                     >
-                                                        Vali allpool tüüp, siis
-                                                        klõpsa
-                                                        <span
-                                                            class="font-medium text-foreground/85"
-                                                            >rohelisel
-                                                            plaanil</span
-                                                        >
-                                                        kohta. Uue peenra jaoks
-                                                        kasuta paremal all
-                                                        olevat + nuppu.
+                                                        {{
+                                                            activeTool
+                                                                ? selectedToolDisplayLabel
+                                                                : 'Lisa aeda objekt'
+                                                        }}
                                                     </p>
                                                 </div>
-                                                <button
-                                                    v-if="activeTool"
-                                                    type="button"
-                                                    class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-foreground transition hover:bg-muted"
-                                                    @click="clearToolSelection"
+                                                <div
+                                                    class="flex items-center gap-2"
                                                 >
                                                     <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >close</span
+                                                        v-if="activeTool"
+                                                        class="rounded-full border border-primary/15 bg-primary/8 px-2.5 py-1 text-[11px] font-semibold text-primary"
                                                     >
-                                                </button>
-                                            </div>
+                                                        Valitud
+                                                    </span>
+                                                    <span
+                                                        class="material-symbols-outlined text-primary"
+                                                    >
+                                                        {{
+                                                            toolDrawerOpen
+                                                                ? 'expand_less'
+                                                                : 'expand_more'
+                                                        }}
+                                                    </span>
+                                                </div>
+                                            </button>
 
-                                            <label class="mt-4 block">
-                                                <span
-                                                    class="mb-1 block text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                                                    >Objektiotsing</span
+                                            <aside
+                                                class="hidden rounded-xl border border-border/80 bg-white p-4 shadow-sm xl:sticky xl:top-6 xl:self-start dark:bg-card"
+                                            >
+                                                <div
+                                                    class="flex items-start justify-between gap-3"
                                                 >
-                                                <div class="relative">
-                                                    <input
-                                                        v-model="toolSearch"
-                                                        type="text"
-                                                        class="w-full rounded-xl border border-border/70 bg-background px-4 py-3 pr-11 text-sm text-foreground shadow-xs transition outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                                        placeholder="Otsi: kuur, tiik, muu..."
-                                                    />
+                                                    <div>
+                                                        <p
+                                                            class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                        >
+                                                            Tööriistad
+                                                        </p>
+                                                        <h4
+                                                            class="mt-1 text-lg font-semibold text-foreground"
+                                                        >
+                                                            Lisa aeda
+                                                        </h4>
+                                                        <p
+                                                            v-if="!activeTool"
+                                                            class="mt-2 text-xs leading-relaxed text-muted-foreground"
+                                                        >
+                                                            Vali allpool tüüp,
+                                                            siis klõpsa
+                                                            <span
+                                                                class="font-medium text-foreground/85"
+                                                                >rohelisel
+                                                                plaanil</span
+                                                            >
+                                                            kohta. Uue peenra
+                                                            jaoks kasuta paremal
+                                                            all olevat + nuppu.
+                                                        </p>
+                                                    </div>
                                                     <button
-                                                        v-if="toolSearch"
+                                                        v-if="activeTool"
                                                         type="button"
-                                                        class="absolute top-1/2 right-2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                                                        @click="toolSearch = ''"
+                                                        class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-foreground transition hover:bg-muted"
+                                                        @click="
+                                                            clearToolSelection
+                                                        "
                                                     >
                                                         <span
                                                             class="material-symbols-outlined text-sm"
@@ -3733,37 +3773,346 @@ function saveGardenPlan() {
                                                         >
                                                     </button>
                                                 </div>
-                                            </label>
 
-                                            <div class="mt-4 space-y-3">
-                                                <div
-                                                    v-for="category in filteredToolCategories"
-                                                    :key="`tool-category-${category.id}`"
-                                                    class="rounded-xl border border-border/70 bg-background/60 p-2"
-                                                >
-                                                    <p
-                                                        class="px-2 py-1 text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                                <label class="mt-4 block">
+                                                    <span
+                                                        class="mb-1 block text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                        >Objektiotsing</span
                                                     >
-                                                        {{ category.label }}
-                                                    </p>
-                                                    <div class="space-y-1.5">
+                                                    <div class="relative">
+                                                        <input
+                                                            v-model="toolSearch"
+                                                            type="text"
+                                                            class="w-full rounded-xl border border-border/70 bg-background px-4 py-3 pr-11 text-sm text-foreground shadow-xs transition outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                            placeholder="Otsi: kuur, tiik, muu..."
+                                                        />
                                                         <button
-                                                            v-for="variant in category.variants"
-                                                            :key="variant.id"
+                                                            v-if="toolSearch"
                                                             type="button"
-                                                            class="w-full rounded-xl border p-3 text-left transition"
-                                                            :class="
-                                                                toolVariantButtonClass(
-                                                                    variant,
+                                                            class="absolute top-1/2 right-2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                                            @click="
+                                                                toolSearch = ''
+                                                            "
+                                                        >
+                                                            <span
+                                                                class="material-symbols-outlined text-sm"
+                                                                >close</span
+                                                            >
+                                                        </button>
+                                                    </div>
+                                                </label>
+
+                                                <div class="mt-4 space-y-3">
+                                                    <div
+                                                        v-for="category in filteredToolCategories"
+                                                        :key="`tool-category-${category.id}`"
+                                                        class="rounded-xl border border-border/70 bg-background/60 p-2"
+                                                    >
+                                                        <p
+                                                            class="px-2 py-1 text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                                        >
+                                                            {{ category.label }}
+                                                        </p>
+                                                        <div
+                                                            class="space-y-1.5"
+                                                        >
+                                                            <button
+                                                                v-for="variant in category.variants"
+                                                                :key="
+                                                                    variant.id
+                                                                "
+                                                                type="button"
+                                                                class="w-full rounded-xl border p-3 text-left transition"
+                                                                :class="
+                                                                    toolVariantButtonClass(
+                                                                        variant,
+                                                                    )
+                                                                "
+                                                                @click="
+                                                                    chooseToolVariant(
+                                                                        variant,
+                                                                    )
+                                                                "
+                                                            >
+                                                                <span
+                                                                    class="flex items-start gap-2"
+                                                                >
+                                                                    <component
+                                                                        :is="
+                                                                            iconFor(
+                                                                                variant.icon,
+                                                                            )
+                                                                        "
+                                                                        :size="
+                                                                            18
+                                                                        "
+                                                                        :stroke-width="
+                                                                            1.75
+                                                                        "
+                                                                        class="mt-0.5 shrink-0"
+                                                                        :class="
+                                                                            toolVariantIconToneClass(
+                                                                                variant.type,
+                                                                            )
+                                                                        "
+                                                                    />
+                                                                    <span
+                                                                        class="min-w-0"
+                                                                    >
+                                                                        <span
+                                                                            class="block text-sm font-semibold text-foreground"
+                                                                        >
+                                                                            {{
+                                                                                variant.label
+                                                                            }}
+                                                                        </span>
+                                                                        <span
+                                                                            class="mt-0.5 block text-xs text-muted-foreground"
+                                                                        >
+                                                                            {{
+                                                                                variant.description
+                                                                            }}
+                                                                        </span>
+                                                                    </span>
+                                                                </span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div
+                                                        v-if="
+                                                            !filteredToolCategories.length
+                                                        "
+                                                        class="rounded-xl border border-dashed border-border/80 bg-background px-4 py-5 text-sm text-muted-foreground"
+                                                    >
+                                                        Selle otsinguga sobivat
+                                                        aiaelementi ei leitud.
+                                                    </div>
+                                                </div>
+
+                                                <div
+                                                    v-if="activeTool"
+                                                    class="mt-4 rounded-[1.25rem] border border-primary/15 bg-primary/6 px-3 py-3 text-sm"
+                                                >
+                                                    <div
+                                                        class="font-semibold text-primary"
+                                                    >
+                                                        {{
+                                                            selectedToolDisplayLabel
+                                                        }}
+                                                    </div>
+                                                    <p
+                                                        v-if="
+                                                            selectedToolDisplayDescription
+                                                        "
+                                                        class="mt-1 text-xs text-muted-foreground"
+                                                    >
+                                                        {{
+                                                            selectedToolDisplayDescription
+                                                        }}
+                                                    </p>
+                                                    <div
+                                                        v-if="
+                                                            activeTool ===
+                                                                'other' &&
+                                                            activeToolVariant?.requiresCustomName
+                                                        "
+                                                        class="mt-3 space-y-1"
+                                                    >
+                                                        <label class="block">
+                                                            <span
+                                                                class="mb-1 block text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase"
+                                                                >Objekti
+                                                                nimi</span
+                                                            >
+                                                            <input
+                                                                v-model="
+                                                                    otherObjectNameDraft
+                                                                "
+                                                                type="text"
+                                                                maxlength="120"
+                                                                class="w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-sm text-foreground shadow-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                                placeholder="Nt maja, puuriit, kiviaed"
+                                                                @input="
+                                                                    otherObjectNameError =
+                                                                        ''
+                                                                "
+                                                            />
+                                                        </label>
+                                                        <p
+                                                            v-if="
+                                                                otherObjectNameError
+                                                            "
+                                                            class="text-xs text-rose-600"
+                                                        >
+                                                            {{
+                                                                otherObjectNameError
+                                                            }}
+                                                        </p>
+                                                    </div>
+                                                    <div
+                                                        class="mt-1 leading-6 text-muted-foreground"
+                                                        :class="
+                                                            activeTool ===
+                                                                'other' &&
+                                                            activeToolVariant?.requiresCustomName
+                                                                ? 'mt-3'
+                                                                : ''
+                                                        "
+                                                    >
+                                                        <template
+                                                            v-if="
+                                                                activeTool ===
+                                                                    'other' &&
+                                                                activeToolVariant?.requiresCustomName
+                                                            "
+                                                        >
+                                                            Seejärel klõpsa aias
+                                                            kohta, kuhu objekt
+                                                            tuleb.
+                                                        </template>
+                                                        <template v-else>
+                                                            Klõpsa nüüd aias
+                                                            kohta, kuhu soovid
+                                                            selle lisada.
+                                                        </template>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        class="mt-3 inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted"
+                                                        @click="
+                                                            clearToolSelection
+                                                        "
+                                                    >
+                                                        Tühista valik
+                                                    </button>
+                                                </div>
+
+                                                <button
+                                                    type="button"
+                                                    class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-primary/20 bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 xl:hidden"
+                                                    @click="
+                                                        toolDrawerOpen = false
+                                                    "
+                                                >
+                                                    Sulge tööriistad
+                                                </button>
+                                            </aside>
+
+                                            <div class="relative min-w-0">
+                                                <aside
+                                                    v-if="isLayoutEditing"
+                                                    data-ui-overlay="true"
+                                                    class="pointer-events-auto absolute top-3 left-3 z-30 flex flex-col items-center gap-1.5 rounded-xl border border-white/70 bg-white/82 px-1.5 py-1.5 shadow-lg shadow-emerald-950/10 backdrop-blur-xl dark:border-emerald-200/10 dark:bg-card/82"
+                                                >
+                                                    <button
+                                                        v-for="category in toolCategories"
+                                                        :key="`quick-tool-${category.id}`"
+                                                        type="button"
+                                                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border transition"
+                                                        :class="
+                                                            categoryButtonToneClass(
+                                                                category.id,
+                                                                activeToolCategoryId ===
+                                                                    category.id,
+                                                            )
+                                                        "
+                                                        :title="`Vali: ${category.label}`"
+                                                        @click.stop="
+                                                            toggleQuickToolMenu(
+                                                                category.id,
+                                                            )
+                                                        "
+                                                    >
+                                                        <component
+                                                            :is="
+                                                                iconFor(
+                                                                    category.icon,
                                                                 )
                                                             "
-                                                            @click="
+                                                            :size="20"
+                                                            :stroke-width="1.75"
+                                                            :class="
+                                                                categoryIconToneClass(
+                                                                    category.id,
+                                                                    activeToolCategoryId ===
+                                                                        category.id,
+                                                                )
+                                                            "
+                                                        />
+                                                    </button>
+                                                    <button
+                                                        v-if="activeTool"
+                                                        type="button"
+                                                        class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/70 bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                                        title="Tühista valik"
+                                                        @click.stop="
+                                                            clearToolSelection
+                                                        "
+                                                    >
+                                                        <span
+                                                            class="material-symbols-outlined text-sm"
+                                                            >close</span
+                                                        >
+                                                    </button>
+                                                </aside>
+
+                                                <div
+                                                    v-if="
+                                                        isLayoutEditing &&
+                                                        selectedQuickCategoryId
+                                                    "
+                                                    data-ui-overlay="true"
+                                                    class="pointer-events-auto absolute top-3 left-[64px] z-30 w-[min(17rem,calc(100%-4.75rem))] rounded-xl border border-white/70 bg-white/94 p-3 shadow-lg shadow-emerald-950/10 backdrop-blur-xl dark:border-emerald-200/10 dark:bg-card/94"
+                                                >
+                                                    <div
+                                                        class="mb-2 flex items-center justify-between"
+                                                    >
+                                                        <p
+                                                            class="text-sm font-semibold text-foreground"
+                                                        >
+                                                            {{
+                                                                toolCategories.find(
+                                                                    (item) =>
+                                                                        item.id ===
+                                                                        selectedQuickCategoryId,
+                                                                )?.label
+                                                            }}
+                                                            variandid
+                                                        </p>
+                                                        <button
+                                                            type="button"
+                                                            class="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                                            @click.stop="
+                                                                selectedQuickCategoryId =
+                                                                    null
+                                                            "
+                                                        >
+                                                            <span
+                                                                class="material-symbols-outlined text-sm"
+                                                                >close</span
+                                                            >
+                                                        </button>
+                                                    </div>
+                                                    <div
+                                                        class="max-h-[min(68vh,26rem)] space-y-1.5 overflow-y-auto pr-1"
+                                                    >
+                                                        <button
+                                                            v-for="variant in toolCategories.find(
+                                                                (item) =>
+                                                                    item.id ===
+                                                                    selectedQuickCategoryId,
+                                                            )?.variants ?? []"
+                                                            :key="variant.id"
+                                                            type="button"
+                                                            class="w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-left transition hover:border-primary/20 hover:bg-primary/6"
+                                                            @click.stop="
                                                                 chooseToolVariant(
                                                                     variant,
                                                                 )
                                                             "
                                                         >
-                                                            <span
+                                                            <div
                                                                 class="flex items-start gap-2"
                                                             >
                                                                 <component
@@ -3801,626 +4150,366 @@ function saveGardenPlan() {
                                                                         }}
                                                                     </span>
                                                                 </span>
-                                                            </span>
+                                                            </div>
                                                         </button>
                                                     </div>
                                                 </div>
 
                                                 <div
-                                                    v-if="
-                                                        !filteredToolCategories.length
-                                                    "
-                                                    class="rounded-xl border border-dashed border-border/80 bg-background px-4 py-5 text-sm text-muted-foreground"
-                                                >
-                                                    Selle otsinguga sobivat
-                                                    aiaelementi ei leitud.
-                                                </div>
-                                            </div>
-
-                                            <div
-                                                v-if="activeTool"
-                                                class="mt-4 rounded-[1.25rem] border border-primary/15 bg-primary/6 px-3 py-3 text-sm"
-                                            >
-                                                <div
-                                                    class="font-semibold text-primary"
-                                                >
-                                                    {{
-                                                        selectedToolDisplayLabel
-                                                    }}
-                                                </div>
-                                                <p
-                                                    v-if="
-                                                        selectedToolDisplayDescription
-                                                    "
-                                                    class="mt-1 text-xs text-muted-foreground"
-                                                >
-                                                    {{
-                                                        selectedToolDisplayDescription
-                                                    }}
-                                                </p>
-                                                <div
-                                                    v-if="
-                                                        activeTool ===
-                                                            'other' &&
-                                                        activeToolVariant?.requiresCustomName
-                                                    "
-                                                    class="mt-3 space-y-1"
-                                                >
-                                                    <label class="block">
-                                                        <span
-                                                            class="mb-1 block text-xs font-semibold tracking-[0.14em] text-muted-foreground uppercase"
-                                                            >Objekti nimi</span
-                                                        >
-                                                        <input
-                                                            v-model="
-                                                                otherObjectNameDraft
-                                                            "
-                                                            type="text"
-                                                            maxlength="120"
-                                                            class="w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-sm text-foreground shadow-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                                            placeholder="Nt maja, puuriit, kiviaed"
-                                                            @input="
-                                                                otherObjectNameError =
-                                                                    ''
-                                                            "
-                                                        />
-                                                    </label>
-                                                    <p
-                                                        v-if="
-                                                            otherObjectNameError
-                                                        "
-                                                        class="text-xs text-rose-600"
-                                                    >
-                                                        {{
-                                                            otherObjectNameError
-                                                        }}
-                                                    </p>
-                                                </div>
-                                                <div
-                                                    class="mt-1 leading-6 text-muted-foreground"
+                                                    ref="plannerViewport"
+                                                    class="relative h-[min(62vh,620px)] w-full max-w-full min-w-0 cursor-default touch-none overflow-hidden rounded-[1.5rem] border bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(241,247,235,0.98))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_14px_34px_rgba(47,67,44,0.10)] transition sm:p-3 md:h-[min(72vh,920px)] dark:bg-[linear-gradient(180deg,rgba(30,38,32,0.98),rgba(22,29,24,0.98))]"
                                                     :class="
-                                                        activeTool ===
-                                                            'other' &&
-                                                        activeToolVariant?.requiresCustomName
-                                                            ? 'mt-3'
-                                                            : ''
+                                                        isLayoutEditing
+                                                            ? 'border-primary/25 ring-2 ring-primary/10'
+                                                            : 'border-border/80'
                                                     "
-                                                >
-                                                    <template
-                                                        v-if="
-                                                            activeTool ===
-                                                                'other' &&
-                                                            activeToolVariant?.requiresCustomName
-                                                        "
-                                                    >
-                                                        Seejärel klõpsa aias
-                                                        kohta, kuhu objekt
-                                                        tuleb.
-                                                    </template>
-                                                    <template v-else>
-                                                        Klõpsa nüüd aias kohta,
-                                                        kuhu soovid selle
-                                                        lisada.
-                                                    </template>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    class="mt-3 inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted"
-                                                    @click="clearToolSelection"
-                                                >
-                                                    Tühista valik
-                                                </button>
-                                            </div>
-
-                                            <button
-                                                type="button"
-                                                class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border border-primary/20 bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 xl:hidden"
-                                                @click="toolDrawerOpen = false"
-                                            >
-                                                Sulge tööriistad
-                                            </button>
-                                        </aside>
-
-                                        <div class="relative min-w-0">
-                                            <aside
-                                                v-if="isLayoutEditing"
-                                                data-ui-overlay="true"
-                                                class="pointer-events-auto absolute top-3 left-3 z-30 flex flex-col items-center gap-1.5 rounded-xl border border-white/70 bg-white/82 px-1.5 py-1.5 shadow-lg shadow-emerald-950/10 backdrop-blur-xl dark:border-emerald-200/10 dark:bg-card/82"
-                                            >
-                                                <button
-                                                    v-for="category in toolCategories"
-                                                    :key="`quick-tool-${category.id}`"
-                                                    type="button"
-                                                    class="inline-flex h-9 w-9 items-center justify-center rounded-lg border transition"
-                                                    :class="
-                                                        categoryButtonToneClass(
-                                                            category.id,
-                                                            activeToolCategoryId ===
-                                                                category.id,
-                                                        )
-                                                    "
-                                                    :title="`Vali: ${category.label}`"
-                                                    @click.stop="
-                                                        toggleQuickToolMenu(
-                                                            category.id,
-                                                        )
-                                                    "
-                                                >
-                                                    <component
-                                                        :is="
-                                                            iconFor(
-                                                                category.icon,
-                                                            )
-                                                        "
-                                                        :size="20"
-                                                        :stroke-width="1.75"
-                                                        :class="
-                                                            categoryIconToneClass(
-                                                                category.id,
-                                                                activeToolCategoryId ===
-                                                                    category.id,
-                                                            )
-                                                        "
-                                                    />
-                                                </button>
-                                                <button
-                                                    v-if="activeTool"
-                                                    type="button"
-                                                    class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/70 bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                                                    title="Tühista valik"
-                                                    @click.stop="
-                                                        clearToolSelection
-                                                    "
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >close</span
-                                                    >
-                                                </button>
-                                            </aside>
-
-                                            <div
-                                                v-if="
-                                                    isLayoutEditing &&
-                                                    selectedQuickCategoryId
-                                                "
-                                                data-ui-overlay="true"
-                                                class="pointer-events-auto absolute top-3 left-[64px] z-30 w-[min(17rem,calc(100%-4.75rem))] rounded-xl border border-white/70 bg-white/94 p-3 shadow-lg shadow-emerald-950/10 backdrop-blur-xl dark:border-emerald-200/10 dark:bg-card/94"
-                                            >
-                                                <div
-                                                    class="mb-2 flex items-center justify-between"
-                                                >
-                                                    <p
-                                                        class="text-sm font-semibold text-foreground"
-                                                    >
-                                                        {{
-                                                            toolCategories.find(
-                                                                (item) =>
-                                                                    item.id ===
-                                                                    selectedQuickCategoryId,
-                                                            )?.label
-                                                        }}
-                                                        variandid
-                                                    </p>
-                                                    <button
-                                                        type="button"
-                                                        class="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                                                        @click.stop="
-                                                            selectedQuickCategoryId =
-                                                                null
-                                                        "
-                                                    >
-                                                        <span
-                                                            class="material-symbols-outlined text-sm"
-                                                            >close</span
-                                                        >
-                                                    </button>
-                                                </div>
-                                                <div
-                                                    class="max-h-[min(68vh,26rem)] space-y-1.5 overflow-y-auto pr-1"
-                                                >
-                                                    <button
-                                                        v-for="variant in toolCategories.find(
-                                                            (item) =>
-                                                                item.id ===
-                                                                selectedQuickCategoryId,
-                                                        )?.variants ?? []"
-                                                        :key="variant.id"
-                                                        type="button"
-                                                        class="w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-left transition hover:border-primary/20 hover:bg-primary/6"
-                                                        @click.stop="
-                                                            chooseToolVariant(
-                                                                variant,
-                                                            )
-                                                        "
-                                                    >
-                                                        <div
-                                                            class="flex items-start gap-2"
-                                                        >
-                                                            <component
-                                                                :is="
-                                                                    iconFor(
-                                                                        variant.icon,
-                                                                    )
-                                                                "
-                                                                :size="18"
-                                                                :stroke-width="
-                                                                    1.75
-                                                                "
-                                                                class="mt-0.5 shrink-0"
-                                                                :class="
-                                                                    toolVariantIconToneClass(
-                                                                        variant.type,
-                                                                    )
-                                                                "
-                                                            />
-                                                            <span
-                                                                class="min-w-0"
-                                                            >
-                                                                <span
-                                                                    class="block text-sm font-semibold text-foreground"
-                                                                >
-                                                                    {{
-                                                                        variant.label
-                                                                    }}
-                                                                </span>
-                                                                <span
-                                                                    class="mt-0.5 block text-xs text-muted-foreground"
-                                                                >
-                                                                    {{
-                                                                        variant.description
-                                                                    }}
-                                                                </span>
-                                                            </span>
-                                                        </div>
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            <div
-                                                ref="plannerViewport"
-                                                class="relative h-[min(62vh,620px)] w-full max-w-full min-w-0 cursor-default touch-none overflow-hidden rounded-[1.5rem] border bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(241,247,235,0.98))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_14px_34px_rgba(47,67,44,0.10)] transition sm:p-3 md:h-[min(72vh,920px)] dark:bg-[linear-gradient(180deg,rgba(30,38,32,0.98),rgba(22,29,24,0.98))]"
-                                                :class="
-                                                    isLayoutEditing
-                                                        ? 'border-primary/25 ring-2 ring-primary/10'
-                                                        : 'border-border/80'
-                                                "
-                                                @pointerdown="
-                                                    handleViewportPointerDown(
-                                                        $event,
-                                                    )
-                                                "
-                                                @wheel.prevent="
-                                                    onPlannerWheel($event)
-                                                "
-                                            >
-                                                <div
-                                                    class="relative overflow-hidden rounded-[1.45rem] border border-emerald-900/10 bg-emerald-50/80 dark:border-emerald-200/15 dark:bg-emerald-950/35"
-                                                    :style="
-                                                        plannerSurfaceStyle()
-                                                    "
-                                                    @click="
-                                                        handlePlannerSurfaceClick(
+                                                    @pointerdown="
+                                                        handleViewportPointerDown(
                                                             $event,
                                                         )
                                                     "
+                                                    @wheel.prevent="
+                                                        onPlannerWheel($event)
+                                                    "
                                                 >
                                                     <div
-                                                        class="pointer-events-none absolute inset-x-4 top-3 z-20 flex items-center justify-between text-[11px] font-semibold tracking-[0.18em] text-emerald-900/45 uppercase"
-                                                    >
-                                                        <span
-                                                            class="rounded-full bg-white/70 px-2.5 py-1 backdrop-blur-sm dark:bg-card/70"
-                                                            >Aed</span
-                                                        >
-                                                        <span
-                                                            class="rounded-full bg-white/70 px-2.5 py-1 backdrop-blur-sm dark:bg-card/70"
-                                                            >{{
-                                                                isLayoutEditing
-                                                                    ? 'Lohista peenraid'
-                                                                    : 'Vaatamise režiim'
-                                                            }}</span
-                                                        >
-                                                    </div>
-
-                                                    <div
-                                                        class="pointer-events-none absolute bottom-4 left-4 z-20 rounded-2xl border border-emerald-900/10 bg-white/78 px-3 py-2 text-[11px] font-medium text-emerald-950/75 shadow-sm backdrop-blur-sm dark:border-emerald-200/20 dark:bg-card/78 dark:text-emerald-100/80"
-                                                    >
-                                                        <div
-                                                            class="mb-1 tracking-[0.16em] text-emerald-900/55 uppercase"
-                                                        >
-                                                            Mõõtkava
-                                                        </div>
-                                                        <div
-                                                            class="flex items-center gap-2"
-                                                        >
-                                                            <div
-                                                                class="relative h-2 rounded-full bg-emerald-700/75"
-                                                                :style="{
-                                                                    width: `${scaleBarWidthPx}px`,
-                                                                }"
-                                                            >
-                                                                <span
-                                                                    class="absolute -top-1.5 -left-px h-5 w-px bg-emerald-900/55"
-                                                                ></span>
-                                                                <span
-                                                                    class="absolute -top-1.5 -right-px h-5 w-px bg-emerald-900/55"
-                                                                ></span>
-                                                            </div>
-                                                            <span
-                                                                class="font-semibold text-foreground"
-                                                                >1 m</span
-                                                            >
-                                                        </div>
-                                                    </div>
-
-                                                    <article
-                                                        v-for="bed in plannerBeds"
-                                                        :key="bed.id"
-                                                        class="group absolute touch-none transition-transform duration-150"
-                                                        :class="[
-                                                            draggingBedId ===
-                                                            bed.id
-                                                                ? 'z-30 scale-[1.02]'
-                                                                : 'z-10 hover:z-20',
-                                                            isLayoutEditing
-                                                                ? 'cursor-grab hover:-translate-y-1 active:cursor-grabbing'
-                                                                : 'cursor-pointer',
-                                                        ]"
+                                                        class="relative overflow-hidden rounded-[1.45rem] border border-emerald-900/10 bg-emerald-50/80 dark:border-emerald-200/15 dark:bg-emerald-950/35"
                                                         :style="
-                                                            plannerBedStyle(bed)
-                                                        "
-                                                        data-bed-shape="true"
-                                                        @pointerdown="
-                                                            startDragging(
-                                                                bed,
-                                                                $event,
-                                                            )
-                                                        "
-                                                        @mouseenter="
-                                                            showBedInfo(bed.id)
-                                                        "
-                                                        @mouseleave="
-                                                            hideBedInfo(bed.id)
+                                                            plannerSurfaceStyle()
                                                         "
                                                         @click="
-                                                            openBedPage(bed.id)
-                                                        "
-                                                    >
-                                                        <div
-                                                            class="relative z-10 h-full w-full"
-                                                        >
-                                                            <div
-                                                                class="bed-grid-frame bed-grid-frame--map relative z-10 grid h-full w-full place-content-center gap-0.5 overflow-hidden rounded-[0.9rem] border border-emerald-900/10 p-0.5 transition"
-                                                                :class="
-                                                                    selectedBed?.id ===
-                                                                    bed.id
-                                                                        ? 'ring-2 ring-emerald-400/55 ring-offset-4 ring-offset-[#eef4e6]'
-                                                                        : ''
-                                                                "
-                                                                :style="
-                                                                    bedPreviewGridStyle(
-                                                                        bed,
-                                                                    )
-                                                                "
-                                                            >
-                                                                <template
-                                                                    v-for="(
-                                                                        rowData,
-                                                                        r
-                                                                    ) in getBedVisibleLayout(
-                                                                        bed,
-                                                                    )"
-                                                                    :key="`plan-row-${bed.id}-${r}`"
-                                                                >
-                                                                    <span
-                                                                        v-for="(
-                                                                            _, c
-                                                                        ) in rowData"
-                                                                        :key="`plan-cell-${bed.id}-${r}-${c}`"
-                                                                        class="block"
-                                                                        :class="
-                                                                            mapPlannerBedCellClass(
-                                                                                rowData[
-                                                                                    c
-                                                                                ],
-                                                                                bed,
-                                                                                r,
-                                                                                c,
-                                                                            )
-                                                                        "
-                                                                        :style="
-                                                                            rowData[
-                                                                                c
-                                                                            ] ===
-                                                                                1 &&
-                                                                            getPlantAtVisibleCell(
-                                                                                bed,
-                                                                                r,
-                                                                                c,
-                                                                            )
-                                                                                ?.image_url
-                                                                                ? {
-                                                                                      backgroundImage: `linear-gradient(180deg,rgba(32,44,30,0.18),rgba(32,44,30,0.32)), url('${getPlantAtVisibleCell(
-                                                                                          bed,
-                                                                                          r,
-                                                                                          c,
-                                                                                      )!.image_url!}')`,
-                                                                                      backgroundSize:
-                                                                                          'cover',
-                                                                                      backgroundPosition:
-                                                                                          'center',
-                                                                                  }
-                                                                                : undefined
-                                                                        "
-                                                                    />
-                                                                </template>
-                                                            </div>
-
-                                                            <div
-                                                                v-if="
-                                                                    hoveredBedId ===
-                                                                    bed.id
-                                                                "
-                                                                class="absolute top-full left-1/2 z-30 mt-3 hidden w-48 -translate-x-1/2 rounded-xl border border-border/70 bg-card/95 p-2.5 text-left shadow-lg backdrop-blur-sm md:block"
-                                                            >
-                                                                <div
-                                                                    class="flex items-center gap-2.5"
-                                                                >
-                                                                    <div
-                                                                        class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/70 bg-muted/50"
-                                                                    >
-                                                                        <img
-                                                                            v-if="
-                                                                                getBedPreviewImage(
-                                                                                    bed,
-                                                                                )
-                                                                            "
-                                                                            :src="
-                                                                                getBedPreviewImage(
-                                                                                    bed,
-                                                                                )!
-                                                                            "
-                                                                            :alt="
-                                                                                bed.name
-                                                                            "
-                                                                            class="h-full w-full object-cover"
-                                                                        />
-                                                                        <span
-                                                                            v-else
-                                                                            class="material-symbols-outlined text-lg text-muted-foreground"
-                                                                            >yard</span
-                                                                        >
-                                                                    </div>
-                                                                    <p
-                                                                        class="min-w-0 truncate text-sm font-semibold text-foreground"
-                                                                    >
-                                                                        {{
-                                                                            bed.name
-                                                                        }}
-                                                                    </p>
-                                                                </div>
-                                                                <button
-                                                                    type="button"
-                                                                    class="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/15"
-                                                                    @click.stop="
-                                                                        openBedPage(
-                                                                            bed.id,
-                                                                        )
-                                                                    "
-                                                                >
-                                                                    Ava vaade
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </article>
-
-                                                    <article
-                                                        v-for="object in plannerObjects"
-                                                        :key="`object-${object.id}`"
-                                                        class="group absolute touch-none transition-transform duration-150"
-                                                        :class="[
-                                                            draggingObjectId ===
-                                                            object.id
-                                                                ? 'z-30 scale-[1.02]'
-                                                                : 'z-10 hover:z-20',
-                                                            isLayoutEditing
-                                                                ? 'cursor-grab hover:-translate-y-1 active:cursor-grabbing'
-                                                                : 'cursor-pointer',
-                                                        ]"
-                                                        :style="
-                                                            plannerObjectStyle(
-                                                                object,
-                                                            )
-                                                        "
-                                                        data-object-shape="true"
-                                                        @pointerdown="
-                                                            startObjectDragging(
-                                                                object,
+                                                            handlePlannerSurfaceClick(
                                                                 $event,
                                                             )
                                                         "
-                                                        @mouseenter="
-                                                            showObjectInfo(
-                                                                object.id,
-                                                            )
-                                                        "
-                                                        @mouseleave="
-                                                            hideObjectInfo(
-                                                                object.id,
-                                                            )
-                                                        "
-                                                        @click.stop="
-                                                            focusObjectDetails(
-                                                                object.id,
-                                                            )
-                                                        "
                                                     >
                                                         <div
-                                                            class="relative z-10 flex h-full w-full items-center justify-center p-1"
+                                                            class="pointer-events-none absolute inset-x-4 top-3 z-20 flex items-center justify-between text-[11px] font-semibold tracking-[0.18em] text-emerald-900/45 uppercase"
+                                                        >
+                                                            <span
+                                                                class="rounded-full bg-white/70 px-2.5 py-1 backdrop-blur-sm dark:bg-card/70"
+                                                                >Aed</span
+                                                            >
+                                                            <span
+                                                                class="rounded-full bg-white/70 px-2.5 py-1 backdrop-blur-sm dark:bg-card/70"
+                                                                >{{
+                                                                    isLayoutEditing
+                                                                        ? 'Lohista peenraid'
+                                                                        : 'Vaatamise režiim'
+                                                                }}</span
+                                                            >
+                                                        </div>
+
+                                                        <div
+                                                            class="pointer-events-none absolute bottom-4 left-4 z-20 rounded-2xl border border-emerald-900/10 bg-white/78 px-3 py-2 text-[11px] font-medium text-emerald-950/75 shadow-sm backdrop-blur-sm dark:border-emerald-200/20 dark:bg-card/78 dark:text-emerald-100/80"
                                                         >
                                                             <div
-                                                                class="flex max-w-full flex-col items-center gap-1"
+                                                                class="mb-1 tracking-[0.16em] text-emerald-900/55 uppercase"
                                                             >
-                                                                <component
-                                                                    :is="
-                                                                        iconFor(
-                                                                            objectVariantIcon(
-                                                                                object,
-                                                                            ),
-                                                                        )
-                                                                    "
-                                                                    :size="
-                                                                        objectIconSize(
-                                                                            object,
-                                                                        )
-                                                                    "
-                                                                    :stroke-width="
-                                                                        1.5
-                                                                    "
-                                                                    class="relative shrink-0"
+                                                                Mõõtkava
+                                                            </div>
+                                                            <div
+                                                                class="flex items-center gap-2"
+                                                            >
+                                                                <div
+                                                                    class="relative h-2 rounded-full bg-emerald-700/75"
+                                                                    :style="{
+                                                                        width: `${scaleBarWidthPx}px`,
+                                                                    }"
+                                                                >
+                                                                    <span
+                                                                        class="absolute -top-1.5 -left-px h-5 w-px bg-emerald-900/55"
+                                                                    ></span>
+                                                                    <span
+                                                                        class="absolute -top-1.5 -right-px h-5 w-px bg-emerald-900/55"
+                                                                    ></span>
+                                                                </div>
+                                                                <span
+                                                                    class="font-semibold text-foreground"
+                                                                    >1 m</span
+                                                                >
+                                                            </div>
+                                                        </div>
+
+                                                        <article
+                                                            v-for="bed in plannerBeds"
+                                                            :key="bed.id"
+                                                            class="group absolute touch-none transition-transform duration-150"
+                                                            :class="[
+                                                                draggingBedId ===
+                                                                bed.id
+                                                                    ? 'z-30 scale-[1.02]'
+                                                                    : 'z-10 hover:z-20',
+                                                                isLayoutEditing
+                                                                    ? 'cursor-grab hover:-translate-y-1 active:cursor-grabbing'
+                                                                    : 'cursor-pointer',
+                                                            ]"
+                                                            :style="
+                                                                plannerBedStyle(
+                                                                    bed,
+                                                                )
+                                                            "
+                                                            data-bed-shape="true"
+                                                            @pointerdown="
+                                                                startDragging(
+                                                                    bed,
+                                                                    $event,
+                                                                )
+                                                            "
+                                                            @mouseenter="
+                                                                showBedInfo(
+                                                                    bed.id,
+                                                                )
+                                                            "
+                                                            @mouseleave="
+                                                                hideBedInfo(
+                                                                    bed.id,
+                                                                )
+                                                            "
+                                                            @click="
+                                                                openBedPage(
+                                                                    bed.id,
+                                                                )
+                                                            "
+                                                        >
+                                                            <div
+                                                                class="relative z-10 h-full w-full"
+                                                            >
+                                                                <div
+                                                                    class="bed-grid-frame bed-grid-frame--map relative z-10 grid h-full w-full place-content-center gap-0.5 overflow-hidden rounded-[0.9rem] border border-emerald-900/10 p-0.5 transition"
                                                                     :class="
-                                                                        toolVariantIconToneClass(
-                                                                            objectVariantType(
-                                                                                object,
-                                                                            ),
+                                                                        selectedBed?.id ===
+                                                                        bed.id
+                                                                            ? 'ring-2 ring-emerald-400/55 ring-offset-4 ring-offset-[#eef4e6]'
+                                                                            : ''
+                                                                    "
+                                                                    :style="
+                                                                        bedPreviewGridStyle(
+                                                                            bed,
                                                                         )
                                                                     "
-                                                                />
+                                                                >
+                                                                    <template
+                                                                        v-for="(
+                                                                            rowData,
+                                                                            r
+                                                                        ) in getBedVisibleLayout(
+                                                                            bed,
+                                                                        )"
+                                                                        :key="`plan-row-${bed.id}-${r}`"
+                                                                    >
+                                                                        <span
+                                                                            v-for="(
+                                                                                _,
+                                                                                c
+                                                                            ) in rowData"
+                                                                            :key="`plan-cell-${bed.id}-${r}-${c}`"
+                                                                            class="block"
+                                                                            :class="
+                                                                                mapPlannerBedCellClass(
+                                                                                    rowData[
+                                                                                        c
+                                                                                    ],
+                                                                                    bed,
+                                                                                    r,
+                                                                                    c,
+                                                                                )
+                                                                            "
+                                                                            :style="
+                                                                                rowData[
+                                                                                    c
+                                                                                ] ===
+                                                                                    1 &&
+                                                                                getPlantAtVisibleCell(
+                                                                                    bed,
+                                                                                    r,
+                                                                                    c,
+                                                                                )
+                                                                                    ?.image_url
+                                                                                    ? {
+                                                                                          backgroundImage: `linear-gradient(180deg,rgba(32,44,30,0.18),rgba(32,44,30,0.32)), url('${getPlantAtVisibleCell(
+                                                                                              bed,
+                                                                                              r,
+                                                                                              c,
+                                                                                          )!
+                                                                                              .image_url!}')`,
+                                                                                          backgroundSize:
+                                                                                              'cover',
+                                                                                          backgroundPosition:
+                                                                                              'center',
+                                                                                      }
+                                                                                    : undefined
+                                                                            "
+                                                                        />
+                                                                    </template>
+                                                                </div>
 
                                                                 <div
                                                                     v-if="
-                                                                        hoveredObjectId ===
-                                                                            object.id &&
-                                                                        selectedObject?.id !==
-                                                                            object.id
+                                                                        hoveredBedId ===
+                                                                        bed.id
                                                                     "
-                                                                    class="z-30 hidden w-40 max-w-[min(12rem,calc(100vw-2rem))] rounded-xl border border-border/70 bg-card/95 p-2.5 text-left shadow-lg backdrop-blur-sm md:block"
+                                                                    class="absolute top-full left-1/2 z-30 mt-3 hidden w-48 -translate-x-1/2 rounded-xl border border-border/70 bg-card/95 p-2.5 text-left shadow-lg backdrop-blur-sm md:block"
                                                                 >
-                                                                    <p
-                                                                        class="truncate text-sm font-semibold text-foreground"
+                                                                    <div
+                                                                        class="flex items-center gap-2.5"
                                                                     >
-                                                                        {{
-                                                                            object.name
-                                                                        }}
-                                                                    </p>
+                                                                        <div
+                                                                            class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/70 bg-muted/50"
+                                                                        >
+                                                                            <img
+                                                                                v-if="
+                                                                                    getBedPreviewImage(
+                                                                                        bed,
+                                                                                    )
+                                                                                "
+                                                                                :src="
+                                                                                    getBedPreviewImage(
+                                                                                        bed,
+                                                                                    )!
+                                                                                "
+                                                                                :alt="
+                                                                                    bed.name
+                                                                                "
+                                                                                class="h-full w-full object-cover"
+                                                                            />
+                                                                            <span
+                                                                                v-else
+                                                                                class="material-symbols-outlined text-lg text-muted-foreground"
+                                                                                >yard</span
+                                                                            >
+                                                                        </div>
+                                                                        <p
+                                                                            class="min-w-0 truncate text-sm font-semibold text-foreground"
+                                                                        >
+                                                                            {{
+                                                                                bed.name
+                                                                            }}
+                                                                        </p>
+                                                                    </div>
                                                                     <button
                                                                         type="button"
                                                                         class="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/15"
                                                                         @click.stop="
-                                                                            focusObjectDetails(
-                                                                                object.id,
+                                                                            openBedPage(
+                                                                                bed.id,
                                                                             )
                                                                         "
                                                                     >
-                                                                        Muuda
+                                                                        Ava
+                                                                        vaade
                                                                     </button>
                                                                 </div>
                                                             </div>
-                                                        </div>
-                                                    </article>
+                                                        </article>
+
+                                                        <article
+                                                            v-for="object in plannerObjects"
+                                                            :key="`object-${object.id}`"
+                                                            class="group absolute touch-none transition-transform duration-150"
+                                                            :class="[
+                                                                draggingObjectId ===
+                                                                object.id
+                                                                    ? 'z-30 scale-[1.02]'
+                                                                    : 'z-10 hover:z-20',
+                                                                isLayoutEditing
+                                                                    ? 'cursor-grab hover:-translate-y-1 active:cursor-grabbing'
+                                                                    : 'cursor-pointer',
+                                                            ]"
+                                                            :style="
+                                                                plannerObjectStyle(
+                                                                    object,
+                                                                )
+                                                            "
+                                                            data-object-shape="true"
+                                                            @pointerdown="
+                                                                startObjectDragging(
+                                                                    object,
+                                                                    $event,
+                                                                )
+                                                            "
+                                                            @mouseenter="
+                                                                showObjectInfo(
+                                                                    object.id,
+                                                                )
+                                                            "
+                                                            @mouseleave="
+                                                                hideObjectInfo(
+                                                                    object.id,
+                                                                )
+                                                            "
+                                                            @click.stop="
+                                                                focusObjectDetails(
+                                                                    object.id,
+                                                                )
+                                                            "
+                                                        >
+                                                            <div
+                                                                class="relative z-10 flex h-full w-full items-center justify-center p-1"
+                                                            >
+                                                                <div
+                                                                    class="flex max-w-full flex-col items-center gap-1"
+                                                                >
+                                                                    <component
+                                                                        :is="
+                                                                            iconFor(
+                                                                                objectVariantIcon(
+                                                                                    object,
+                                                                                ),
+                                                                            )
+                                                                        "
+                                                                        :size="
+                                                                            objectIconSize(
+                                                                                object,
+                                                                            )
+                                                                        "
+                                                                        :stroke-width="
+                                                                            1.5
+                                                                        "
+                                                                        class="relative shrink-0"
+                                                                        :class="
+                                                                            toolVariantIconToneClass(
+                                                                                objectVariantType(
+                                                                                    object,
+                                                                                ),
+                                                                            )
+                                                                        "
+                                                                    />
+
+                                                                    <div
+                                                                        v-if="
+                                                                            hoveredObjectId ===
+                                                                                object.id &&
+                                                                            selectedObject?.id !==
+                                                                                object.id
+                                                                        "
+                                                                        class="z-30 hidden w-40 max-w-[min(12rem,calc(100vw-2rem))] rounded-xl border border-border/70 bg-card/95 p-2.5 text-left shadow-lg backdrop-blur-sm md:block"
+                                                                    >
+                                                                        <p
+                                                                            class="truncate text-sm font-semibold text-foreground"
+                                                                        >
+                                                                            {{
+                                                                                object.name
+                                                                            }}
+                                                                        </p>
+                                                                        <button
+                                                                            type="button"
+                                                                            class="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/15"
+                                                                            @click.stop="
+                                                                                focusObjectDetails(
+                                                                                    object.id,
+                                                                                )
+                                                                            "
+                                                                        >
+                                                                            Muuda
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </article>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
                                         </div>
                                     </div>
 
@@ -4697,7 +4786,6 @@ function saveGardenPlan() {
                                             </div>
                                         </div>
                                     </div>
-
                                 </div>
                             </section>
                         </div>
@@ -4721,7 +4809,7 @@ function saveGardenPlan() {
                     </button>
                     <button
                         type="button"
-                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold text-foreground transition hover:bg-muted"
+                        class="hidden w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold text-foreground transition hover:bg-muted md:flex"
                         @click="openCreateGardenPlanModal"
                     >
                         <span
@@ -4737,7 +4825,7 @@ function saveGardenPlan() {
                     :size-px="52"
                     :icon-size-px="30"
                     :bottom-px="112"
-                    @click="createMenuOpen = !createMenuOpen"
+                    @click="onFloatingPlusClick"
                 />
 
                 <BottomNav active="map" />

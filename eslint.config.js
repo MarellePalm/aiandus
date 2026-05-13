@@ -13,6 +13,7 @@ export default defineConfigWithVueTs(
             'public',
             'bootstrap/ssr',
             'tailwind.config.js',
+            '.claude/**',
             'resources/js/components/ui/*',
             'resources/js/actions/**',
             'resources/js/routes/**',
