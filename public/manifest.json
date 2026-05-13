@@ -2,9 +2,9 @@
     "name": "Aiap\u00e4evik",
     "short_name": "Aiap\u00e4evik",
     "background_color": "#faf8f4",
-    "display": "fullscreen",
+    "display": "standalone",
     "description": "Sinu aiap\u00e4evik: kalender, m\u00e4rkmed, taimed ja aia plaan \u00fches kohas.",
-    "theme_color": "#679263",
+    "theme_color": "#faf8f4",
     "start_url": "/",
     "icons": [
         {

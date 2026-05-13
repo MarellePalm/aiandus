@@ -30,6 +30,8 @@
             }
         </style>
         @PwaHead <!-- This includes the PWA meta tags -->
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#faf8f4">
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#11151a">
         <meta name="application-name" content="{{ config('app.name', 'Aiapäevik') }}">
         <meta name="apple-mobile-web-app-title" content="{{ config('app.name', 'Aiapäevik') }}">
         <meta name="apple-mobile-web-app-capable" content="yes">

@@ -22,9 +22,9 @@ return [
         'name' => env('APP_NAME', 'Aiapäevik'),
         'short_name' => env('APP_NAME', 'Aiapäevik'),
         'background_color' => '#faf8f4',
-        'display' => 'fullscreen',
+        'display' => 'standalone',
         'description' => 'Sinu aiapäevik: kalender, märkmed, taimed ja aia plaan ühes kohas.',
-        'theme_color' => '#679263',
+        'theme_color' => '#faf8f4',
         'icons' => [
             [
                 'src' => 'pwa-192.png',

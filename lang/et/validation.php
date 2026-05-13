@@ -35,6 +35,15 @@ return [
     'mimes' => ':attribute peab olema tüüpi: :values.',
     'dimensions' => ':attribute mõõdud ei sobi. Pilt peab olema vähemalt :min_width×:min_height px ja mõlemad küljed kuni :max_width×:max_height px.',
 
+    'custom' => [
+        'image' => [
+            'max' => 'Pilt võib olla maksimaalselt 5 MB.',
+        ],
+        'photos.*' => [
+            'max' => 'Foto võib olla maksimaalselt 5 MB.',
+        ],
+    ],
+
     'attributes' => [
         'email' => 'E-posti aadress',
         'password' => 'Parool',
