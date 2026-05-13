@@ -2,6 +2,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
+import LocalDatePicker from '@/components/LocalDatePicker.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import { normalizeImageForUpload } from '@/lib/imageUpload';
 
@@ -293,16 +294,11 @@ onBeforeUnmount(() => {
                                     class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
                                     >Aegub</label
                                 >
-                                <input
+                                <LocalDatePicker
                                     v-model="form.expires_at"
-                                    type="date"
-                                    lang="et-EE"
-                                    class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                    @change="form.clearErrors('expires_at')"
-                                    @click="
-                                        (
-                                            $event.target as HTMLInputElement
-                                        ).showPicker?.()
+                                    placeholder="pp.kk.aaaa"
+                                    @update:model-value="
+                                        form.clearErrors('expires_at')
                                     "
                                 />
                                 <p
@@ -541,16 +537,11 @@ onBeforeUnmount(() => {
                                 >
                                     Aegub
                                 </label>
-                                <input
+                                <LocalDatePicker
                                     v-model="form.expires_at"
-                                    type="date"
-                                    lang="et-EE"
-                                    class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                    @change="form.clearErrors('expires_at')"
-                                    @click="
-                                        (
-                                            $event.target as HTMLInputElement
-                                        ).showPicker?.()
+                                    placeholder="pp.kk.aaaa"
+                                    @update:model-value="
+                                        form.clearErrors('expires_at')
                                     "
                                 />
                                 <p
