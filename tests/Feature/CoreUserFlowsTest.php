@@ -315,6 +315,168 @@ test('plant category page merges rows with same subtitle even if internal names 
             ->where('plants.0.in_stock', 2));
 });
 
+test('plant show page lists beds for same variety in category', function () {
+    $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
+    $bedA = Bed::query()->create([
+        'user_id' => $user->id,
+        'garden_plan_id' => $plan->id,
+        'name' => 'Peenar A',
+        'location' => null,
+        'sort_order' => 1,
+    ]);
+    $bedB = Bed::query()->create([
+        'user_id' => $user->id,
+        'garden_plan_id' => $plan->id,
+        'name' => 'Peenar B',
+        'location' => null,
+        'sort_order' => 2,
+    ]);
+
+    $category = Category::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Köögiviljad',
+        'slug' => 'koogiviljad',
+        'scope' => Category::SCOPE_PLANT,
+        'count' => 0,
+        'is_favorite' => false,
+    ]);
+
+    $firstPlant = Plant::query()->create([
+        'user_id' => $user->id,
+        'category_id' => $category->id,
+        'bed_id' => $bedA->id,
+        'name' => 'row-a',
+        'subtitle' => 'Tomat',
+        'quantity' => 2,
+    ]);
+
+    Plant::query()->create([
+        'user_id' => $user->id,
+        'category_id' => $category->id,
+        'bed_id' => $bedB->id,
+        'name' => 'row-b',
+        'subtitle' => 'Tomat',
+        'quantity' => 1,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('plants.show', $firstPlant))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Plants/Show')
+            ->has('plant.bed_locations', 2)
+            ->where('plant.bed_locations.0.bed_name', 'Peenar A')
+            ->where('plant.bed_locations.0.quantity', 2)
+            ->where('plant.bed_locations.1.bed_name', 'Peenar B')
+            ->where('plant.bed_locations.1.quantity', 1));
+});
+
+test('plant show quantity card uses unassigned stock across variety rows', function () {
+    $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
+    $bed = Bed::query()->create([
+        'user_id' => $user->id,
+        'garden_plan_id' => $plan->id,
+        'name' => 'Peenar',
+        'location' => null,
+        'sort_order' => 1,
+    ]);
+
+    $category = Category::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Ürdid',
+        'slug' => 'urdid',
+        'scope' => Category::SCOPE_PLANT,
+        'count' => 0,
+        'is_favorite' => false,
+    ]);
+
+    Plant::query()->create([
+        'user_id' => $user->id,
+        'category_id' => $category->id,
+        'bed_id' => null,
+        'name' => 'basiilik',
+        'subtitle' => 'Basiilik',
+        'quantity' => 4,
+    ]);
+
+    $onBed = Plant::query()->create([
+        'user_id' => $user->id,
+        'category_id' => $category->id,
+        'bed_id' => $bed->id,
+        'name' => 'basiilik',
+        'subtitle' => 'Basiilik',
+        'quantity' => 2,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('plants.show', $onBed))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Plants/Show')
+            ->where('plant.quantity', 2)
+            ->where('plant.quantity_in_stock', 4)
+            ->where('plant.quantity_on_beds', 2));
+});
+
+test('plant show bed quantity is this row only when siblings share same bed name', function () {
+    $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
+    $bed = Bed::query()->create([
+        'user_id' => $user->id,
+        'garden_plan_id' => $plan->id,
+        'name' => 'Kõrvitsapeenar',
+        'location' => null,
+        'sort_order' => 1,
+    ]);
+
+    $category = Category::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Lilled',
+        'slug' => 'lilled',
+        'scope' => Category::SCOPE_PLANT,
+        'count' => 0,
+        'is_favorite' => false,
+    ]);
+
+    $viewed = Plant::query()->create([
+        'user_id' => $user->id,
+        'category_id' => $category->id,
+        'bed_id' => $bed->id,
+        'name' => 'a',
+        'subtitle' => 'Roos',
+        'quantity' => 1,
+    ]);
+
+    Plant::query()->create([
+        'user_id' => $user->id,
+        'category_id' => $category->id,
+        'bed_id' => $bed->id,
+        'name' => 'b',
+        'subtitle' => 'Roos',
+        'quantity' => 1,
+    ]);
+
+    Plant::query()->create([
+        'user_id' => $user->id,
+        'category_id' => $category->id,
+        'bed_id' => $bed->id,
+        'name' => 'c',
+        'subtitle' => 'Roos',
+        'quantity' => 1,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('plants.show', $viewed))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Plants/Show')
+            ->has('plant.bed_locations', 1)
+            ->where('plant.bed_locations.0.bed_name', 'Kõrvitsapeenar')
+            ->where('plant.bed_locations.0.quantity', 1));
+});
+
 test('user cannot create plant in another users category', function () {
     $user = User::factory()->create();
     $otherUser = User::factory()->create();
@@ -707,6 +869,10 @@ test('user can view own calendar note detail', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('calendarNotes/NoteShow')
+            ->where('backHref', route('calendar', [
+                'month' => 5,
+                'year' => 2026,
+            ]))
             ->where('note.id', $note->id)
             ->where('note.title', 'Testmärge')
             ->where('note.body', 'Sisu ridadel.'));

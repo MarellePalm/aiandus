@@ -23,11 +23,11 @@ const emit = defineEmits<{
     <button
         type="button"
         :aria-label="ariaLabel"
-        class="fixed right-6 z-40 flex cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95"
+        class="fixed right-6 z-50 flex cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95"
         :style="{
             width: `${sizePx}px`,
             height: `${sizePx}px`,
-            bottom: `${bottomPx}px`,
+            bottom: `calc(${bottomPx}px + env(safe-area-inset-bottom, 0px))`,
         }"
         @click="emit('click')"
     >

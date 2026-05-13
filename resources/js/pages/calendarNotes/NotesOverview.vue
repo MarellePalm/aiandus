@@ -244,6 +244,11 @@ function overviewReturnTo(): string {
     return qs ? `/calendar/overview?${qs}` : '/calendar/overview';
 }
 
+function overviewNoteShowUrl(id: string): string {
+    const rt = encodeURIComponent(overviewReturnTo());
+    return `/calendar/notes/${id}?return_to=${rt}`;
+}
+
 function editOverviewNote(id: string) {
     router.visit(`/calendar/notes/${id}/edit`);
 }
@@ -291,7 +296,7 @@ watch(query, () => {
                     </template>
                 </DiaryHeader>
 
-                <main class="flex-1 px-6 py-4 pb-40 md:px-8">
+                <main class="flex-1 px-6 py-4 pb-56 md:px-8">
                     <div class="mb-4 space-y-2.5">
                         <div class="relative">
                             <span
@@ -408,14 +413,10 @@ watch(query, () => {
                                     role="button"
                                     tabindex="0"
                                     @click="
-                                        router.visit(
-                                            `/calendar/notes/${note.id}`,
-                                        )
+                                        router.visit(overviewNoteShowUrl(note.id))
                                     "
                                     @keydown.enter="
-                                        router.visit(
-                                            `/calendar/notes/${note.id}`,
-                                        )
+                                        router.visit(overviewNoteShowUrl(note.id))
                                     "
                                 >
                                     <span
@@ -532,6 +533,7 @@ watch(query, () => {
                     aria-label="Lisa märge"
                     :size-px="52"
                     :icon-size-px="30"
+                    :bottom-px="120"
                     @click="onAdd"
                 />
 

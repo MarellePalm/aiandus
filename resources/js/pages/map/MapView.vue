@@ -3416,7 +3416,7 @@ function saveGardenPlan() {
                                                 </div>
 
                                                 <div
-                                                    class="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-y-contain px-2 pt-1.5 pb-3"
+                                                    class="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-y-contain px-2 pt-1.5 pb-36"
                                                 >
                                                     <div
                                                         v-for="bed in mobileListBeds"

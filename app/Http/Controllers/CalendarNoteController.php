@@ -7,6 +7,8 @@ use App\Models\CalendarNote;
 use App\Models\Plant;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class CalendarNoteController extends Controller
@@ -23,10 +25,12 @@ class CalendarNoteController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'location']);
 
-        $plants = Plant::query()
+        $plantRows = Plant::query()
             ->where('user_id', $user->id)
-            ->orderBy('name')
-            ->get(['id', 'name']);
+            ->orderByDesc('created_at')
+            ->get(['id', 'name', 'subtitle', 'image_url', 'created_at']);
+
+        $plants = $this->groupedPlantsForNotePicker($plantRows);
 
         $initialBedId = null;
         if ($requestedBedId) {
@@ -206,10 +210,14 @@ class CalendarNoteController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'location']);
 
-        $plants = Plant::query()
+        $plantRows = Plant::query()
             ->where('user_id', $user->id)
-            ->orderBy('name')
-            ->get(['id', 'name']);
+            ->orderByDesc('created_at')
+            ->get(['id', 'name', 'subtitle', 'image_url', 'created_at']);
+
+        $plants = $this->groupedPlantsForNotePicker($plantRows);
+
+        $resolvedPlantId = $this->representativePlantIdFor($note->plant_id, $plantRows);
 
         return Inertia::render('calendarNotes/NoteForm', [
             'note' => [
@@ -222,7 +230,7 @@ class CalendarNoteController extends Controller
                 'due_date' => $dueAt ? $dueAt->format('Y-m-d') : null,
                 'due_time' => $dueAt ? $dueAt->format('H:i') : null,
                 'bed_id' => $note->bed_id,
-                'plant_id' => $note->plant_id,
+                'plant_id' => $resolvedPlantId,
             ],
             'editMode' => true,
             'beds' => $beds,
@@ -236,7 +244,26 @@ class CalendarNoteController extends Controller
 
         $note->loadMissing(['bed:id,name', 'plant:id,name']);
 
+        $returnTo = $request->string('return_to')->toString();
+        if (
+            $returnTo !== ''
+            && str_starts_with($returnTo, '/')
+            && ! str_starts_with($returnTo, '//')
+        ) {
+            $backHref = $returnTo;
+        } elseif ($note->bed_id) {
+            $backHref = '/beds/'.$note->bed_id;
+        } elseif ($note->plant_id) {
+            $backHref = '/plants/'.$note->plant_id;
+        } else {
+            $backHref = route('calendar', [
+                'month' => $note->note_date->month,
+                'year' => $note->note_date->year,
+            ]);
+        }
+
         return Inertia::render('calendarNotes/NoteShow', [
+            'backHref' => $backHref,
             'note' => [
                 'id' => $note->id,
                 'note_date' => $note->note_date->format('Y-m-d'),
@@ -349,5 +376,76 @@ class CalendarNoteController extends Controller
         $note->update(['done' => ! $note->done]);
 
         return redirect()->back();
+    }
+
+    private static function plantVarietyKey(Plant $plant): string
+    {
+        $label = filled($plant->subtitle) ? (string) $plant->subtitle : (string) $plant->name;
+
+        return Str::lower(trim($label));
+    }
+
+    /**
+     * @param  Collection<int, Plant>  $plantRows
+     * @return array<int, array{id: int, label: string, image_url: ?string}>
+     */
+    private function groupedPlantsForNotePicker(Collection $plantRows): array
+    {
+        return $plantRows
+            ->groupBy(fn (Plant $p) => self::plantVarietyKey($p))
+            ->map(function (Collection $group) {
+                /** @var Plant $first */
+                $first = $group->sort(function (Plant $a, Plant $b) {
+                    $ta = $a->created_at?->getTimestamp() ?? 0;
+                    $tb = $b->created_at?->getTimestamp() ?? 0;
+                    if ($ta !== $tb) {
+                        return $tb <=> $ta;
+                    }
+
+                    return $b->id <=> $a->id;
+                })->first();
+                $label = filled($first->subtitle) ? $first->subtitle : $first->name;
+
+                return [
+                    'id' => (int) $first->id,
+                    'label' => $label,
+                    'image_url' => $first->image_url,
+                ];
+            })
+            ->values()
+            ->sortBy(fn (array $row) => mb_strtolower($row['label'], 'UTF-8'))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  Collection<int, Plant>  $plantRows
+     */
+    private function representativePlantIdFor(?int $plantId, Collection $plantRows): ?int
+    {
+        if (! $plantId) {
+            return null;
+        }
+
+        $linked = $plantRows->firstWhere('id', $plantId);
+        if (! $linked instanceof Plant) {
+            return null;
+        }
+
+        $key = self::plantVarietyKey($linked);
+        $rep = $plantRows
+            ->filter(fn (Plant $p) => self::plantVarietyKey($p) === $key)
+            ->sort(function (Plant $a, Plant $b) {
+                $ta = $a->created_at?->getTimestamp() ?? 0;
+                $tb = $b->created_at?->getTimestamp() ?? 0;
+                if ($ta !== $tb) {
+                    return $tb <=> $ta;
+                }
+
+                return $b->id <=> $a->id;
+            })
+            ->first();
+
+        return $rep instanceof Plant ? (int) $rep->id : null;
     }
 }

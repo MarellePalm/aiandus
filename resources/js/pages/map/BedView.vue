@@ -1151,10 +1151,11 @@ function handleBedStatusAction() {
                                 v-if="props.bedNotes?.length"
                                 class="space-y-2.5"
                             >
-                                <article
+                                <Link
                                     v-for="note in props.bedNotes"
                                     :key="note.id"
-                                    class="rounded-2xl border border-border/60 bg-background/70 px-3.5 py-3 shadow-[0_2px_10px_rgba(16,24,40,0.04)]"
+                                    :href="`/calendar/notes/${note.id}?return_to=${encodeURIComponent(`/beds/${props.bed.id}`)}`"
+                                    class="block rounded-2xl border border-border/60 bg-background/70 px-3.5 py-3 shadow-[0_2px_10px_rgba(16,24,40,0.04)] transition hover:border-primary/35 hover:bg-muted/25"
                                 >
                                     <div
                                         class="flex items-start justify-between gap-2"
@@ -1176,7 +1177,7 @@ function handleBedStatusAction() {
                                     >
                                         {{ note.body }}
                                     </p>
-                                </article>
+                                </Link>
                             </div>
                             <p
                                 v-else

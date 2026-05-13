@@ -21,12 +21,12 @@ const root = ref<HTMLElement | null>(null);
 const buttonClass = computed(() => {
     if (props.placement === 'inline') {
         if (props.appearance === 'listRow') {
-            return 'flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground/55 transition hover:bg-black/5 hover:text-muted-foreground sm:h-10 sm:w-10';
+            return 'flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-background/90 text-foreground/75 shadow-sm transition hover:border-primary/35 hover:bg-muted/50 hover:text-foreground sm:h-10 sm:w-10';
         }
         return 'flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10';
     }
     if (props.appearance === 'listRow') {
-        return 'flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground/55 transition hover:bg-black/5 hover:text-muted-foreground';
+        return 'flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-background/90 text-foreground/75 shadow-sm transition hover:border-primary/35 hover:bg-muted/50 hover:text-foreground';
     }
     return 'flex h-8 w-8 items-center justify-center rounded-full bg-card/80 text-primary shadow-sm backdrop-blur-md transition hover:scale-105 hover:bg-card';
 });
@@ -87,7 +87,13 @@ const onDelete = () => {
         >
             <span
                 class="material-symbols-outlined"
-                :class="placement === 'inline' ? 'text-xl' : 'text-[18px]'"
+                :class="
+                    appearance === 'listRow'
+                        ? 'text-[22px] text-primary'
+                        : placement === 'inline'
+                          ? 'text-xl'
+                          : 'text-[18px]'
+                "
                 >more_horiz</span
             >
         </button>

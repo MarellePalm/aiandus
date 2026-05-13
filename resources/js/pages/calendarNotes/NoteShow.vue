@@ -6,46 +6,76 @@ import BackIconButton from '@/components/BackIconButton.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
-import { calendar } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 
-const props = defineProps<{
-    note: {
-        id: number;
-        note_date: string;
-        title: string | null;
-        body: string;
-        media_urls?: string[];
-        type?: string;
-        done?: boolean | null;
-        due_date?: string | null;
-        due_time?: string | null;
-        bed?: { id: number; name: string } | null;
-        plant?: { id: number; name: string } | null;
-    };
-}>();
-
-const calendarUrl = calendar().url;
-
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Kalender', href: calendarUrl },
-    { title: 'Märge', href: '#' },
-];
-
-const displayTitle = computed(
-    () => props.note.title?.trim() || 'Pealkirjata märge',
+const props = withDefaults(
+    defineProps<{
+        backHref?: string;
+        note: {
+            id: number;
+            note_date: string;
+            title: string | null;
+            body: string;
+            media_urls?: string[];
+            type?: string;
+            done?: boolean | null;
+            due_date?: string | null;
+            due_time?: string | null;
+            bed?: { id: number; name: string } | null;
+            plant?: { id: number; name: string } | null;
+        };
+    }>(),
+    { backHref: '/calendar/overview' },
 );
 
-const dateLabel = computed(() => {
-    const [y, m, d] = props.note.note_date.split('-').map(Number);
-    const date = new Date(y, (m ?? 1) - 1, d ?? 1);
-    return date.toLocaleDateString('et-EE', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
+function formatNoteDate(iso: string | null | undefined): string {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString('et-EE', {
+        day: '2-digit',
+        month: '2-digit',
         year: 'numeric',
     });
+}
+
+const displayTitle = computed(
+    () => props.note.title?.trim() || props.note.body?.trim() || 'Märge',
+);
+
+const breadcrumbs = computed<BreadcrumbItem[]>(() => {
+    const back = props.backHref;
+    let parentTitle = 'Kalender';
+    if (back.startsWith('/beds/')) {
+        parentTitle = 'Peenar';
+    } else if (back.startsWith('/plants/')) {
+        parentTitle = 'Taimed';
+    } else if (back.includes('/calendar/overview')) {
+        parentTitle = 'Märkmed';
+    }
+    return [
+        { title: parentTitle, href: back },
+        { title: 'Märge', href: '#' },
+    ];
 });
+
+const bottomNavActive = computed(
+    (): 'dashboard' | 'calendar' | 'map' | 'plants' | 'seeds' => {
+        const h = props.backHref;
+        if (h.startsWith('/beds/') || h.startsWith('/map')) {
+            return 'map';
+        }
+        if (h.startsWith('/plants')) {
+            return 'plants';
+        }
+        return 'calendar';
+    },
+);
+
+const editHref = computed(
+    () =>
+        `/calendar/notes/${props.note.id}/edit?return_to=${encodeURIComponent(props.backHref)}`,
+);
 
 const hasReminder = computed(
     () => !!(props.note.due_date && props.note.due_date.length),
@@ -56,132 +86,165 @@ const reminderLabel = computed(() => {
     const t = props.note.due_time?.trim();
     return t ? `${props.note.due_date} · ${t}` : (props.note.due_date ?? '');
 });
+
+const hasBodyOrMedia = computed(
+    () =>
+        !!props.note.body?.trim() ||
+        ((props.note.media_urls?.length ?? 0) > 0),
+);
 </script>
 
 <template>
     <Head :title="displayTitle" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div
-            class="page page-with-bottomnav flex min-h-0 flex-col bg-[#f5f8f3]"
-        >
+        <div class="page page-with-bottomnav">
             <div
-                class="border-beige/50 relative mx-auto flex min-h-screen w-full max-w-[480px] flex-col overflow-x-clip border-x bg-[#f5f8f3] md:mx-0 md:max-w-none md:border-0 md:shadow-none"
+                class="font-display min-h-screen bg-background text-foreground antialiased"
             >
-                <DiaryHeader
-                    title="Märge"
-                    header-class="pt-6"
-                    top-row-class="mb-3"
-                    bottom-row-class="mb-4"
-                >
-                    <template #leading>
-                        <BackIconButton
-                            href="/calendar/overview"
-                            aria-label="Tagasi märkmete juurde"
-                        />
-                    </template>
-                </DiaryHeader>
-
                 <div
-                    class="flex flex-1 flex-col px-6 pt-2 pb-40 md:px-8 lg:px-10"
+                    class="border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x bg-background shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
                 >
-                    <!-- Päiseplokk -->
-                    <div
-                        class="mb-6 overflow-hidden rounded-[1.6rem] bg-[linear-gradient(160deg,#d8efd4_0%,#e8f5e4_50%,#f0f7ed_100%)] px-5 pt-5 pb-6 shadow-[0_10px_28px_rgba(69,120,58,0.08)] ring-1 ring-[#a8cc9f]/40 md:px-6"
+                    <DiaryHeader
+                        title=""
+                        header-class="pt-6"
+                        top-row-class="mb-2"
+                        bottom-row-class="mb-4"
                     >
-                        <p
-                            class="text-[11px] font-semibold tracking-[0.15em] text-primary/80 uppercase"
-                        >
-                            {{ dateLabel }}
-                        </p>
-                        <h1
-                            class="mt-1.5 text-2xl leading-snug font-bold text-foreground"
-                        >
-                            {{ displayTitle }}
-                        </h1>
-                        <div class="mt-2 flex flex-wrap items-center gap-2">
-                            <span
-                                v-if="note.done"
-                                class="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-500/20"
-                            >
-                                <span
-                                    class="material-symbols-outlined text-[13px]"
-                                    >check_circle</span
-                                >
-                                Tehtud
-                            </span>
-                            <span
-                                v-if="hasReminder"
-                                class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary ring-1 ring-primary/20"
-                            >
-                                <span
-                                    class="material-symbols-outlined text-[13px]"
-                                    >notifications</span
-                                >
-                                {{ reminderLabel }}
-                            </span>
+                        <template #leading>
+                            <BackIconButton
+                                :href="backHref"
+                                aria-label="Tagasi"
+                            />
+                        </template>
+                        <template #actions>
                             <Link
-                                v-if="note.bed"
-                                :href="`/beds/${note.bed.id}`"
-                                class="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border hover:text-foreground"
+                                :href="editHref"
+                                class="text-sm font-semibold text-primary transition hover:text-primary/80"
                             >
-                                <span
-                                    class="material-symbols-outlined text-[13px]"
-                                    >grid_on</span
-                                >
-                                {{ note.bed.name }}
+                                Muuda
                             </Link>
-                            <Link
-                                v-if="note.plant"
-                                :href="`/plants/${note.plant.id}`"
-                                class="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border hover:text-foreground"
-                            >
-                                <span
-                                    class="material-symbols-outlined text-[13px]"
-                                    >local_florist</span
-                                >
-                                {{ note.plant.name }}
-                            </Link>
-                        </div>
-                    </div>
+                        </template>
+                    </DiaryHeader>
 
-                    <!-- Sisu -->
-                    <div
-                        v-if="note.body?.trim() || note.media_urls?.length"
-                        class="space-y-5 overflow-hidden rounded-[1.6rem] border border-border/35 bg-card/50 p-5 shadow-[0_8px_24px_rgba(43,74,52,0.06)] md:p-6"
+                    <main
+                        class="flex-1 space-y-4 px-4 py-3 pb-52 sm:px-6 md:px-8 md:pb-44"
                     >
-                        <div v-if="note.body?.trim()">
-                            <p
-                                class="text-[15px] leading-[1.75] whitespace-pre-wrap text-foreground/85"
-                            >
-                                {{ note.body }}
-                            </p>
-                        </div>
-
-                        <div
-                            v-if="note.media_urls?.length"
-                            class="grid grid-cols-2 gap-2 sm:grid-cols-3"
+                        <section
+                            class="rounded-3xl border border-border/70 bg-card/95 p-4 shadow-[0_10px_24px_rgba(16,24,40,0.06)]"
                         >
-                            <a
-                                v-for="(url, i) in note.media_urls"
-                                :key="i"
-                                :href="url"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="aspect-square overflow-hidden rounded-2xl bg-muted/40 ring-1 ring-border/30"
+                            <div
+                                class="mb-3 flex items-center justify-between gap-2"
                             >
-                                <img
-                                    :src="url"
-                                    :alt="`Foto ${i + 1}`"
-                                    class="h-full w-full object-cover transition duration-300 hover:scale-105"
-                                />
-                            </a>
-                        </div>
-                    </div>
+                                <h3
+                                    class="text-sm font-semibold text-foreground"
+                                >
+                                    Märkmed
+                                </h3>
+                            </div>
+
+                            <article
+                                class="rounded-2xl border border-border/60 bg-background/70 px-3.5 py-3 shadow-[0_2px_10px_rgba(16,24,40,0.04)]"
+                            >
+                                <div
+                                    class="flex items-start justify-between gap-2"
+                                >
+                                    <p
+                                        class="min-w-0 flex-1 text-sm leading-snug font-medium text-foreground"
+                                    >
+                                        {{ displayTitle }}
+                                    </p>
+                                    <span
+                                        class="shrink-0 text-xs text-muted-foreground"
+                                    >
+                                        {{
+                                            formatNoteDate(note.note_date)
+                                        }}
+                                    </span>
+                                </div>
+
+                                <div
+                                    class="mt-2 flex flex-wrap items-center gap-2"
+                                >
+                                    <span
+                                        v-if="note.done"
+                                        class="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-500/20"
+                                    >
+                                        <span
+                                            class="material-symbols-outlined text-[13px]"
+                                            >check_circle</span
+                                        >
+                                        Tehtud
+                                    </span>
+                                    <span
+                                        v-if="hasReminder"
+                                        class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary ring-1 ring-primary/20"
+                                    >
+                                        <span
+                                            class="material-symbols-outlined text-[13px]"
+                                            >notifications</span
+                                        >
+                                        {{ reminderLabel }}
+                                    </span>
+                                    <Link
+                                        v-if="note.bed"
+                                        :href="`/beds/${note.bed.id}`"
+                                        class="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border transition hover:text-foreground"
+                                    >
+                                        <span
+                                            class="material-symbols-outlined text-[13px]"
+                                            >grid_on</span
+                                        >
+                                        {{ note.bed.name }}
+                                    </Link>
+                                    <Link
+                                        v-if="note.plant"
+                                        :href="`/plants/${note.plant.id}`"
+                                        class="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border transition hover:text-foreground"
+                                    >
+                                        <span
+                                            class="material-symbols-outlined text-[13px]"
+                                            >local_florist</span
+                                        >
+                                        {{ note.plant.name }}
+                                    </Link>
+                                </div>
+
+                                <div v-if="hasBodyOrMedia" class="mt-3 space-y-4">
+                                    <p
+                                        v-if="note.body?.trim()"
+                                        class="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90"
+                                    >
+                                        {{ note.body }}
+                                    </p>
+
+                                    <div
+                                        v-if="note.media_urls?.length"
+                                        class="grid grid-cols-2 gap-2 sm:grid-cols-3"
+                                    >
+                                        <a
+                                            v-for="(url, i) in note.media_urls"
+                                            :key="i"
+                                            :href="url"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            class="aspect-square overflow-hidden rounded-xl bg-muted/40 ring-1 ring-border/30"
+                                        >
+                                            <img
+                                                :src="url"
+                                                :alt="`Foto ${i + 1}`"
+                                                class="h-full w-full object-cover transition duration-300 hover:scale-105"
+                                            />
+                                        </a>
+                                    </div>
+                                </div>
+                            </article>
+                        </section>
+                    </main>
                 </div>
-            </div>
 
-            <BottomNav active="calendar" />
+                <BottomNav :active="bottomNavActive" />
+            </div>
         </div>
     </AppLayout>
 </template>

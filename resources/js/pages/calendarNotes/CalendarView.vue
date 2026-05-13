@@ -53,6 +53,11 @@ function calendarReturnToQuery(): string {
     return `/calendar?month=${m}&year=${y}`;
 }
 
+function calendarNoteShowUrl(noteId: number | string): string {
+    const rt = encodeURIComponent(calendarReturnToQuery());
+    return `/calendar/notes/${noteId}?return_to=${rt}`;
+}
+
 function editCalendarNote(noteId: number | string | undefined) {
     if (noteId == null || noteId === '') return;
     router.visit(`/calendar/notes/${noteId}/edit`);
@@ -325,7 +330,7 @@ onMounted(() => {
                     </DiaryHeader>
 
                     <main
-                        class="mx-auto flex-1 space-y-5 px-6 pt-4 pb-40 md:max-w-6xl md:px-8 lg:grid lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.95fr)] lg:items-start lg:gap-6 lg:space-y-0 lg:px-10"
+                        class="mx-auto flex-1 space-y-5 px-6 pt-4 pb-56 md:max-w-6xl md:px-8 lg:grid lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.95fr)] lg:items-start lg:gap-6 lg:space-y-0 lg:px-10 lg:pb-40"
                     >
                         <!-- Calendar card -->
                         <section
@@ -588,7 +593,7 @@ onMounted(() => {
                                     <article
                                         v-for="item in dayFeedItems"
                                         :key="item.key"
-                                        class="relative cursor-pointer overflow-hidden rounded-xl border border-border/50 bg-card px-3 py-2.5 pl-4 transition hover:border-primary/30 hover:bg-muted/30"
+                                        class="relative cursor-pointer rounded-xl border border-border/50 bg-card px-3 py-2.5 pl-4 transition hover:border-primary/30 hover:bg-muted/30"
                                         :class="
                                             item.note.done ? 'opacity-70' : ''
                                         "
@@ -596,12 +601,16 @@ onMounted(() => {
                                         tabindex="0"
                                         @click="
                                             router.visit(
-                                                `/calendar/notes/${item.note.id}`,
+                                                calendarNoteShowUrl(
+                                                    item.note.id,
+                                                ),
                                             )
                                         "
                                         @keydown.enter="
                                             router.visit(
-                                                `/calendar/notes/${item.note.id}`,
+                                                calendarNoteShowUrl(
+                                                    item.note.id,
+                                                ),
                                             )
                                         "
                                     >
@@ -668,20 +677,25 @@ onMounted(() => {
                                             <div
                                                 class="flex shrink-0 flex-col items-end gap-2"
                                             >
-                                                <CardActionsMenu
-                                                    v-if="item.note.id != null"
-                                                    placement="inline"
-                                                    @edit="
-                                                        editCalendarNote(
-                                                            item.note.id,
-                                                        )
-                                                    "
-                                                    @delete="
-                                                        deleteCalendarNote(
-                                                            item.note.id,
-                                                        )
-                                                    "
-                                                />
+                                                <div @click.stop>
+                                                    <CardActionsMenu
+                                                        v-if="
+                                                            item.note.id != null
+                                                        "
+                                                        placement="inline"
+                                                        appearance="listRow"
+                                                        @edit="
+                                                            editCalendarNote(
+                                                                item.note.id,
+                                                            )
+                                                        "
+                                                        @delete="
+                                                            deleteCalendarNote(
+                                                                item.note.id,
+                                                            )
+                                                        "
+                                                    />
+                                                </div>
                                                 <img
                                                     v-if="
                                                         item.note
@@ -719,6 +733,7 @@ onMounted(() => {
                     aria-label="Lisa märge"
                     :size-px="52"
                     :icon-size-px="30"
+                    :bottom-px="120"
                     @click="onAdd"
                 />
 
