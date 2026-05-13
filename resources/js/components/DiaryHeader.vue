@@ -68,7 +68,7 @@ function isNavActive(item: { key: NavKey; href: string }): boolean {
 }
 
 const wrapperClass = computed(() =>
-    `bg-background-light/80 sticky top-0 z-20 px-6 backdrop-blur-md md:px-8 lg:static lg:border-0 lg:bg-background lg:px-10 ${props.footerPaddingClass} ${props.headerClass}`.trim(),
+    `bg-background-light/92 sticky top-0 z-20 px-6 backdrop-blur-md md:px-8 lg:static lg:border-0 lg:bg-background lg:px-10 ${props.footerPaddingClass} ${props.headerClass}`.trim(),
 );
 </script>
 

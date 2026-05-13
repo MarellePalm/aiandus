@@ -4,6 +4,9 @@
 @import 'tw-animate-css';
 @import './bed-grid.css';
 
+/* Tailwind v4: kindel skaneering (mitte ainult Vite graaf), et klassid ei jääks CSS-ist välja */
+@source "../js/**/*.vue";
+@source "../views/**/*.blade.php";
 @source "../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php";
 @source "../../storage/framework/views/*.php";
 

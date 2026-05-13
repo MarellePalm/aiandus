@@ -52,8 +52,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->where('user_id', $user->id)
             ->with('category:id,name,slug')
             ->orderByDesc('created_at')
-            ->limit(5)
             ->get()
+            ->unique('name')
+            ->take(5)
+            ->values()
             ->map(fn ($p) => [
                 'id' => $p->id,
                 'name' => $p->name,
@@ -64,12 +66,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     : null,
             ]);
 
+        $recentBeds = Bed::query()
+            ->where('user_id', $user->id)
+            ->withCount('plants')
+            ->orderByDesc('updated_at')
+            ->limit(5)
+            ->get(['id', 'name', 'image_url', 'location', 'updated_at'])
+            ->map(fn ($b) => [
+                'id' => $b->id,
+                'name' => $b->name,
+                'image_url' => $b->image_url,
+                'location' => $b->location,
+                'plants_count' => $b->plants_count,
+            ]);
+
         $recentSeeds = Seed::query()
             ->where('user_id', $user->id)
             ->with('category:id,name,slug')
             ->orderByDesc('created_at')
-            ->limit(5)
             ->get()
+            ->unique('name')
+            ->take(5)
+            ->values()
             ->map(fn ($s) => [
                 'id' => $s->id,
                 'name' => $s->name,
@@ -141,6 +159,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Dashboard', [
             'recentNotes' => $recentNotes,
             'recentPlants' => $recentPlants,
+            'recentBeds' => $recentBeds,
             'recentSeeds' => $recentSeeds,
             'todayTasks' => $todayTasks,
             'dashboardSummary' => [
