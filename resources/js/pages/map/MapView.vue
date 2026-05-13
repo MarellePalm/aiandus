@@ -43,15 +43,15 @@ import {
 import BackIconButton from '@/components/BackIconButton.vue';
 import CardActionsMenu from '@/components/CardActionsMenu.vue';
 import DesktopSearchField from '@/components/DesktopSearchField.vue';
+import DiaryHeader from '@/components/DiaryHeader.vue';
+import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
+import SortDropdown from '@/components/SortDropdown.vue';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import DiaryHeader from '@/components/DiaryHeader.vue';
-import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
-import SortDropdown from '@/components/SortDropdown.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 import SearchModal from '@/pages/Seeds/SearchModal.vue';
@@ -1162,10 +1162,9 @@ function bedPlantsCount(bed: Bed): number {
     return bed.plants?.length ?? 0;
 }
 
-/** Tekst nime kõrval; tühjal peenral null (tekst läheb alla reale). */
-function bedPlantCountInline(bed: Bed): string | null {
+function bedPlantSummaryLine(bed: Bed): string {
     const n = bedPlantsCount(bed);
-    if (n === 0) return null;
+    if (n === 0) return 'Taimi veel ei ole';
     if (n === 1) return '1 taim';
     return `${n} taime`;
 }
@@ -2812,34 +2811,17 @@ function saveGardenPlan() {
                                                         focusBedDetails(bed.id)
                                                     "
                                                 >
-                                                    <div
-                                                        class="flex min-w-0 items-baseline gap-2"
-                                                    >
-                                                        <span
-                                                            class="min-w-0 flex-1 truncate text-sm font-semibold text-foreground"
-                                                            >{{ bed.name }}</span
-                                                        >
-                                                        <span
-                                                            v-if="
-                                                                bedPlantCountInline(
-                                                                    bed,
-                                                                )
-                                                            "
-                                                            class="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground"
-                                                            >{{
-                                                                bedPlantCountInline(
-                                                                    bed,
-                                                                )
-                                                            }}</span
-                                                        >
-                                                    </div>
                                                     <span
-                                                        v-if="
-                                                            bedPlantsCount(bed) ===
-                                                            0
-                                                        "
+                                                        class="block min-w-0 truncate text-sm font-semibold text-foreground"
+                                                        >{{ bed.name }}</span
+                                                    >
+                                                    <span
                                                         class="mt-0.5 block truncate text-xs text-muted-foreground"
-                                                        >Taimi veel ei ole</span
+                                                        >{{
+                                                            bedPlantSummaryLine(
+                                                                bed,
+                                                            )
+                                                        }}</span
                                                     >
                                                     <span
                                                         v-if="bed.location"
@@ -3434,41 +3416,20 @@ function saveGardenPlan() {
                                                                     class="min-w-0 flex-1"
                                                                 >
                                                                     <div
-                                                                        class="flex min-w-0 items-baseline gap-2"
+                                                                        class="text-text-main min-w-0 truncate text-base font-bold leading-snug"
                                                                     >
-                                                                        <div
-                                                                            class="text-text-main min-w-0 flex-1 truncate text-base font-bold leading-snug"
-                                                                        >
-                                                                            {{
-                                                                                bed.name
-                                                                            }}
-                                                                        </div>
-                                                                        <div
-                                                                            v-if="
-                                                                                bedPlantCountInline(
-                                                                                    bed,
-                                                                                )
-                                                                            "
-                                                                            class="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground"
-                                                                        >
-                                                                            {{
-                                                                                bedPlantCountInline(
-                                                                                    bed,
-                                                                                )
-                                                                            }}
-                                                                        </div>
+                                                                        {{
+                                                                            bed.name
+                                                                        }}
                                                                     </div>
                                                                     <div
-                                                                        v-if="
-                                                                            bedPlantsCount(
-                                                                                bed,
-                                                                            ) ===
-                                                                            0
-                                                                        "
                                                                         class="text-text-muted mt-0.5 truncate text-sm"
                                                                     >
-                                                                        Taimi veel
-                                                                        ei ole
+                                                                        {{
+                                                                            bedPlantSummaryLine(
+                                                                                bed,
+                                                                            )
+                                                                        }}
                                                                     </div>
                                                                     <div
                                                                         v-if="
