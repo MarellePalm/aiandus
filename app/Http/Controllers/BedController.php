@@ -130,7 +130,7 @@ class BedController extends Controller
             ],
             'name' => ['required', 'string', 'max:120'],
             'location' => ['nullable', 'string', 'max:255'],
-            'image' => ['nullable', 'image', 'max:5120', 'dimensions:min_width=300,min_height=300,max_width=6000,max_height=6000'],
+            'image' => ['nullable', 'image', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
             'garden_x' => ['nullable', 'integer', 'min:0', 'max:5000'],
             'garden_y' => ['nullable', 'integer', 'min:0', 'max:5000'],
             'cell_size_cm' => ['nullable', 'integer', 'min:10', 'max:200'],
@@ -208,7 +208,7 @@ class BedController extends Controller
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:120'],
             'location' => ['nullable', 'string', 'max:255'],
-            'image' => ['nullable', 'image', 'max:5120', 'dimensions:min_width=300,min_height=300,max_width=6000,max_height=6000'],
+            'image' => ['nullable', 'image', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
             'garden_x' => ['sometimes', 'integer', 'min:0', 'max:5000'],
             'garden_y' => ['sometimes', 'integer', 'min:0', 'max:5000'],
             'cell_size_cm' => ['sometimes', 'integer', 'min:10', 'max:200'],

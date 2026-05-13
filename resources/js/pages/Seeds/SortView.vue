@@ -421,7 +421,7 @@ onBeforeUnmount(() => {
 
                                         <div class="min-w-0 flex-1">
                                             <h3
-                                                class="truncate text-lg font-semibold"
+                                                class="break-words text-lg leading-tight font-semibold"
                                             >
                                                 {{ seed.name }}
                                             </h3>
@@ -563,7 +563,7 @@ onBeforeUnmount(() => {
 
                                             <div class="min-w-0 flex-1">
                                                 <h3
-                                                    class="truncate text-xl font-bold"
+                                                    class="break-words text-xl leading-tight font-bold"
                                                 >
                                                     {{ seed.name }}
                                                 </h3>

@@ -33,7 +33,16 @@ return [
     'file' => ':attribute peab olema fail.',
     'image' => ':attribute peab olema pildifail (jpg, jpeg, png, bmp, gif, svg või webp).',
     'mimes' => ':attribute peab olema tüüpi: :values.',
-    'dimensions' => ':attribute mõõdud ei sobi.',
+    'dimensions' => ':attribute mõõdud ei sobi. Maksimaalne lubatud suurus on 6000x6000 px.',
+
+    'custom' => [
+        'image' => [
+            'max' => 'Pilt võib olla maksimaalselt 5 MB.',
+        ],
+        'photos.*' => [
+            'max' => 'Foto võib olla maksimaalselt 5 MB.',
+        ],
+    ],
 
     'attributes' => [
         'email' => 'E-posti aadress',

@@ -115,7 +115,7 @@ class SeedController extends Controller
                 'year' => ['nullable', 'integer', 'between:2000,2100'],
                 'expires_at' => ['required', 'date'],
                 'notes' => ['nullable', 'string', 'max:5000'],
-                'image' => ['nullable', 'image', 'max:5120', 'dimensions:min_width=300,min_height=300,max_width=6000,max_height=6000'],
+                'image' => ['nullable', 'image', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
             ],
             [
                 'expires_at.required' => 'Kohustuslik väli.',
@@ -199,7 +199,7 @@ class SeedController extends Controller
                 'year' => ['nullable', 'integer', 'between:2000,2100'],
                 'expires_at' => ['required', 'date'],
                 'notes' => ['nullable', 'string', 'max:5000'],
-                'image' => ['nullable', 'image', 'max:5120', 'dimensions:min_width=300,min_height=300,max_width=6000,max_height=6000'],
+                'image' => ['nullable', 'image', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
             ],
             [
                 'expires_at.required' => 'Kohustuslik väli.',
