@@ -5,6 +5,8 @@ const props = withDefaults(
     defineProps<{
         modelValue: string;
         placeholder?: string;
+        /** Label `for` — trigger button id */
+        id?: string;
     }>(),
     {
         placeholder: 'pp.kk.aaaa',
@@ -169,10 +171,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div ref="rootRef" class="relative">
+    <div ref="rootRef" class="relative mt-3 w-full">
         <button
+            :id="id"
             type="button"
-            class="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-left text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+            class="w-full rounded-2xl border border-border bg-background px-4 py-3 text-left text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
             @click="openCalendar"
         >
             {{ displayValue || placeholder }}
@@ -181,7 +184,7 @@ onBeforeUnmount(() => {
         <button
             v-if="modelValue"
             type="button"
-            class="absolute top-1/2 right-3 -translate-y-1/2 rounded-full px-2 py-1 text-xs text-[#2E2E2E]/60 hover:bg-black/5"
+            class="absolute top-1/2 right-3 -translate-y-1/2 rounded-full px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
             @click.stop="clearDate"
         >
             Puhasta
@@ -189,12 +192,12 @@ onBeforeUnmount(() => {
 
         <div
             v-if="isOpen"
-            class="absolute z-50 mt-2 w-full rounded-2xl border border-black/10 bg-white p-3 shadow-xl"
+            class="absolute z-50 mt-2 w-full rounded-2xl border border-border bg-background p-3 shadow-xl"
         >
             <div class="mb-2 flex items-center justify-between">
                 <button
                     type="button"
-                    class="rounded-lg px-2 py-1 hover:bg-black/5"
+                    class="rounded-lg px-2 py-1 hover:bg-muted"
                     @click="previousMonth"
                 >
                     ‹
@@ -204,7 +207,7 @@ onBeforeUnmount(() => {
                 </p>
                 <button
                     type="button"
-                    class="rounded-lg px-2 py-1 hover:bg-black/5"
+                    class="rounded-lg px-2 py-1 hover:bg-muted"
                     @click="nextMonth"
                 >
                     ›
@@ -212,7 +215,7 @@ onBeforeUnmount(() => {
             </div>
 
             <div
-                class="mb-1 grid grid-cols-7 gap-1 text-center text-xs font-medium text-[#2E2E2E]/60"
+                class="mb-1 grid grid-cols-7 gap-1 text-center text-xs font-medium text-muted-foreground"
             >
                 <span v-for="wd in weekDays" :key="wd">{{ wd }}</span>
             </div>
@@ -224,12 +227,12 @@ onBeforeUnmount(() => {
                     type="button"
                     class="h-8 rounded-lg text-sm transition"
                     :class="[
-                        day.inMonth ? 'text-[#2E2E2E]' : 'text-[#2E2E2E]/30',
+                        day.inMonth ? 'text-foreground' : 'text-foreground/30',
                         isSelected(day.date)
-                            ? 'bg-[#6B8C68] text-white'
-                            : 'hover:bg-black/5',
+                            ? 'bg-primary text-primary-foreground'
+                            : 'hover:bg-muted',
                         !isSelected(day.date) && isToday(day.date)
-                            ? 'ring-1 ring-[#6B8C68]/40'
+                            ? 'ring-1 ring-primary/40'
                             : '',
                     ]"
                     @click="selectDate(day.date)"

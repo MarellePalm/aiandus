@@ -2,6 +2,7 @@
 import { useForm } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
+import LocalDatePicker from '@/components/LocalDatePicker.vue';
 import { normalizeImageForUpload } from '@/lib/imageUpload';
 
 type SeedItem = {
@@ -299,17 +300,11 @@ onBeforeUnmount(() => {
                                 >
                                     Aegub
                                 </label>
-                                <input
+                                <LocalDatePicker
                                     v-model="form.expires_at"
-                                    type="date"
-                                    lang="et-EE"
-                                    placeholder="(PP.KK.AAAA) nt 05.09.2026"
-                                    class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
-                                    @change="form.clearErrors('expires_at')"
-                                    @click="
-                                        (
-                                            $event.target as HTMLInputElement
-                                        ).showPicker?.()
+                                    placeholder="pp.kk.aaaa"
+                                    @update:model-value="
+                                        form.clearErrors('expires_at')
                                     "
                                 />
                                 <p

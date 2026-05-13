@@ -3,6 +3,7 @@
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
+import LocalDatePicker from '@/components/LocalDatePicker.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { normalizeImageForUpload } from '@/lib/imageUpload';
 import { calendar } from '@/routes';
@@ -224,17 +225,12 @@ function cancel() {
                                         for="note_date"
                                         >Kuupäev</label
                                     >
-                                    <input
+                                    <LocalDatePicker
                                         id="note_date"
                                         v-model="form.note_date"
-                                        type="date"
-                                        lang="et-EE"
-                                        placeholder="(PP.KK.AAAA) nt 05.09.2026"
-                                        class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                        @click="
-                                            (
-                                                $event.target as HTMLInputElement
-                                            ).showPicker?.()
+                                        placeholder="pp.kk.aaaa"
+                                        @update:model-value="
+                                            form.clearErrors('note_date')
                                         "
                                     />
                                     <p class="mt-1 text-xs text-foreground/50">
@@ -340,17 +336,12 @@ function cancel() {
                                         for="due_date"
                                         >Meeldetuletuse kuupäev</label
                                     >
-                                    <input
+                                    <LocalDatePicker
                                         id="due_date"
                                         v-model="form.due_date"
-                                        type="date"
-                                        lang="et-EE"
-                                        placeholder="(PP.KK.AAAA) nt 05.09.2026"
-                                        class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                        @click="
-                                            (
-                                                $event.target as HTMLInputElement
-                                            ).showPicker?.()
+                                        placeholder="pp.kk.aaaa"
+                                        @update:model-value="
+                                            form.clearErrors('due_date')
                                         "
                                     />
                                     <p class="mt-1 text-xs text-foreground/50">
