@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { router } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import BackIconButton from '@/components/BackIconButton.vue';
@@ -16,6 +16,21 @@ type Plant = {
     next_fertilizing_label?: string | null;
     category_slug?: string;
     quantity?: number | null;
+    quantity_in_stock?: number;
+    quantity_on_beds?: number;
+    bed_locations?: {
+        bed_id: number;
+        bed_name: string;
+        garden_plan_id: number;
+        image_url?: string | null;
+        quantity: number;
+    }[];
+    calendar_notes?: {
+        id: number;
+        note_date: string;
+        title: string | null;
+        body: string;
+    }[];
 };
 
 const props = withDefaults(
@@ -52,13 +67,107 @@ const hasFertilizingInfo = computed(() => {
     );
 });
 
+const bedLocations = computed(() => props.plant.bed_locations ?? []);
+
+/** Kokku sama sorti taimi (varu + peenrad), nagu varem üks number. */
+const quantityCardShow = computed(() => {
+    if (
+        typeof props.plant.quantity_in_stock === 'number' &&
+        typeof props.plant.quantity_on_beds === 'number'
+    ) {
+        return (
+            props.plant.quantity_in_stock + props.plant.quantity_on_beds
+        );
+    }
+
+    return props.plant.quantity ?? 1;
+});
+
+const hasNotes = computed(
+    () =>
+        !!props.plant.notes?.trim() ||
+        ((props.plant.calendar_notes?.length ?? 0) > 0),
+);
+
+const calendarNotesList = computed(
+    () => props.plant.calendar_notes ?? [],
+);
+
+function formatCalendarNoteDate(iso: string): string {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) {
+        return iso;
+    }
+    return d.toLocaleDateString('et-EE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+    });
+}
+
+function calendarNoteHref(noteId: number): string {
+    return `/calendar/notes/${noteId}?return_to=${encodeURIComponent(`/plants/${props.plant.id}`)}`;
+}
+
+function calendarNoteTitle(cn: {
+    title: string | null;
+    body: string;
+}): string {
+    const t = cn.title?.trim();
+    if (t) {
+        return t;
+    }
+    const b = cn.body?.trim();
+    if (b) {
+        return b.length > 72 ? `${b.slice(0, 69).trimEnd()}…` : b;
+    }
+    return 'Märge';
+}
+
 const wateringText = computed(() => {
     return props.plant.watering_frequency?.trim() || 'Pole määratud';
 });
 
 const menuOpen = ref(false);
+const bedMenuOpenId = ref<number | null>(null);
 const deleteOpen = ref(false);
 const deleting = ref(false);
+
+function togglePlantMenu() {
+    menuOpen.value = !menuOpen.value;
+    if (menuOpen.value) {
+        bedMenuOpenId.value = null;
+    }
+}
+
+function toggleBedMenu(bedId: number) {
+    const next = bedMenuOpenId.value === bedId ? null : bedId;
+    bedMenuOpenId.value = next;
+    if (next !== null) {
+        menuOpen.value = false;
+    }
+}
+
+function goToBedFromMenu(loc: {
+    bed_id: number;
+    garden_plan_id: number;
+}) {
+    bedMenuOpenId.value = null;
+    router.visit(`/beds/${loc.bed_id}`);
+}
+
+function goToGardenPlanFromMenu(loc: { garden_plan_id: number }) {
+    bedMenuOpenId.value = null;
+    router.visit(`/map/${loc.garden_plan_id}`);
+}
+
+function onBedImageError(event: Event) {
+    const img = event.target as HTMLImageElement;
+    if (img.src.endsWith(fallbackImage) || img.src.includes('/logo.png')) {
+        return;
+    }
+    img.src = fallbackImage;
+}
 
 const openDelete = () => {
     menuOpen.value = false;
@@ -100,10 +209,16 @@ const doDelete = () => {
 };
 
 const onDocClick = (e: MouseEvent) => {
-    if (!menuOpen.value) return;
     const t = e.target as HTMLElement | null;
-    if (t?.closest?.('[data-plant-menu]')) return;
-    menuOpen.value = false;
+    if (menuOpen.value && !t?.closest?.('[data-plant-menu]')) {
+        menuOpen.value = false;
+    }
+    if (
+        bedMenuOpenId.value !== null &&
+        !t?.closest?.('[data-bed-card-menu]')
+    ) {
+        bedMenuOpenId.value = null;
+    }
 };
 
 onMounted(() => document.addEventListener('click', onDocClick));
@@ -175,7 +290,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                         <button
                             type="button"
                             class="flex items-center justify-center rounded-full bg-card/70 p-2 backdrop-blur-md transition-colors"
-                            @click.stop="menuOpen = !menuOpen"
+                            @click.stop="togglePlantMenu"
                             aria-label="Menüü"
                         >
                             <span class="material-symbols-outlined"
@@ -231,52 +346,175 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
             </div>
 
             <!-- Content -->
-            <div class="relative z-10 px-6 pt-6 md:px-12 md:pt-8">
+            <div
+                class="relative z-10 px-6 pt-6 pb-16 md:px-12 md:pt-8 md:pb-12"
+            >
                 <div class="md:mx-auto md:max-w-4xl">
                     <div
                         class="flex flex-col gap-6 md:grid md:grid-cols-2 md:gap-6"
                     >
                         <!-- MÄRKMED -->
                         <div class="md:col-span-2">
-                            <div class="mb-4 flex items-center justify-between">
-                                <h3 class="text-lg font-bold tracking-tight">
-                                    Märkmed
-                                </h3>
-                                <button
-                                    type="button"
-                                    class="text-sm font-semibold text-primary"
-                                    @click="editNotes"
-                                >
-                                    Muuda
-                                </button>
-                            </div>
-
                             <div
-                                class="rounded-2xl border border-border bg-card/60 p-6"
+                                v-if="hasNotes"
+                                class="bg-surface-light dark:bg-surface-dark rounded-2xl border border-[#e6e2d5] p-5 shadow-sm dark:border-white/5"
                             >
-                                <p
-                                    class="font-body leading-relaxed text-[#4a524a] dark:text-gray-300"
-                                >
-                                    {{
-                                        props.plant.notes ||
-                                        'Märkmeid veel pole.'
-                                    }}
-                                </p>
-
                                 <div
-                                    v-if="props.plant.tags?.length"
-                                    class="mt-4 flex flex-wrap gap-2"
+                                    class="flex items-start justify-between gap-3"
                                 >
-                                    <span
-                                        v-for="tag in props.plant.tags"
-                                        :key="tag"
-                                        class="rounded-full bg-primary/5 px-3 py-1 text-[11px] font-bold tracking-tighter text-primary uppercase dark:bg-primary/10"
+                                    <div
+                                        class="flex min-w-0 flex-1 items-start gap-4"
                                     >
-                                        {{ tag }}
-                                    </span>
+                                        <div
+                                            class="rounded-xl bg-primary/10 p-3 text-primary shrink-0 dark:bg-primary/20"
+                                        >
+                                            <span
+                                                class="material-symbols-outlined"
+                                                >edit_note</span
+                                            >
+                                        </div>
+                                        <div class="min-w-0 flex-1">
+                                            <span
+                                                class="mb-0.5 block text-xs font-bold tracking-wider text-gray-400 uppercase"
+                                            >
+                                                Märkmed
+                                            </span>
+                                            <p
+                                                v-if="props.plant.notes?.trim()"
+                                                class="font-body mt-1 text-base leading-relaxed text-[#4a524a] dark:text-gray-300"
+                                            >
+                                                {{ props.plant.notes }}
+                                            </p>
+                                            <div
+                                                v-if="props.plant.tags?.length"
+                                                class="mt-3 flex flex-wrap gap-2"
+                                            >
+                                                <span
+                                                    v-for="tag in props.plant.tags"
+                                                    :key="tag"
+                                                    class="rounded-full bg-primary/5 px-3 py-1 text-[11px] font-bold tracking-tighter text-primary uppercase dark:bg-primary/10"
+                                                >
+                                                    {{ tag }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        class="shrink-0 text-sm font-semibold text-primary transition hover:text-primary/80"
+                                        @click="editNotes"
+                                    >
+                                        Muuda
+                                    </button>
                                 </div>
                             </div>
+
+                            <button
+                                v-else
+                                type="button"
+                                class="bg-surface-light dark:bg-surface-dark w-full rounded-2xl border border-[#e6e2d5] p-5 text-left shadow-sm transition hover:border-primary/30 hover:bg-primary/5 dark:border-white/5 dark:hover:bg-primary/10"
+                                @click="editNotes"
+                            >
+                                <div class="flex items-center gap-4">
+                                    <div
+                                        class="rounded-xl bg-primary/10 p-3 text-primary dark:bg-primary/20"
+                                    >
+                                        <span class="material-symbols-outlined"
+                                            >edit_note</span
+                                        >
+                                    </div>
+
+                                    <div class="min-w-0 flex-1">
+                                        <span
+                                            class="mb-0.5 block text-xs font-bold tracking-wider text-gray-400 uppercase"
+                                        >
+                                            Märkmed
+                                        </span>
+                                        <span
+                                            class="font-body block text-base leading-tight font-medium text-foreground"
+                                        >
+                                            Lisa märge
+                                        </span>
+                                        <span
+                                            class="font-body mt-1 block text-xs leading-snug text-muted-foreground"
+                                        >
+                                            Meenuta hiljem kasvu ja järgmise
+                                            hooaja nippe.
+                                        </span>
+                                    </div>
+                                </div>
+                            </button>
                         </div>
+
+                        <!-- KALENDRI MÄRKMED (sama ridade stiil kui peenrad) -->
+                        <div
+                            v-if="calendarNotesList.length"
+                            class="md:col-span-2"
+                        >
+                            <div
+                                class="rounded-2xl border border-[#e6e2d5] bg-surface-light shadow-sm dark:border-white/5 dark:bg-surface-dark"
+                            >
+                                <p
+                                    class="px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted-foreground sm:px-4"
+                                >
+                                    Kalendri märkmed
+                                </p>
+                                <ul
+                                    class="divide-y divide-[#e6e2d5] dark:divide-white/10"
+                                >
+                                    <li
+                                        v-for="cn in calendarNotesList"
+                                        :key="cn.id"
+                                    >
+                                        <Link
+                                            :href="calendarNoteHref(cn.id)"
+                                            class="flex items-center justify-between gap-2 px-3 py-2.5 transition hover:bg-muted/35 sm:gap-3 sm:px-4 sm:py-3"
+                                        >
+                                            <div
+                                                class="flex min-w-0 flex-1 items-center gap-3"
+                                            >
+                                                <div
+                                                    class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary sm:h-12 sm:w-12 dark:bg-primary/20"
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined text-[22px] sm:text-[24px]"
+                                                        >calendar_month</span
+                                                    >
+                                                </div>
+                                                <div
+                                                    class="min-w-0 flex flex-col text-left"
+                                                >
+                                                    <span
+                                                        class="font-body truncate text-[15px] leading-snug font-medium text-foreground"
+                                                        >{{
+                                                            calendarNoteTitle(cn)
+                                                        }}</span
+                                                    >
+                                                    <span
+                                                        class="font-body mt-0.5 text-xs leading-tight text-[#717a71] dark:text-gray-400"
+                                                        >{{
+                                                            formatCalendarNoteDate(
+                                                                cn.note_date,
+                                                            )
+                                                        }}</span
+                                                    >
+                                                </div>
+                                            </div>
+                                            <div
+                                                class="pointer-events-none flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/80 bg-white shadow-sm ring-1 ring-black/[0.04] sm:h-10 sm:w-10 dark:border-white/15 dark:bg-card dark:ring-white/10"
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-[22px] text-primary sm:text-[24px]"
+                                                    aria-hidden="true"
+                                                    >more_horiz</span
+                                                >
+                                            </div>
+                                        </Link>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
                         <!-- TAIMEDE ARV -->
                         <div
                             class="bg-surface-light dark:bg-surface-dark rounded-2xl border border-[#e6e2d5] p-5 shadow-sm dark:border-white/5"
@@ -300,7 +538,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                                         <span
                                             class="font-body text-base leading-tight font-medium"
                                         >
-                                            {{ props.plant.quantity ?? 1 }} tk
+                                            {{ quantityCardShow }} tk
                                         </span>
                                     </div>
                                 </div>
@@ -334,6 +572,116 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                                         </span>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- PEENRAD -->
+                        <div
+                            v-if="bedLocations.length > 0"
+                            class="md:col-span-2"
+                        >
+                            <div
+                                class="rounded-2xl border border-[#e6e2d5] bg-surface-light shadow-sm dark:border-white/5 dark:bg-surface-dark"
+                            >
+                                <ul
+                                    class="divide-y divide-[#e6e2d5] dark:divide-white/10"
+                                >
+                                    <li
+                                        v-for="loc in bedLocations"
+                                        :key="loc.bed_id"
+                                        class="flex items-center justify-between gap-2 px-3 py-2.5 last:pb-3 sm:gap-3 sm:px-4 sm:last:pb-4"
+                                    >
+                                        <div
+                                            class="flex min-w-0 flex-1 items-center gap-3"
+                                        >
+                                            <div
+                                                v-if="
+                                                    loc.image_url &&
+                                                    loc.image_url.trim() !== ''
+                                                "
+                                                class="h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-[#e6e2d5] bg-muted/20 dark:border-white/10 sm:h-12 sm:w-12"
+                                            >
+                                                <img
+                                                    :src="loc.image_url"
+                                                    :alt="loc.bed_name"
+                                                    class="h-full w-full object-cover"
+                                                    loading="lazy"
+                                                    @error="onBedImageError"
+                                                />
+                                            </div>
+                                            <div
+                                                v-else
+                                                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary sm:h-12 sm:w-12 dark:bg-primary/20"
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-[22px] sm:text-[24px]"
+                                                    >yard</span
+                                                >
+                                            </div>
+                                            <div class="min-w-0 flex flex-col">
+                                                <span
+                                                    class="font-body text-[15px] leading-snug font-medium text-foreground"
+                                                >
+                                                    {{ loc.bed_name }}
+                                                </span>
+                                                <span
+                                                    class="font-body mt-0.5 text-xs leading-tight text-[#717a71] dark:text-gray-400"
+                                                >
+                                                    {{ loc.quantity }} tk
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            class="relative shrink-0"
+                                            data-bed-card-menu
+                                        >
+                                            <button
+                                                type="button"
+                                                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/80 bg-white shadow-sm ring-1 ring-black/[0.04] transition hover:border-primary/40 hover:bg-primary/8 sm:h-10 sm:w-10 dark:border-white/15 dark:bg-card dark:ring-white/10 dark:hover:bg-primary/15"
+                                                :aria-label="`Menüü: ${loc.bed_name}`"
+                                                @click.stop="
+                                                    toggleBedMenu(loc.bed_id)
+                                                "
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-[22px] text-primary sm:text-[24px]"
+                                                    >more_horiz</span
+                                                >
+                                            </button>
+
+                                            <div
+                                                v-if="
+                                                    bedMenuOpenId ===
+                                                    loc.bed_id
+                                                "
+                                                class="absolute top-10 right-0 z-50 w-48 overflow-hidden rounded-2xl border border-border bg-card shadow-xl ring-1 ring-border sm:top-11"
+                                                @click.stop
+                                            >
+                                                <button
+                                                    type="button"
+                                                    class="w-full px-4 py-2.5 text-left text-sm text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+                                                    @click="
+                                                        goToBedFromMenu(loc)
+                                                    "
+                                                >
+                                                    Ava peenar
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    class="w-full px-4 py-2.5 text-left text-sm text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+                                                    @click="
+                                                        goToGardenPlanFromMenu(
+                                                            loc,
+                                                        )
+                                                    "
+                                                >
+                                                    Aiaplaan
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </li>
+                                </ul>
                             </div>
                         </div>
 

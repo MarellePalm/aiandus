@@ -15,6 +15,8 @@ const props = withDefaults(
         bottomRowClass?: string;
         /** Kui antud, kuvatakse pealkirjast vasakul tagasi-nupp. */
         backHref?: string | null;
+        /** Kui true, ei kuvata suurt pealkirja (nt ainult tagasi + tegevused). */
+        hideTitle?: boolean;
         /** Lisa klassid päise alumisele paddingule (nt `pb-2`). */
         footerPaddingClass?: string;
     }>(),
@@ -26,6 +28,7 @@ const props = withDefaults(
         topRowClass: 'mb-4',
         bottomRowClass: 'mb-6',
         backHref: null,
+        hideTitle: false,
         footerPaddingClass: 'pb-4',
     },
 );
@@ -136,7 +139,7 @@ const wrapperClass = computed(() =>
                     >
                 </Link>
                 <slot name="leading" />
-                <h1 :class="titleClass">{{ title }}</h1>
+                <h1 v-if="!hideTitle" :class="titleClass">{{ title }}</h1>
             </div>
             <div class="flex shrink-0 items-center gap-2 sm:gap-5">
                 <slot name="actions" />
@@ -159,7 +162,7 @@ const wrapperClass = computed(() =>
                     >
                 </Link>
                 <slot name="leading" />
-                <h1 :class="titleClass">{{ title }}</h1>
+                <h1 v-if="!hideTitle" :class="titleClass">{{ title }}</h1>
             </div>
             <div class="flex shrink-0 items-center gap-5">
                 <slot name="actions" />

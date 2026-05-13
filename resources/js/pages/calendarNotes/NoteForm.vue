@@ -28,7 +28,7 @@ const props = defineProps<{
         plant_id?: number | null;
     };
     beds?: { id: number; name: string; location?: string | null }[];
-    plants?: { id: number; name: string }[];
+    plants?: { id: number; label: string; image_url?: string | null }[];
     editMode?: boolean;
     initialBedId?: number | null;
     initialDate?: string | null;
@@ -475,27 +475,68 @@ function cancel() {
                                 </div>
 
                                 <div>
-                                    <label
+                                    <p
+                                        id="plant-label"
                                         class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
-                                        for="plant"
-                                        >Seo taimega</label
                                     >
-                                    <select
-                                        id="plant"
-                                        v-model.number="form.plant_id"
-                                        class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                        Seo taimega
+                                    </p>
+                                    <div
+                                        class="mt-3 max-h-52 space-y-2 overflow-y-auto rounded-2xl border border-border bg-background p-2 shadow-sm"
+                                        role="listbox"
+                                        aria-labelledby="plant-label"
                                     >
-                                        <option :value="null">
-                                            Ei ole seotud
-                                        </option>
-                                        <option
+                                        <button
+                                            type="button"
+                                            role="option"
+                                            :aria-selected="form.plant_id === null"
+                                            class="flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                                            :class="
+                                                form.plant_id === null
+                                                    ? 'border-primary bg-primary/10 text-foreground'
+                                                    : 'border-transparent hover:bg-muted/60'
+                                            "
+                                            @click="form.plant_id = null"
+                                        >
+                                            <span
+                                                class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-xl"
+                                                    >close</span
+                                                >
+                                            </span>
+                                            <span class="font-medium"
+                                                >Ei ole seotud</span
+                                            >
+                                        </button>
+                                        <button
                                             v-for="plant in props.plants ?? []"
                                             :key="plant.id"
-                                            :value="plant.id"
+                                            type="button"
+                                            role="option"
+                                            :aria-selected="form.plant_id === plant.id"
+                                            class="flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                                            :class="
+                                                form.plant_id === plant.id
+                                                    ? 'border-primary bg-primary/10 text-foreground'
+                                                    : 'border-transparent hover:bg-muted/60'
+                                            "
+                                            @click="form.plant_id = plant.id"
                                         >
-                                            {{ plant.name }}
-                                        </option>
-                                    </select>
+                                            <img
+                                                :src="
+                                                    plant.image_url ||
+                                                    '/logo.png'
+                                                "
+                                                :alt="plant.label"
+                                                class="size-10 shrink-0 rounded-lg border border-border object-cover"
+                                            />
+                                            <span class="font-medium">{{
+                                                plant.label
+                                            }}</span>
+                                        </button>
+                                    </div>
                                     <p
                                         v-if="form.errors.plant_id"
                                         class="mt-1 text-xs text-red-600 dark:text-red-400"

@@ -14,6 +14,21 @@ type Plant = {
     next_fertilizing_label?: string | null;
     category_slug?: string;
     quantity?: number | null;
+    quantity_in_stock?: number;
+    quantity_on_beds?: number;
+    bed_locations?: {
+        bed_id: number;
+        bed_name: string;
+        garden_plan_id: number;
+        image_url?: string | null;
+        quantity: number;
+    }[];
+    calendar_notes?: {
+        id: number;
+        note_date: string;
+        title: string | null;
+        body: string;
+    }[];
 };
 
 const { plant } = defineProps<{ plant: Plant }>();
@@ -25,7 +40,9 @@ const { plant } = defineProps<{ plant: Plant }>();
             <div
                 class="relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x border-primary/10 bg-background shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
             >
-                <main class="pb-24">
+                <main
+                    class="pb-60 max-[480px]:pb-[calc(15rem+env(safe-area-inset-bottom,0px))] md:pb-44"
+                >
                     <PlantDetail :plant="plant" />
                 </main>
             </div>

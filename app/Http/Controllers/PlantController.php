@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bed;
+use App\Models\CalendarNote;
 use App\Models\Category;
 use App\Models\Plant;
 use Illuminate\Http\Request;
@@ -112,6 +113,87 @@ class PlantController extends Controller
     {
         abort_unless($plant->user_id === $request->user()->id, 403);
 
+        $plant->loadMissing(['category:id,slug', 'bed:id,name,garden_plan_id,image_url']);
+
+        $bedLocations = collect();
+
+        if ($plant->bed_id && $plant->bed) {
+            $bedLocations->push([
+                'bed_id' => (int) $plant->bed->id,
+                'bed_name' => $plant->bed->name,
+                'garden_plan_id' => (int) $plant->bed->garden_plan_id,
+                'image_url' => $plant->bed->image_url,
+                'quantity' => $plant->quantity ?? 1,
+            ]);
+        }
+
+        if ($plant->category_id) {
+            $displayKey = self::plantVarietyKey($plant);
+
+            $otherBeds = Plant::query()
+                ->where('user_id', $plant->user_id)
+                ->where('category_id', $plant->category_id)
+                ->whereNotNull('bed_id')
+                ->where('id', '!=', $plant->id)
+                ->when(
+                    $plant->bed_id,
+                    fn ($q) => $q->where('bed_id', '!=', $plant->bed_id),
+                )
+                ->with(['bed:id,name,garden_plan_id,image_url'])
+                ->get()
+                ->filter(function (Plant $p) use ($displayKey) {
+                    return self::plantVarietyKey($p) === $displayKey;
+                })
+                ->groupBy('bed_id')
+                ->map(function ($group) {
+                    $first = $group->first();
+                    if (! $first?->bed) {
+                        return null;
+                    }
+
+                    return [
+                        'bed_id' => (int) $first->bed->id,
+                        'bed_name' => $first->bed->name,
+                        'garden_plan_id' => (int) $first->bed->garden_plan_id,
+                        'image_url' => $first->bed->image_url,
+                        'quantity' => $group->sum(fn (Plant $p) => $p->quantity ?? 1),
+                    ];
+                })
+                ->filter()
+                ->values();
+
+            $bedLocations = $bedLocations->concat($otherBeds);
+        }
+
+        $bedLocations = $bedLocations->sortBy('bed_name')->values()->all();
+
+        $qtySplit = self::sumVarietyStockAndBeds($plant);
+
+        $varietyKey = self::plantVarietyKey($plant);
+        $varietyPlantIds = Plant::query()
+            ->where('user_id', $plant->user_id)
+            ->get(['id', 'name', 'subtitle'])
+            ->filter(fn (Plant $p) => self::plantVarietyKey($p) === $varietyKey)
+            ->pluck('id')
+            ->values()
+            ->all();
+
+        $calendarNotes = CalendarNote::query()
+            ->where('user_id', $plant->user_id)
+            ->whereIn('plant_id', $varietyPlantIds)
+            ->orderByDesc('note_date')
+            ->orderByDesc('id')
+            ->limit(40)
+            ->get(['id', 'note_date', 'title', 'body'])
+            ->map(fn (CalendarNote $n) => [
+                'id' => $n->id,
+                'note_date' => $n->note_date->format('Y-m-d'),
+                'title' => $n->title,
+                'body' => Str::limit((string) ($n->body ?? ''), 200),
+            ])
+            ->values()
+            ->all();
+
         return Inertia::render('Plants/Show', [
             'plant' => [
                 'id' => $plant->id,
@@ -126,6 +208,10 @@ class PlantController extends Controller
                 'next_fertilizing_label' => $plant->next_fertilizing_label,
                 'category_slug' => $plant->category?->slug,
                 'quantity' => $plant->quantity ?? 1,
+                'quantity_in_stock' => $qtySplit['in_stock'],
+                'quantity_on_beds' => $qtySplit['on_beds'],
+                'bed_locations' => $bedLocations,
+                'calendar_notes' => $calendarNotes,
             ],
         ]);
     }
@@ -324,5 +410,50 @@ class PlantController extends Controller
         $plant->delete();
 
         return redirect('/dashboard');
+    }
+
+    private static function plantVarietyKey(Plant $plant): string
+    {
+        $label = filled($plant->subtitle) ? (string) $plant->subtitle : (string) $plant->name;
+
+        return Str::lower(trim($label));
+    }
+
+    /**
+     * @return array{in_stock: int, on_beds: int}
+     */
+    private static function sumVarietyStockAndBeds(Plant $plant): array
+    {
+        if (! $plant->category_id) {
+            $q = (int) ($plant->quantity ?? 1);
+            if ($plant->bed_id === null) {
+                return ['in_stock' => $q, 'on_beds' => 0];
+            }
+
+            return ['in_stock' => 0, 'on_beds' => $q];
+        }
+
+        $key = self::plantVarietyKey($plant);
+        $inStock = 0;
+        $onBeds = 0;
+
+        $rows = Plant::query()
+            ->where('user_id', $plant->user_id)
+            ->where('category_id', $plant->category_id)
+            ->get(['subtitle', 'name', 'bed_id', 'quantity']);
+
+        foreach ($rows as $row) {
+            if (self::plantVarietyKey($row) !== $key) {
+                continue;
+            }
+            $q = (int) ($row->quantity ?? 1);
+            if ($row->bed_id === null) {
+                $inStock += $q;
+            } else {
+                $onBeds += $q;
+            }
+        }
+
+        return ['in_stock' => $inStock, 'on_beds' => $onBeds];
     }
 }
