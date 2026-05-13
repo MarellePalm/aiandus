@@ -179,13 +179,6 @@ const todayLabel = computed(() => {
     return `${weekdayCap} ${day}. ${month} • ${time}`;
 });
 
-const greeting = computed(() => {
-    const hour = new Date().getHours();
-    if (hour < 11) return 'Tere hommikust';
-    if (hour < 17) return 'Tere päevast';
-    return 'Tere õhtust';
-});
-
 const dashboardHighlights = computed(() => {
     const s = dashboardSummary.value;
     return [
@@ -637,7 +630,7 @@ function goToFabAction(href: string) {
                         </div>
 
                         <div
-                            class="wow-hero wow-fade-up relative -mx-6 mt-1.5 overflow-hidden rounded-t-[1.7rem] rounded-b-2xl bg-[linear-gradient(160deg,#2d3a2d_0%,#344234_42%,#3a4c3a_100%)] px-6 py-4 sm:py-5 md:-mx-8 md:px-8 lg:-mx-10 lg:px-10"
+                            class="wow-hero wow-fade-up relative mt-1.5 overflow-hidden rounded-t-[1.7rem] rounded-b-2xl bg-[linear-gradient(160deg,#2d3a2d_0%,#344234_42%,#3a4c3a_100%)] px-6 py-4 sm:py-5 md:px-8"
                             style="--wow-delay: 0ms"
                         >
                             <div
@@ -673,15 +666,10 @@ function goToFabAction(href: string) {
                             />
 
                             <div class="relative z-10">
-                                <p
-                                    class="text-xs font-semibold tracking-[0.16em] text-emerald-300/80 uppercase"
-                                >
-                                    {{ greeting }}
-                                </p>
                                 <h2
-                                    class="mt-1 text-lg font-bold tracking-tight text-white/95 sm:text-xl"
+                                    class="text-lg font-bold tracking-tight text-white/95 sm:text-xl"
                                 >
-                                    Tere tulemast aeda
+                                    Sinu tänane ülevaade
                                 </h2>
                                 <p
                                     class="mt-1 text-sm text-white/65 lg:text-[13px]"
@@ -849,7 +837,7 @@ function goToFabAction(href: string) {
                     </div>
                 </DiaryHeader>
 
-                <div v-if="editLayout" class="px-6 pt-2 md:px-8">
+                <div v-if="editLayout" class="px-6 pt-2 md:px-8 lg:px-10">
                     <div
                         class="rounded-2xl border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
                     >
@@ -889,7 +877,7 @@ function goToFabAction(href: string) {
                     </div>
                 </div>
 
-                <div class="px-6 pt-3 pb-3 md:px-8">
+                <div class="px-6 pt-4 pb-40 md:px-8 lg:px-10">
                     <div
                         class="space-y-3 lg:columns-2 lg:space-y-0 lg:[column-gap:2rem]"
                     >
@@ -900,7 +888,7 @@ function goToFabAction(href: string) {
                             <!-- Minu aed: peenrad + taimed -->
                             <section
                                 v-if="id === 'garden'"
-                                class="wow-fade-up -mx-6 overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,#edf7ea_0%,#f5fbf3_60%,#f0f7ed_100%)] shadow-[0_10px_28px_rgba(69,120,58,0.09)] ring-1 ring-[#b5d9a3]/40 md:-mx-8 lg:mx-0 lg:mb-4 lg:break-inside-avoid"
+                                class="wow-fade-up overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,#edf7ea_0%,#f5fbf3_60%,#f0f7ed_100%)] shadow-[0_10px_28px_rgba(69,120,58,0.09)] ring-1 ring-[#b5d9a3]/40 lg:mx-0 lg:mb-4 lg:break-inside-avoid"
                                 :style="{
                                     '--wow-delay': `${260 + sectionIndex * 110}ms`,
                                 }"
@@ -1115,7 +1103,7 @@ function goToFabAction(href: string) {
                             <!-- Viimased märkmed -->
                             <section
                                 v-if="id === 'notes'"
-                                class="wow-fade-up -mx-6 overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,#fffaf0_0%,#f3f7ed_100%)] shadow-[0_10px_28px_rgba(69,89,58,0.1)] ring-1 ring-[#d9cbae]/45 md:-mx-8 lg:mx-0 lg:mb-4 lg:break-inside-avoid"
+                                class="wow-fade-up overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,#fffaf0_0%,#f3f7ed_100%)] shadow-[0_10px_28px_rgba(69,89,58,0.1)] ring-1 ring-[#d9cbae]/45 lg:mx-0 lg:mb-4 lg:break-inside-avoid"
                                 :class="
                                     editLayout ? 'ring-1 ring-primary/25' : ''
                                 "
@@ -1303,7 +1291,7 @@ function goToFabAction(href: string) {
                             <!-- Weather -->
                             <section
                                 v-if="id === 'weather'"
-                                class="wow-fade-up -mx-6 overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,#eaf6ff_0%,#f7fbff_54%,#eef7f0_100%)] shadow-[0_10px_28px_rgba(92,132,161,0.12)] ring-1 ring-[#a2c6e5]/40 md:-mx-8 lg:mx-0 lg:mb-4 lg:break-inside-avoid"
+                                class="wow-fade-up overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,#eaf6ff_0%,#f7fbff_54%,#eef7f0_100%)] shadow-[0_10px_28px_rgba(92,132,161,0.12)] ring-1 ring-[#a2c6e5]/40 lg:mx-0 lg:mb-4 lg:break-inside-avoid"
                                 :class="
                                     editLayout ? 'ring-1 ring-primary/25' : ''
                                 "
@@ -1392,7 +1380,7 @@ function goToFabAction(href: string) {
                             <!-- Moon -->
                             <section
                                 v-if="id === 'moon'"
-                                class="wow-fade-up -mx-6 overflow-hidden rounded-[1.6rem] md:-mx-8 lg:mx-0 lg:mb-3 lg:break-inside-avoid"
+                                class="wow-fade-up overflow-hidden rounded-[1.6rem] lg:mx-0 lg:mb-3 lg:break-inside-avoid"
                                 :class="
                                     editLayout ? 'ring-1 ring-primary/25' : ''
                                 "

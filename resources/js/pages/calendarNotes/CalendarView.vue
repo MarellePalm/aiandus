@@ -5,6 +5,7 @@ import { computed, onMounted, ref } from 'vue';
 
 import BackIconButton from '@/components/BackIconButton.vue';
 import CalendarSwitchTabs from '@/components/calendar/CalendarSwitchTabs.vue';
+import CardActionsMenu from '@/components/CardActionsMenu.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -44,6 +45,24 @@ const selectedDay = ref(
 
 function onAdd() {
     router.get('/calendar/note-form', { date: selectedISO.value });
+}
+
+function calendarReturnToQuery(): string {
+    const m = viewDate.value.getMonth() + 1;
+    const y = viewDate.value.getFullYear();
+    return `/calendar?month=${m}&year=${y}`;
+}
+
+function editCalendarNote(noteId: number | string | undefined) {
+    if (noteId == null || noteId === '') return;
+    router.visit(`/calendar/notes/${noteId}/edit`);
+}
+
+function deleteCalendarNote(noteId: number | string | undefined) {
+    if (noteId == null || noteId === '') return;
+    if (!window.confirm('Kas kustutada see märge?')) return;
+    const returnTo = encodeURIComponent(calendarReturnToQuery());
+    router.delete(`/calendar/notes/${noteId}?return_to=${returnTo}`);
 }
 
 const dayLabels = ['E', 'T', 'K', 'N', 'R', 'L', 'P'];
@@ -306,7 +325,7 @@ onMounted(() => {
                     </DiaryHeader>
 
                     <main
-                        class="mx-auto flex-1 space-y-5 px-6 py-4 md:max-w-6xl md:px-8 lg:grid lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.95fr)] lg:items-start lg:gap-6 lg:space-y-0"
+                        class="mx-auto flex-1 space-y-5 px-6 pt-4 pb-40 md:max-w-6xl md:px-8 lg:grid lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.95fr)] lg:items-start lg:gap-6 lg:space-y-0 lg:px-10"
                     >
                         <!-- Calendar card -->
                         <section
@@ -391,16 +410,16 @@ onMounted(() => {
                             </div>
 
                             <div
-                                class="mb-3 flex items-center justify-between rounded-2xl border border-border/60 bg-muted/25 px-3 py-2 lg:hidden"
+                                class="mb-3 flex items-center justify-between gap-2 border-t border-border/30 pt-3 lg:hidden"
                             >
                                 <div>
                                     <p
-                                        class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
+                                        class="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase"
                                     >
                                         Valitud päev
                                     </p>
                                     <p
-                                        class="mt-0.5 text-sm font-medium text-foreground capitalize"
+                                        class="mt-0.5 text-sm font-semibold text-foreground capitalize"
                                     >
                                         {{ selectedWeekday }},
                                         {{ selectedDay }}.
@@ -409,7 +428,7 @@ onMounted(() => {
                                 </div>
                                 <Link
                                     href="/calendar/overview"
-                                    class="text-sm font-medium text-primary transition hover:text-primary/80"
+                                    class="shrink-0 text-xs font-medium text-primary transition hover:text-primary/80"
                                 >
                                     Kõik märkmed
                                 </Link>
@@ -523,36 +542,11 @@ onMounted(() => {
                                     </span>
                                 </button>
                             </div>
-
-                            <!-- Värviseletus -->
-                            <div
-                                v-if="markedDays.size > 0"
-                                class="relative mt-3 flex flex-wrap items-center justify-center gap-3 text-[10px] font-medium text-muted-foreground"
-                            >
-                                <span class="inline-flex items-center gap-1">
-                                    <span
-                                        class="h-1.5 w-1.5 rounded-full bg-primary"
-                                    />
-                                    Meeldetuletus
-                                </span>
-                                <span class="inline-flex items-center gap-1">
-                                    <span
-                                        class="h-1.5 w-1.5 rounded-full bg-primary/55"
-                                    />
-                                    Tehtud
-                                </span>
-                                <span class="inline-flex items-center gap-1">
-                                    <span
-                                        class="h-1.5 w-1.5 rounded-full bg-stone-400/70"
-                                    />
-                                    Märge
-                                </span>
-                            </div>
                         </section>
 
                         <!-- Valitud päev: ülesanded ja märkmed -->
                         <section
-                            class="rounded-2xl border border-border bg-card/90 p-3.5 shadow-soft sm:p-4 lg:sticky lg:top-6 lg:order-2"
+                            class="pt-1 pb-4 lg:sticky lg:top-6 lg:order-2 lg:rounded-2xl lg:border lg:border-border lg:bg-card/90 lg:p-4 lg:shadow-soft"
                         >
                             <div class="mb-3 hidden lg:block">
                                 <div
@@ -594,7 +588,10 @@ onMounted(() => {
                                     <article
                                         v-for="item in dayFeedItems"
                                         :key="item.key"
-                                        class="cursor-pointer rounded-xl border border-border/60 bg-card px-3 py-2.5 shadow-soft hover:border-primary/30"
+                                        class="relative cursor-pointer overflow-hidden rounded-xl border border-border/50 bg-card px-3 py-2.5 pl-4 transition hover:border-primary/30 hover:bg-muted/30"
+                                        :class="
+                                            item.note.done ? 'opacity-70' : ''
+                                        "
                                         role="button"
                                         tabindex="0"
                                         @click="
@@ -608,24 +605,21 @@ onMounted(() => {
                                             )
                                         "
                                     >
+                                        <span
+                                            class="absolute inset-y-0 left-0 w-[3px] rounded-l-xl"
+                                            :class="
+                                                item.note.done
+                                                    ? 'bg-emerald-400'
+                                                    : item.kind === 'reminder'
+                                                      ? 'bg-primary'
+                                                      : 'bg-primary/40'
+                                            "
+                                            aria-hidden="true"
+                                        />
                                         <div
                                             class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3"
                                         >
                                             <div class="min-w-0">
-                                                <div
-                                                    class="mb-1.5 flex items-start justify-between gap-2"
-                                                >
-                                                    <span
-                                                        class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold text-primary"
-                                                    >
-                                                        {{
-                                                            item.kind ===
-                                                            'reminder'
-                                                                ? 'Meeldetuletus'
-                                                                : 'Märge'
-                                                        }}
-                                                    </span>
-                                                </div>
                                                 <p
                                                     class="line-clamp-2 text-[15px] leading-snug font-bold"
                                                 >
@@ -671,29 +665,49 @@ onMounted(() => {
                                                 </p>
                                             </div>
 
-                                            <img
-                                                v-if="item.note.media_urls?.[0]"
-                                                :src="item.note.media_urls[0]"
-                                                alt="Märkme foto"
-                                                class="h-20 w-20 rounded-xl border border-border/60 object-cover sm:h-24 sm:w-24"
-                                            />
+                                            <div
+                                                class="flex shrink-0 flex-col items-end gap-2"
+                                            >
+                                                <CardActionsMenu
+                                                    v-if="item.note.id != null"
+                                                    placement="inline"
+                                                    @edit="
+                                                        editCalendarNote(
+                                                            item.note.id,
+                                                        )
+                                                    "
+                                                    @delete="
+                                                        deleteCalendarNote(
+                                                            item.note.id,
+                                                        )
+                                                    "
+                                                />
+                                                <img
+                                                    v-if="
+                                                        item.note
+                                                            .media_urls?.[0]
+                                                    "
+                                                    :src="
+                                                        item.note.media_urls[0]
+                                                    "
+                                                    alt="Märkme foto"
+                                                    class="h-20 w-20 rounded-xl border border-border/60 object-cover sm:h-24 sm:w-24"
+                                                />
+                                            </div>
                                         </div>
                                     </article>
                                 </div>
 
                                 <div
                                     v-if="selectedTotal === 0"
-                                    class="rounded-xl border border-border bg-muted/25 px-4 py-3"
+                                    class="py-6 text-center"
                                 >
-                                    <p class="text-sm text-muted-foreground">
-                                        Sellel päeval pole veel kirjeid.
-                                    </p>
-                                    <p
-                                        v-if="showCalendarEmptyHint"
-                                        class="mt-1 text-xs text-muted-foreground"
+                                    <span
+                                        class="material-symbols-outlined mb-2 block text-3xl text-muted-foreground/40"
+                                        >calendar_today</span
                                     >
-                                        Lisa siia märge või meeldetuletus, et
-                                        päevik püsiks ajakohane.
+                                    <p class="text-sm text-muted-foreground">
+                                        Sellel päeval pole kirjeid.
                                     </p>
                                 </div>
                             </section>

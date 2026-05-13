@@ -2,6 +2,7 @@
 import { Head, Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
+import BackIconButton from '@/components/BackIconButton.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
@@ -62,99 +63,120 @@ const reminderLabel = computed(() => {
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div
-            class="page page-with-bottomnav flex min-h-0 flex-col bg-muted/30"
+            class="page page-with-bottomnav flex min-h-0 flex-col bg-[#f5f8f3]"
         >
             <div
-                class="border-beige/50 relative mx-auto w-full max-w-[480px] overflow-x-clip border-x bg-background shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
+                class="border-beige/50 relative mx-auto flex min-h-screen w-full max-w-[480px] flex-col overflow-x-clip border-x bg-[#f5f8f3] md:mx-0 md:max-w-none md:border-0 md:shadow-none"
             >
-                <DiaryHeader title="Märge" back-href="/calendar/overview" />
+                <DiaryHeader
+                    title="Märge"
+                    header-class="pt-6"
+                    top-row-class="mb-3"
+                    bottom-row-class="mb-4"
+                >
+                    <template #leading>
+                        <BackIconButton
+                            href="/calendar/overview"
+                            aria-label="Tagasi märkmete juurde"
+                        />
+                    </template>
+                </DiaryHeader>
 
-                <div class="space-y-4 px-4 pb-28 pt-2">
-                    <div class="flex flex-wrap items-start justify-between gap-3">
-                        <div class="min-w-0">
-                            <p
-                                class="text-xs font-medium tracking-wide text-muted-foreground capitalize"
-                            >
-                                {{ dateLabel }}
-                            </p>
-                            <h1
-                                class="mt-1 text-lg font-semibold leading-snug text-foreground"
-                            >
-                                {{ displayTitle }}
-                            </h1>
-                        </div>
-                        <Link
-                            :href="`/calendar/notes/${note.id}/edit`"
-                            class="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm transition hover:border-primary/30 hover:bg-muted/40"
-                        >
-                            <span
-                                class="material-symbols-outlined text-base text-primary"
-                                >edit</span
-                            >
-                            Muuda
-                        </Link>
-                    </div>
-
+                <div
+                    class="flex flex-1 flex-col px-6 pt-2 pb-40 md:px-8 lg:px-10"
+                >
+                    <!-- Päiseplokk -->
                     <div
-                        v-if="hasReminder"
-                        class="rounded-xl border border-border/70 bg-muted/30 px-3 py-2.5"
+                        class="mb-6 overflow-hidden rounded-[1.6rem] bg-[linear-gradient(160deg,#d8efd4_0%,#e8f5e4_50%,#f0f7ed_100%)] px-5 pt-5 pb-6 shadow-[0_10px_28px_rgba(69,120,58,0.08)] ring-1 ring-[#a8cc9f]/40 md:px-6"
                     >
                         <p
-                            class="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase"
+                            class="text-[11px] font-semibold tracking-[0.15em] text-primary/80 uppercase"
                         >
-                            Meeldetuletus
+                            {{ dateLabel }}
                         </p>
-                        <p class="mt-1 text-sm font-medium text-foreground">
-                            {{ reminderLabel }}
-                        </p>
-                    </div>
-
-                    <div
-                        v-if="note.bed || note.plant"
-                        class="flex flex-wrap gap-2 text-sm"
-                    >
-                        <Link
-                            v-if="note.bed"
-                            :href="`/beds/${note.bed.id}`"
-                            class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-primary ring-1 ring-primary/15"
+                        <h1
+                            class="mt-1.5 text-2xl leading-snug font-bold text-foreground"
                         >
-                            <span class="material-symbols-outlined text-base"
-                                >grid_on</span
+                            {{ displayTitle }}
+                        </h1>
+                        <div class="mt-2 flex flex-wrap items-center gap-2">
+                            <span
+                                v-if="note.done"
+                                class="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-500/20"
                             >
-                            {{ note.bed.name }}
-                        </Link>
-                        <Link
-                            v-if="note.plant"
-                            :href="`/plants/${note.plant.id}`"
-                            class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-primary ring-1 ring-primary/15"
+                                <span
+                                    class="material-symbols-outlined text-[13px]"
+                                    >check_circle</span
+                                >
+                                Tehtud
+                            </span>
+                            <span
+                                v-if="hasReminder"
+                                class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary ring-1 ring-primary/20"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-[13px]"
+                                    >notifications</span
+                                >
+                                {{ reminderLabel }}
+                            </span>
+                            <Link
+                                v-if="note.bed"
+                                :href="`/beds/${note.bed.id}`"
+                                class="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border hover:text-foreground"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-[13px]"
+                                    >grid_on</span
+                                >
+                                {{ note.bed.name }}
+                            </Link>
+                            <Link
+                                v-if="note.plant"
+                                :href="`/plants/${note.plant.id}`"
+                                class="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground ring-1 ring-border hover:text-foreground"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-[13px]"
+                                    >local_florist</span
+                                >
+                                {{ note.plant.name }}
+                            </Link>
+                        </div>
+                    </div>
+
+                    <!-- Sisu -->
+                    <div
+                        v-if="note.body?.trim() || note.media_urls?.length"
+                        class="space-y-5 overflow-hidden rounded-[1.6rem] border border-border/35 bg-card/50 p-5 shadow-[0_8px_24px_rgba(43,74,52,0.06)] md:p-6"
+                    >
+                        <div v-if="note.body?.trim()">
+                            <p
+                                class="text-[15px] leading-[1.75] whitespace-pre-wrap text-foreground/85"
+                            >
+                                {{ note.body }}
+                            </p>
+                        </div>
+
+                        <div
+                            v-if="note.media_urls?.length"
+                            class="grid grid-cols-2 gap-2 sm:grid-cols-3"
                         >
-                            <span class="material-symbols-outlined text-base"
-                                >local_florist</span
+                            <a
+                                v-for="(url, i) in note.media_urls"
+                                :key="i"
+                                :href="url"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="aspect-square overflow-hidden rounded-2xl bg-muted/40 ring-1 ring-border/30"
                             >
-                            {{ note.plant.name }}
-                        </Link>
-                    </div>
-
-                    <div
-                        v-if="note.body?.trim()"
-                        class="rounded-xl border border-border/60 bg-card/80 px-3 py-3 text-sm leading-relaxed text-foreground/90"
-                    >
-                        {{ note.body }}
-                    </div>
-
-                    <div
-                        v-if="note.media_urls?.length"
-                        class="grid grid-cols-2 gap-2 sm:grid-cols-3"
-                    >
-                        <a
-                            v-for="(url, i) in note.media_urls"
-                            :key="i"
-                            :href="url"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="aspect-square overflow-hidden rounded-lg border border-border bg-muted/40 bg-cover bg-center"
-                            :style="{ backgroundImage: `url('${url}')` }"
-                        />
+                                <img
+                                    :src="url"
+                                    :alt="`Foto ${i + 1}`"
+                                    class="h-full w-full object-cover transition duration-300 hover:scale-105"
+                                />
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>

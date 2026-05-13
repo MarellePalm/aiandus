@@ -214,7 +214,7 @@ const openEditCategory = (category: Category) => {
                         </div>
                     </DiaryHeader>
 
-                    <main class="flex-1 px-6 py-4 md:px-8">
+                    <main class="flex-1 px-6 py-4 pb-40 md:px-8 lg:px-10">
                         <div
                             v-if="filteredCategories.length === 0"
                             class="rounded-2xl border border-dashed border-primary/30 bg-primary/5 px-6 py-12 text-center"
@@ -247,7 +247,10 @@ const openEditCategory = (category: Category) => {
                                 class="mt-5 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
                                 @click="showCreateCategory = true"
                             >
-                                <span class="material-symbols-outlined text-[18px]">add</span>
+                                <span
+                                    class="material-symbols-outlined text-[18px]"
+                                    >add</span
+                                >
                                 Lisa uus varu kategooria
                             </button>
                         </div>
@@ -312,7 +315,7 @@ const openEditCategory = (category: Category) => {
                                     class="absolute bottom-0 left-0 w-full p-4 text-white lg:p-3"
                                 >
                                     <span
-                                        class="mb-1 inline-block rounded-md bg-card/30 px-2 py-0.5 text-[10px] font-bold uppercase backdrop-blur-md dark:bg-black/30 lg:text-[9px]"
+                                        class="mb-1 inline-block rounded-md bg-card/30 px-2 py-0.5 text-[10px] font-bold uppercase backdrop-blur-md lg:text-[9px] dark:bg-black/30"
                                     >
                                         {{ cat.count }} varu
                                     </span>
@@ -331,7 +334,9 @@ const openEditCategory = (category: Category) => {
                                         class="material-symbols-outlined text-5xl leading-none opacity-70 transition group-hover:opacity-100 lg:text-4xl"
                                         >add</span
                                     >
-                                    <p class="mt-2 text-sm font-semibold lg:text-xs">
+                                    <p
+                                        class="mt-2 text-sm font-semibold lg:text-xs"
+                                    >
                                         Lisa uus varu kategooria
                                     </p>
                                 </div>
