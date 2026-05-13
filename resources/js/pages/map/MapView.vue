@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
+import { useMediaQuery } from '@vueuse/core';
 import {
     Bird,
     Box,
@@ -302,6 +303,9 @@ const activeTool = ref<GardenObjectType | null>(null);
 const activeToolVariant = ref<ToolVariant | null>(null);
 const activeToolCategoryId = ref<ToolCategoryId | null>(null);
 const createMenuOpen = ref(false);
+const isMdUp = useMediaQuery('(min-width: 768px)');
+const mobileBedListPanelRef = ref<HTMLElement | null>(null);
+const mobileBedListPanelInView = ref(false);
 const toolDrawerOpen = ref(false);
 const plannerControlsOpen = ref(false);
 const createGardenPlanModalOpen = ref(false);
@@ -522,6 +526,7 @@ const suppressPlannerSurfaceClick = ref(false);
 const panStart = ref({ x: 0, y: 0, originX: 0, originY: 0 });
 const PAN_CLICK_SUPPRESS_PX = 8;
 let resizeObserver: ResizeObserver | null = null;
+let mobileBedListIntersectionObserver: IntersectionObserver | null = null;
 const highlightSelectedObjectPanel = ref(false);
 let objectPanelHighlightTimeout: ReturnType<typeof setTimeout> | null = null;
 const plannerLandscapeHintDismissed = ref(false);
@@ -669,6 +674,28 @@ watch(
     { deep: true },
 );
 
+watch(
+    mobileBedListPanelRef,
+    (el) => {
+        mobileBedListIntersectionObserver?.disconnect();
+        mobileBedListIntersectionObserver = null;
+        mobileBedListPanelInView.value = false;
+        if (!el || typeof IntersectionObserver === 'undefined') return;
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const entry = entries[0];
+                mobileBedListPanelInView.value = Boolean(
+                    entry?.isIntersecting && entry.intersectionRatio > 0.12,
+                );
+            },
+            { root: null, threshold: [0, 0.12, 0.2, 0.35, 0.5, 0.75, 1] },
+        );
+        observer.observe(el);
+        mobileBedListIntersectionObserver = observer;
+    },
+    { flush: 'post' },
+);
+
 onMounted(() => {
     if (typeof window !== 'undefined') {
         plannerLandscapeHintDismissed.value =
@@ -736,6 +763,7 @@ onBeforeUnmount(() => {
     viewportPointerMap.clear();
     pinchState.value = null;
     resizeObserver?.disconnect();
+    mobileBedListIntersectionObserver?.disconnect();
     if (objectPanelHighlightTimeout) clearTimeout(objectPanelHighlightTimeout);
 });
 
@@ -1843,6 +1871,17 @@ function clearToolSelection() {
 function openCreateBed() {
     createMenuOpen.value = false;
     router.get(`/map/${props.gardenPlan.id}/beds/new`);
+}
+
+function onFloatingPlusClick() {
+    const inBedListContext =
+        plannerListView.value === 'beds' ||
+        (!isMdUp.value && mobileBedListPanelInView.value);
+    if (inBedListContext) {
+        openCreateBed();
+        return;
+    }
+    createMenuOpen.value = !createMenuOpen.value;
 }
 
 function resetPlannerFilters() {
@@ -3322,6 +3361,7 @@ function saveGardenPlan() {
                                         class="mb-3 flex min-h-0 flex-1 flex-col md:mb-3 md:block md:flex-none"
                                     >
                                         <div
+                                            ref="mobileBedListPanelRef"
                                             class="flex min-h-0 flex-1 flex-col md:hidden"
                                         >
                                             <div
@@ -4785,7 +4825,7 @@ function saveGardenPlan() {
                     :size-px="52"
                     :icon-size-px="30"
                     :bottom-px="112"
-                    @click="createMenuOpen = !createMenuOpen"
+                    @click="onFloatingPlusClick"
                 />
 
                 <BottomNav active="map" />
