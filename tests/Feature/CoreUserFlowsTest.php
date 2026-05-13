@@ -766,6 +766,8 @@ test('map view returns only users beds and unassigned plants', function () {
         ->has('gardenPlan')
         ->where('beds.0.id', $usersBed->id)
         ->where('beds.0.cell_size_cm', 30)
+        ->where('beds.0.is_favorite', false)
+        ->where('beds.0.sort_order', 1)
         ->missing('beds.1')
         ->where('gardenObjects.0.id', $usersObject->id)
         ->where('gardenObjects.0.type', 'greenhouse')
