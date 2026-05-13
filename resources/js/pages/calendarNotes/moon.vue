@@ -134,7 +134,7 @@ const stars = [
 
             <!-- Üks tervik: alumine osa sama öö-tooniga, mitte hele „laht“ eraldi plokk. -->
             <div
-                class="moon-footer relative border-t border-white/12 bg-linear-to-b from-white/[0.05] to-white/[0.11] px-4 py-3 backdrop-blur-[2px] sm:px-5 sm:py-3.5"
+                class="moon-footer relative border-t border-white/14 bg-linear-to-b from-white/[0.08] to-white/[0.16] px-4 py-3 backdrop-blur-[2px] sm:px-5 sm:py-3.5"
             >
                 <p
                     class="text-sm leading-snug font-medium text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.45)]"
@@ -177,15 +177,15 @@ const stars = [
     background:
         radial-gradient(
             120% 120% at 85% 10%,
-            rgba(255, 224, 153, 0.18) 0%,
+            rgba(255, 224, 153, 0.24) 0%,
             transparent 55%
         ),
         radial-gradient(
             90% 80% at 15% 90%,
-            rgba(118, 150, 232, 0.22) 0%,
+            rgba(140, 168, 242, 0.28) 0%,
             transparent 55%
         ),
-        linear-gradient(135deg, #1e2a4a 0%, #2c3868 45%, #3b3a6a 100%);
+        linear-gradient(135deg, #2a3d5a 0%, #3d5280 45%, #4a5a90 100%);
 }
 
 .moon-star {

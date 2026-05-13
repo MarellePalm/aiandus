@@ -192,15 +192,18 @@ const weatherCardToneClass = computed(() => {
         label.includes('päike');
 
     if (isThunder) {
-        return 'from-violet-50/80 via-background to-slate-100/70';
+        return 'from-[#e8e4f0]/50 via-[#eeeaf8]/20 to-transparent';
     }
-    if (isRain || isSnow) {
-        return 'from-sky-50/80 via-background to-blue-100/70';
+    if (isSnow) {
+        return 'from-[#ddeeff]/40 via-[#eef4fa]/20 to-transparent';
+    }
+    if (isRain) {
+        return 'from-[#dde8f2]/45 via-[#eaf2f8]/20 to-transparent';
     }
     if (isClear) {
-        return 'from-amber-50/80 via-background to-emerald-50/60';
+        return 'from-[#fef3d0]/50 via-[#fdf8ed]/20 to-transparent';
     }
-    return 'from-background via-background to-muted/25';
+    return 'from-[#f0f4ee]/35 via-transparent to-transparent';
 });
 
 type WeatherAlert = {
@@ -272,7 +275,7 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
 <template>
     <div class="weather-card">
         <div
-            class="rounded-[1.35rem] border border-border/70 bg-linear-to-br p-3 shadow-sm"
+            class="bg-linear-to-br px-4 pt-3 pb-2"
             :class="weatherCardToneClass"
         >
             <div class="flex items-start justify-between gap-3">
@@ -280,20 +283,22 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                     <div class="flex items-center gap-1.5">
                         <div
                             v-if="q.isSuccess.value && locationName"
-                            class="inline-flex min-w-0 items-center rounded-full bg-card/80 px-2.5 py-1 text-xs text-foreground/80 ring-1 ring-border/70"
+                            class="inline-flex min-w-0 items-center gap-1 text-xs text-muted-foreground"
                         >
-                            <span class="material-symbols-outlined mr-1 text-sm"
+                            <span
+                                class="material-symbols-outlined shrink-0 text-sm"
                                 >location_on</span
                             >
-                            <span class="max-w-[110px] truncate sm:max-w-[160px]">{{
-                                locationName
-                            }}</span>
+                            <span
+                                class="max-w-[110px] truncate sm:max-w-[160px]"
+                                >{{ locationName }}</span
+                            >
                         </div>
                     </div>
 
                     <div class="mt-2.5 flex items-end gap-2.5">
                         <span
-                            class="text-[40px] leading-none font-bold tracking-tight text-foreground sm:text-[48px]"
+                            class="text-[32px] leading-none font-bold tracking-tight text-foreground"
                         >
                             <template v-if="q.isSuccess.value && temp !== null">
                                 {{ Math.round(temp) }}°C
@@ -331,7 +336,7 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                         v-if="q.isSuccess.value && todayHeroIconUrl"
                         :src="todayHeroIconUrl"
                         alt=""
-                        class="block h-16 w-16 object-contain opacity-95 drop-shadow-sm sm:h-20 sm:w-20"
+                        class="block h-12 w-12 object-contain opacity-95 drop-shadow-sm"
                         width="96"
                         height="96"
                     />
@@ -340,7 +345,7 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                         class="material-symbols-outlined block leading-none drop-shadow-sm"
                         :class="fallbackWeatherColorClass"
                         style="
-                            font-size: 4.5rem;
+                            font-size: 3rem;
                             font-variation-settings: 'opsz' 72;
                         "
                         aria-hidden="true"
@@ -352,11 +357,9 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
 
             <div
                 v-if="q.isSuccess.value"
-                class="mt-2.5 grid grid-cols-2 gap-1.5 xl:grid-cols-4"
+                class="mt-2.5 grid grid-cols-4 border-t border-border/30"
             >
-                <div
-                    class="rounded-xl border border-border/70 bg-card/70 px-2 py-1.5"
-                >
+                <div class="border-r border-border/30 px-2 py-1.5 last:border-r-0">
                     <p
                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                     >
@@ -378,9 +381,7 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                     </div>
                 </div>
 
-                <div
-                    class="rounded-xl border border-border/70 bg-card/70 px-2 py-1.5"
-                >
+                <div class="border-r border-border/30 px-2 py-1.5 last:border-r-0">
                     <p
                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                     >
@@ -398,9 +399,7 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                     </div>
                 </div>
 
-                <div
-                    class="rounded-xl border border-border/70 bg-card/70 px-2 py-1.5"
-                >
+                <div class="border-r border-border/30 px-2 py-1.5 last:border-r-0">
                     <p
                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                     >
@@ -418,9 +417,7 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                     </div>
                 </div>
 
-                <div
-                    class="rounded-xl border border-border/70 bg-card/70 px-2 py-1.5"
-                >
+                <div class="border-r border-border/30 px-2 py-1.5 last:border-r-0">
                     <p
                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                     >
@@ -442,15 +439,15 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
 
         <div
             v-if="q.isSuccess.value && forecastDays.length"
-            class="mt-2.5"
+            class="mt-2 border-t border-border/30 px-4 pt-2 pb-3"
         >
             <div
-                class="flex gap-1.5 overflow-x-auto pb-1 sm:grid sm:grid-cols-3 sm:gap-2 sm:overflow-visible xl:grid-cols-5"
+                class="grid grid-cols-5 gap-1"
             >
                 <div
                     v-for="d in forecastDays"
                     :key="d.date"
-                    class="flex w-16 shrink-0 flex-col items-center rounded-xl border border-border/70 bg-card/80 px-1.5 py-2 shadow-sm sm:w-auto"
+                    class="flex flex-col items-center px-1 py-1 text-center"
                 >
                     <span
                         class="text-[11px] font-semibold tracking-wide text-foreground/85 uppercase"
@@ -490,7 +487,7 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
 
         <div
             v-if="geoError"
-            class="mt-4 text-xs text-red-600 dark:text-red-400"
+            class="mt-4 px-4 pb-3 text-xs text-red-600 dark:text-red-400"
         >
             Asukoht pole lubatud või pole saadaval. Luba brauseris Location
             õigused.
@@ -498,7 +495,7 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
 
         <div
             v-if="q.isError.value"
-            class="mt-4 text-xs text-red-600 dark:text-red-400"
+            class="mt-4 px-4 pb-3 text-xs text-red-600 dark:text-red-400"
         >
             {{ q.error.value?.message }}
         </div>

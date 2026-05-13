@@ -43,6 +43,17 @@ const recentPlants = computed<RecentPlant[]>(
     () => (page.props.recentPlants as RecentPlant[] | undefined) ?? [],
 );
 
+type RecentBed = {
+    id: number;
+    name: string;
+    image_url?: string | null;
+    location?: string | null;
+    plants_count?: number;
+};
+const recentBeds = computed<RecentBed[]>(
+    () => (page.props.recentBeds as RecentBed[] | undefined) ?? [],
+);
+
 type RecentSeed = {
     id: number;
     name: string;
@@ -176,58 +187,34 @@ const greeting = computed(() => {
 });
 
 const dashboardHighlights = computed(() => {
-    const summary = dashboardSummary.value;
-    const totalBeds = Math.max(1, summary.bedsCount);
-    const activeBeds = Math.max(0, summary.bedsCount - summary.emptyBedsCount);
-    const bedCoverage = Math.min(
-        100,
-        Math.round((activeBeds / totalBeds) * 100),
-    );
-    const plantsPlaced = Math.max(
-        0,
-        summary.plantsCount - summary.plantsWithoutBedCount,
-    );
-    const plantPlacement = summary.plantsCount
-        ? Math.min(100, Math.round((plantsPlaced / summary.plantsCount) * 100))
-        : 0;
-    const tasksClosed = Math.max(
-        0,
-        summary.openTasksCount - summary.overdueTasksCount,
-    );
-    const taskPace = summary.openTasksCount
-        ? Math.min(
-              100,
-              Math.round((tasksClosed / summary.openTasksCount) * 100),
-          )
-        : 100;
-
+    const s = dashboardSummary.value;
     return [
         {
             id: 'beds',
-            label: 'Peenrad aktiivsed',
-            value: `${bedCoverage}%`,
-            hint: `${activeBeds}/${summary.bedsCount} kasutuses`,
+            label: 'Peenraid',
+            value: s.bedsCount,
+            hint:
+                s.emptyBedsCount > 0
+                    ? `${s.emptyBedsCount} tühi`
+                    : 'Kõik kasutuses',
             icon: 'grid_view',
-            progress: bedCoverage,
         },
         {
             id: 'plants',
-            label: 'Taimed paigas',
-            value: `${plantPlacement}%`,
-            hint: `${plantsPlaced}/${summary.plantsCount} peenardes`,
+            label: 'Taime',
+            value: s.plantsCount,
+            hint:
+                s.plantsWithoutBedCount > 0
+                    ? `${s.plantsWithoutBedCount} ilma peenardata`
+                    : 'Kõik peenardes',
             icon: 'local_florist',
-            progress: plantPlacement,
         },
         {
-            id: 'tasks',
-            label: 'Töötempo',
-            value: `${taskPace}%`,
-            hint:
-                summary.openTasksCount > 0
-                    ? `${summary.overdueTasksCount} vajab tähelepanu`
-                    : 'Kõik tegevused kontrolli all',
-            icon: 'task_alt',
-            progress: taskPace,
+            id: 'seeds',
+            label: 'Varusid',
+            value: s.seedsCount,
+            hint: 'seemned ja istikud',
+            icon: 'shelves',
         },
     ];
 });
@@ -261,24 +248,6 @@ function noteAccentClass(note: RecentNote): string {
     if (note.done === true) return 'bg-emerald-400';
     if (note.done === false) return 'bg-amber-400';
     return 'bg-primary/60';
-}
-
-function noteDateChipClass(noteDate?: string | null): string {
-    if (!noteDate) return 'bg-muted text-muted-foreground';
-    const d = new Date(noteDate);
-    if (Number.isNaN(d.getTime())) return 'bg-muted text-muted-foreground';
-    const startOfDay = (date: Date) =>
-        new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-    const diffDays = Math.round(
-        (startOfDay(new Date()) - startOfDay(d)) / (1000 * 60 * 60 * 24),
-    );
-    if (diffDays === 0)
-        return 'bg-primary/15 text-primary ring-1 ring-primary/25';
-    if (diffDays === 1)
-        return 'bg-amber-500/10 text-amber-700 ring-1 ring-amber-500/20 dark:text-amber-300';
-    if (diffDays >= 2 && diffDays < 7)
-        return 'bg-sky-500/10 text-sky-700 ring-1 ring-sky-500/20 dark:text-sky-300';
-    return 'bg-muted/80 text-muted-foreground ring-1 ring-border/60';
 }
 
 function noteRowToneClass(note: RecentNote): string {
@@ -326,16 +295,9 @@ const notePhotoTimeline = computed(() =>
 );
 
 // Wow-efekt: ühine sissetulekuanimatsiooni progress (0 → 1) – animeerib
-// numbreid ja edenemisribasid sujuvalt sisse esimesel laadimisel.
+// tänaste tööde arvu sujuvalt sisse esimesel laadimisel.
 const appearProgress = ref(0);
 let appearRaf = 0;
-const animatedHighlights = computed(() =>
-    dashboardHighlights.value.map((item) => ({
-        ...item,
-        animatedProgress: item.progress * appearProgress.value,
-        animatedLabel: `${Math.round(item.progress * appearProgress.value)}%`,
-    })),
-);
 const animatedTodayValue = computed(() =>
     Math.round(Number(todayWorkSummary.value.value) * appearProgress.value),
 );
@@ -343,8 +305,8 @@ const animatedTodayValue = computed(() =>
 // Järjekord: salvestatakse localStorage'i, kasutaja saab plokke üles/alla tõsta
 const STORAGE_KEY = 'dashboardSectionOrder';
 const COLLAPSED_KEY = 'dashboardSectionCollapsed';
-type SectionId = 'notes' | 'weather' | 'moon';
-const DEFAULT_ORDER: SectionId[] = ['notes', 'weather', 'moon'];
+type SectionId = 'notes' | 'weather' | 'moon' | 'garden';
+const DEFAULT_ORDER: SectionId[] = ['garden', 'notes', 'weather', 'moon'];
 /** Ainult need kaks on kokku-volditavad; ülejäänud plokid on alati “lahti”. */
 const COLLAPSIBLE_SECTION_IDS: SectionId[] = ['weather', 'moon'];
 
@@ -355,7 +317,12 @@ const isDesktop = ref(false);
 let desktopMediaQuery: MediaQueryList | null = null;
 let handleDesktopChange: ((event: MediaQueryListEvent) => void) | null = null;
 
-const DESKTOP_SECTION_ORDER: SectionId[] = ['weather', 'moon', 'notes'];
+const DESKTOP_SECTION_ORDER: SectionId[] = [
+    'garden',
+    'weather',
+    'moon',
+    'notes',
+];
 
 const displaySectionOrder = computed(() => {
     if (editLayout.value || !isDesktop.value) return sectionOrder.value;
@@ -447,6 +414,7 @@ function toggleSectionCollapsed(id: SectionId) {
 }
 function sectionTitle(id: SectionId): string {
     const titles: Record<SectionId, string> = {
+        garden: 'Minu aed',
         notes: 'Viimased märkmed',
         weather: 'Ilm',
         moon: 'Kuufaas täna',
@@ -628,17 +596,15 @@ function goToFabAction(href: string) {
     closeFabMenu();
     router.visit(href);
 }
-
-/** Ühine päiseriba: ilm + kuu (sama primary/muted gradient). */
-const dashboardSectionHeaderStrip =
-    'from-primary/22 via-primary/10 to-muted/50 dark:from-primary/18 dark:via-muted/25 dark:to-card/95';
 </script>
 
 <template>
     <Head title="Töölaud" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="page page-with-bottomnav flex min-h-0 flex-col bg-muted/30">
+        <div
+            class="page page-with-bottomnav flex min-h-0 flex-col bg-background"
+        >
             <div
                 class="border-beige/50 relative mx-auto w-full max-w-[480px] overflow-x-clip border-x bg-muted/20 shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
             >
@@ -646,39 +612,39 @@ const dashboardSectionHeaderStrip =
                     title="Minu Aiapäevik"
                     :diary-label="todayLabel"
                     :show-diary-label="false"
-                    header-class="pt-4"
-                    top-row-class="mb-2"
-                    bottom-row-class="mb-1"
-                    footer-padding-class="pb-2"
+                    header-class="pt-3"
+                    top-row-class="mb-1"
+                    bottom-row-class="mb-0.5"
+                    footer-padding-class="pb-0"
                 >
-                    <div class="space-y-4">
+                    <div class="space-y-2">
                         <div
                             v-if="flash.success || flash.error"
-                            class="space-y-2"
+                            class="space-y-1.5"
                         >
                             <div
                                 v-if="flash.success"
-                                class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+                                class="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
                             >
                                 {{ flash.success }}
                             </div>
                             <div
                                 v-if="flash.error"
-                                class="rounded-2xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+                                class="rounded-2xl border border-destructive/25 bg-destructive/5 px-3 py-2 text-sm text-destructive"
                             >
                                 {{ flash.error }}
                             </div>
                         </div>
 
                         <div
-                            class="wow-hero wow-fade-up relative overflow-hidden rounded-[1.7rem] border border-primary/20 bg-linear-to-br from-primary/16 via-background to-primary/6 px-3.5 py-3 shadow-[0_12px_24px_rgba(43,74,52,0.1)] sm:px-4 sm:py-3.5"
+                            class="wow-hero wow-fade-up relative -mx-6 mt-1.5 overflow-hidden rounded-t-[1.7rem] rounded-b-2xl bg-[linear-gradient(160deg,#2d3a2d_0%,#344234_42%,#3a4c3a_100%)] px-6 py-4 sm:py-5 md:-mx-8 md:px-8 lg:-mx-10 lg:px-10"
                             style="--wow-delay: 0ms"
                         >
                             <div
-                                class="wow-blob wow-blob-a pointer-events-none absolute -top-12 -right-10 h-32 w-32 rounded-full bg-primary/15 blur-2xl"
+                                class="wow-blob wow-blob-a pointer-events-none absolute -top-12 -right-10 h-32 w-32 rounded-full bg-primary/20 blur-2xl"
                             />
                             <div
-                                class="wow-blob wow-blob-b pointer-events-none absolute -bottom-14 -left-10 h-28 w-28 rounded-full bg-emerald-300/20 blur-2xl"
+                                class="wow-blob wow-blob-b pointer-events-none absolute -bottom-14 -left-10 h-28 w-28 rounded-full bg-[#679263]/15 blur-2xl"
                             />
 
                             <div
@@ -708,29 +674,29 @@ const dashboardSectionHeaderStrip =
 
                             <div class="relative z-10">
                                 <p
-                                    class="text-xs font-semibold tracking-[0.16em] text-primary/75 uppercase"
+                                    class="text-xs font-semibold tracking-[0.16em] text-emerald-300/80 uppercase"
                                 >
                                     {{ greeting }}
                                 </p>
                                 <h2
-                                    class="mt-1 text-lg font-bold tracking-tight text-foreground sm:text-xl"
+                                    class="mt-1 text-lg font-bold tracking-tight text-white/95 sm:text-xl"
                                 >
-                                    Sinu aiapäeviku tänane ülevaade
+                                    Tere tulemast aeda
                                 </h2>
                                 <p
-                                    class="mt-1 text-sm text-muted-foreground lg:text-[13px]"
+                                    class="mt-1 text-sm text-white/65 lg:text-[13px]"
                                 >
                                     {{ todayLabel }}
                                 </p>
                                 <div
-                                    class="mt-3 grid grid-cols-3 gap-1.5 sm:gap-2"
+                                    class="mt-2 grid grid-cols-3 divide-x divide-white/15"
                                 >
                                     <div
                                         v-for="(
                                             item, itemIndex
-                                        ) in animatedHighlights"
+                                        ) in dashboardHighlights"
                                         :key="item.id"
-                                        class="wow-fade-up rounded-xl border border-border/60 bg-card/85 px-2.5 py-2 shadow-sm"
+                                        class="wow-fade-up px-2.5 py-1.5"
                                         :style="{
                                             '--wow-delay': `${120 + itemIndex * 90}ms`,
                                         }"
@@ -739,61 +705,50 @@ const dashboardSectionHeaderStrip =
                                             class="flex items-center justify-between gap-2"
                                         >
                                             <p
-                                                class="text-[10px] font-semibold tracking-[0.1em] text-muted-foreground uppercase"
+                                                class="text-[9px] font-semibold tracking-[0.12em] text-white/60 uppercase"
                                             >
                                                 {{ item.label }}
                                             </p>
                                             <span
-                                                v-if="isDesktop"
-                                                class="material-symbols-outlined text-sm text-primary/80"
+                                                class="material-symbols-outlined text-sm text-emerald-200/85"
                                             >
                                                 {{ item.icon }}
                                             </span>
                                         </div>
                                         <p
-                                            class="mt-1 text-lg font-bold tracking-tight text-foreground tabular-nums"
+                                            class="mt-1 text-xl font-black tracking-tight text-white/95 tabular-nums"
                                         >
-                                            {{ item.animatedLabel }}
+                                            {{ item.value }}
                                         </p>
                                         <p
-                                            class="mt-0.5 text-[11px] text-muted-foreground"
+                                            class="mt-0.5 text-xs font-medium text-white/70"
                                         >
                                             {{ item.hint }}
                                         </p>
-                                        <div
-                                            class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted/70"
-                                        >
-                                            <div
-                                                class="h-full rounded-full bg-linear-to-r from-primary/70 via-primary to-emerald-400/80"
-                                                :style="{
-                                                    width: `${item.animatedProgress}%`,
-                                                }"
-                                            />
-                                        </div>
                                     </div>
                                 </div>
 
                                 <div
                                     v-if="recentNotePhotos.length"
-                                    class="mt-3 rounded-2xl border border-border/60 bg-card/85 p-3"
+                                    class="mt-2"
                                 >
                                     <div
-                                        class="mb-2 flex items-center justify-between gap-2"
+                                        class="mb-1 flex items-center justify-between gap-2"
                                     >
                                         <p
-                                            class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
+                                            class="text-[11px] font-semibold tracking-[0.14em] text-white/60 uppercase"
                                         >
                                             Viimased aiapildid
                                         </p>
                                         <Link
                                             href="/calendar/overview"
-                                            class="text-xs font-medium text-primary transition hover:text-primary/80"
+                                            class="text-xs font-medium text-emerald-200 transition hover:text-white"
                                         >
                                             Ava märkmed
                                         </Link>
                                     </div>
                                     <div
-                                        class="flex gap-2.5 overflow-x-auto pb-1"
+                                        class="flex gap-2 overflow-x-auto pb-0.5"
                                     >
                                         <div
                                             v-for="photo in notePhotoTimeline"
@@ -820,18 +775,18 @@ const dashboardSectionHeaderStrip =
                                         todayWorkSummary.showValue ||
                                         todayTasks.length
                                     "
-                                    class="mt-3"
+                                    class="mt-2"
                                 >
                                     <Link
                                         :href="todayWorkSummary.href"
-                                        class="block rounded-[1.2rem] border border-border/70 bg-card/90 p-3.5 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"
+                                        class="block rounded-2xl p-2.5 transition hover:bg-white/10"
                                     >
                                         <div
-                                            class="flex items-start justify-between gap-3"
+                                            class="flex items-start justify-between gap-2"
                                         >
                                             <div class="min-w-0">
                                                 <p
-                                                    class="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                    class="text-[11px] font-semibold tracking-[0.16em] text-white/60 uppercase"
                                                 >
                                                     {{ todayWorkSummary.title }}
                                                 </p>
@@ -839,19 +794,18 @@ const dashboardSectionHeaderStrip =
                                                     v-if="
                                                         todayWorkSummary.showValue
                                                     "
-                                                    class="mt-1.5 text-2xl font-bold tracking-tight text-foreground tabular-nums"
+                                                    class="mt-1 text-2xl font-bold tracking-tight text-white/95 tabular-nums"
                                                 >
                                                     {{ animatedTodayValue }}
                                                 </p>
                                                 <p
-                                                    class="mt-1.5 text-sm text-muted-foreground"
+                                                    class="mt-1 text-sm text-white/65"
                                                 >
                                                     {{ todayWorkSummary.body }}
                                                 </p>
                                             </div>
                                             <span
-                                                v-if="isDesktop"
-                                                class="material-symbols-outlined rounded-2xl bg-primary/10 p-2 text-primary"
+                                                class="material-symbols-outlined rounded-2xl bg-white/10 p-1.5 text-emerald-100"
                                             >
                                                 {{ todayWorkSummary.icon }}
                                             </span>
@@ -859,12 +813,12 @@ const dashboardSectionHeaderStrip =
 
                                         <div
                                             v-if="todayTasks.length"
-                                            class="mt-4 space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0"
+                                            class="mt-3 space-y-1.5 lg:grid lg:grid-cols-2 lg:gap-1.5 lg:space-y-0"
                                         >
                                             <div
                                                 v-for="task in todayTasks"
                                                 :key="task.id"
-                                                class="flex items-center justify-between gap-3 rounded-2xl bg-muted/60 px-3 py-2"
+                                                class="flex items-center justify-between gap-2 rounded-2xl bg-muted/60 px-2.5 py-1.5"
                                             >
                                                 <div class="min-w-0">
                                                     <p
@@ -895,9 +849,9 @@ const dashboardSectionHeaderStrip =
                     </div>
                 </DiaryHeader>
 
-                <div v-if="editLayout" class="px-6 pt-3 md:px-8">
+                <div v-if="editLayout" class="px-6 pt-2 md:px-8">
                     <div
-                        class="rounded-2xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground"
+                        class="rounded-2xl border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
                     >
                         <p class="min-w-0">
                             <span class="font-semibold text-foreground/90"
@@ -906,7 +860,7 @@ const dashboardSectionHeaderStrip =
                             >
                         </p>
 
-                        <div class="mt-3 flex flex-wrap items-center gap-2">
+                        <div class="mt-2 flex flex-wrap items-center gap-1.5">
                             <button
                                 type="button"
                                 class="inline-flex items-center gap-2 rounded-full bg-card px-3 py-1.5 text-xs font-semibold text-foreground ring-1 ring-border transition hover:bg-muted"
@@ -935,23 +889,233 @@ const dashboardSectionHeaderStrip =
                     </div>
                 </div>
 
-                <div class="px-6 pt-4 pb-4 md:px-8">
+                <div class="px-6 pt-3 pb-3 md:px-8">
                     <div
-                        class="space-y-4"
-                        :class="
-                            editLayout
-                                ? ''
-                                : 'lg:columns-2 lg:space-y-0 lg:[column-gap:1rem]'
-                        "
+                        class="space-y-3 lg:columns-2 lg:space-y-0 lg:[column-gap:2rem]"
                     >
                         <template
                             v-for="(id, sectionIndex) in displaySectionOrder"
                             :key="id"
                         >
+                            <!-- Minu aed: peenrad + taimed -->
+                            <section
+                                v-if="id === 'garden'"
+                                class="wow-fade-up -mx-6 overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,#edf7ea_0%,#f5fbf3_60%,#f0f7ed_100%)] shadow-[0_10px_28px_rgba(69,120,58,0.09)] ring-1 ring-[#b5d9a3]/40 md:-mx-8 lg:mx-0 lg:mb-4 lg:break-inside-avoid"
+                                :style="{
+                                    '--wow-delay': `${260 + sectionIndex * 110}ms`,
+                                }"
+                            >
+                                <div
+                                    class="flex items-center justify-between gap-2 px-4 pt-3 pb-1"
+                                >
+                                    <h3
+                                        class="min-w-0 flex-1 text-[10px] font-semibold tracking-[0.18em] text-[#2a3824] uppercase"
+                                    >
+                                        {{ sectionTitle('garden') }}
+                                    </h3>
+                                    <div
+                                        class="flex shrink-0 items-center gap-1"
+                                    >
+                                        <div
+                                            v-if="editLayout"
+                                            class="flex items-center gap-1"
+                                        >
+                                            <button
+                                                type="button"
+                                                class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+                                                :disabled="
+                                                    !canMoveSectionUp('garden')
+                                                "
+                                                @click.stop="
+                                                    moveSection('garden', 'up')
+                                                "
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-sm"
+                                                    >arrow_upward</span
+                                                >
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+                                                :disabled="
+                                                    !canMoveSectionDown(
+                                                        'garden',
+                                                    )
+                                                "
+                                                @click.stop="
+                                                    moveSection(
+                                                        'garden',
+                                                        'down',
+                                                    )
+                                                "
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-sm"
+                                                    >arrow_downward</span
+                                                >
+                                            </button>
+                                        </div>
+                                        <Link
+                                            v-if="!editLayout"
+                                            href="/map"
+                                            class="text-xs font-medium text-primary transition hover:text-primary/80"
+                                        >
+                                            <span class="md:hidden"
+                                                >Peenrad</span
+                                            >
+                                            <span class="hidden md:inline"
+                                                >Aiakaart</span
+                                            >
+                                        </Link>
+                                    </div>
+                                </div>
+
+                                <!-- Peenarde horisontaalne scroll-rida -->
+                                <div
+                                    v-if="recentBeds.length"
+                                    class="flex gap-2.5 overflow-x-auto px-4 pt-1 pb-3"
+                                >
+                                    <Link
+                                        v-for="bed in recentBeds"
+                                        :key="bed.id"
+                                        href="/map"
+                                        class="group flex w-28 shrink-0 flex-col overflow-hidden rounded-xl border border-border/50 bg-muted/30 transition hover:border-primary/40 hover:bg-muted/60"
+                                    >
+                                        <div
+                                            class="relative h-16 w-full overflow-hidden bg-muted/50"
+                                        >
+                                            <img
+                                                v-if="bed.image_url"
+                                                :src="bed.image_url"
+                                                :alt="bed.name"
+                                                class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                                loading="lazy"
+                                            />
+                                            <div
+                                                v-else
+                                                class="flex h-full w-full items-center justify-center"
+                                            >
+                                                <span
+                                                    class="material-symbols-outlined text-2xl text-muted-foreground/40"
+                                                    >grid_view</span
+                                                >
+                                            </div>
+                                        </div>
+                                        <div class="px-2 py-1.5">
+                                            <p
+                                                class="truncate text-xs font-semibold text-foreground"
+                                            >
+                                                {{ bed.name }}
+                                            </p>
+                                            <p
+                                                class="text-[10px] text-muted-foreground"
+                                            >
+                                                {{ bed.plants_count ?? 0 }}
+                                                taime
+                                            </p>
+                                        </div>
+                                    </Link>
+                                </div>
+
+                                <!-- Viimased taimed -->
+                                <div
+                                    v-if="recentPlants.length"
+                                    class="border-t border-[#b5d9a3]/35"
+                                >
+                                    <div
+                                        class="flex items-center justify-between px-4 pt-3 pb-1"
+                                    >
+                                        <span
+                                            class="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                            >Viimased taimed</span
+                                        >
+                                        <Link
+                                            href="/plants"
+                                            class="text-xs font-medium text-primary hover:text-primary/80"
+                                            >Kõik</Link
+                                        >
+                                    </div>
+                                    <div class="space-y-px px-4 pb-2">
+                                        <Link
+                                            v-for="plant in recentPlants.slice(
+                                                0,
+                                                3,
+                                            )"
+                                            :key="plant.id"
+                                            :href="`/plants/${plant.id}`"
+                                            class="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition hover:bg-muted/50"
+                                        >
+                                            <div
+                                                class="h-8 w-8 shrink-0 overflow-hidden rounded-lg bg-muted/60"
+                                            >
+                                                <img
+                                                    v-if="plant.image_url"
+                                                    :src="plant.image_url"
+                                                    :alt="plant.name"
+                                                    class="h-full w-full object-cover"
+                                                    loading="lazy"
+                                                />
+                                                <div
+                                                    v-else
+                                                    class="flex h-full w-full items-center justify-center"
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined text-base text-muted-foreground/50"
+                                                        >local_florist</span
+                                                    >
+                                                </div>
+                                            </div>
+                                            <div class="min-w-0 flex-1">
+                                                <p
+                                                    class="truncate text-sm font-medium text-foreground"
+                                                >
+                                                    {{ plant.name }}
+                                                </p>
+                                                <p
+                                                    v-if="plant.category"
+                                                    class="text-[10px] text-muted-foreground"
+                                                >
+                                                    {{ plant.category.name }}
+                                                </p>
+                                            </div>
+                                            <span
+                                                class="material-symbols-outlined text-base text-muted-foreground/40"
+                                                >chevron_right</span
+                                            >
+                                        </Link>
+                                    </div>
+                                </div>
+
+                                <!-- Tühi olek -->
+                                <div
+                                    v-if="
+                                        !recentBeds.length &&
+                                        !recentPlants.length
+                                    "
+                                    class="px-4 pt-1 pb-4"
+                                >
+                                    <p class="text-sm text-muted-foreground">
+                                        Aia sisu puudub veel. Lisa esimene
+                                        peenar aiakaardilt.
+                                    </p>
+                                    <Link
+                                        href="/map"
+                                        class="mt-2 inline-flex items-center gap-2 rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground shadow-sm"
+                                    >
+                                        Ava aiakaart
+                                        <span
+                                            class="material-symbols-outlined text-base"
+                                            >arrow_forward</span
+                                        >
+                                    </Link>
+                                </div>
+                            </section>
+
                             <!-- Viimased märkmed -->
                             <section
                                 v-if="id === 'notes'"
-                                class="wow-fade-up overflow-hidden rounded-[1.6rem] border border-border bg-card/90 shadow-sm lg:mb-4 lg:break-inside-avoid"
+                                class="wow-fade-up -mx-6 overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,#fffaf0_0%,#f3f7ed_100%)] shadow-[0_10px_28px_rgba(69,89,58,0.1)] ring-1 ring-[#d9cbae]/45 md:-mx-8 lg:mx-0 lg:mb-4 lg:break-inside-avoid"
                                 :class="
                                     editLayout ? 'ring-1 ring-primary/25' : ''
                                 "
@@ -960,11 +1124,10 @@ const dashboardSectionHeaderStrip =
                                 }"
                             >
                                 <div
-                                    class="flex items-center justify-between gap-3 border-b border-border bg-linear-to-r px-4 py-3"
-                                    :class="dashboardSectionHeaderStrip"
+                                    class="flex items-center justify-between gap-2 px-4 pt-3 pb-1"
                                 >
                                     <h3
-                                        class="min-w-0 flex-1 text-sm font-semibold text-foreground"
+                                        class="min-w-0 flex-1 text-[10px] font-semibold tracking-[0.18em] text-[#2a3824] uppercase"
                                     >
                                         {{ sectionTitle('notes') }}
                                     </h3>
@@ -1009,7 +1172,7 @@ const dashboardSectionHeaderStrip =
                                         <Link
                                             v-if="!editLayout"
                                             href="/calendar/overview"
-                                            class="text-sm font-medium text-primary transition hover:text-primary/80"
+                                            class="text-xs font-medium text-primary transition hover:text-primary/80"
                                         >
                                             Ava kõik
                                         </Link>
@@ -1018,28 +1181,28 @@ const dashboardSectionHeaderStrip =
 
                                 <div
                                     v-if="recentNotes.length"
-                                    class="note-paper space-y-1.5 p-2.5 lg:space-y-2 lg:p-3"
+                                    class="note-paper space-y-px px-4 pt-0 pb-2 lg:space-y-0.5 lg:px-4 lg:pt-0 lg:pb-2"
                                 >
                                     <Link
                                         v-for="(
                                             note, noteIndex
-                                        ) in recentNotes.slice(0, 5)"
+                                        ) in recentNotes.slice(0, 3)"
                                         :key="note.id"
                                         href="/calendar/overview"
-                                        class="note-row group relative block overflow-hidden rounded-xl border border-border/60 bg-card/85 px-2.5 py-2 transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-card hover:shadow-[0_4px_14px_rgba(43,74,52,0.12)] lg:rounded-2xl lg:px-3 lg:py-2.5"
+                                        class="note-row group relative block overflow-hidden rounded-lg px-2.5 py-1.5 transition hover:bg-muted/50"
                                         :class="noteRowToneClass(note)"
                                         :style="{
                                             '--note-row-delay': `${noteIndex * 60}ms`,
                                         }"
                                     >
                                         <span
-                                            class="absolute inset-y-0 left-0 w-0.5 rounded-r-full sm:w-1"
+                                            class="absolute inset-y-0 left-0 w-[3px]"
                                             :class="noteAccentClass(note)"
                                             aria-hidden="true"
                                         />
 
                                         <div
-                                            class="flex items-center gap-2.5 pl-1 sm:pl-1.5"
+                                            class="flex items-center gap-2 pl-1 sm:pl-1"
                                         >
                                             <div class="min-w-0 flex-1">
                                                 <div
@@ -1059,7 +1222,7 @@ const dashboardSectionHeaderStrip =
                                                         </span>
                                                     </span>
                                                     <span
-                                                        class="min-w-0 truncate text-[13px] leading-tight font-semibold text-foreground sm:text-sm"
+                                                        class="min-w-0 truncate text-sm leading-snug font-semibold text-foreground"
                                                         :class="
                                                             note.done === true
                                                                 ? 'line-through decoration-emerald-500/50 decoration-1'
@@ -1073,15 +1236,10 @@ const dashboardSectionHeaderStrip =
                                                     </span>
                                                 </div>
                                                 <div
-                                                    class="mt-1 flex items-center gap-1.5"
+                                                    class="mt-0.5 flex items-center gap-1.5"
                                                 >
                                                     <span
-                                                        class="inline-flex shrink-0 items-center rounded-full px-1.5 py-px text-[10px] font-semibold tracking-wide"
-                                                        :class="
-                                                            noteDateChipClass(
-                                                                note.note_date,
-                                                            )
-                                                        "
+                                                        class="shrink-0 text-xs font-normal text-muted-foreground"
                                                     >
                                                         {{
                                                             noteRelativeDate(
@@ -1122,7 +1280,7 @@ const dashboardSectionHeaderStrip =
 
                                 <div
                                     v-else
-                                    class="m-4 rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-4"
+                                    class="m-3 rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-3 md:px-6 lg:px-0"
                                 >
                                     <p class="text-sm text-muted-foreground">
                                         Esimene märge aitab hiljem paremini
@@ -1131,7 +1289,7 @@ const dashboardSectionHeaderStrip =
                                     </p>
                                     <Link
                                         href="/calendar/note-form"
-                                        class="mt-3 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm"
+                                        class="mt-2 inline-flex items-center gap-2 rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground shadow-sm"
                                     >
                                         Lisa esimene märge
                                         <span
@@ -1145,7 +1303,7 @@ const dashboardSectionHeaderStrip =
                             <!-- Weather -->
                             <section
                                 v-if="id === 'weather'"
-                                class="wow-fade-up overflow-hidden rounded-[1.6rem] border border-border bg-card/95 shadow-sm lg:mb-4 lg:break-inside-avoid"
+                                class="wow-fade-up -mx-6 overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,#eaf6ff_0%,#f7fbff_54%,#eef7f0_100%)] shadow-[0_10px_28px_rgba(92,132,161,0.12)] ring-1 ring-[#a2c6e5]/40 md:-mx-8 lg:mx-0 lg:mb-4 lg:break-inside-avoid"
                                 :class="
                                     editLayout ? 'ring-1 ring-primary/25' : ''
                                 "
@@ -1154,12 +1312,11 @@ const dashboardSectionHeaderStrip =
                                 }"
                             >
                                 <div
-                                    class="group flex cursor-pointer items-center justify-between gap-3 border-b border-border bg-linear-to-r px-4 py-3"
-                                    :class="dashboardSectionHeaderStrip"
+                                    class="group flex cursor-pointer items-center justify-between gap-2 px-4 pt-3 pb-1"
                                     @click="toggleSectionCollapsed('weather')"
                                 >
                                     <h3
-                                        class="min-w-0 flex-1 text-sm font-semibold text-foreground"
+                                        class="min-w-0 flex-1 text-[10px] font-semibold tracking-[0.18em] text-sky-950 uppercase"
                                     >
                                         {{ sectionTitle('weather') }}
                                     </h3>
@@ -1226,7 +1383,7 @@ const dashboardSectionHeaderStrip =
                                 </div>
                                 <div
                                     v-show="isSectionExpanded('weather')"
-                                    class="p-3 sm:p-4"
+                                    class="px-4 pt-0 pb-1.5"
                                 >
                                     <DashboardWeather />
                                 </div>
@@ -1235,7 +1392,7 @@ const dashboardSectionHeaderStrip =
                             <!-- Moon -->
                             <section
                                 v-if="id === 'moon'"
-                                class="wow-fade-up overflow-hidden rounded-[1.6rem] border border-border bg-card/95 shadow-sm lg:mb-4 lg:break-inside-avoid"
+                                class="wow-fade-up -mx-6 overflow-hidden rounded-[1.6rem] md:-mx-8 lg:mx-0 lg:mb-3 lg:break-inside-avoid"
                                 :class="
                                     editLayout ? 'ring-1 ring-primary/25' : ''
                                 "
@@ -1244,41 +1401,24 @@ const dashboardSectionHeaderStrip =
                                 }"
                             >
                                 <div
-                                    class="group flex cursor-pointer items-center justify-between gap-3 border-b border-border bg-linear-to-r px-4 py-3"
-                                    :class="dashboardSectionHeaderStrip"
+                                    class="flex cursor-pointer items-center justify-between gap-2 bg-[linear-gradient(135deg,#2a3d5c_0%,#3d5282_100%)] px-4 pt-3 pb-1"
                                     @click="toggleSectionCollapsed('moon')"
                                 >
                                     <h3
-                                        class="min-w-0 flex-1 text-sm font-semibold text-foreground"
+                                        class="min-w-0 flex-1 text-[10px] font-semibold tracking-[0.18em] text-white/50 uppercase"
                                     >
                                         {{ sectionTitle('moon') }}
                                     </h3>
                                     <div
                                         class="flex shrink-0 items-center gap-1"
                                     >
-                                        <span
-                                            v-if="editLayout"
-                                            class="material-symbols-outlined text-lg text-muted-foreground transition"
-                                            :class="[
-                                                'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100',
-                                                {
-                                                    'rotate-180':
-                                                        isSectionExpanded(
-                                                            'moon',
-                                                        ),
-                                                },
-                                            ]"
-                                            aria-hidden="true"
-                                        >
-                                            expand_more
-                                        </span>
                                         <div
                                             v-if="editLayout"
                                             class="flex items-center gap-1"
                                         >
                                             <button
                                                 type="button"
-                                                class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+                                                class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-white/20 bg-white/10 text-white/70 transition hover:text-white disabled:opacity-40"
                                                 :disabled="
                                                     !canMoveSectionUp('moon')
                                                 "
@@ -1293,7 +1433,7 @@ const dashboardSectionHeaderStrip =
                                             </button>
                                             <button
                                                 type="button"
-                                                class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background/70 text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+                                                class="inline-flex h-6 w-6 items-center justify-center rounded-md border border-white/20 bg-white/10 text-white/70 transition hover:text-white disabled:opacity-40"
                                                 :disabled="
                                                     !canMoveSectionDown('moon')
                                                 "
@@ -1310,14 +1450,17 @@ const dashboardSectionHeaderStrip =
                                         <Link
                                             v-if="!editLayout"
                                             href="/calendar/moon"
-                                            class="text-sm font-medium text-primary transition hover:text-primary/80"
+                                            class="shrink-0 text-xs font-medium text-white/60 transition hover:text-white/90"
                                             @click.stop
                                         >
                                             Ava kõik
                                         </Link>
                                     </div>
                                 </div>
-                                <div v-show="isSectionExpanded('moon')">
+                                <div
+                                    v-show="isSectionExpanded('moon')"
+                                    class="overflow-hidden rounded-b-[1.6rem]"
+                                >
                                     <Moon />
                                 </div>
                             </section>
@@ -1328,7 +1471,7 @@ const dashboardSectionHeaderStrip =
 
             <!-- Lumememma-stiilis + nupp: kiirtegevused ümardatud ikoonidena selle kohal -->
             <div
-                class="fixed right-4 bottom-24 z-30 flex flex-col-reverse items-end gap-3"
+                class="fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom,0px)+0.75rem)] z-30 flex flex-col-reverse items-end gap-2"
             >
                 <Transition
                     enter-active-class="transition duration-200 ease-out"
