@@ -118,6 +118,48 @@ class BedController extends Controller
         ];
     }
 
+    private function collectPlantPositions(array $cells): array
+    {
+        $plantPositions = [];
+
+        foreach ($cells as $cell) {
+            if (! is_array($cell)) {
+                continue;
+            }
+
+            $row = (int) ($cell['y'] ?? 0);
+            $column = (int) ($cell['x'] ?? 0);
+
+            foreach ($this->normalizeCellPlants($cell['plants'] ?? []) as $plant) {
+                if (($plant['plant_id'] ?? 0) > 0) {
+                    $plantPositions[(int) $plant['plant_id']] = "{$row},{$column}";
+                }
+            }
+        }
+
+        return $plantPositions;
+    }
+
+    private function validatePlantPositionsInLayout(array $plantPositions, array $layout): void
+    {
+        $rowCount = count($layout);
+        $colCount = $rowCount > 0 ? max(array_map('count', $layout)) : 0;
+
+        foreach ($plantPositions as $position) {
+            if (! is_string($position) || ! preg_match('/^\d+,\d+$/', $position)) {
+                continue;
+            }
+
+            [$row, $column] = array_map('intval', explode(',', $position));
+
+            if ($row < 0 || $column < 0 || $row >= $rowCount || $column >= $colCount || ($layout[$row][$column] ?? -1) !== 1) {
+                throw ValidationException::withMessages([
+                    'cells' => 'Taimed peavad jääma peenraruutude peale.',
+                ]);
+            }
+        }
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -130,7 +172,7 @@ class BedController extends Controller
             ],
             'name' => ['required', 'string', 'max:120'],
             'location' => ['nullable', 'string', 'max:255'],
-            'image' => ['nullable', 'image', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
+            'image' => ['nullable', 'image', 'max:5120', 'dimensions:min_width=300,min_height=300,max_width=6000,max_height=6000'],
             'garden_x' => ['nullable', 'integer', 'min:0', 'max:5000'],
             'garden_y' => ['nullable', 'integer', 'min:0', 'max:5000'],
             'cell_size_cm' => ['nullable', 'integer', 'min:10', 'max:200'],
@@ -152,16 +194,16 @@ class BedController extends Controller
         $rows = 1;
         $columns = 1;
 
-        if (! empty($data['cells']) && is_array($data['cells'])) {
-            $converted = $this->convertCellsToLayout($data['cells']);
-            $layout = $converted['layout'];
-            $rows = $converted['rows'];
-            $columns = $converted['columns'];
-        } elseif (isset($data['layout']) && is_array($data['layout'])) {
+        if (isset($data['layout']) && is_array($data['layout'])) {
             $layout = $this->normalizeLayout($data['layout']);
             $this->validateNormalizedLayout($layout);
             $rows = count($layout);
             $columns = $rows > 0 ? max(array_map('count', $layout)) : 1;
+        } elseif (! empty($data['cells']) && is_array($data['cells'])) {
+            $converted = $this->convertCellsToLayout($data['cells']);
+            $layout = $converted['layout'];
+            $rows = $converted['rows'];
+            $columns = $converted['columns'];
         }
 
         $canStoreBedImage = Schema::hasColumn('beds', 'image_url');
@@ -196,9 +238,12 @@ class BedController extends Controller
 
         $bed = Bed::create($payload);
 
-        Session::flash('success', 'Peenar lisatud.');
+        Session::flash('success', 'Peenar lisatud. Lohista see aiaplaanil õigesse kohta.');
 
-        return redirect()->route('beds.show', $bed);
+        return redirect()->route('map.show', [
+            'gardenPlan' => $gardenPlanId,
+            'bed' => $bed->id,
+        ]);
     }
 
     public function update(Request $request, Bed $bed)
@@ -208,7 +253,7 @@ class BedController extends Controller
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:120'],
             'location' => ['nullable', 'string', 'max:255'],
-            'image' => ['nullable', 'image', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
+            'image' => ['nullable', 'image', 'max:5120', 'dimensions:min_width=300,min_height=300,max_width=6000,max_height=6000'],
             'garden_x' => ['sometimes', 'integer', 'min:0', 'max:5000'],
             'garden_y' => ['sometimes', 'integer', 'min:0', 'max:5000'],
             'cell_size_cm' => ['sometimes', 'integer', 'min:10', 'max:200'],
@@ -236,13 +281,7 @@ class BedController extends Controller
 
         $plantPositions = null;
 
-        if (! empty($data['cells']) && is_array($data['cells'])) {
-            $converted = $this->convertCellsToLayout($data['cells']);
-            $payload['rows'] = $converted['rows'];
-            $payload['columns'] = $converted['columns'];
-            $payload['layout'] = $converted['layout'];
-            $plantPositions = $converted['plant_positions'];
-        } elseif (isset($data['layout']) && is_array($data['layout']) && ! empty($data['layout'])) {
+        if (isset($data['layout']) && is_array($data['layout']) && ! empty($data['layout'])) {
             $normalizedLayout = $this->normalizeLayout($data['layout']);
             $this->validateNormalizedLayout($normalizedLayout);
             $rowCount = count($normalizedLayout);
@@ -272,6 +311,17 @@ class BedController extends Controller
             $payload['rows'] = count($normalizedLayout);
             $payload['columns'] = max(array_map('count', $normalizedLayout));
             $payload['layout'] = $normalizedLayout;
+
+            if (! empty($data['cells']) && is_array($data['cells'])) {
+                $plantPositions = $this->collectPlantPositions($data['cells']);
+                $this->validatePlantPositionsInLayout($plantPositions, $normalizedLayout);
+            }
+        } elseif (! empty($data['cells']) && is_array($data['cells'])) {
+            $converted = $this->convertCellsToLayout($data['cells']);
+            $payload['rows'] = $converted['rows'];
+            $payload['columns'] = $converted['columns'];
+            $payload['layout'] = $converted['layout'];
+            $plantPositions = $converted['plant_positions'];
         }
 
         $bed->update($payload);
@@ -310,5 +360,16 @@ class BedController extends Controller
         $bed->delete();
 
         return back()->with('success', 'Peenar eemaldatud.');
+    }
+
+    public function toggleFavorite(Request $request, Bed $bed)
+    {
+        abort_unless($bed->user_id === $request->user()->id, 403);
+
+        $bed->update([
+            'is_favorite' => ! $bed->is_favorite,
+        ]);
+
+        return back();
     }
 }

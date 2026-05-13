@@ -33,7 +33,7 @@ return [
     'file' => ':attribute peab olema fail.',
     'image' => ':attribute peab olema pildifail (jpg, jpeg, png, bmp, gif, svg või webp).',
     'mimes' => ':attribute peab olema tüüpi: :values.',
-    'dimensions' => ':attribute mõõdud ei sobi. Maksimaalne lubatud suurus on 6000x6000 px.',
+    'dimensions' => ':attribute mõõdud ei sobi. Pilt peab olema vähemalt :min_width×:min_height px ja mõlemad küljed kuni :max_width×:max_height px.',
 
     'custom' => [
         'image' => [

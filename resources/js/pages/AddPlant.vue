@@ -1,42 +1,47 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { onBeforeUnmount, ref } from 'vue';
 
 import SaveButton from '@/components/SaveButton.vue';
 import { normalizeImageForUpload } from '@/lib/imageUpload';
 
-const form = ref({
-    species: '',
-    category: '',
+type Category = {
+    id: number;
+    name: string;
+};
+
+const props = defineProps<{
+    categories: Category[];
+}>();
+
+type PlantForm = {
+    category_id: number | null;
+    subtitle: string;
+    planted_at: string;
+    watering_frequency: string;
+    fertilizing_frequency: string;
+    notes: string;
+    image: File | null;
+    quantity: number;
+};
+
+const form = useForm<PlantForm>({
+    category_id: props.categories?.[0]?.id ?? null,
+    subtitle: '',
     planted_at: '',
-    watering: '',
-    fertilizing: '',
+    watering_frequency: '',
+    fertilizing_frequency: '',
     notes: '',
+    image: null,
+    quantity: 1,
 });
 
-const processing = ref(false);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const imagePreview = ref<string | null>(null);
-const categoryOptions = ['Köögiviljad', 'Lilled', 'Toataimed', 'Maitsetaimed'];
-const plantedAtDisplay = ref('');
 
-const parseEtDateToIso = (value: string) => {
-    const trimmed = value.trim();
-    if (!trimmed) return '';
-    const m = trimmed.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
-    if (!m) return null;
-    const day = Number.parseInt(m[1], 10);
-    const month = Number.parseInt(m[2], 10);
-    const year = Number.parseInt(m[3], 10);
-    const date = new Date(year, month - 1, day);
-    if (
-        date.getFullYear() !== year ||
-        date.getMonth() !== month - 1 ||
-        date.getDate() !== day
-    ) {
-        return null;
-    }
-    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+const revokePreview = () => {
+    if (imagePreview.value) URL.revokeObjectURL(imagePreview.value);
+    imagePreview.value = null;
 };
 
 function closeModal() {
@@ -48,16 +53,23 @@ function closeModal() {
 }
 
 function submit() {
-    const parsed = parseEtDateToIso(plantedAtDisplay.value);
-    if (parsed !== null) {
-        form.value.planted_at = parsed;
+    const quantity = Number(form.quantity);
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
+        form.setError(
+            'quantity',
+            'Taimede arv peab olema täisarv vahemikus 1 kuni 100.',
+        );
+        return;
     }
-    // TODO: wire this up to an Inertia post when backend route is ready
-    // example:
-    // router.post(route('plants.store'), form.value, { onStart: () => (processing.value = true), onFinish: () => (processing.value = false) });
-    // For now we just log so the page is usable without backend.
+    form.clearErrors('quantity');
+    form.quantity = quantity;
 
-    console.log('Add plant form submitted:', form.value);
+    form.post('/plants', {
+        forceFormData: true,
+        onSuccess: () => {
+            revokePreview();
+        },
+    });
 }
 
 function openPicker() {
@@ -67,10 +79,20 @@ function openPicker() {
 async function onFileChange(e: Event) {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0] ?? null;
-    if (!file || !file.type.startsWith('image/')) return;
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+
+    revokePreview();
     const normalizedFile = await normalizeImageForUpload(file);
+    form.image = normalizedFile;
+    form.clearErrors('image');
     imagePreview.value = URL.createObjectURL(normalizedFile);
+    input.value = '';
 }
+
+onBeforeUnmount(() => {
+    revokePreview();
+});
 </script>
 
 <template>
@@ -117,7 +139,26 @@ async function onFileChange(e: Event) {
                         </button>
                     </div>
 
+                    <div
+                        v-if="!categories.length"
+                        class="mt-6 rounded-2xl border border-black/10 bg-white/80 p-5 text-center"
+                    >
+                        <p class="text-sm font-medium text-[#2E2E2E]">
+                            Taimede kategooriaid pole veel lisatud.
+                        </p>
+                        <p class="mt-2 text-sm text-[#2E2E2E]/70">
+                            Loo esmalt vähemalt üks kategooria taimevaates.
+                        </p>
+                        <Link
+                            href="/plants"
+                            class="mt-4 inline-flex items-center justify-center rounded-full bg-[#6B8C68] px-4 py-2 text-sm font-semibold text-white hover:bg-[#4F6A52]"
+                        >
+                            Mine taimevaatesse
+                        </Link>
+                    </div>
+
                     <form
+                        v-else
                         class="mt-5 flex flex-col gap-5"
                         @submit.prevent="submit"
                     >
@@ -127,11 +168,18 @@ async function onFileChange(e: Event) {
                                 >Sort</label
                             >
                             <input
-                                v-model="form.species"
+                                v-model="form.subtitle"
                                 type="text"
                                 placeholder="nt. Monstera Deliciosa"
                                 class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                @input="form.clearErrors('subtitle')"
                             />
+                            <p
+                                v-if="form.errors.subtitle"
+                                class="mt-2 text-sm text-red-600"
+                            >
+                                {{ form.errors.subtitle }}
+                            </p>
                         </div>
 
                         <div>
@@ -140,20 +188,27 @@ async function onFileChange(e: Event) {
                                 >Kategooria</label
                             >
                             <select
-                                v-model="form.category"
+                                v-model="form.category_id"
                                 class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                @change="form.clearErrors('category_id')"
                             >
-                                <option value="" disabled>
-                                    Vali kategooria...
+                                <option :value="null" disabled>
+                                    Vali kategooria…
                                 </option>
                                 <option
-                                    v-for="option in categoryOptions"
-                                    :key="option"
-                                    :value="option"
+                                    v-for="c in categories"
+                                    :key="c.id"
+                                    :value="c.id"
                                 >
-                                    {{ option }}
+                                    {{ c.name }}
                                 </option>
                             </select>
+                            <p
+                                v-if="form.errors.category_id"
+                                class="mt-2 text-sm text-red-600"
+                            >
+                                {{ form.errors.category_id }}
+                            </p>
                         </div>
 
                         <div>
@@ -162,14 +217,44 @@ async function onFileChange(e: Event) {
                                 >Istutamise kuupäev</label
                             >
                             <input
-                                v-model="plantedAtDisplay"
-                                type="text"
-                                inputmode="numeric"
-                                placeholder="PP.KK.AAAA"
+                                v-model="form.planted_at"
+                                type="date"
+                                lang="et-EE"
                                 class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                @change="form.clearErrors('planted_at')"
                             />
                             <p class="mt-2 text-xs text-[#2E2E2E]/60">
-                                Kuupäeva formaat: (PP.KK.AAAA), nt 05.09.2026
+                                Vali kuupäev kalendrist (vorming sõltub
+                                brauserist).
+                            </p>
+                            <p
+                                v-if="form.errors.planted_at"
+                                class="mt-2 text-sm text-red-600"
+                            >
+                                {{ form.errors.planted_at }}
+                            </p>
+                        </div>
+
+                        <div>
+                            <label
+                                class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase"
+                                >Taimede arv (tk)</label
+                            >
+                            <input
+                                v-model="form.quantity"
+                                type="number"
+                                min="1"
+                                max="100"
+                                step="1"
+                                placeholder="1"
+                                class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
+                                @input="form.clearErrors('quantity')"
+                            />
+                            <p
+                                v-if="form.errors.quantity"
+                                class="mt-2 text-sm text-red-600"
+                            >
+                                {{ form.errors.quantity }}
                             </p>
                         </div>
 
@@ -179,7 +264,7 @@ async function onFileChange(e: Event) {
                                 >Kastmine</label
                             >
                             <input
-                                v-model="form.watering"
+                                v-model="form.watering_frequency"
                                 type="text"
                                 placeholder="nt. iga nädal"
                                 class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
@@ -192,7 +277,7 @@ async function onFileChange(e: Event) {
                                 >Väetamine</label
                             >
                             <input
-                                v-model="form.fertilizing"
+                                v-model="form.fertilizing_frequency"
                                 type="text"
                                 placeholder="nt. iga 2 nädala tagant"
                                 class="mt-3 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-[#2E2E2E] shadow-sm outline-none focus:border-[#6B8C68] focus:ring-2 focus:ring-[#6B8C68]/20"
@@ -233,6 +318,12 @@ async function onFileChange(e: Event) {
                                     />
                                 </template>
                             </button>
+                            <p
+                                v-if="form.errors.image"
+                                class="mt-2 text-sm text-red-600"
+                            >
+                                {{ form.errors.image }}
+                            </p>
                         </div>
 
                         <div>
@@ -251,7 +342,7 @@ async function onFileChange(e: Event) {
                         <div class="sticky bottom-0 bg-[#FAF8F4] pt-4 pb-1">
                             <SaveButton
                                 type="submit"
-                                :disabled="processing"
+                                :disabled="form.processing"
                                 class="bg-[#6B8C68] text-white hover:bg-[#4F6A52]"
                             />
                         </div>

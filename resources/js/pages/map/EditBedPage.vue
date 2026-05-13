@@ -13,6 +13,7 @@ type Bed = {
     name: string;
     location: string | null;
     image_url?: string | null;
+    is_favorite?: boolean;
     cell_size_cm?: number;
     layout?: number[][] | null;
     plants?: {
@@ -40,26 +41,22 @@ const breadcrumbs = [
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="page page-with-bottomnav">
             <main class="mx-auto w-full max-w-5xl space-y-4 px-4 pb-6">
-                <section class="page-container-wide">
-                    <DiaryHeader
-                        title="Muuda peenart"
-                        title-class="text-foreground text-3xl font-bold tracking-tight"
-                        header-class="pt-6 px-0 md:px-0"
-                        top-row-class="mb-2"
-                        bottom-row-class="mb-0"
-                    >
-                        <template #leading>
-                            <BackIconButton
-                                :href="mapHref"
-                                aria-label="Tagasi peenarde vaatesse"
-                            />
-                        </template>
-                    </DiaryHeader>
-                </section>
+                <DiaryHeader
+                    title="Muuda peenart"
+                    title-class="text-foreground text-2xl font-semibold tracking-tight"
+                    header-class="pt-5 px-0 md:px-0"
+                    top-row-class="mb-2"
+                    bottom-row-class="mb-0"
+                >
+                    <template #leading>
+                        <BackIconButton
+                            :href="mapHref"
+                            aria-label="Tagasi peenarde vaatesse"
+                        />
+                    </template>
+                </DiaryHeader>
 
-                <section class="page-container-wide">
-                    <AddBed mode="edit" :bed="bed" />
-                </section>
+                <AddBed mode="edit" :bed="bed" />
             </main>
 
             <BottomNav active="map" />

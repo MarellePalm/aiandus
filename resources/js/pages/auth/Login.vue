@@ -69,10 +69,10 @@ defineProps<{
                 >
                     <div class="flex flex-col gap-2">
                         <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium text-muted-foreground">Email</span>
+                            <span class="text-sm font-medium text-muted-foreground">E-post</span>
                         </div>
                         <label class="auth-field">
-                            <span class="sr-only">Email</span>
+                            <span class="sr-only">E-post</span>
                             <input
                                 id="email-desktop"
                                 type="email"
@@ -81,7 +81,7 @@ defineProps<{
                                 autofocus
                                 :tabindex="1"
                                 autocomplete="email"
-                                placeholder="Email"
+                                placeholder="E-post"
                                 class="auth-input"
                             />
                         </label>
@@ -180,11 +180,11 @@ defineProps<{
                 >
                     <div class="flex flex-col gap-2">
                         <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium text-muted-foreground">Email</span>
+                            <span class="text-sm font-medium text-muted-foreground">E-post</span>
                         </div>
 
                         <label class="auth-field">
-                            <span class="sr-only">Email</span>
+                            <span class="sr-only">E-post</span>
                             <input
                                 id="email"
                                 type="email"
@@ -193,7 +193,7 @@ defineProps<{
                                 autofocus
                                 :tabindex="1"
                                 autocomplete="email"
-                                placeholder="Email"
+                                placeholder="E-post"
                                 class="auth-input"
                             />
                         </label>

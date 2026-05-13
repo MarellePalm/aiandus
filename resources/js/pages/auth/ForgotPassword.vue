@@ -42,18 +42,18 @@ defineProps<{
                         <div class="flex items-center justify-between">
                             <span
                                 class="text-sm font-medium text-muted-foreground"
-                                >Email</span
+                                >E-post</span
                             >
                         </div>
                         <label class="auth-field">
-                            <span class="sr-only">Email</span>
+                            <span class="sr-only">E-post</span>
                             <input
                                 id="email"
                                 type="email"
                                 name="email"
                                 autocomplete="off"
                                 autofocus
-                                placeholder="Email"
+                                placeholder="E-post"
                                 class="auth-input"
                             />
                         </label>

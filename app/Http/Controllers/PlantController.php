@@ -6,11 +6,27 @@ use App\Models\Bed;
 use App\Models\Category;
 use App\Models\Plant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class PlantController extends Controller
 {
+    public function create()
+    {
+        $user = request()->user();
+
+        $categories = Category::query()
+            ->where('user_id', $user->id)
+            ->where('scope', Category::SCOPE_PLANT)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return Inertia::render('AddPlant', [
+            'categories' => $categories,
+        ]);
+    }
+
     public function index()
     {
         $user = request()->user();
@@ -123,7 +139,7 @@ class PlantController extends Controller
             'watering_frequency' => ['nullable', 'string', 'max:255'],
             'fertilizing_frequency' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
-            'image' => ['nullable', 'image', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
+            'image' => ['nullable', 'image', 'max:5120', 'dimensions:min_width=300,min_height=300,max_width=6000,max_height=6000'],
             'quantity' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
@@ -191,7 +207,7 @@ class PlantController extends Controller
             'fertilizing_frequency' => ['nullable', 'string', 'max:255'],
             'bed_id' => ['nullable', 'exists:beds,id'],
             'position_in_bed' => ['nullable', 'string', 'max:120'],
-            'image' => ['nullable', 'image', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
+            'image' => ['nullable', 'image', 'max:5120', 'dimensions:min_width=300,min_height=300,max_width=6000,max_height=6000'],
             'quantity' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
@@ -208,6 +224,21 @@ class PlantController extends Controller
         }
 
         unset($data['image']);
+
+        $assigningToBedFromStock = $plant->bed_id === null
+            && array_key_exists('bed_id', $data)
+            && ! empty($data['bed_id'])
+            && array_key_exists('position_in_bed', $data)
+            && ($data['position_in_bed'] ?? '') !== '';
+
+        $prevQty = max(1, (int) ($plant->quantity ?? 1));
+        $assignQty = $prevQty;
+
+        if ($assigningToBedFromStock) {
+            $requested = array_key_exists('quantity', $data) ? (int) $data['quantity'] : $prevQty;
+            $assignQty = max(1, min($requested, $prevQty));
+            $data['quantity'] = $assignQty;
+        }
 
         $payload = [
             'subtitle' => $data['subtitle'] ?? $plant->subtitle,
@@ -238,7 +269,20 @@ class PlantController extends Controller
             $payload['position_in_bed'] = $data['position_in_bed'];
         }
 
-        $plant->update($payload);
+        if ($assigningToBedFromStock && $assignQty < $prevQty) {
+            DB::transaction(function () use ($plant, $payload, $assignQty, $prevQty): void {
+                $remainder = $prevQty - $assignQty;
+                $stockPlant = $plant->replicate(['bed_id', 'position_in_bed', 'quantity']);
+                $stockPlant->bed_id = null;
+                $stockPlant->position_in_bed = null;
+                $stockPlant->quantity = $remainder;
+                $stockPlant->save();
+
+                $plant->update($payload);
+            });
+        } else {
+            $plant->update($payload);
+        }
 
         if ($request->has('bed_id') || $request->has('position_in_bed')) {
             return back()->with('success', 'Taim peenrale määratud.');

@@ -23,6 +23,7 @@ type BedCell = {
     x: number;
     y: number;
     active: boolean;
+    kind: 'plantable' | 'walkway' | 'empty';
     plants: CellPlant[];
 };
 
@@ -63,6 +64,71 @@ const gridScroller = ref<HTMLElement | null>(null);
 const selectedCellElement = ref<HTMLElement | null>(null);
 const highlightedCellId = ref<string | null>(null);
 let highlightTimeout: ReturnType<typeof setTimeout> | null = null;
+type WizardStep = 1 | 2 | 3;
+type DesignBrush = 'plantable' | 'walkway' | 'empty';
+type BedPreset = {
+    id: string;
+    label: string;
+    description: string;
+    columns: number;
+    rows: number;
+};
+
+const currentStep = ref<WizardStep>(1);
+const designBrush = ref<DesignBrush>('plantable');
+const wizardSteps = [
+    { id: 1 as const, label: 'Peenar nimeta', icon: 'edit' },
+    { id: 2 as const, label: 'Kujunda kuju', icon: 'grid_view' },
+    { id: 3 as const, label: 'Viimistlus', icon: 'photo_camera' },
+];
+const designBrushes: Array<{
+    id: DesignBrush;
+    label: string;
+    icon: string;
+    description: string;
+}> = [
+    {
+        id: 'plantable',
+        label: 'Peenraruut',
+        icon: 'psychiatry',
+        description: 'Siia saab taime istutada.',
+    },
+    {
+        id: 'walkway',
+        label: 'Tee / kivi',
+        icon: 'texture',
+        description: 'Kivitee või vahekäik.',
+    },
+    {
+        id: 'empty',
+        label: 'Tühi',
+        icon: 'crop_free',
+        description: 'Auk või vaba ala kujus.',
+    },
+];
+const bedPresets: BedPreset[] = [
+    {
+        id: 'small',
+        label: 'Väike 2×4',
+        description: 'Kompaktne ürdi- või salatipeenar.',
+        columns: 2,
+        rows: 4,
+    },
+    {
+        id: 'medium',
+        label: 'Keskmine 3×6',
+        description: 'Mõnus põhivalik köögiviljadele.',
+        columns: 3,
+        rows: 6,
+    },
+    {
+        id: 'large',
+        label: 'Suur 4×8',
+        description: 'Rohkem ruumi segapeenrale.',
+        columns: 4,
+        rows: 8,
+    },
+];
 
 function makeCellId(x: number, y: number): string {
     return `cell-${x}-${y}-${Math.random().toString(36).slice(2, 8)}`;
@@ -87,27 +153,55 @@ function createInitialCells(): BedCell[] {
     });
 
     if (!layout || !Array.isArray(layout) || layout.length === 0) {
-        return [{ id: makeCellId(0, 0), x: 0, y: 0, active: true, plants: [] }];
+        return [
+            {
+                id: makeCellId(0, 0),
+                x: 0,
+                y: 0,
+                active: true,
+                kind: 'plantable',
+                plants: [],
+            },
+        ];
     }
 
     const cells: BedCell[] = [];
     layout.forEach((row, y) => {
         if (!Array.isArray(row)) return;
         row.forEach((rawCell, x) => {
-            if (Number(rawCell) !== 1) return;
+            const cellValue = Number(rawCell);
+            if (![1, 0, -1].includes(cellValue)) return;
             cells.push({
                 id: makeCellId(x, y),
                 x,
                 y,
-                active: true,
-                plants: [...(plantMap.get(`${y},${x}`) ?? [])],
+                active: cellValue === 1,
+                kind:
+                    cellValue === 1
+                        ? 'plantable'
+                        : cellValue === -1
+                          ? 'walkway'
+                          : 'empty',
+                plants:
+                    cellValue === 1
+                        ? [...(plantMap.get(`${y},${x}`) ?? [])]
+                        : [],
             });
         });
     });
 
     return cells.length
         ? cells
-        : [{ id: makeCellId(0, 0), x: 0, y: 0, active: true, plants: [] }];
+        : [
+              {
+                  id: makeCellId(0, 0),
+                  x: 0,
+                  y: 0,
+                  active: true,
+                  kind: 'plantable',
+                  plants: [],
+              },
+          ];
 }
 
 const cells = ref<BedCell[]>(createInitialCells());
@@ -119,21 +213,32 @@ const form = useForm<{
     cell_size_cm: number;
     image: File | null;
     cells: SubmitCell[];
+    layout: number[][];
 }>({
     name: props.mode === 'edit' ? (props.bed?.name ?? '') : '',
     location: props.mode === 'edit' ? (props.bed?.location ?? '') : '',
     cell_size_cm: props.mode === 'edit' ? (props.bed?.cell_size_cm ?? 30) : 30,
     image: null,
     cells: [],
+    layout: [],
 });
 
 const selectedCell = computed(
     () => cells.value.find((cell) => cell.id === selectedCellId.value) ?? null,
 );
-const activeCells = computed(() => cells.value.filter((cell) => cell.active));
+const activeCells = computed(() =>
+    cells.value.filter((cell) => cell.active && cell.kind === 'plantable'),
+);
+const layoutCells = computed(() => cells.value);
 
 const selectedPlantCount = computed(
     () => selectedCell.value?.plants.length ?? 0,
+);
+const walkwayCellCount = computed(
+    () => cells.value.filter((cell) => cell.kind === 'walkway').length,
+);
+const emptyDesignCellCount = computed(
+    () => cells.value.filter((cell) => cell.kind === 'empty').length,
 );
 const selectedCellLabel = computed(() =>
     selectedCell.value
@@ -142,8 +247,8 @@ const selectedCellLabel = computed(() =>
 );
 
 const bounds = computed(() => {
-    const source = activeCells.value.length
-        ? activeCells.value
+    const source = layoutCells.value.length
+        ? layoutCells.value
         : [{ x: 0, y: 0 }];
     const xs = source.map((cell) => cell.x);
     const ys = source.map((cell) => cell.y);
@@ -175,6 +280,20 @@ const displayColumns = computed(() =>
         (_, index) => displayBounds.value.minX + index,
     ),
 );
+const bedSummaryLabel = computed(
+    () => `${displayColumns.value.length} × ${displayRows.value.length} ruutu`,
+);
+const bedPhysicalSizeLabel = computed(() => {
+    const cellSize = Math.max(10, Number(form.cell_size_cm || 30));
+    const widthMeters = (displayColumns.value.length * cellSize) / 100;
+    const heightMeters = (displayRows.value.length * cellSize) / 100;
+    return `${formatMeters(widthMeters)} × ${formatMeters(heightMeters)} m`;
+});
+const canContinueFromStep = computed(() => {
+    if (currentStep.value === 1) return Boolean(form.name.trim());
+    if (currentStep.value === 2) return activeCells.value.length > 0;
+    return true;
+});
 
 function displayColumnNumber(x: number): number {
     return x - displayBounds.value.minX + 1;
@@ -184,13 +303,18 @@ function displayRowNumber(y: number): number {
     return y - displayBounds.value.minY + 1;
 }
 
+function formatMeters(value: number): string {
+    const rounded = Math.round(value * 10) / 10;
+    return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(1);
+}
+
 function occupiedKey(x: number, y: number): string {
     return `${x}:${y}`;
 }
 
 const occupiedCellMap = computed(() => {
     const map = new Map<string, BedCell>();
-    activeCells.value.forEach((cell) => {
+    layoutCells.value.forEach((cell) => {
         map.set(occupiedKey(cell.x, cell.y), cell);
     });
     return map;
@@ -198,6 +322,50 @@ const occupiedCellMap = computed(() => {
 
 function getCellAt(x: number, y: number): BedCell | null {
     return occupiedCellMap.value.get(occupiedKey(x, y)) ?? null;
+}
+
+function addBedEditorCellClasses(x: number, y: number): string[] {
+    const cell = getCellAt(x, y);
+    if (!cell) {
+        return [];
+    }
+    const isSelected = selectedCell.value?.id === cell.id;
+    const hasPlants = cell.plants.length > 0;
+    const warm = (x + y) % 2 === 0;
+    const classes: string[] = [
+        'bed-cell',
+        'relative',
+        'size-full',
+        'overflow-hidden',
+        'border',
+        'transition',
+        'duration-200',
+    ];
+    if (highlightedCellId.value === cell.id) {
+        classes.push('scale-[1.04]', 'shadow-lg', 'shadow-primary/20');
+    }
+    if (isSelected) {
+        classes.push('bed-cell--editor-selected');
+        return classes;
+    }
+    if (cell.kind === 'walkway') {
+        classes.push('bed-cell--walkway');
+        classes.push('hover:-translate-y-0.5', 'hover:shadow-md');
+        return classes;
+    }
+    if (cell.kind === 'empty') {
+        classes.push('bed-cell--void');
+        classes.push('hover:-translate-y-0.5', 'hover:shadow-md');
+        return classes;
+    }
+    if (hasPlants) {
+        classes.push('bed-cell--planted');
+        classes.push('hover:-translate-y-0.5', 'hover:shadow-md');
+        return classes;
+    }
+    classes.push(warm ? 'bed-cell--empty bed-cell--warm' : 'bed-cell--empty');
+    classes.push('hover:-translate-y-0.5', 'hover:shadow-md');
+    return classes;
 }
 
 function getPlantNames(cell: BedCell): string[] {
@@ -209,6 +377,19 @@ function getPlantNames(cell: BedCell): string[] {
                 'Taim',
         )
         .slice(0, 3);
+}
+
+function cellIcon(cell: BedCell): string {
+    if (cell.plants.length) return 'eco';
+    if (cell.kind === 'walkway') return 'texture';
+    if (cell.kind === 'empty') return 'crop_free';
+    return 'grid_view';
+}
+
+function cellKindLabel(cell: BedCell): string {
+    if (cell.kind === 'walkway') return 'tee või kivi';
+    if (cell.kind === 'empty') return 'tühi ala';
+    return 'peenraruut';
 }
 
 function selectCell(cell: BedCell) {
@@ -228,9 +409,20 @@ function setSelectedCellElement(el: Element | null, cellId: string) {
     }
 }
 
+function setSelectedCellRef(el: unknown, cellId: string) {
+    setSelectedCellElement(el instanceof HTMLElement ? el : null, cellId);
+}
+
 function addCellAt(x: number, y: number) {
     const existing = getCellAt(x, y);
     if (existing) {
+        if (existing.kind !== 'plantable') {
+            cells.value = cells.value.map((cell) =>
+                cell.id === existing.id
+                    ? { ...cell, active: true, kind: 'plantable' }
+                    : cell,
+            );
+        }
         selectCell(existing);
         return;
     }
@@ -240,6 +432,7 @@ function addCellAt(x: number, y: number) {
         x,
         y,
         active: true,
+        kind: 'plantable',
         plants: [],
     };
 
@@ -327,12 +520,15 @@ const selectedHasPlants = computed(() =>
     Boolean(selectedCell.value?.plants.length),
 );
 const formFeedback = computed(() => {
-    if (form.errors.cells || form.errors.layout) {
+    const layoutError = (form.errors as Record<string, string | undefined>)
+        .layout;
+
+    if (form.errors.cells || layoutError) {
         return {
             tone: 'error' as const,
             message:
                 form.errors.cells ??
-                form.errors.layout ??
+                layoutError ??
                 'Peenart ei saanud salvestada.',
         };
     }
@@ -360,20 +556,179 @@ function removeSelectedCell() {
 }
 
 function addCellFromPlaceholder(x: number, y: number) {
-    addCellAt(x, y);
+    setCellKindAt(x, y, designBrush.value);
+}
+
+function setCellKindAt(x: number, y: number, kind: DesignBrush) {
+    const existing = getCellAt(x, y);
+    if (existing?.plants.length && kind !== 'plantable') {
+        form.setError(
+            'cells',
+            'Taimedega ruutu ei saa muuta teeks või tühjaks alaks.',
+        );
+        selectCell(existing);
+        return;
+    }
+
+    if (existing) {
+        cells.value = cells.value.map((cell) =>
+            cell.id === existing.id
+                ? {
+                      ...cell,
+                      active: kind === 'plantable',
+                      kind,
+                      plants: kind === 'plantable' ? cell.plants : [],
+                  }
+                : cell,
+        );
+        selectCell({ ...existing, active: kind === 'plantable', kind });
+        form.clearErrors('cells');
+        return;
+    }
+
+    const newCell: BedCell = {
+        id: makeCellId(x, y),
+        x,
+        y,
+        active: kind === 'plantable',
+        kind,
+        plants: [],
+    };
+    cells.value = [...cells.value, newCell];
+    selectCell(newCell);
+    form.clearErrors('cells');
+}
+
+function paintCell(cell: BedCell) {
+    setCellKindAt(cell.x, cell.y, designBrush.value);
+}
+
+function cycleCellKind(cell: BedCell) {
+    const nextKind: DesignBrush =
+        cell.kind === 'plantable'
+            ? 'walkway'
+            : cell.kind === 'walkway'
+              ? 'empty'
+              : 'plantable';
+    setCellKindAt(cell.x, cell.y, nextKind);
+}
+
+function applyPreset(preset: BedPreset) {
+    const next: BedCell[] = [];
+    for (let y = 0; y < preset.rows; y += 1) {
+        for (let x = 0; x < preset.columns; x += 1) {
+            next.push({
+                id: makeCellId(x, y),
+                x,
+                y,
+                active: true,
+                kind: 'plantable',
+                plants: [],
+            });
+        }
+    }
+    cells.value = next;
+    selectedCellId.value = next[0]?.id ?? '';
+    form.clearErrors('cells');
+}
+
+function fillVisibleRectangle() {
+    const next: BedCell[] = [];
+    for (
+        let y = displayBounds.value.minY;
+        y <= displayBounds.value.maxY;
+        y += 1
+    ) {
+        for (
+            let x = displayBounds.value.minX;
+            x <= displayBounds.value.maxX;
+            x += 1
+        ) {
+            const existing = getCellAt(x, y);
+            next.push(
+                existing
+                    ? { ...existing, active: true, kind: 'plantable' }
+                    : {
+                          id: makeCellId(x, y),
+                          x,
+                          y,
+                          active: true,
+                          kind: 'plantable',
+                          plants: [],
+                      },
+            );
+        }
+    }
+    cells.value = next;
+    selectedCellId.value = next[0]?.id ?? '';
+    form.clearErrors('cells');
+}
+
+function resetToSingleCell() {
+    if (activeCells.value.some((cell) => cell.plants.length > 0)) {
+        form.setError(
+            'cells',
+            'Taimedega peenart ei saa ühe nupuga tühjendada.',
+        );
+        return;
+    }
+    const cell: BedCell = {
+        id: makeCellId(0, 0),
+        x: 0,
+        y: 0,
+        active: true,
+        kind: 'plantable',
+        plants: [],
+    };
+    cells.value = [cell];
+    selectedCellId.value = cell.id;
+}
+
+function goToStep(step: WizardStep) {
+    if (step > currentStep.value && !canContinueFromStep.value) {
+        if (currentStep.value === 1) {
+            form.setError('name', 'Pane peenrale nimi, siis liigume edasi.');
+        }
+        if (currentStep.value === 2) {
+            form.setError('cells', 'Peenras peab olema vähemalt üks ruut.');
+        }
+        return;
+    }
+    currentStep.value = step;
+}
+
+function nextStep() {
+    if (currentStep.value === 3) return;
+    goToStep((currentStep.value + 1) as WizardStep);
+}
+
+function previousStep() {
+    if (currentStep.value === 1) return;
+    currentStep.value = (currentStep.value - 1) as WizardStep;
 }
 
 function syncCellsToForm() {
-    form.cells = activeCells.value.map((cell) => ({
-        x: cell.x,
-        y: cell.y,
-        plants: cell.plants.map((plant) => ({
-            plant_id: plant.plant_id,
-            quantity: plant.quantity,
-            size: plant.size,
-            note: plant.note,
-        })),
-    }));
+    form.layout = displayRows.value.map((y) =>
+        displayColumns.value.map((x) => {
+            const cell = getCellAt(x, y);
+            if (!cell) return 0;
+            if (cell.kind === 'walkway') return -1;
+            if (cell.kind === 'empty') return 0;
+            return 1;
+        }),
+    );
+    form.cells = activeCells.value
+        .filter((cell) => cell.plants.length > 0)
+        .map((cell) => ({
+            x: cell.x - displayBounds.value.minX,
+            y: cell.y - displayBounds.value.minY,
+            plants: cell.plants.map((plant) => ({
+                plant_id: plant.plant_id,
+                quantity: plant.quantity,
+                size: plant.size,
+                note: plant.note,
+            })),
+        }));
 }
 
 function resetForm() {
@@ -478,580 +833,482 @@ watch(selectedCellId, async () => {
 
 <template>
     <section class="mb-8">
-        <form
-            class="space-y-6 rounded-2xl border border-border/70 bg-white p-4 shadow-[0_8px_24px_rgba(0,0,0,0.05)] dark:bg-card sm:p-6"
-            @submit.prevent="submit"
-        >
-            <section
-                class="rounded-xl border border-border/60 bg-background p-5 shadow-sm"
+        <form class="space-y-4 pb-24 sm:pb-0" @submit.prevent="submit">
+            <nav
+                class="rounded-[1.5rem] border border-emerald-900/10 bg-[linear-gradient(135deg,rgba(236,253,245,0.92),rgba(255,251,235,0.82))] p-3 shadow-[0_16px_36px_rgba(49,79,55,0.12)]"
+                aria-label="Peenra loomise sammud"
             >
-                <div
-                    class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between"
-                >
-                    <div class="min-w-0">
-                        <div
-                            class="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/8 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-primary uppercase"
+                <ol class="grid grid-cols-3 gap-2">
+                    <li v-for="step in wizardSteps" :key="step.id">
+                        <button
+                            type="button"
+                            class="wizard-step"
+                            :class="
+                                currentStep === step.id
+                                    ? 'wizard-step--active'
+                                    : currentStep > step.id
+                                      ? 'wizard-step--done'
+                                      : ''
+                            "
+                            @click="goToStep(step.id)"
                         >
-                            <span class="material-symbols-outlined text-sm"
-                                >grid_view</span
-                            >
-                            {{
-                                mode === 'edit' ? 'Muuda peenart' : 'Loo peenar'
-                            }}
-                        </div>
-                        <h2
-                            class="mt-3 text-2xl font-semibold tracking-tight text-foreground"
-                        >
-                            Kujunda peenar ruutudest nagu väike aiaplaan.
-                        </h2>
-                        <p
-                            class="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground"
-                        >
-                            Lisa ruute otse kaardile, vali sobiv lahter ja ehita
-                            kuju samm-sammult. Tühjale lahtrile vajutades lisad
-                            uue ruudu, valitud ruudu ümber olevad nooled aitavad
-                            kuju kiiresti laiendada.
-                        </p>
-                    </div>
+                            <span class="material-symbols-outlined">{{
+                                step.icon
+                            }}</span>
+                            <span>{{ step.label }}</span>
+                        </button>
+                    </li>
+                </ol>
+            </nav>
 
+            <section
+                v-show="currentStep === 1"
+                class="overflow-hidden rounded-[1.75rem] bg-card ring-1 shadow-soft ring-border/70"
+            >
+                <div class="border-b border-border/60 px-4 py-4 sm:px-6">
                     <div
-                        class="grid gap-2 sm:grid-cols-3 lg:w-[19rem] lg:grid-cols-1"
-                    ></div>
-                </div>
-            </section>
-
-            <section class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-                <div class="space-y-4">
-                    <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_17rem]">
-                        <div
-                            class="rounded-xl border border-border/70 bg-white p-4 shadow-sm dark:bg-card"
-                        >
-                            <label
-                                class="mb-1.5 block text-sm font-medium text-foreground"
-                                >Peenra nimi</label
+                        class="flex flex-wrap items-center justify-between gap-3"
+                    >
+                        <div class="flex items-center gap-3">
+                            <span
+                                class="material-symbols-outlined flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary"
                             >
-                            <input
-                                v-model="form.name"
-                                type="text"
-                                class="w-full rounded-xl border border-border/80 bg-white px-4 py-3 text-foreground shadow-sm transition outline-none dark:bg-card focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                placeholder="Nt Ürdipeenar"
-                                maxlength="120"
-                            />
+                                yard
+                            </span>
+                            <div>
+                                <h2
+                                    class="text-lg font-semibold tracking-tight text-foreground"
+                                >
+                                    Peenar nimeta
+                                </h2>
+                                <p class="mt-0.5 text-sm text-muted-foreground">
+                                    Pane peenrale nimi ja vali kiire suuruse
+                                    algus.
+                                </p>
+                            </div>
+                        </div>
+                        <div
+                            class="rounded-full bg-background/80 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/70"
+                        >
+                            {{ activeCells.length }} ruutu
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-4 p-4 sm:p-5">
+                    <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+                        <div>
+                            <label class="floating-field">
+                                <input
+                                    v-model="form.name"
+                                    type="text"
+                                    placeholder=" "
+                                    maxlength="120"
+                                    @input="form.clearErrors('name')"
+                                />
+                                <span>Peenra nimi</span>
+                            </label>
                             <p
                                 v-if="form.errors.name"
-                                class="mt-1 text-sm text-red-600"
+                                class="mt-2 text-sm text-red-600"
                             >
                                 {{ form.errors.name }}
                             </p>
+                        </div>
 
-                            <label
-                                class="mt-4 mb-1.5 block text-sm font-medium text-foreground"
-                                >Asukoht</label
-                            >
-                            <input
-                                v-model="form.location"
-                                type="text"
-                                class="w-full rounded-xl border border-border/80 bg-white px-4 py-3 text-foreground shadow-sm transition outline-none dark:bg-card focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                placeholder="Nt Kasvuhoone kõrval"
-                                maxlength="255"
-                            />
+                        <div class="space-y-2">
                             <p
-                                v-if="form.errors.location"
-                                class="mt-1 text-sm text-red-600"
+                                class="text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase"
                             >
-                                {{ form.errors.location }}
+                                Suuruse presetid
                             </p>
-
-                            <label
-                                class="mt-4 mb-1.5 block text-sm font-medium text-foreground"
-                                >Ühe ruudu mõõt (cm)</label
+                            <button
+                                v-for="preset in bedPresets"
+                                :key="preset.id"
+                                type="button"
+                                class="preset-card"
+                                @click="applyPreset(preset)"
                             >
+                                <span class="preset-preview">
+                                    <i
+                                        v-for="index in Math.min(
+                                            preset.rows * preset.columns,
+                                            18,
+                                        )"
+                                        :key="index"
+                                    ></i>
+                                </span>
+                                <span class="min-w-0">
+                                    <span
+                                        class="block text-sm font-semibold text-foreground"
+                                    >
+                                        {{ preset.label }}
+                                    </span>
+                                    <span
+                                        class="mt-0.5 block text-xs leading-5 text-muted-foreground"
+                                        >{{ preset.description }}</span
+                                    >
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section
+                v-show="currentStep === 2"
+                class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_17rem]"
+            >
+                <div
+                    class="rounded-[1.5rem] bg-card p-4 ring-1 shadow-soft ring-border/70 sm:p-5"
+                >
+                    <div
+                        class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
+                    >
+                        <div>
+                            <h3
+                                class="text-lg font-semibold tracking-tight text-foreground"
+                            >
+                                Peenra kuju
+                            </h3>
+                            <p
+                                class="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground"
+                            >
+                                Vali pintsel ja puuduta ruute: peenraruut,
+                                kivitee või tühi ala.
+                            </p>
+                        </div>
+                        <div
+                            class="inline-flex w-fit items-center gap-2 rounded-full bg-primary/8 px-3 py-1.5 text-sm font-medium text-primary"
+                        >
+                            <span class="material-symbols-outlined text-base"
+                                >grid_view</span
+                            >
+                            {{ selectedCellLabel }}
+                        </div>
+                    </div>
+                    <div class="mt-4 grid gap-2 sm:grid-cols-3">
+                        <button
+                            v-for="brush in designBrushes"
+                            :key="brush.id"
+                            type="button"
+                            class="design-brush"
+                            :class="
+                                designBrush === brush.id
+                                    ? 'design-brush--active'
+                                    : ''
+                            "
+                            @click="designBrush = brush.id"
+                        >
+                            <span class="material-symbols-outlined">{{
+                                brush.icon
+                            }}</span>
+                            <span>
+                                <strong>{{ brush.label }}</strong>
+                                <small>{{ brush.description }}</small>
+                            </span>
+                        </button>
+                    </div>
+                    <div
+                        class="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-muted-foreground"
+                    >
+                        <span class="legend-pill legend-pill--plantable"
+                            >{{ activeCells.length }} peenraruutu</span
+                        >
+                        <span class="legend-pill legend-pill--walkway"
+                            >{{ walkwayCellCount }} teed/kivi</span
+                        >
+                        <span class="legend-pill legend-pill--empty"
+                            >{{ emptyDesignCellCount }} tühja ala</span
+                        >
+                    </div>
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 sm:min-h-0 sm:py-2"
+                            @click="fillVisibleRectangle"
+                        >
+                            <span class="material-symbols-outlined text-base"
+                                >select_all</span
+                            >
+                            Täida kõik
+                        </button>
+                        <button
+                            type="button"
+                            class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-background px-3 text-sm font-semibold text-foreground transition hover:bg-muted sm:min-h-0 sm:py-2"
+                            @click="resetToSingleCell"
+                        >
+                            <span class="material-symbols-outlined text-base"
+                                >ink_eraser</span
+                            >
+                            Tühjenda
+                        </button>
+                    </div>
+
+                    <div class="mt-4 max-w-sm">
+                        <label class="form-label text-foreground"
+                            >Ühe ruudu mõõt</label
+                        >
+                        <div
+                            class="flex items-center rounded-xl border border-input bg-background px-4 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
+                        >
                             <input
                                 v-model="form.cell_size_cm"
                                 type="number"
                                 min="10"
                                 max="200"
                                 step="10"
-                                class="w-full rounded-xl border border-border/80 bg-white px-4 py-3 text-foreground shadow-sm transition outline-none dark:bg-card focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                class="h-12 min-w-0 flex-1 border-0 bg-transparent text-base text-foreground outline-none"
                                 placeholder="30"
+                                @input="form.clearErrors('cell_size_cm')"
                             />
-                            <p class="mt-1 text-xs text-muted-foreground">
-                                See määrab, kui suur üks peenraruut päris aias
-                                on. Näiteks 30 cm teeb aiaplaani mõõtkava
-                                realistlikuks.
-                            </p>
-                            <p
-                                v-if="form.errors.cell_size_cm"
-                                class="mt-1 text-sm text-red-600"
+                            <span
+                                class="text-sm font-medium text-muted-foreground"
+                                >cm</span
                             >
-                                {{ form.errors.cell_size_cm }}
-                            </p>
                         </div>
-
-                        <div
-                            class="rounded-xl border border-border/70 bg-white p-4 shadow-sm dark:bg-card"
+                        <p class="mt-2 text-sm leading-6 text-muted-foreground">
+                            See on ühe peenraruudu suurus päris aias.
+                        </p>
+                        <p
+                            v-if="form.errors.cell_size_cm"
+                            class="mt-2 text-sm text-red-600"
                         >
-                            <div
-                                class="flex items-center justify-between gap-3"
-                            >
-                                <div>
-                                    <p
-                                        class="text-sm font-semibold text-foreground"
-                                    >
-                                        Peenra pilt
-                                    </p>
-                                    <p
-                                        class="mt-1 text-xs leading-5 text-muted-foreground"
-                                    >
-                                        Soovi korral lisa väike visuaalne
-                                        meeldetuletus.
-                                    </p>
-                                </div>
-                                <span
-                                    class="material-symbols-outlined rounded-2xl bg-primary/10 p-2 text-primary"
-                                    >photo_camera</span
-                                >
-                            </div>
-
-                            <input
-                                type="file"
-                                accept="image/*"
-                                class="mt-3 w-full rounded-xl border border-border/80 bg-white px-4 py-3 text-sm text-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:font-medium file:text-primary hover:file:bg-primary/20 dark:bg-card"
-                                @change="onImageChange"
-                            />
-                            <div
-                                v-if="newBedImagePreview || existingImageUrl"
-                                class="mt-3 overflow-hidden rounded-xl border border-border/80 shadow-sm"
-                            >
-                                <div
-                                    class="h-36 w-full bg-cover bg-center"
-                                    :style="{
-                                        backgroundImage: `url('${newBedImagePreview ?? existingImageUrl}')`,
-                                    }"
-                                />
-                            </div>
-                            <p
-                                v-if="form.errors.image"
-                                class="mt-1 text-sm text-red-600"
-                            >
-                                {{ form.errors.image }}
-                            </p>
-                        </div>
+                            {{ form.errors.cell_size_cm }}
+                        </p>
                     </div>
 
-                    <section
-                        class="rounded-xl border border-border/70 bg-background p-4 shadow-sm sm:p-5"
+                    <div
+                        ref="gridScroller"
+                        class="mt-4 overflow-x-auto rounded-[1.25rem] bg-background p-3 ring-1 ring-border/70 sm:p-4"
                     >
                         <div
-                            class="mb-4 flex flex-wrap items-start justify-between gap-3"
+                            class="bed-grid-frame inline-grid gap-2.5 rounded-[1.15rem] p-2 sm:p-2.5"
+                            :style="{
+                                gridTemplateColumns: `repeat(${displayColumns.length}, minmax(0, 3.35rem))`,
+                            }"
                         >
-                            <div class="min-w-0">
-                                <div
-                                class="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/8 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-primary uppercase"
-                                >
-                                    <span
-                                        class="material-symbols-outlined text-sm"
-                                        >yard</span
-                                    >
-                                    Peenra kaart
-                                </div>
-                                <p
-                                    class="mt-3 text-lg font-semibold tracking-tight text-foreground"
-                                >
-                                    Ehita kuju otse tööpinnal
-                                </p>
-                                <p
-                                    class="mt-1 text-sm leading-6 text-muted-foreground"
-                                >
-                                    Vajuta tühjale lahtrile, et ruut lisada.
-                                    Vali olemasolev ruut, et seda edasi
-                                    laiendada või eemaldada.
-                                </p>
-                            </div>
-
-                            <div
-                                class="flex items-center gap-2 rounded-xl border border-border/80 bg-white px-3 py-2 shadow-xs dark:bg-card"
-                            >
-                                <span
-                                    class="material-symbols-outlined rounded-xl bg-primary/10 p-2 text-primary"
-                                    >view_in_ar</span
-                                >
-                                <div class="text-xs text-muted-foreground">
-                                    Kujundad praegu
-                                    <div
-                                        class="text-base font-semibold text-foreground"
-                                    >
-                                        {{ activeCells.length }} ruutu
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div
-                            ref="gridScroller"
-                            class="overflow-x-auto rounded-xl border border-border/80 bg-white p-3 shadow-sm dark:bg-card sm:p-4"
-                        >
-                            <div
-                                class="mb-3 flex items-center justify-between gap-3 text-xs text-muted-foreground"
-                            >
-                                <span
-                                    >Valitud ruut:
-                                    <span
-                                        class="font-semibold text-foreground"
-                                        >{{ selectedCellLabel }}</span
-                                    ></span
-                                >
-                                <span
-                                    >{{ selectedPlantCount }} taimekirjet</span
-                                >
-                            </div>
-
-                            <div
-                                class="inline-grid gap-2.5"
-                                :style="{
-                                    gridTemplateColumns: `repeat(${displayColumns.length}, minmax(0, 3.2rem))`,
-                                }"
+                            <template
+                                v-for="y in displayRows"
+                                :key="`row-${y}`"
                             >
                                 <template
-                                    v-for="y in displayRows"
-                                    :key="`row-${y}`"
+                                    v-for="x in displayColumns"
+                                    :key="`cell-${x}-${y}`"
                                 >
-                                    <template
-                                        v-for="x in displayColumns"
-                                        :key="`cell-${x}-${y}`"
+                                    <div
+                                        class="relative size-[3.35rem]"
+                                        :ref="
+                                            (el) => {
+                                                const cell = getCellAt(x, y);
+                                                if (cell)
+                                                    setSelectedCellRef(
+                                                        el,
+                                                        cell.id,
+                                                    );
+                                            }
+                                        "
                                     >
-                                        <div
-                                            class="relative h-13 w-13 sm:h-14 sm:w-14"
-                                            :ref="
-                                                (el) => {
-                                                    const cell = getCellAt(
+                                        <template v-if="getCellAt(x, y)">
+                                            <button
+                                                type="button"
+                                                :aria-label="`${cellKindLabel(getCellAt(x, y)!)}: veerg ${displayColumnNumber(x)}, rida ${displayRowNumber(y)}`"
+                                                :class="
+                                                    addBedEditorCellClasses(
                                                         x,
                                                         y,
-                                                    );
-                                                    if (cell)
-                                                        setSelectedCellElement(
-                                                            el,
-                                                            cell.id,
-                                                        );
-                                                }
-                                            "
-                                        >
-                                            <template v-if="getCellAt(x, y)">
-                                                <button
-                                                    type="button"
-                                                    class="relative h-full w-full overflow-hidden rounded-[1.15rem] border transition duration-200"
-                                                    :class="[
-                                                        selectedCell?.id ===
-                                                        getCellAt(x, y)?.id
-                                                            ? 'border-emerald-500/70 bg-emerald-100/80 shadow-md ring-2 ring-emerald-400/40 ring-offset-2 ring-offset-[#f6f1e7]'
-                                                            : 'border-amber-900/15 bg-[linear-gradient(180deg,rgba(141,97,61,0.92),rgba(108,73,46,0.98))] shadow-sm hover:-translate-y-0.5 hover:shadow-md',
-                                                        highlightedCellId ===
-                                                        getCellAt(x, y)?.id
-                                                            ? 'scale-[1.04] shadow-lg shadow-primary/20'
-                                                            : '',
-                                                    ]"
-                                                    @click="
-                                                        getCellAt(x, y) &&
-                                                        selectCell(
-                                                            getCellAt(x, y)!,
-                                                        )
+                                                    )
+                                                "
+                                                @click="
+                                                    getCellAt(x, y) &&
+                                                    paintCell(getCellAt(x, y)!)
+                                                "
+                                                @dblclick="
+                                                    getCellAt(x, y) &&
+                                                    cycleCellKind(
+                                                        getCellAt(x, y)!,
+                                                    )
+                                                "
+                                            >
+                                                <div
+                                                    class="absolute inset-x-0 top-0 h-1/2 bg-linear-to-b from-white/15 to-transparent"
+                                                />
+                                                <div
+                                                    v-if="
+                                                        getCellAt(x, y)?.plants
+                                                            .length
                                                     "
+                                                    class="absolute inset-0 bg-linear-to-t from-black/45 via-black/15 to-transparent"
+                                                />
+                                                <div
+                                                    class="relative z-10 flex size-full flex-col items-center justify-center px-1 text-center"
                                                 >
-                                                    <div
-                                                        class="absolute inset-x-0 top-0 h-1/2 bg-linear-to-b from-white/12 to-transparent"
-                                                    />
-                                                    <div
+                                                    <span
+                                                        class="material-symbols-outlined text-lg"
+                                                        :class="
+                                                            getCellAt(x, y)
+                                                                ?.plants.length
+                                                                ? 'text-white'
+                                                                : selectedCell?.id ===
+                                                                    getCellAt(
+                                                                        x,
+                                                                        y,
+                                                                    )?.id
+                                                                  ? 'text-primary'
+                                                                  : 'text-emerald-900/45'
+                                                        "
+                                                    >
+                                                        {{
+                                                            cellIcon(
+                                                                getCellAt(
+                                                                    x,
+                                                                    y,
+                                                                )!,
+                                                            )
+                                                        }}
+                                                    </span>
+                                                    <span
                                                         v-if="
                                                             getCellAt(x, y)
                                                                 ?.plants.length
                                                         "
-                                                        class="absolute inset-0 bg-linear-to-t from-black/45 via-black/15 to-transparent"
-                                                    />
-                                                    <div
-                                                        class="relative z-10 flex h-full w-full flex-col items-center justify-center px-1 text-center"
-                                                    >
-                                                        <span
-                                                            class="material-symbols-outlined text-lg"
-                                                            :class="
-                                                                getCellAt(x, y)
-                                                                    ?.plants
-                                                                    .length
-                                                                    ? 'text-white'
-                                                                    : selectedCell?.id ===
-                                                                        getCellAt(
-                                                                            x,
-                                                                            y,
-                                                                        )?.id
-                                                                      ? 'text-emerald-700'
-                                                                      : 'text-amber-50/90'
-                                                            "
-                                                        >
-                                                            {{
-                                                                getCellAt(x, y)
-                                                                    ?.plants
-                                                                    .length
-                                                                    ? 'eco'
-                                                                    : 'grid_view'
-                                                            }}
-                                                        </span>
-                                                        <span
-                                                            v-if="
-                                                                getCellAt(x, y)
-                                                                    ?.plants
-                                                                    .length
-                                                            "
-                                                            class="mt-1 line-clamp-2 text-[9px] leading-tight font-semibold text-white"
-                                                        >
-                                                            {{
-                                                                getPlantNames(
-                                                                    getCellAt(
-                                                                        x,
-                                                                        y,
-                                                                    )!,
-                                                                ).join(', ')
-                                                            }}
-                                                        </span>
-                                                    </div>
-                                                    <span
-                                                        class="absolute right-1.5 bottom-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
-                                                        :class="
-                                                            selectedCell?.id ===
-                                                            getCellAt(x, y)?.id
-                                                                ? 'bg-white/95 text-emerald-700 dark:bg-card/95 dark:text-emerald-300'
-                                                                : 'bg-black/15 text-amber-50/85'
-                                                        "
+                                                        class="mt-1 line-clamp-2 text-[9px] leading-tight font-semibold text-white"
                                                     >
                                                         {{
-                                                            displayColumnNumber(
-                                                                x,
-                                                            )
-                                                        }},{{
-                                                            displayRowNumber(y)
+                                                            getPlantNames(
+                                                                getCellAt(
+                                                                    x,
+                                                                    y,
+                                                                )!,
+                                                            ).join(', ')
                                                         }}
                                                     </span>
-                                                </button>
+                                                </div>
 
-                                                <template
-                                                    v-if="
+                                                <span
+                                                    class="absolute right-1.5 bottom-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
+                                                    :class="
                                                         selectedCell?.id ===
                                                         getCellAt(x, y)?.id
+                                                            ? 'bg-card/95 text-primary'
+                                                            : 'bg-white/55 text-emerald-950/75'
                                                     "
                                                 >
-                                                    <button
-                                                        type="button"
-                                                        class="absolute -top-3 left-1/2 z-20 hidden h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border border-primary/30 bg-card text-primary shadow-sm hover:bg-primary/10 sm:flex"
-                                                        @click.stop="
-                                                            handleDirectionalAdd(
-                                                                'up',
-                                                            )
-                                                        "
-                                                    >
-                                                        <span
-                                                            class="material-symbols-outlined text-sm"
-                                                            >arrow_upward</span
-                                                        >
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        class="absolute -bottom-3 left-1/2 z-20 hidden h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border border-primary/30 bg-card text-primary shadow-sm hover:bg-primary/10 sm:flex"
-                                                        @click.stop="
-                                                            handleDirectionalAdd(
-                                                                'down',
-                                                            )
-                                                        "
-                                                    >
-                                                        <span
-                                                            class="material-symbols-outlined text-sm"
-                                                            >arrow_downward</span
-                                                        >
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        class="absolute top-1/2 -left-3 z-20 hidden h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-primary/30 bg-card text-primary shadow-sm hover:bg-primary/10 sm:flex"
-                                                        @click.stop="
-                                                            handleDirectionalAdd(
-                                                                'left',
-                                                            )
-                                                        "
-                                                    >
-                                                        <span
-                                                            class="material-symbols-outlined text-sm"
-                                                            >arrow_back</span
-                                                        >
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        class="absolute top-1/2 -right-3 z-20 hidden h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-primary/30 bg-card text-primary shadow-sm hover:bg-primary/10 sm:flex"
-                                                        @click.stop="
-                                                            handleDirectionalAdd(
-                                                                'right',
-                                                            )
-                                                        "
-                                                    >
-                                                        <span
-                                                            class="material-symbols-outlined text-sm"
-                                                            >arrow_forward</span
-                                                        >
-                                                    </button>
-                                                </template>
-                                            </template>
+                                                    {{
+                                                        displayColumnNumber(x)
+                                                    }},{{ displayRowNumber(y) }}
+                                                </span>
+                                            </button>
 
-                                            <button
-                                                v-else
-                                                type="button"
-                                                class="h-full w-full rounded-[1.15rem] border border-dashed border-emerald-900/15 bg-white/50 text-muted-foreground transition hover:border-primary/30 hover:bg-primary/6 hover:text-primary dark:border-emerald-200/20 dark:bg-card/50"
-                                                @click="
-                                                    addCellFromPlaceholder(x, y)
+                                            <template
+                                                v-if="
+                                                    selectedCell?.id ===
+                                                    getCellAt(x, y)?.id
                                                 "
                                             >
-                                                <span
-                                                    class="material-symbols-outlined text-lg"
-                                                    >add</span
+                                                <button
+                                                    type="button"
+                                                    class="absolute -top-3 left-1/2 z-20 hidden size-7 -translate-x-1/2 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 sm:flex"
+                                                    @click.stop="
+                                                        handleDirectionalAdd(
+                                                            'up',
+                                                        )
+                                                    "
                                                 >
-                                            </button>
-                                        </div>
-                                    </template>
+                                                    <span
+                                                        class="material-symbols-outlined text-sm"
+                                                        >arrow_upward</span
+                                                    >
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    class="absolute -bottom-3 left-1/2 z-20 hidden size-7 -translate-x-1/2 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 sm:flex"
+                                                    @click.stop="
+                                                        handleDirectionalAdd(
+                                                            'down',
+                                                        )
+                                                    "
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined text-sm"
+                                                        >arrow_downward</span
+                                                    >
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    class="absolute top-1/2 -left-3 z-20 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 sm:flex"
+                                                    @click.stop="
+                                                        handleDirectionalAdd(
+                                                            'left',
+                                                        )
+                                                    "
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined text-sm"
+                                                        >arrow_back</span
+                                                    >
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    class="absolute top-1/2 -right-3 z-20 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 sm:flex"
+                                                    @click.stop="
+                                                        handleDirectionalAdd(
+                                                            'right',
+                                                        )
+                                                    "
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined text-sm"
+                                                        >arrow_forward</span
+                                                    >
+                                                </button>
+                                            </template>
+                                        </template>
+
+                                        <button
+                                            v-else
+                                            type="button"
+                                            class="size-full rounded-2xl border border-dashed border-primary/20 bg-card/70 text-muted-foreground transition hover:border-primary/35 hover:bg-primary/8 hover:text-primary"
+                                            @click="
+                                                addCellFromPlaceholder(x, y)
+                                            "
+                                        >
+                                            <span
+                                                class="material-symbols-outlined text-lg"
+                                                >add</span
+                                            >
+                                        </button>
+                                    </div>
                                 </template>
-                            </div>
+                            </template>
                         </div>
+                    </div>
 
-                        <div class="mt-4 grid gap-4 lg:hidden">
-                            <div
-                                class="rounded-xl border border-border/80 bg-white p-4 shadow-sm dark:bg-card"
-                            >
-                                <div
-                                    class="flex items-start justify-between gap-3"
-                                >
-                                    <div>
-                                        <p
-                                            class="text-sm font-semibold text-foreground"
-                                        >
-                                            Valitud ruut
-                                        </p>
-                                        <p
-                                            class="mt-1 text-sm text-muted-foreground"
-                                        >
-                                            {{ selectedCellLabel }}
-                                        </p>
-                                    </div>
-                                    <div
-                                        class="rounded-xl bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary shadow-xs"
-                                    >
-                                        {{ selectedPlantCount }} taimekirjet
-                                    </div>
-                                </div>
-
-                                <div class="mt-4 grid place-items-center">
-                                    <button
-                                        type="button"
-                                        class="mb-2 flex h-11 w-11 items-center justify-center rounded-full border border-primary/30 bg-background text-primary shadow-sm hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                        :disabled="!selectedCell"
-                                        @click="handleDirectionalAdd('up')"
-                                    >
-                                        <span
-                                            class="material-symbols-outlined text-base"
-                                            >arrow_upward</span
-                                        >
-                                    </button>
-
-                                    <div class="flex items-center gap-2">
-                                        <button
-                                            type="button"
-                                            class="flex h-11 w-11 items-center justify-center rounded-full border border-primary/30 bg-background text-primary shadow-sm hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                            :disabled="!selectedCell"
-                                            @click="
-                                                handleDirectionalAdd('left')
-                                            "
-                                        >
-                                            <span
-                                                class="material-symbols-outlined text-base"
-                                                >arrow_back</span
-                                            >
-                                        </button>
-
-                                        <div
-                                            class="flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-xs"
-                                        >
-                                            <span
-                                                class="material-symbols-outlined text-base"
-                                                >grid_view</span
-                                            >
-                                        </div>
-
-                                        <button
-                                            type="button"
-                                            class="flex h-11 w-11 items-center justify-center rounded-full border border-primary/30 bg-background text-primary shadow-sm hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                            :disabled="!selectedCell"
-                                            @click="
-                                                handleDirectionalAdd('right')
-                                            "
-                                        >
-                                            <span
-                                                class="material-symbols-outlined text-base"
-                                                >arrow_forward</span
-                                            >
-                                        </button>
-                                    </div>
-
-                                    <button
-                                        type="button"
-                                        class="mt-2 flex h-11 w-11 items-center justify-center rounded-full border border-primary/30 bg-background text-primary shadow-sm hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                        :disabled="!selectedCell"
-                                        @click="handleDirectionalAdd('down')"
-                                    >
-                                        <span
-                                            class="material-symbols-outlined text-base"
-                                            >arrow_downward</span
-                                        >
-                                    </button>
-                                </div>
-
-                                <div
-                                    v-if="selectedHasPlants"
-                                    class="mt-4 rounded-2xl border border-primary/20 bg-primary/8 p-3 text-sm text-primary"
-                                >
-                                    Valitud ruudus on taim(ed). Seda ruutu ei
-                                    saa eemaldada enne, kui taimed on ümber
-                                    paigutatud.
-                                </div>
-
-                                <button
-                                    type="button"
-                                    class="mt-4 w-full rounded-xl border px-3 py-3 text-sm font-medium"
-                                    :class="
-                                        selectedHasPlants ||
-                                        activeCells.length <= 1
-                                            ? 'cursor-not-allowed border-border/60 bg-muted/30 text-muted-foreground'
-                                            : 'border-border bg-background text-foreground hover:bg-muted/50'
-                                    "
-                                    :disabled="
-                                        selectedHasPlants ||
-                                        activeCells.length <= 1
-                                    "
-                                    @click="removeSelectedCell"
-                                >
-                                    Eemalda valitud ruut
-                                </button>
-                            </div>
-                        </div>
-                    </section>
-                </div>
-
-                <aside class="space-y-4">
                     <div
-                        class="rounded-xl border border-border/80 bg-white p-4 shadow-sm dark:bg-card"
+                        class="mt-4 rounded-[1.25rem] bg-secondary/40 p-4 ring-1 ring-border/70 xl:hidden"
                     >
-                        <p class="text-sm font-semibold text-foreground">
-                            Valitud ruudu toimingud
-                        </p>
-                        <p class="mt-1 text-sm text-muted-foreground">
-                            {{ selectedCellLabel }}
-                        </p>
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p
+                                    class="text-sm font-semibold text-foreground"
+                                >
+                                    Valitud ruut
+                                </p>
+                                <p class="mt-1 text-sm text-muted-foreground">
+                                    {{ selectedCellLabel }}
+                                </p>
+                            </div>
+                            <span
+                                class="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
+                            >
+                                {{ selectedPlantCount }} taimekirjet
+                            </span>
+                        </div>
 
                         <div class="mt-4 grid place-items-center">
                             <button
                                 type="button"
-                                class="mb-2 flex h-10 w-10 items-center justify-center rounded-full border border-primary/30 bg-card text-primary shadow-sm hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                class="mb-2 flex size-12 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
                                 :disabled="!selectedCell"
                                 @click="handleDirectionalAdd('up')"
                             >
@@ -1060,11 +1317,10 @@ watch(selectedCellId, async () => {
                                     >arrow_upward</span
                                 >
                             </button>
-
                             <div class="flex items-center gap-2">
                                 <button
                                     type="button"
-                                    class="flex h-10 w-10 items-center justify-center rounded-full border border-primary/30 bg-card text-primary shadow-sm hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                    class="flex size-12 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
                                     :disabled="!selectedCell"
                                     @click="handleDirectionalAdd('left')"
                                 >
@@ -1073,19 +1329,17 @@ watch(selectedCellId, async () => {
                                         >arrow_back</span
                                     >
                                 </button>
-
                                 <div
-                                    class="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary"
+                                    class="flex size-12 items-center justify-center rounded-2xl bg-primary/12 text-primary"
                                 >
                                     <span
                                         class="material-symbols-outlined text-base"
                                         >grid_view</span
                                     >
                                 </div>
-
                                 <button
                                     type="button"
-                                    class="flex h-10 w-10 items-center justify-center rounded-full border border-primary/30 bg-card text-primary shadow-sm hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                    class="flex size-12 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
                                     :disabled="!selectedCell"
                                     @click="handleDirectionalAdd('right')"
                                 >
@@ -1095,10 +1349,103 @@ watch(selectedCellId, async () => {
                                     >
                                 </button>
                             </div>
-
                             <button
                                 type="button"
-                                class="mt-2 flex h-10 w-10 items-center justify-center rounded-full border border-primary/30 bg-card text-primary shadow-sm hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                class="mt-2 flex size-12 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                :disabled="!selectedCell"
+                                @click="handleDirectionalAdd('down')"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-base"
+                                    >arrow_downward</span
+                                >
+                            </button>
+                        </div>
+
+                        <p
+                            v-if="selectedHasPlants"
+                            class="mt-4 rounded-2xl bg-primary/8 p-3 text-sm leading-6 text-primary ring-1 ring-primary/15"
+                        >
+                            Valitud ruudus on taim(ed). Seda ruutu ei saa
+                            eemaldada enne, kui taimed on ümber paigutatud.
+                        </p>
+
+                        <button
+                            type="button"
+                            class="mt-4 h-12 w-full rounded-full px-4 text-sm font-semibold transition"
+                            :class="
+                                selectedHasPlants || activeCells.length <= 1
+                                    ? 'cursor-not-allowed bg-muted/40 text-muted-foreground'
+                                    : 'bg-card text-foreground shadow-sm ring-1 ring-border hover:bg-secondary/70'
+                            "
+                            :disabled="
+                                selectedHasPlants || activeCells.length <= 1
+                            "
+                            @click="removeSelectedCell"
+                        >
+                            Eemalda valitud ruut
+                        </button>
+                    </div>
+                </div>
+
+                <aside class="hidden space-y-4 xl:block">
+                    <div
+                        class="rounded-[1.5rem] bg-card p-4 ring-1 shadow-soft ring-border/70"
+                    >
+                        <p class="text-sm font-semibold text-foreground">
+                            Valitud ruut
+                        </p>
+                        <p class="mt-1 text-sm leading-6 text-muted-foreground">
+                            {{ selectedCellLabel }}
+                        </p>
+
+                        <div class="mt-5 grid place-items-center">
+                            <button
+                                type="button"
+                                class="mb-2 flex size-11 items-center justify-center rounded-full bg-background text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                :disabled="!selectedCell"
+                                @click="handleDirectionalAdd('up')"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-base"
+                                    >arrow_upward</span
+                                >
+                            </button>
+                            <div class="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    class="flex size-11 items-center justify-center rounded-full bg-background text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                    :disabled="!selectedCell"
+                                    @click="handleDirectionalAdd('left')"
+                                >
+                                    <span
+                                        class="material-symbols-outlined text-base"
+                                        >arrow_back</span
+                                    >
+                                </button>
+                                <div
+                                    class="flex size-12 items-center justify-center rounded-2xl bg-primary/12 text-primary"
+                                >
+                                    <span
+                                        class="material-symbols-outlined text-base"
+                                        >grid_view</span
+                                    >
+                                </div>
+                                <button
+                                    type="button"
+                                    class="flex size-11 items-center justify-center rounded-full bg-background text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                    :disabled="!selectedCell"
+                                    @click="handleDirectionalAdd('right')"
+                                >
+                                    <span
+                                        class="material-symbols-outlined text-base"
+                                        >arrow_forward</span
+                                    >
+                                </button>
+                            </div>
+                            <button
+                                type="button"
+                                class="mt-2 flex size-11 items-center justify-center rounded-full bg-background text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
                                 :disabled="!selectedCell"
                                 @click="handleDirectionalAdd('down')"
                             >
@@ -1111,100 +1458,237 @@ watch(selectedCellId, async () => {
                     </div>
 
                     <div
-                        class="rounded-xl border border-border/80 bg-white p-4 shadow-sm dark:bg-card"
+                        class="rounded-[1.5rem] bg-secondary/40 p-4 ring-1 ring-border/70"
                     >
                         <div class="flex items-center justify-between gap-3">
                             <p class="text-sm font-semibold text-foreground">
-                                Ruutu puudutav info
+                                Ruudu sisu
                             </p>
                             <span
-                                class="rounded-xl bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary shadow-xs"
-                                >{{ selectedPlantCount }}</span
+                                class="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
                             >
+                                {{ selectedPlantCount }}
+                            </span>
                         </div>
-
-                        <div class="mt-4 grid gap-3">
-                            <div
-                            class="rounded-xl border border-border/70 bg-background p-3"
-                            >
-                                <p
-                                    class="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                                >
-                                    Taimed ruudus
-                                </p>
-                                <p class="mt-1 text-sm text-foreground">
-                                    {{
-                                        selectedHasPlants
-                                            ? 'Valitud ruudus on juba taim(ed).'
-                                            : 'Ruudus ei ole veel taimi.'
-                                    }}
-                                </p>
-                            </div>
-
-                            <div
-                            class="rounded-xl border border-border/70 bg-background p-3"
-                            >
-                                <p
-                                    class="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                                >
-                                    Näpunäide
-                                </p>
-                                <p class="mt-1 text-sm text-muted-foreground">
-                                    Kui puudutad täidetud koha kõrval tühja
-                                    lahtrit, saad peenra kuju samm-sammult edasi
-                                    kasvatada.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div
+                        <p class="mt-3 text-sm leading-6 text-muted-foreground">
+                            {{
+                                selectedHasPlants
+                                    ? 'Valitud ruudus on juba taim(ed).'
+                                    : 'Ruudus ei ole veel taimi.'
+                            }}
+                        </p>
+                        <p
                             v-if="selectedHasPlants"
-                            class="mt-4 rounded-2xl border border-primary/20 bg-primary/8 p-3 text-sm text-primary"
+                            class="mt-4 rounded-2xl bg-primary/8 p-3 text-sm leading-6 text-primary ring-1 ring-primary/15"
                         >
-                            Valitud ruudus on taim(ed). Seda ruutu ei saa
-                            eemaldada enne, kui taimed on ümber paigutatud.
-                        </div>
-
+                            Taimedega ruutu ei saa enne ümberpaigutamist
+                            eemaldada.
+                        </p>
                         <button
                             type="button"
-                            class="mt-4 w-full rounded-xl border px-3 py-2.5 text-sm font-medium"
+                            class="mt-4 h-12 w-full rounded-full px-4 text-sm font-semibold transition"
                             :class="
                                 selectedHasPlants || activeCells.length <= 1
-                                    ? 'cursor-not-allowed border-border/60 bg-muted/30 text-muted-foreground'
-                                    : 'border-border bg-background text-foreground hover:bg-muted/50'
+                                    ? 'cursor-not-allowed bg-muted/40 text-muted-foreground'
+                                    : 'bg-card text-foreground shadow-sm ring-1 ring-border hover:bg-secondary/70'
                             "
                             :disabled="
                                 selectedHasPlants || activeCells.length <= 1
                             "
                             @click="removeSelectedCell"
                         >
-                            Eemalda valitud ruut
+                            Eemalda ruut
                         </button>
                     </div>
                 </aside>
             </section>
 
+            <section
+                v-show="currentStep === 3"
+                class="overflow-hidden rounded-[1.75rem] bg-card ring-1 shadow-soft ring-border/70"
+            >
+                <div class="border-b border-border/60 px-4 py-4 sm:px-6">
+                    <div class="flex items-center gap-3">
+                        <span
+                            class="material-symbols-outlined flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary"
+                        >
+                            auto_awesome
+                        </span>
+                        <div>
+                            <h2
+                                class="text-lg font-semibold tracking-tight text-foreground"
+                            >
+                                Viimistlus
+                            </h2>
+                            <p class="mt-0.5 text-sm text-muted-foreground">
+                                Lisa pilt, asukoht ja kontrolli kokkuvõtet.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_20rem]"
+                >
+                    <div class="space-y-4">
+                        <label class="floating-field">
+                            <input
+                                v-model="form.location"
+                                type="text"
+                                placeholder=" "
+                                maxlength="255"
+                                @input="form.clearErrors('location')"
+                            />
+                            <span>Asukoht aias</span>
+                        </label>
+
+                        <div>
+                            <label class="form-label text-foreground"
+                                >Ühe ruudu mõõt</label
+                            >
+                            <div
+                                class="flex items-center rounded-xl border border-input bg-background px-4 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
+                            >
+                                <input
+                                    v-model="form.cell_size_cm"
+                                    type="number"
+                                    min="10"
+                                    max="200"
+                                    step="10"
+                                    class="h-12 min-w-0 flex-1 border-0 bg-transparent text-base text-foreground outline-none"
+                                    placeholder="30"
+                                    @input="form.clearErrors('cell_size_cm')"
+                                />
+                                <span
+                                    class="text-sm font-medium text-muted-foreground"
+                                    >cm</span
+                                >
+                            </div>
+                            <p
+                                class="mt-2 inline-flex items-center gap-2 rounded-full bg-primary/8 px-3 py-1.5 text-sm font-semibold text-primary"
+                            >
+                                <span
+                                    class="material-symbols-outlined text-base"
+                                    >straighten</span
+                                >
+                                1 ruut = {{ form.cell_size_cm || 30 }} cm
+                            </p>
+                        </div>
+
+                        <label class="photo-drop-zone">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                class="sr-only"
+                                @change="onImageChange"
+                            />
+                            <span class="material-symbols-outlined"
+                                >photo_camera</span
+                            >
+                            <strong>Lisa peenra foto</strong>
+                            <small>Puuduta, et valida pilt galeriist.</small>
+                        </label>
+                    </div>
+
+                    <aside class="summary-card">
+                        <div
+                            class="h-28 overflow-hidden rounded-2xl bg-[linear-gradient(135deg,rgba(187,247,208,0.72),rgba(254,243,199,0.68))]"
+                        >
+                            <div
+                                v-if="newBedImagePreview || existingImageUrl"
+                                class="h-full w-full bg-cover bg-center"
+                                :style="{
+                                    backgroundImage: `url('${newBedImagePreview ?? existingImageUrl}')`,
+                                }"
+                            />
+                            <div
+                                v-else
+                                class="grid h-full place-items-center text-primary"
+                            >
+                                <span class="material-symbols-outlined text-4xl"
+                                    >yard</span
+                                >
+                            </div>
+                        </div>
+                        <p
+                            class="mt-4 text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase"
+                        >
+                            Kokkuvõte
+                        </p>
+                        <h3 class="mt-1 text-lg font-semibold text-foreground">
+                            {{ form.name || 'Uus peenar' }}
+                        </h3>
+                        <dl class="mt-3 grid gap-2 text-sm">
+                            <div class="flex justify-between gap-3">
+                                <dt class="text-muted-foreground">Kuju</dt>
+                                <dd class="font-semibold text-foreground">
+                                    {{ bedSummaryLabel }}
+                                </dd>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <dt class="text-muted-foreground">Mõõt</dt>
+                                <dd class="font-semibold text-foreground">
+                                    {{ bedPhysicalSizeLabel }}
+                                </dd>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <dt class="text-muted-foreground">Asukoht</dt>
+                                <dd
+                                    class="text-right font-semibold text-foreground"
+                                >
+                                    {{ form.location || 'Lisamata' }}
+                                </dd>
+                            </div>
+                        </dl>
+                    </aside>
+                </div>
+            </section>
+
             <div
                 v-if="formFeedback"
-                class="rounded-[1.5rem] border px-4 py-3 shadow-sm"
+                class="rounded-[1.5rem] px-4 py-3 ring-1"
                 :class="
                     formFeedback.tone === 'error'
-                        ? 'border-rose-200 bg-rose-50 text-rose-700'
-                        : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                        ? 'bg-rose-50 text-rose-700 ring-rose-200'
+                        : 'bg-emerald-50 text-emerald-700 ring-emerald-200'
                 "
             >
-                <p class="text-sm font-medium">
-                    {{ formFeedback.message }}
-                </p>
+                <p class="text-sm font-medium">{{ formFeedback.message }}</p>
             </div>
 
             <div
-                class="sm:backdrop-blur-0 sticky bottom-3 z-10 -mx-1 rounded-xl border border-border/70 bg-white/95 p-3 shadow-sm backdrop-blur dark:bg-card/95 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none"
+                class="fixed right-4 bottom-[4.85rem] left-4 z-40 rounded-[1.25rem] bg-card/95 p-3 shadow-lg ring-1 ring-border/80 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:p-0 sm:shadow-none sm:ring-0"
             >
-                <div class="flex flex-col gap-2 sm:flex-row">
+                <div class="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
                     <button
+                        type="button"
+                        class="btn-primary-outline bg-background/80 sm:order-1"
+                        :disabled="form.processing"
+                        @click="
+                            currentStep === 1 ? resetForm() : previousStep()
+                        "
+                    >
+                        {{
+                            currentStep === 1
+                                ? mode === 'edit'
+                                    ? 'Tagasi'
+                                    : 'Tühista'
+                                : 'Tagasi'
+                        }}
+                    </button>
+                    <button
+                        v-if="currentStep < 3"
+                        type="button"
+                        class="btn-primary shadow-sm sm:order-2"
+                        :disabled="!canContinueFromStep"
+                        @click="nextStep"
+                    >
+                        Järgmine
+                    </button>
+                    <button
+                        v-else
                         type="submit"
-                        class="btn-primary shadow-sm"
+                        class="btn-primary shadow-sm sm:order-2"
                         :disabled="form.processing"
                     >
                         {{
@@ -1215,16 +1699,439 @@ watch(selectedCellId, async () => {
                                   : 'Loo peenar'
                         }}
                     </button>
-                    <button
-                        type="button"
-                        class="btn-primary-outline bg-background/80"
-                        :disabled="form.processing"
-                        @click="resetForm"
-                    >
-                        {{ mode === 'edit' ? 'Tagasi' : 'Tühista' }}
-                    </button>
                 </div>
             </div>
         </form>
     </section>
 </template>
+
+<style scoped>
+.wizard-step {
+    display: flex;
+    min-height: 3rem;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    border: 1px solid rgba(70, 95, 57, 0.14);
+    border-radius: 1rem;
+    padding: 0.55rem 0.45rem;
+    color: var(--muted-foreground);
+    background: rgba(255, 255, 255, 0.58);
+    font-size: 0.68rem;
+    font-weight: 800;
+    line-height: 1.15;
+    transition:
+        transform 180ms ease,
+        border-color 180ms ease,
+        background-color 180ms ease,
+        color 180ms ease;
+}
+
+.wizard-step .material-symbols-outlined {
+    font-size: 1rem;
+}
+
+.wizard-step--active {
+    color: var(--primary);
+    border-color: color-mix(in srgb, var(--primary), transparent 58%);
+    background: color-mix(in srgb, var(--primary), white 90%);
+    box-shadow: 0 10px 22px rgba(49, 79, 55, 0.12);
+    transform: translateY(-1px);
+}
+
+.wizard-step--done {
+    color: rgb(22, 101, 52);
+    background: rgba(220, 252, 231, 0.74);
+}
+
+.floating-field {
+    position: relative;
+    display: block;
+}
+
+.floating-field input {
+    width: 100%;
+    height: 4rem;
+    border: 1px solid var(--input);
+    border-radius: 1.25rem;
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.72),
+            rgba(236, 253, 245, 0.48)
+        ),
+        var(--background);
+    padding: 1.45rem 1rem 0.55rem;
+    color: var(--foreground);
+    font-size: 1.08rem;
+    font-weight: 700;
+    outline: none;
+    transition:
+        border-color 180ms ease,
+        box-shadow 180ms ease,
+        transform 180ms ease;
+}
+
+.floating-field span {
+    position: absolute;
+    top: 1.25rem;
+    left: 1rem;
+    color: var(--muted-foreground);
+    font-size: 0.95rem;
+    font-weight: 700;
+    pointer-events: none;
+    transition:
+        transform 180ms ease,
+        color 180ms ease,
+        font-size 180ms ease;
+}
+
+.floating-field input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary), transparent 82%);
+    transform: translateY(-1px);
+}
+
+.floating-field input:focus + span,
+.floating-field input:not(:placeholder-shown) + span {
+    color: var(--primary);
+    font-size: 0.72rem;
+    transform: translateY(-0.85rem);
+}
+
+.preset-card {
+    display: flex;
+    width: 100%;
+    min-height: 4.25rem;
+    align-items: center;
+    gap: 0.8rem;
+    border: 1px solid rgba(70, 95, 57, 0.14);
+    border-radius: 1.1rem;
+    padding: 0.75rem;
+    text-align: left;
+    background:
+        radial-gradient(
+            circle at 20% 15%,
+            rgba(255, 255, 255, 0.72),
+            transparent 35%
+        ),
+        linear-gradient(
+            135deg,
+            rgba(236, 253, 245, 0.82),
+            rgba(255, 251, 235, 0.62)
+        );
+    transition:
+        transform 180ms ease,
+        border-color 180ms ease,
+        box-shadow 220ms ease;
+}
+
+.preset-card:hover,
+.preset-card:focus-visible {
+    transform: translateY(-2px);
+    border-color: rgba(16, 185, 129, 0.42);
+    box-shadow: 0 14px 28px rgba(44, 70, 46, 0.12);
+}
+
+.preset-preview {
+    display: grid;
+    width: 3.2rem;
+    height: 3.2rem;
+    flex-shrink: 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.16rem;
+    border-radius: 0.9rem;
+    padding: 0.45rem;
+    background: rgba(255, 255, 255, 0.7);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.preset-preview i {
+    border-radius: 0.18rem;
+    background: linear-gradient(145deg, rgb(134, 191, 120), rgb(70, 128, 74));
+}
+
+.design-brush {
+    display: flex;
+    min-height: 4.35rem;
+    align-items: center;
+    gap: 0.75rem;
+    border: 1px solid rgba(70, 95, 57, 0.14);
+    border-radius: 1.1rem;
+    padding: 0.75rem;
+    text-align: left;
+    color: var(--foreground);
+    background:
+        radial-gradient(
+            circle at 18% 18%,
+            rgba(255, 255, 255, 0.82),
+            transparent 34%
+        ),
+        color-mix(in srgb, var(--card), var(--primary) 4%);
+    transition:
+        transform 160ms ease,
+        border-color 160ms ease,
+        box-shadow 180ms ease,
+        background-color 160ms ease;
+}
+
+.design-brush:hover,
+.design-brush:focus-visible {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--primary), transparent 55%);
+    box-shadow: 0 12px 24px rgba(44, 70, 46, 0.1);
+}
+
+.design-brush--active {
+    border-color: color-mix(in srgb, var(--primary), transparent 35%);
+    background:
+        linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--primary), white 88%),
+            rgba(255, 251, 235, 0.78)
+        ),
+        var(--card);
+    box-shadow:
+        0 14px 30px rgba(44, 70, 46, 0.14),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.55);
+}
+
+.design-brush .material-symbols-outlined {
+    display: grid;
+    width: 2.35rem;
+    height: 2.35rem;
+    flex-shrink: 0;
+    place-items: center;
+    border-radius: 999px;
+    color: var(--primary);
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.design-brush strong,
+.design-brush small {
+    display: block;
+}
+
+.design-brush strong {
+    font-size: 0.86rem;
+    line-height: 1.1;
+}
+
+.design-brush small {
+    margin-top: 0.18rem;
+    color: var(--muted-foreground);
+    font-size: 0.72rem;
+    line-height: 1.25;
+}
+
+.legend-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    padding: 0.35rem 0.65rem;
+    border: 1px solid transparent;
+}
+
+.legend-pill::before {
+    content: '';
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 999px;
+}
+
+.legend-pill--plantable {
+    color: rgb(22, 101, 52);
+    border-color: rgba(34, 197, 94, 0.24);
+    background: rgba(220, 252, 231, 0.68);
+}
+
+.legend-pill--plantable::before {
+    background: linear-gradient(145deg, rgb(134, 191, 120), rgb(70, 128, 74));
+}
+
+.legend-pill--walkway {
+    color: rgb(87, 83, 78);
+    border-color: rgba(120, 113, 108, 0.24);
+    background: rgba(245, 245, 244, 0.82);
+}
+
+.legend-pill--walkway::before {
+    background:
+        radial-gradient(
+            circle at 30% 30%,
+            rgba(255, 255, 255, 0.8),
+            transparent 25%
+        ),
+        rgb(168, 162, 158);
+}
+
+.legend-pill--empty {
+    color: rgb(100, 116, 139);
+    border-color: rgba(148, 163, 184, 0.28);
+    background: rgba(248, 250, 252, 0.86);
+}
+
+.legend-pill--empty::before {
+    border: 1px dashed rgba(100, 116, 139, 0.65);
+    background: rgba(255, 255, 255, 0.52);
+}
+
+.bed-grid-frame {
+    border: 1px solid rgba(70, 95, 57, 0.12);
+    background:
+        linear-gradient(rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.38)),
+        radial-gradient(
+            circle at 20% 0%,
+            color-mix(in srgb, var(--primary), transparent 82%),
+            transparent 36%
+        ),
+        color-mix(in srgb, var(--background), var(--primary) 5%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.7),
+        0 16px 34px rgba(44, 70, 46, 0.1);
+}
+
+.bed-cell {
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 0.9rem;
+}
+
+.bed-cell--empty {
+    border-color: rgba(84, 112, 65, 0.16);
+    color: rgba(34, 78, 44, 0.68);
+    background:
+        radial-gradient(
+            circle at 28% 24%,
+            rgba(255, 255, 255, 0.5),
+            transparent 26%
+        ),
+        linear-gradient(145deg, rgb(190, 220, 159), rgb(143, 185, 122));
+    box-shadow:
+        inset 0 2px 5px rgba(255, 255, 255, 0.28),
+        inset 0 -8px 14px rgba(59, 99, 50, 0.16);
+}
+
+.bed-cell--warm {
+    background:
+        radial-gradient(
+            circle at 28% 24%,
+            rgba(255, 255, 255, 0.52),
+            transparent 26%
+        ),
+        linear-gradient(145deg, rgb(203, 224, 168), rgb(153, 191, 128));
+}
+
+.bed-cell--planted {
+    border-color: rgba(21, 128, 61, 0.32);
+    background:
+        radial-gradient(
+            circle at 50% 28%,
+            rgba(220, 252, 231, 0.9),
+            transparent 44%
+        ),
+        linear-gradient(145deg, rgb(79, 151, 83), rgb(34, 99, 54));
+    box-shadow:
+        0 10px 22px rgba(34, 197, 94, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.bed-cell--walkway {
+    border-color: rgba(120, 113, 108, 0.22);
+    color: rgb(87, 83, 78);
+    background:
+        radial-gradient(
+            circle at 18% 22%,
+            rgba(255, 255, 255, 0.52) 0 10%,
+            transparent 11%
+        ),
+        radial-gradient(
+            circle at 74% 28%,
+            rgba(120, 113, 108, 0.28) 0 10%,
+            transparent 11%
+        ),
+        radial-gradient(
+            circle at 45% 72%,
+            rgba(87, 83, 78, 0.18) 0 8%,
+            transparent 9%
+        ),
+        linear-gradient(145deg, rgb(231, 229, 228), rgb(196, 190, 184));
+}
+
+.bed-cell--void {
+    border-color: rgba(148, 163, 184, 0.28);
+    color: rgba(100, 116, 139, 0.58);
+    background:
+        repeating-linear-gradient(
+            -45deg,
+            rgba(148, 163, 184, 0.1) 0 6px,
+            transparent 6px 12px
+        ),
+        rgba(248, 250, 252, 0.84);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.64);
+}
+
+.bed-cell--editor-selected {
+    border-color: color-mix(in srgb, var(--primary), transparent 20%);
+    color: var(--primary);
+    background:
+        radial-gradient(
+            circle at 50% 20%,
+            rgba(255, 255, 255, 0.82),
+            transparent 42%
+        ),
+        color-mix(in srgb, var(--primary), white 84%);
+    box-shadow:
+        0 0 0 3px color-mix(in srgb, var(--primary), transparent 78%),
+        0 14px 26px rgba(44, 70, 46, 0.16);
+}
+
+.photo-drop-zone {
+    display: grid;
+    min-height: 8.5rem;
+    place-items: center;
+    border: 1px dashed color-mix(in srgb, var(--primary), transparent 45%);
+    border-radius: 1.35rem;
+    padding: 1rem;
+    text-align: center;
+    color: var(--primary);
+    background:
+        radial-gradient(
+            circle at 50% 10%,
+            rgba(187, 247, 208, 0.44),
+            transparent 36%
+        ),
+        rgba(236, 253, 245, 0.48);
+    cursor: pointer;
+}
+
+.photo-drop-zone .material-symbols-outlined {
+    font-size: 2rem;
+}
+
+.photo-drop-zone strong {
+    display: block;
+    margin-top: 0.35rem;
+    color: var(--foreground);
+}
+
+.photo-drop-zone small {
+    color: var(--muted-foreground);
+}
+
+.summary-card {
+    border: 1px solid rgba(70, 95, 57, 0.14);
+    border-radius: 1.35rem;
+    padding: 1rem;
+    background:
+        linear-gradient(
+            145deg,
+            rgba(255, 255, 255, 0.76),
+            rgba(236, 253, 245, 0.52)
+        ),
+        var(--card);
+    box-shadow: 0 14px 30px rgba(44, 70, 46, 0.1);
+}
+</style>

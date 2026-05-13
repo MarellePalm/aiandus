@@ -14,7 +14,7 @@ const emit = defineEmits<{
 
 <template>
     <SeedActionButton
-        aria-label="Kustuta"
+        ariaLabel="Kustuta"
         position-class="top-2 right-2"
         @click.prevent.stop="emit('delete')"
     >
@@ -22,7 +22,7 @@ const emit = defineEmits<{
     </SeedActionButton>
 
     <SeedActionButton
-        aria-label="Lisa lemmikuks"
+        ariaLabel="Lisa lemmikuks"
         position-class="top-2 left-2"
         @click.prevent.stop="emit('favorite')"
     >
@@ -46,7 +46,7 @@ const emit = defineEmits<{
     </SeedActionButton>
 
     <SeedActionButton
-        aria-label="Muuda varu"
+        ariaLabel="Muuda varu"
         position-class="top-2 left-1/2 -translate-x-1/2"
         @click.prevent.stop="emit('edit')"
     >

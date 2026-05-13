@@ -3,22 +3,28 @@ import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import {
     Bird,
     Box,
-    Columns3,
+    BrickWall,
     Droplet,
     Droplets,
+    Fence,
     Flame,
+    Footprints,
     Home,
     House,
+    LandPlot,
     LayoutGrid,
     Leaf,
     Logs,
     Pencil,
     Recycle,
+    Route,
     Shapes,
+    Shovel,
+    Shrub,
     Sofa,
     Sprout,
     Tent,
-    ToyBrick,
+    TreeDeciduous,
     Trees,
     Warehouse,
     Waves,
@@ -39,9 +45,17 @@ import CardActionsMenu from '@/components/CardActionsMenu.vue';
 import DesktopSearchField from '@/components/DesktopSearchField.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
+import SortDropdown from '@/components/SortDropdown.vue';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 import SearchModal from '@/pages/Seeds/SearchModal.vue';
+import type { AppPageProps } from '@/types';
 
 type PlantInBed = {
     id: number;
@@ -54,6 +68,9 @@ type Bed = {
     name: string;
     location: string | null;
     image_url?: string | null;
+    is_favorite?: boolean;
+    sort_order?: number;
+    created_at?: string | null;
     rows: number;
     columns: number;
     garden_x: number;
@@ -62,12 +79,59 @@ type Bed = {
     layout?: number[][] | null;
     plants: PlantInBed[];
 };
-type GardenObjectType =
-    | 'greenhouse'
-    | 'pond'
-    | 'shed'
-    | 'compost'
-    | 'other';
+
+type BedListTabKey = 'all' | 'favorites';
+
+const bedSortOptions = [
+    { label: 'Järjekord aiaplaanil', value: 'plan_order' },
+    { label: 'Nimi A–Z', value: 'name_asc' },
+    { label: 'Nimi Z–A', value: 'name_desc' },
+    { label: 'Loodud: uuemad enne', value: 'created_desc' },
+    { label: 'Loodud: vanemad enne', value: 'created_asc' },
+] as { label: string; value: string }[];
+
+function parseBedCreatedAt(bed: Bed): number {
+    if (!bed.created_at) return 0;
+    const t = new Date(bed.created_at).getTime();
+    return Number.isNaN(t) ? 0 : t;
+}
+
+function sortBedsForPlanner(beds: Bed[], sortKey: string): Bed[] {
+    const list = [...beds];
+    switch (sortKey) {
+        case 'name_desc':
+            return list.sort((a, b) =>
+                (b.name ?? '').localeCompare(a.name ?? '', 'et', {
+                    sensitivity: 'base',
+                }),
+            );
+        case 'created_desc':
+            return list.sort(
+                (a, b) => parseBedCreatedAt(b) - parseBedCreatedAt(a),
+            );
+        case 'created_asc':
+            return list.sort(
+                (a, b) => parseBedCreatedAt(a) - parseBedCreatedAt(b),
+            );
+        case 'name_asc':
+            return list.sort((a, b) =>
+                (a.name ?? '').localeCompare(b.name ?? '', 'et', {
+                    sensitivity: 'base',
+                }),
+            );
+        case 'plan_order':
+        default:
+            return list.sort((a, b) => {
+                const ao = a.sort_order ?? 0;
+                const bo = b.sort_order ?? 0;
+                if (ao !== bo) return ao - bo;
+                return (a.name ?? '').localeCompare(b.name ?? '', 'et', {
+                    sensitivity: 'base',
+                });
+            });
+    }
+}
+type GardenObjectType = 'greenhouse' | 'pond' | 'shed' | 'compost' | 'other';
 type GardenObject = {
     id: number;
     type: GardenObjectType;
@@ -105,7 +169,8 @@ type ToolVariant = {
     icon: string;
     requiresCustomName?: boolean;
 };
-type ToolCategoryId = 'buildings' | 'water' | 'compost' | 'zones';
+type ToolCategoryId = 'buildings' | 'water' | 'paths' | 'maintenance';
+type PlannerListView = 'beds' | 'objects';
 type ToolCategory = {
     id: ToolCategoryId;
     label: string;
@@ -122,13 +187,17 @@ const props = defineProps<{
     plantsWithoutBed: PlantWithoutBed[];
 }>();
 
-const page = usePage<{
+type MapPageProps = AppPageProps<{
     flash?: {
         success?: string | null;
         error?: string | null;
     };
     errors?: Record<string, string>;
-}>();
+}>;
+
+type DimensionFormErrors = Record<'width' | 'height', string | undefined>;
+
+const page = usePage<MapPageProps>();
 const breadcrumbs = computed(() => [
     { title: 'Aiaplaan', href: `/map/${props.gardenPlan.id}` },
 ]);
@@ -136,12 +205,81 @@ const showOnboardingHint = computed(() => props.beds.length === 0);
 const showSearch = ref(false);
 const searchQuery = ref('');
 
+const localBeds = ref<Bed[]>([...props.beds]);
+watch(
+    () => props.beds,
+    (next) => {
+        localBeds.value = [...next];
+    },
+);
+
+const mobileBedListTab = ref<BedListTabKey>('all');
+const selectedBedSort = ref('plan_order');
+
+function bedListTabClass(key: BedListTabKey) {
+    const base =
+        'px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition';
+
+    return mobileBedListTab.value === key
+        ? `${base} bg-primary text-primary-foreground`
+        : `${base} bg-primary/10 text-primary`;
+}
+
+function toggleBedFavorite(bedId: number) {
+    const idx = localBeds.value.findIndex((b) => b.id === bedId);
+    if (idx === -1) return;
+
+    const prev = localBeds.value[idx].is_favorite === true;
+
+    localBeds.value[idx] = {
+        ...localBeds.value[idx],
+        is_favorite: !prev,
+    };
+
+    router.patch(
+        `/beds/${bedId}/favorite`,
+        {},
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onError: () => {
+                localBeds.value[idx] = {
+                    ...localBeds.value[idx],
+                    is_favorite: prev,
+                };
+            },
+        },
+    );
+}
+
 const GARDEN_PADDING = 24;
 const CM_TO_PX = 0.5;
 const GARDEN_GRID_CELL_CM = 30;
-const MIN_ZOOM = 0.55;
+const MIN_ZOOM = 0.1;
+/** "Mahuta sisu" / "Kogu aed" may go lower so large plans actually fit on screen. */
+const FIT_VIEW_MIN_ZOOM = 0.001;
+/** When fitting content, zoom must be at least high enough that items are still visible pixels. */
+const CONTENT_FIT_MIN_VISIBLE_ITEM_PX = 14;
 const MAX_ZOOM = 4.5;
 const ZOOM_STEP = 0.25;
+const FOCUSED_BED_MIN_ZOOM = 0.75;
+const MIN_PINCH_DISTANCE_PX = 10;
+const CONTENT_FIT_PADDING = 160;
+const CONTENT_FIT_SIDE_PADDING = 40;
+const INITIAL_GARDEN_MIN_VIEWPORT_WIDTH = 0.86;
+const INITIAL_GARDEN_MIN_VIEWPORT_HEIGHT = 0.82;
+const MIN_BED_VISUAL_SIZE = 44;
+const MIN_OBJECT_VISUAL_SIZE = 48;
+const MAX_GARDEN_SURFACE_WIDTH = 3200;
+const MAX_GARDEN_SURFACE_HEIGHT = 2200;
+
+const viewportPointerMap = new Map<number, { x: number; y: number }>();
+type ViewportPinchState = {
+    startDistance: number;
+    startZoom: number;
+    gx: number;
+    gy: number;
+};
 
 const localPositions = ref<Record<number, { x: number; y: number }>>({});
 const localObjectPositions = ref<Record<number, { x: number; y: number }>>({});
@@ -150,29 +288,42 @@ const draggingObjectId = ref<number | null>(null);
 const dragMoved = ref(false);
 const dragOffset = ref({ x: 0, y: 0 });
 const dragPointerId = ref<number | null>(null);
+const dragCaptureTarget = ref<HTMLElement | null>(null);
+const panPointerId = ref<number | null>(null);
+const pinchState = ref<ViewportPinchState | null>(null);
 const hoveredBedId = ref<number | null>(null);
 const hoveredObjectId = ref<number | null>(null);
-const selectedBedId = ref<number | null>(null);
+const initialFocusedBedId = getInitialFocusedBedId();
+const selectedBedId = ref<number | null>(initialFocusedBedId);
 const selectedObjectId = ref<number | null>(null);
+const isLayoutEditing = ref(initialFocusedBedId !== null);
+const plannerListView = ref<PlannerListView | null>(null);
 const activeTool = ref<GardenObjectType | null>(null);
 const activeToolVariant = ref<ToolVariant | null>(null);
 const activeToolCategoryId = ref<ToolCategoryId | null>(null);
+const createMenuOpen = ref(false);
 const toolDrawerOpen = ref(false);
 const plannerControlsOpen = ref(false);
+const createGardenPlanModalOpen = ref(false);
+const confirmDialogOpen = ref(false);
 const toolSearch = ref('');
 const otherObjectNameDraft = ref('');
 const otherObjectNameError = ref('');
+const createGardenPlanNameInput = ref<HTMLInputElement | null>(null);
+const confirmDialogTitle = ref('');
+const confirmDialogMessage = ref('');
+const confirmDialogConfirmLabel = ref('Kinnita');
+let confirmDialogAction: (() => void) | null = null;
 const showBedsLayer = ref(true);
 const showStructuresLayer = ref(true);
 const showWaterLayer = ref(true);
-const showPlannerLabels = ref(true);
 const selectedQuickCategoryId = ref<ToolCategoryId | null>(null);
 const toolCategories: ToolCategory[] = [
     {
         id: 'buildings',
         label: 'Hooned',
         icon: 'house',
-        description: 'Maja, kasvuhoone, kuur ja muud ehitised.',
+        description: 'Maja, kasvuhoone, kuur ja varjualune.',
         variants: [
             {
                 id: 'other-house',
@@ -193,75 +344,30 @@ const toolCategories: ToolCategory[] = [
                 icon: 'warehouse',
             },
             {
-                id: 'greenhouse-tunnel',
-                type: 'greenhouse',
-                label: 'Tunnelkasvuhoone',
-                description: 'Pikem tunnel varaseks kasvatuseks.',
-                width: 420,
-                height: 180,
-                icon: 'tent',
-            },
-            {
-                id: 'greenhouse-mini',
-                type: 'greenhouse',
-                label: 'Mini-kasvuhoone',
-                description: 'Kompaktne kasvuhoone väiksemasse aeda.',
-                width: 220,
-                height: 150,
-                icon: 'sprout',
-            },
-            {
-                id: 'greenhouse-raised-bed-cover',
-                type: 'greenhouse',
-                label: 'Kastipeenra kate',
-                description: 'Madal kate tõstetud peenrale.',
-                width: 260,
-                height: 120,
-                icon: 'box',
-            },
-            {
                 id: 'shed-tool',
                 type: 'shed',
-                label: 'Tööriistakuur',
+                label: 'Kuur',
                 description: 'Panipaik tööriistadele ja varustusele.',
                 width: 240,
                 height: 180,
                 icon: 'wrench',
             },
             {
-                id: 'shed-wood',
-                type: 'shed',
-                label: 'Puukuur',
-                description: 'Kuiv hoiukoht puudele.',
-                width: 200,
-                height: 160,
-                icon: 'logs',
-            },
-            {
-                id: 'shed-gazebo',
-                type: 'shed',
-                label: 'Aiapaviljon',
-                description: 'Katusega varjualune istumiseks.',
+                id: 'other-shelter',
+                type: 'other',
+                label: 'Varjualune',
+                description: 'Paviljon, pergola või lihtne katusealune.',
                 width: 320,
-                height: 260,
-                icon: 'tent',
-            },
-            {
-                id: 'shed-sauna',
-                type: 'shed',
-                label: 'Aiasaun',
-                description: 'Väike kõrvalhoone puhkealale.',
-                width: 300,
                 height: 220,
-                icon: 'home',
+                icon: 'tent',
             },
         ],
     },
     {
         id: 'water',
-        label: 'Veealad',
+        label: 'Vesi',
         icon: 'droplets',
-        description: 'Tiigid, purskkaevud ja vee kogumine.',
+        description: 'Tiik, kraav, oja ja vee kogumine.',
         variants: [
             {
                 id: 'pond',
@@ -273,22 +379,22 @@ const toolCategories: ToolCategory[] = [
                 icon: 'waves',
             },
             {
-                id: 'fountain',
+                id: 'ditch',
                 type: 'pond',
-                label: 'Purskkaev',
-                description: 'Väiksem dekoratiivne veeobjekt.',
-                width: 140,
-                height: 140,
-                icon: 'droplet',
+                label: 'Kraav',
+                description: 'Pikk kuivendus- või piirdekraav.',
+                width: 520,
+                height: 80,
+                icon: 'route',
             },
             {
-                id: 'pond-bird-bath',
+                id: 'stream',
                 type: 'pond',
-                label: 'Linnuvann',
-                description: 'Väike veeallikas lindudele.',
-                width: 110,
-                height: 110,
-                icon: 'bird',
+                label: 'Oja / jõgi',
+                description: 'Voolav veejoon aia servas või sees.',
+                width: 620,
+                height: 120,
+                icon: 'waves',
             },
             {
                 id: 'pond-rain-barrel',
@@ -299,102 +405,93 @@ const toolCategories: ToolCategory[] = [
                 height: 120,
                 icon: 'droplets',
             },
+            {
+                id: 'pond-fountain',
+                type: 'pond',
+                label: 'Purskkaev',
+                description: 'Väike purskkaev või dekoratiivne veepunkt.',
+                width: 50,
+                height: 50,
+                icon: 'droplet',
+            },
         ],
     },
     {
-        id: 'compost',
-        label: 'Kompost',
-        icon: 'recycle',
-        description: 'Kompostikastid ja orgaanika alad.',
+        id: 'paths',
+        label: 'Teed ja piirid',
+        icon: 'route',
+        description: 'Rajad, aiad, väravad ja hekid.',
+        variants: [
+            {
+                id: 'other-path',
+                type: 'other',
+                label: 'Tee / rada',
+                description: 'Käigurada peenarde või hoonete vahel.',
+                width: 520,
+                height: 90,
+                icon: 'footprints',
+            },
+            {
+                id: 'other-fence',
+                type: 'other',
+                label: 'Aed / piire',
+                description: 'Piirdeaed, võrk või peenarde eraldus.',
+                width: 620,
+                height: 70,
+                icon: 'fence',
+            },
+            {
+                id: 'other-gate',
+                type: 'other',
+                label: 'Värav',
+                description: 'Sissepääs või läbipääs aiapiirdes.',
+                width: 140,
+                height: 70,
+                icon: 'land-plot',
+            },
+            {
+                id: 'other-hedge',
+                type: 'other',
+                label: 'Hekk',
+                description: 'Elav piire või tuulekaitse.',
+                width: 520,
+                height: 90,
+                icon: 'shrub',
+            },
+        ],
+    },
+    {
+        id: 'maintenance',
+        label: 'Hooldus ja puud',
+        icon: 'shovel',
+        description: 'Kompost, puuriit, puud ja vabalt nimetatud objektid.',
         variants: [
             {
                 id: 'compost-bin',
                 type: 'compost',
-                label: 'Kompostikast',
-                description: 'Kompaktne kompostikast biojäätmetele.',
-                width: 120,
-                height: 120,
+                label: 'Kompost',
+                description: 'Üks kompostikoht või kompostikast.',
+                width: 160,
+                height: 140,
                 icon: 'recycle',
             },
             {
-                id: 'compost-area',
-                type: 'compost',
-                label: 'Kompostiala',
-                description: 'Suurem avatud kompostiala.',
-                width: 220,
-                height: 160,
-                icon: 'sprout',
-            },
-            {
-                id: 'compost-leaf-area',
-                type: 'compost',
-                label: 'Lehekomposti ala',
-                description: 'Lehtedele ja pehmemale orgaanikale.',
-                width: 180,
-                height: 140,
-                icon: 'leaf',
-            },
-            {
-                id: 'compost-multibox',
-                type: 'compost',
-                label: 'Mitmekambriline komposter',
-                description: 'Tõhusam komposteerimine mitmes sektsioonis.',
-                width: 260,
+                id: 'other-woodpile',
+                type: 'other',
+                label: 'Puuriit',
+                description: 'Küttepuude või okste hoiukoht.',
+                width: 240,
                 height: 120,
-                icon: 'columns-3',
-            },
-        ],
-    },
-    {
-        id: 'zones',
-        label: 'Alad',
-        icon: 'trees',
-        description: 'Puhkealad ja muud tsoonid.',
-        variants: [
-            {
-                id: 'other-pergola',
-                type: 'other',
-                label: 'Pergola',
-                description: 'Varjuline puhkeala.',
-                width: 280,
-                height: 220,
-                icon: 'tent',
+                icon: 'logs',
             },
             {
-                id: 'other-terrace',
+                id: 'other-tree',
                 type: 'other',
-                label: 'Terrass',
-                description: 'Istumis- ja puhkeala.',
-                width: 360,
-                height: 240,
-                icon: 'sofa',
-            },
-            {
-                id: 'other-fireplace',
-                type: 'other',
-                label: 'Lõkkeplats',
-                description: 'Ümar puhkeala lõkke jaoks.',
-                width: 220,
-                height: 220,
-                icon: 'flame',
-            },
-            {
-                id: 'other-play-area',
-                type: 'other',
-                label: 'Laste mänguala',
-                description: 'Muru- või liivapind mängimiseks.',
-                width: 320,
-                height: 240,
-                icon: 'toy-brick',
-            },
-            {
-                id: 'other-herb-corner',
-                type: 'other',
-                label: 'Ürdinurk',
-                description: 'Eraldi ala maitsetaimedele.',
-                width: 220,
+                label: 'Puu / põõsas',
+                description: 'Olemasolev puu, marjapõõsas või istutusala.',
+                width: 160,
                 height: 160,
-                icon: 'leaf',
+                icon: 'tree-deciduous',
             },
             {
                 id: 'other-custom',
@@ -412,19 +509,21 @@ const toolCategories: ToolCategory[] = [
 const allToolVariants = toolCategories.flatMap((category) => category.variants);
 const plannerViewport = ref<HTMLElement | null>(null);
 const selectedObjectPanel = ref<HTMLElement | null>(null);
-const selectedBedPanel = ref<HTMLElement | null>(null);
 const objectWidthInput = ref<HTMLInputElement | null>(null);
 const viewportSize = ref({ width: 0, height: 0 });
+/** First fit after mount/plan change; retries when ResizeObserver gets non-zero size. */
+const plannerInitialViewportFitDone = ref(false);
 const zoom = ref(1);
 const panX = ref(0);
 const panY = ref(0);
 const isPanning = ref(false);
+const panGestureMoved = ref(false);
+const suppressPlannerSurfaceClick = ref(false);
 const panStart = ref({ x: 0, y: 0, originX: 0, originY: 0 });
+const PAN_CLICK_SUPPRESS_PX = 8;
 let resizeObserver: ResizeObserver | null = null;
 const highlightSelectedObjectPanel = ref(false);
-const highlightSelectedBedPanel = ref(false);
 let objectPanelHighlightTimeout: ReturnType<typeof setTimeout> | null = null;
-let bedPanelHighlightTimeout: ReturnType<typeof setTimeout> | null = null;
 const plannerLandscapeHintDismissed = ref(false);
 const PLANNER_LANDSCAPE_HINT_KEY = 'planner-landscape-hint-dismissed';
 
@@ -439,25 +538,34 @@ const gardenForm = useForm({
     widthMeters: props.gardenPlan.width / 100,
     heightMeters: props.gardenPlan.height / 100,
 });
+const gardenFormDimensionErrors = computed(
+    () => gardenForm.errors as typeof gardenForm.errors & DimensionFormErrors,
+);
+const createGardenPlanForm = useForm({
+    name: '',
+});
 const objectForm = useForm({
     name: '',
     widthMeters: 0,
     heightMeters: 0,
 });
+const objectFormDimensionErrors = computed(
+    () => objectForm.errors as typeof objectForm.errors & DimensionFormErrors,
+);
 
 function openGardenPlanEditor() {
     plannerControlsOpen.value = true;
 }
 
 function deleteGardenPlan() {
-    if (
-        !confirm(
-            'Kustutada see aiaplaan koos selle peenarde ja aiaobjektidega? Sidumata taimed jäävad alles.',
-        )
-    ) {
-        return;
-    }
-    router.delete(`/garden-plans/${props.gardenPlan.id}`);
+    openConfirmDialog(
+        'Kustuta aiaplaan?',
+        'Kustutada see aiaplaan koos selle peenarde ja aiaobjektidega? Sidumata taimed jäävad alles.',
+        'Kustuta aiaplaan',
+        () => {
+            router.delete(`/garden-plans/${props.gardenPlan.id}`);
+        },
+    );
 }
 
 function onGardenPlanSelect(event: Event) {
@@ -467,12 +575,58 @@ function onGardenPlanSelect(event: Event) {
     router.visit(`/map/${id}`);
 }
 
-function createGardenPlan() {
-    const raw = window.prompt('Uue aiaplaani nimi (tühi = „Minu aed“):', '');
-    if (raw === null) return;
-    router.post('/garden-plans', {
-        name: raw.trim() || undefined,
-    });
+function openCreateGardenPlanModal() {
+    createMenuOpen.value = false;
+    createGardenPlanForm.reset();
+    createGardenPlanForm.clearErrors();
+    createGardenPlanModalOpen.value = true;
+    nextTick(() => createGardenPlanNameInput.value?.focus());
+}
+
+function closeCreateGardenPlanModal() {
+    if (createGardenPlanForm.processing) return;
+    createGardenPlanModalOpen.value = false;
+}
+
+function submitCreateGardenPlan() {
+    createGardenPlanForm
+        .transform((data) => ({
+            name: data.name.trim() || undefined,
+        }))
+        .post('/garden-plans', {
+            preserveScroll: true,
+            onSuccess: () => {
+                createGardenPlanModalOpen.value = false;
+                createGardenPlanForm.reset();
+            },
+            onError: () => {
+                nextTick(() => createGardenPlanNameInput.value?.focus());
+            },
+        });
+}
+
+function openConfirmDialog(
+    title: string,
+    message: string,
+    confirmLabel: string,
+    action: () => void,
+) {
+    confirmDialogTitle.value = title;
+    confirmDialogMessage.value = message;
+    confirmDialogConfirmLabel.value = confirmLabel;
+    confirmDialogAction = action;
+    confirmDialogOpen.value = true;
+}
+
+function closeConfirmDialog() {
+    confirmDialogOpen.value = false;
+    confirmDialogAction = null;
+}
+
+function runConfirmDialogAction() {
+    const action = confirmDialogAction;
+    closeConfirmDialog();
+    action?.();
 }
 
 watch(
@@ -480,9 +634,23 @@ watch(
     (id, prev) => {
         syncPositionsFromProps();
         if (prev !== undefined && id !== prev) {
+            plannerInitialViewportFitDone.value = false;
             selectedBedId.value = null;
             selectedObjectId.value = null;
             plannerControlsOpen.value = false;
+            searchQuery.value = '';
+            showBedsLayer.value = true;
+            showStructuresLayer.value = true;
+            showWaterLayer.value = true;
+            nextTick(() => {
+                if (plannerViewport.value) {
+                    viewportSize.value = {
+                        width: plannerViewport.value.clientWidth,
+                        height: plannerViewport.value.clientHeight,
+                    };
+                }
+                runPlannerInitialViewportFit();
+            });
         }
     },
 );
@@ -515,7 +683,7 @@ onMounted(() => {
                 height: plannerViewport.value.clientHeight,
             };
         }
-        applyFitZoom();
+        runPlannerInitialViewportFit();
     });
 
     if (typeof ResizeObserver !== 'undefined' && plannerViewport.value) {
@@ -526,10 +694,25 @@ onMounted(() => {
                 width: entry.contentRect.width,
                 height: entry.contentRect.height,
             };
+            nextTick(() => {
+                runPlannerInitialViewportFit();
+            });
         });
         resizeObserver.observe(plannerViewport.value);
     }
 });
+
+function getInitialFocusedBedId(): number | null {
+    if (typeof window === 'undefined') return null;
+
+    const value = new URLSearchParams(window.location.search).get('bed');
+    if (!value) return null;
+
+    const bedId = Number(value);
+    if (!Number.isInteger(bedId)) return null;
+
+    return props.beds.some((bed) => bed.id === bedId) ? bedId : null;
+}
 
 function dismissLandscapeHint() {
     plannerLandscapeHintDismissed.value = true;
@@ -545,12 +728,15 @@ onBeforeUnmount(() => {
     window.removeEventListener('pointermove', onObjectPointerMove);
     window.removeEventListener('pointerup', stopObjectDragging);
     window.removeEventListener('pointercancel', stopObjectDragging);
-    window.removeEventListener('pointermove', onPanMove);
+    window.removeEventListener('pointermove', onPlannerWindowPointerMove);
     window.removeEventListener('pointerup', stopPanning);
     window.removeEventListener('pointercancel', stopPanning);
+    window.removeEventListener('pointerup', onPinchPointerUp);
+    window.removeEventListener('pointercancel', onPinchPointerUp);
+    viewportPointerMap.clear();
+    pinchState.value = null;
     resizeObserver?.disconnect();
     if (objectPanelHighlightTimeout) clearTimeout(objectPanelHighlightTimeout);
-    if (bedPanelHighlightTimeout) clearTimeout(bedPanelHighlightTimeout);
 });
 
 function syncPositionsFromProps() {
@@ -573,11 +759,10 @@ function syncPositionsFromProps() {
     localObjectPositions.value = objectPositions;
 }
 
-const bedNames = computed(() => props.beds.map((b) => b.name));
+const bedNames = computed(() => localBeds.value.map((b) => b.name));
 
 const filteredBeds = computed(() => {
-    let list = [...props.beds];
-    list = list.slice().sort((a, b) => a.name.localeCompare(b.name, 'et'));
+    let list = sortBedsForPlanner(localBeds.value, selectedBedSort.value);
 
     if (searchQuery.value.trim()) {
         const q = searchQuery.value.toLowerCase();
@@ -589,6 +774,24 @@ const filteredBeds = computed(() => {
     }
 
     return list;
+});
+
+const mobileListBeds = computed(() => {
+    let list = [...filteredBeds.value];
+
+    if (mobileBedListTab.value === 'favorites') {
+        list = list.filter((b) => b.is_favorite === true);
+    }
+
+    return list;
+});
+
+const mobileBedCountSuffix = computed(() => {
+    const n = mobileListBeds.value.length;
+    if (mobileBedListTab.value === 'favorites') {
+        return n === 1 ? 'lemmik' : 'lemmikut';
+    }
+    return n === 1 ? 'peenar' : 'peenart';
 });
 const plannerFeedback = computed(() => {
     const gardenPlanError = page.props.errors?.garden_plan;
@@ -628,16 +831,24 @@ const gardenHeightCm = computed(() =>
     Math.max(1, Math.round(Number(gardenForm.heightMeters || 0) * 100)),
 );
 const gardenSurfaceWidth = computed(() =>
-    Math.max(320, Math.round(gardenWidthCm.value * CM_TO_PX)),
+    Math.min(
+        MAX_GARDEN_SURFACE_WIDTH,
+        Math.max(320, Math.round(gardenWidthCm.value * CM_TO_PX)),
+    ),
 );
 const gardenSurfaceHeight = computed(() =>
-    Math.max(240, Math.round(gardenHeightCm.value * CM_TO_PX)),
+    Math.min(
+        MAX_GARDEN_SURFACE_HEIGHT,
+        Math.max(240, Math.round(gardenHeightCm.value * CM_TO_PX)),
+    ),
 );
 const zoomPercent = computed(() => `${Math.round(zoom.value * 100)}%`);
 const gardenDimensionLabel = computed(() => {
     const fmt = (v: number) => {
         const n = Math.round(v * 100) / 100;
-        return Number.isInteger(n) ? `${n}` : n.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+        return Number.isInteger(n)
+            ? `${n}`
+            : n.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
     };
     const w = Number(gardenForm.widthMeters || 0);
     const h = Number(gardenForm.heightMeters || 0);
@@ -647,9 +858,7 @@ const plannerGridSizePx = computed(() =>
     Math.max(10, Math.round(GARDEN_GRID_CELL_CM * CM_TO_PX)),
 );
 const scaleBarWidthPx = computed(() => Math.round(100 * CM_TO_PX));
-const plannerBeds = computed(() =>
-    showBedsLayer.value ? filteredBeds.value : [],
-);
+const plannerBeds = computed(() => (showBedsLayer.value ? props.beds : []));
 const plannerObjects = computed(() =>
     props.gardenObjects.filter((object) => {
         if (object.type === 'pond') return showWaterLayer.value;
@@ -665,14 +874,17 @@ const filteredToolCategories = computed(() => {
         .map((category) => ({
             ...category,
             variants: category.variants.filter((variant) => {
-                const haystack = `${category.label} ${variant.label} ${variant.description}`.toLowerCase();
+                const haystack =
+                    `${category.label} ${variant.label} ${variant.description}`.toLowerCase();
                 return haystack.includes(query);
             }),
         }))
         .filter((category) => category.variants.length > 0);
 });
 const selectedToolDisplayLabel = computed(
-    () => activeToolVariant.value?.label ?? (activeTool.value ? objectTypeLabel(activeTool.value) : ''),
+    () =>
+        activeToolVariant.value?.label ??
+        (activeTool.value ? objectTypeLabel(activeTool.value) : ''),
 );
 const selectedToolDisplayDescription = computed(
     () => activeToolVariant.value?.description ?? '',
@@ -722,22 +934,6 @@ watch(
     { immediate: true },
 );
 
-watch(selectedBed, (bed) => {
-    if (!bed) return;
-
-    nextTick(() => {
-        selectedBedPanel.value?.scrollIntoView({
-            block: 'nearest',
-            behavior: 'smooth',
-        });
-        highlightSelectedBedPanel.value = true;
-        if (bedPanelHighlightTimeout) clearTimeout(bedPanelHighlightTimeout);
-        bedPanelHighlightTimeout = setTimeout(() => {
-            highlightSelectedBedPanel.value = false;
-        }, 1200);
-    });
-});
-
 watch(plannerBeds, (beds) => {
     if (
         selectedBedId.value !== null &&
@@ -746,6 +942,29 @@ watch(plannerBeds, (beds) => {
         selectedBedId.value = beds[0]?.id ?? null;
     }
 });
+
+watch(
+    () =>
+        props.beds.map((bed) => [
+            bed.id,
+            bed.garden_x ?? GARDEN_PADDING,
+            bed.garden_y ?? GARDEN_PADDING,
+        ]),
+    () => {
+        const current = localPositions.value;
+        const next: Record<number, { x: number; y: number }> = {};
+
+        props.beds.forEach((bed) => {
+            next[bed.id] = current[bed.id] ?? {
+                x: bed.garden_x ?? GARDEN_PADDING,
+                y: bed.garden_y ?? GARDEN_PADDING,
+            };
+        });
+
+        localPositions.value = next;
+    },
+    { deep: true },
+);
 
 watch(plannerObjects, (objects) => {
     if (
@@ -794,17 +1013,21 @@ const categoryIconToneClass = (categoryId: ToolCategoryId, active: boolean) => {
     return {
         buildings: 'text-slate-600',
         water: 'text-sky-600',
-        compost: 'text-amber-700',
-        zones: 'text-violet-400',
+        paths: 'text-stone-600',
+        maintenance: 'text-amber-700',
     }[categoryId];
 };
-const categoryButtonToneClass = (categoryId: ToolCategoryId, active: boolean) => {
+const categoryButtonToneClass = (
+    categoryId: ToolCategoryId,
+    active: boolean,
+) => {
     if (active) {
         return {
             buildings: 'border-primary/30 bg-primary/12 text-primary shadow-sm',
             water: 'border-primary/30 bg-primary/12 text-primary shadow-sm',
-            compost: 'border-primary/30 bg-primary/12 text-primary shadow-sm',
-            zones: 'border-primary/30 bg-primary/12 text-primary shadow-sm',
+            paths: 'border-primary/30 bg-primary/12 text-primary shadow-sm',
+            maintenance:
+                'border-primary/30 bg-primary/12 text-primary shadow-sm',
         }[categoryId];
     }
 
@@ -812,19 +1035,21 @@ const categoryButtonToneClass = (categoryId: ToolCategoryId, active: boolean) =>
         buildings:
             'border-border/70 bg-background text-foreground hover:bg-muted/70',
         water: 'border-border/70 bg-background text-foreground hover:bg-muted/70',
-        compost:
+        paths: 'border-border/70 bg-background text-foreground hover:bg-muted/70',
+        maintenance:
             'border-border/70 bg-background text-foreground hover:bg-muted/70',
-        zones: 'border-border/70 bg-background text-foreground hover:bg-muted/70',
     }[categoryId];
 };
 
-function editBed(id: number) {
-    router.get(`/beds/${id}/edit`);
-}
-
 function deleteBed(id: number, name: string) {
-    if (!confirm(`Eemaldada peenar "${name}"? Taimed jäävad peenrata.`)) return;
-    router.delete(`/beds/${id}`, { preserveScroll: true });
+    openConfirmDialog(
+        'Eemalda peenar?',
+        `Eemaldada peenar "${name}"? Taimed jäävad peenrata.`,
+        'Eemalda peenar',
+        () => {
+            router.delete(`/beds/${id}`, { preserveScroll: true });
+        },
+    );
 }
 
 function getBedLayout(bed: Bed): number[][] {
@@ -916,14 +1141,9 @@ function getPlantAtVisibleCell(
     return bed.plants.find((item) => item.position_in_bed === key) ?? null;
 }
 
-function getPlantPreviewImageAtVisibleCell(
-    bed: Bed,
-    visibleRow: number,
-    visibleCol: number,
-): string | null {
-    const plant = getPlantAtVisibleCell(bed, visibleRow, visibleCol);
-    if (!plant) return null;
-    return plant.image_url || '/logo.png';
+function getBedPreviewImage(bed: Bed): string | null {
+    if (bed.image_url) return bed.image_url;
+    return bed.plants.find((plant) => plant.image_url)?.image_url ?? null;
 }
 
 function getBedPhysicalWidthCm(bed: Bed): number {
@@ -938,33 +1158,101 @@ function formatCentimeters(cm: number): string {
     return `${(cm / 100).toFixed(1)} m`;
 }
 
+function bedPlantsCount(bed: Bed): number {
+    return bed.plants?.length ?? 0;
+}
+
+function bedPlantSummaryLine(bed: Bed): string {
+    const n = bedPlantsCount(bed);
+    if (n === 0) return 'Taimi veel ei ole';
+    if (n === 1) return '1 taim';
+    return `${n} taime`;
+}
+
+function bedDimensionsLabel(bed: Bed): string {
+    return `${formatCentimeters(getBedPhysicalWidthCm(bed))} × ${formatCentimeters(getBedPhysicalHeightCm(bed))}`;
+}
+
 function bedPreviewGridStyle(bed: Bed) {
     const cols = getBedWidthInCells(bed);
     const rows = getBedHeightInCells(bed);
-    const cellPx = Math.max(10, Math.round(getBedCellSizeCm(bed) * CM_TO_PX));
 
     return {
-        gridTemplateColumns: `repeat(${cols}, ${cellPx}px)`,
-        gridTemplateRows: `repeat(${rows}, ${cellPx}px)`,
+        width: '100%',
+        height: '100%',
+        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+        gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
     };
+}
+
+function mapPlannerBedCellClass(
+    cell: number,
+    bed: Bed,
+    visibleRow: number,
+    visibleCol: number,
+): string {
+    if (cell === -1) {
+        return 'bed-cell bed-cell--walkway min-h-0 min-w-0';
+    }
+    if (cell === 0) {
+        return 'pointer-events-none min-h-0 min-w-0 opacity-0';
+    }
+    const plant = getPlantAtVisibleCell(bed, visibleRow, visibleCol);
+    if (plant?.image_url) {
+        return 'bed-cell bed-cell--planted bed-cell--photo min-h-0 min-w-0';
+    }
+    if (plant) {
+        return 'bed-cell bed-cell--planted min-h-0 min-w-0';
+    }
+    const warm = (visibleRow + visibleCol) % 2 === 0;
+    return (
+        (warm
+            ? 'bed-cell bed-cell--empty bed-cell--warm'
+            : 'bed-cell bed-cell--empty') + ' min-h-0 min-w-0'
+    );
 }
 
 function bedCardSize(bed: Bed) {
     return {
-        width: Math.max(24, Math.round(getBedPhysicalWidthCm(bed) * CM_TO_PX)),
+        width: Math.max(
+            MIN_BED_VISUAL_SIZE,
+            Math.round(getBedPhysicalWidthCm(bed) * CM_TO_PX),
+        ),
         height: Math.max(
-            24,
+            MIN_BED_VISUAL_SIZE,
             Math.round(getBedPhysicalHeightCm(bed) * CM_TO_PX),
         ),
     };
 }
 
 function getObjectPixelWidth(object: GardenObject): number {
-    return Math.max(30, Math.round(object.width * CM_TO_PX));
+    if (isIconOnlyObject(object)) return MIN_OBJECT_VISUAL_SIZE;
+
+    return Math.max(
+        MIN_OBJECT_VISUAL_SIZE,
+        Math.round(object.width * CM_TO_PX),
+    );
 }
 
 function getObjectPixelHeight(object: GardenObject): number {
-    return Math.max(30, Math.round(object.height * CM_TO_PX));
+    if (isIconOnlyObject(object)) return MIN_OBJECT_VISUAL_SIZE;
+
+    return Math.max(
+        MIN_OBJECT_VISUAL_SIZE,
+        Math.round(object.height * CM_TO_PX),
+    );
+}
+
+function isIconOnlyObject(object: GardenObject): boolean {
+    const variantId =
+        object.meta && typeof object.meta === 'object'
+            ? (object.meta['variant_id'] as string | undefined)
+            : undefined;
+
+    return (
+        variantId === 'pond-fountain' ||
+        object.name.trim().toLowerCase() === 'purskkaev'
+    );
 }
 
 function snapToGardenGrid(value: number): number {
@@ -1045,7 +1333,7 @@ function plannerObjectStyle(object: GardenObject) {
     };
 }
 
-function getPlannerLocalPoint(event: PointerEvent | WheelEvent) {
+function getPlannerLocalPoint(event: PointerEvent | WheelEvent | MouseEvent) {
     const viewport = plannerViewport.value;
     if (!viewport) {
         return { x: 0, y: 0 };
@@ -1062,6 +1350,11 @@ function getPlannerLocalPoint(event: PointerEvent | WheelEvent) {
 function openBedPage(bedId: number) {
     if (dragMoved.value) return;
     router.get(`/beds/${bedId}`);
+}
+
+function openBedEditPage(bedId: number) {
+    if (dragMoved.value) return;
+    router.get(`/beds/${bedId}/edit`);
 }
 
 function showBedInfo(bedId: number) {
@@ -1086,6 +1379,7 @@ function hideObjectInfo(objectId: number) {
 
 function focusBedDetails(bedId: number) {
     if (dragMoved.value) return;
+    isLayoutEditing.value = true;
     selectedObjectId.value = null;
     selectedBedId.value = bedId;
 }
@@ -1103,15 +1397,31 @@ function clearSelectionDetails() {
     hoveredObjectId.value = null;
 }
 
+function togglePlannerListView(view: PlannerListView) {
+    plannerListView.value = plannerListView.value === view ? null : view;
+}
+
 function startDragging(bed: Bed, event: PointerEvent) {
     const target = event.target as HTMLElement | null;
     if (target?.closest('[data-no-drag="true"]')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    isLayoutEditing.value = true;
 
     const current = getBedPosition(bed);
     const pointer = getPlannerLocalPoint(event);
     draggingBedId.value = bed.id;
     dragMoved.value = false;
     dragPointerId.value = event.pointerId;
+    const captureEl = event.currentTarget as HTMLElement | null;
+    dragCaptureTarget.value = captureEl;
+    if (captureEl) {
+        try {
+            captureEl.setPointerCapture(event.pointerId);
+        } catch {
+            /* noop */
+        }
+    }
     dragOffset.value = {
         x: pointer.x - current.x,
         y: pointer.y - current.y,
@@ -1123,7 +1433,12 @@ function startDragging(bed: Bed, event: PointerEvent) {
 }
 
 function onPointerMove(event: PointerEvent) {
-    if (draggingBedId.value === null) return;
+    if (
+        draggingBedId.value === null ||
+        event.pointerId !== dragPointerId.value
+    ) {
+        return;
+    }
 
     const bed = props.beds.find((item) => item.id === draggingBedId.value);
     if (!bed) return;
@@ -1150,8 +1465,19 @@ function stopDragging() {
     if (draggingBedId.value === null) return;
 
     const bedId = draggingBedId.value;
+    const moved = dragMoved.value;
+    if (dragCaptureTarget.value && dragPointerId.value !== null) {
+        try {
+            dragCaptureTarget.value.releasePointerCapture(dragPointerId.value);
+        } catch {
+            /* noop */
+        }
+    }
+    dragCaptureTarget.value = null;
     draggingBedId.value = null;
     dragPointerId.value = null;
+
+    if (!moved) return;
 
     const position = localPositions.value[bedId];
     if (!position) return;
@@ -1178,12 +1504,22 @@ function stopDragging() {
 function startObjectDragging(object: GardenObject, event: PointerEvent) {
     const target = event.target as HTMLElement | null;
     if (target?.closest('[data-no-drag="true"]')) return;
+    if (!isLayoutEditing.value) return;
 
     const current = getObjectPosition(object);
     const pointer = getPlannerLocalPoint(event);
     draggingObjectId.value = object.id;
     dragMoved.value = false;
     dragPointerId.value = event.pointerId;
+    const captureEl = event.currentTarget as HTMLElement | null;
+    dragCaptureTarget.value = captureEl;
+    if (captureEl) {
+        try {
+            captureEl.setPointerCapture(event.pointerId);
+        } catch {
+            /* noop */
+        }
+    }
     dragOffset.value = {
         x: pointer.x - current.x,
         y: pointer.y - current.y,
@@ -1195,7 +1531,12 @@ function startObjectDragging(object: GardenObject, event: PointerEvent) {
 }
 
 function onObjectPointerMove(event: PointerEvent) {
-    if (draggingObjectId.value === null) return;
+    if (
+        draggingObjectId.value === null ||
+        event.pointerId !== dragPointerId.value
+    ) {
+        return;
+    }
 
     const object = props.gardenObjects.find(
         (item) => item.id === draggingObjectId.value,
@@ -1224,8 +1565,19 @@ function stopObjectDragging() {
     if (draggingObjectId.value === null) return;
 
     const objectId = draggingObjectId.value;
+    const moved = dragMoved.value;
+    if (dragCaptureTarget.value && dragPointerId.value !== null) {
+        try {
+            dragCaptureTarget.value.releasePointerCapture(dragPointerId.value);
+        } catch {
+            /* noop */
+        }
+    }
+    dragCaptureTarget.value = null;
     draggingObjectId.value = null;
     dragPointerId.value = null;
+
+    if (!moved) return;
 
     const position = localObjectPositions.value[objectId];
     if (!position) return;
@@ -1249,11 +1601,191 @@ function stopObjectDragging() {
     );
 }
 
-function startPanning(event: PointerEvent) {
-    void event;
-    // Planner surface panning is intentionally disabled:
-    // the grid stays fixed and only objects are moved.
-    return;
+function isPlannerPanBlockedTarget(target: EventTarget | null): boolean {
+    if (!target || !(target instanceof Element)) {
+        return false;
+    }
+    return Boolean(
+        target.closest(
+            '[data-bed-shape="true"], [data-object-shape="true"], [data-no-drag="true"], [data-ui-overlay="true"], button, a, input, select, textarea, label',
+        ),
+    );
+}
+
+function endPanGestureForPinch() {
+    if (!isPanning.value) {
+        return;
+    }
+    window.removeEventListener('pointermove', onPlannerWindowPointerMove);
+    window.removeEventListener('pointerup', stopPanning);
+    window.removeEventListener('pointercancel', stopPanning);
+    const vp = plannerViewport.value;
+    if (vp && panPointerId.value !== null) {
+        try {
+            vp.releasePointerCapture(panPointerId.value);
+        } catch {
+            /* noop */
+        }
+    }
+    panPointerId.value = null;
+    isPanning.value = false;
+    panGestureMoved.value = false;
+}
+
+function beginPinchGesture(vp: HTMLElement) {
+    const rect = vp.getBoundingClientRect();
+    const pts = [...viewportPointerMap.values()];
+    if (pts.length < 2) {
+        return;
+    }
+    const [p1, p2] = pts;
+    const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    if (dist < MIN_PINCH_DISTANCE_PX) {
+        return;
+    }
+    const mx = (p1.x + p2.x) / 2 - rect.left;
+    const my = (p1.y + p2.y) / 2 - rect.top;
+    const gx = (mx - panX.value) / zoom.value;
+    const gy = (my - panY.value) / zoom.value;
+    pinchState.value = {
+        startDistance: dist,
+        startZoom: zoom.value,
+        gx,
+        gy,
+    };
+    for (const id of viewportPointerMap.keys()) {
+        try {
+            vp.setPointerCapture(id);
+        } catch {
+            /* noop */
+        }
+    }
+    window.addEventListener('pointermove', onPlannerWindowPointerMove);
+    window.addEventListener('pointerup', onPinchPointerUp);
+    window.addEventListener('pointercancel', onPinchPointerUp);
+}
+
+function applyPinchFromMap() {
+    const state = pinchState.value;
+    const vp = plannerViewport.value;
+    if (!state || !vp || viewportPointerMap.size < 2) {
+        return;
+    }
+    const pts = [...viewportPointerMap.values()];
+    if (pts.length < 2) {
+        return;
+    }
+    const [a, b] = pts;
+    const dist = Math.hypot(b.x - a.x, b.y - a.y);
+    if (dist < 1) {
+        return;
+    }
+    const ratio = dist / state.startDistance;
+    const newZoom = Math.min(
+        MAX_ZOOM,
+        Math.max(MIN_ZOOM, Number((state.startZoom * ratio).toFixed(3))),
+    );
+    zoom.value = newZoom;
+    panX.value = 0;
+    panY.value = 0;
+}
+
+function onPlannerWindowPointerMove(event: PointerEvent) {
+    if (viewportPointerMap.has(event.pointerId)) {
+        viewportPointerMap.set(event.pointerId, {
+            x: event.clientX,
+            y: event.clientY,
+        });
+    }
+
+    if (pinchState.value) {
+        applyPinchFromMap();
+        return;
+    }
+
+    if (!isPanning.value || event.pointerId !== panPointerId.value) {
+        return;
+    }
+
+    const dx = event.clientX - panStart.value.x;
+    const dy = event.clientY - panStart.value.y;
+    if (
+        !panGestureMoved.value &&
+        (Math.abs(dx) > PAN_CLICK_SUPPRESS_PX ||
+            Math.abs(dy) > PAN_CLICK_SUPPRESS_PX)
+    ) {
+        panGestureMoved.value = true;
+    }
+
+    panX.value = panStart.value.originX + dx;
+    panY.value = panStart.value.originY + dy;
+}
+
+function onPinchPointerUp(event: PointerEvent) {
+    viewportPointerMap.delete(event.pointerId);
+    if (!pinchState.value) {
+        if (viewportPointerMap.size === 0) {
+            window.removeEventListener('pointerup', onPinchPointerUp);
+            window.removeEventListener('pointercancel', onPinchPointerUp);
+        }
+        return;
+    }
+    const vp = plannerViewport.value;
+    if (vp) {
+        try {
+            vp.releasePointerCapture(event.pointerId);
+        } catch {
+            /* noop */
+        }
+    }
+    if (viewportPointerMap.size < 2) {
+        window.removeEventListener('pointermove', onPlannerWindowPointerMove);
+        window.removeEventListener('pointerup', onPinchPointerUp);
+        window.removeEventListener('pointercancel', onPinchPointerUp);
+        pinchState.value = null;
+        suppressPlannerSurfaceClick.value = true;
+        nextTick(() => {
+            suppressPlannerSurfaceClick.value = false;
+        });
+    }
+}
+
+function handleViewportPointerDown(event: PointerEvent) {
+    if (event.pointerType === 'mouse' && event.button !== 0) {
+        return;
+    }
+    if (isPlannerPanBlockedTarget(event.target)) {
+        return;
+    }
+
+    const vp = plannerViewport.value;
+    if (!vp) {
+        return;
+    }
+
+    viewportPointerMap.set(event.pointerId, {
+        x: event.clientX,
+        y: event.clientY,
+    });
+
+    if (viewportPointerMap.size === 2) {
+        const pts = [...viewportPointerMap.values()];
+        const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+        if (dist < MIN_PINCH_DISTANCE_PX) {
+            const ids = [...viewportPointerMap.keys()];
+            viewportPointerMap.delete(ids[ids.length - 1]);
+            return;
+        }
+        endPanGestureForPinch();
+        beginPinchGesture(vp);
+        return;
+    }
+
+    if (viewportPointerMap.size !== 1) {
+        return;
+    }
+    window.addEventListener('pointerup', onPinchPointerUp);
+    window.addEventListener('pointercancel', onPinchPointerUp);
 }
 
 function getDefaultToolVariant(type: GardenObjectType): ToolVariant {
@@ -1262,6 +1794,7 @@ function getDefaultToolVariant(type: GardenObjectType): ToolVariant {
 }
 
 function chooseToolVariant(variant: ToolVariant) {
+    isLayoutEditing.value = true;
     activeTool.value = variant.type;
     activeToolVariant.value = variant;
     const category = toolCategories.find((item) =>
@@ -1271,7 +1804,9 @@ function chooseToolVariant(variant: ToolVariant) {
     selectedQuickCategoryId.value = null;
     otherObjectNameError.value = '';
     if (variant.type === 'other') {
-        otherObjectNameDraft.value = variant.requiresCustomName ? '' : variant.label;
+        otherObjectNameDraft.value = variant.requiresCustomName
+            ? ''
+            : variant.label;
         return;
     }
     otherObjectNameDraft.value = '';
@@ -1299,6 +1834,7 @@ function clearToolSelection() {
 }
 
 function openCreateBed() {
+    createMenuOpen.value = false;
     router.get(`/map/${props.gardenPlan.id}/beds/new`);
 }
 
@@ -1306,7 +1842,6 @@ function resetPlannerFilters() {
     showBedsLayer.value = true;
     showStructuresLayer.value = true;
     showWaterLayer.value = true;
-    showPlannerLabels.value = true;
     toolSearch.value = '';
     searchQuery.value = '';
 }
@@ -1336,7 +1871,14 @@ function isGardenPresetActive(
 
 function handlePlannerSurfaceClick(event: MouseEvent) {
     if (!activeTool.value) return;
-    if (isPanning.value || dragMoved.value) return;
+    if (!isLayoutEditing.value) return;
+    if (
+        isPanning.value ||
+        dragMoved.value ||
+        suppressPlannerSurfaceClick.value
+    ) {
+        return;
+    }
 
     const target = event.target as HTMLElement | null;
     if (
@@ -1346,7 +1888,10 @@ function handlePlannerSurfaceClick(event: MouseEvent) {
     )
         return;
 
-    if (activeTool.value === 'other' && activeToolVariant.value?.requiresCustomName) {
+    if (
+        activeTool.value === 'other' &&
+        activeToolVariant.value?.requiresCustomName
+    ) {
         if (!otherObjectNameDraft.value.trim()) {
             otherObjectNameError.value = 'Palun sisesta objekti nimi.';
             return;
@@ -1354,7 +1899,8 @@ function handlePlannerSurfaceClick(event: MouseEvent) {
         otherObjectNameError.value = '';
     }
 
-    const config = activeToolVariant.value ?? getDefaultToolVariant(activeTool.value);
+    const config =
+        activeToolVariant.value ?? getDefaultToolVariant(activeTool.value);
     const point = getPlannerLocalPoint(event);
     const widthPx = Math.round(config.width * CM_TO_PX);
     const heightPx = Math.round(config.height * CM_TO_PX);
@@ -1371,7 +1917,7 @@ function handlePlannerSurfaceClick(event: MouseEvent) {
 
     const objectName =
         activeTool.value === 'other'
-            ? (otherObjectNameDraft.value.trim() || config.label)
+            ? otherObjectNameDraft.value.trim() || config.label
             : config.label;
 
     router.post(
@@ -1406,17 +1952,21 @@ function handlePlannerSurfaceClick(event: MouseEvent) {
 
 function deleteSelectedObject() {
     if (!selectedObject.value) return;
-
-    if (!confirm(`Eemaldada aiaelement "${selectedObject.value.name}"?`))
-        return;
-
-    router.delete(`/garden-objects/${selectedObject.value.id}`, {
-        preserveScroll: true,
-        onSuccess: () => {
-            selectedObjectId.value = null;
-            hoveredObjectId.value = null;
+    const target = selectedObject.value;
+    openConfirmDialog(
+        'Eemalda aiaelement?',
+        `Eemaldada aiaelement "${target.name}"?`,
+        'Eemalda element',
+        () => {
+            router.delete(`/garden-objects/${target.id}`, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    selectedObjectId.value = null;
+                    hoveredObjectId.value = null;
+                },
+            });
         },
-    });
+    );
 }
 
 function duplicateSelectedObject() {
@@ -1478,6 +2028,9 @@ const iconLibrary: Record<string, LucideIcon> = {
     tent: Tent,
     sprout: Sprout,
     box: Box,
+    'brick-wall': BrickWall,
+    fence: Fence,
+    footprints: Footprints,
     wrench: Wrench,
     logs: Logs,
     waves: Waves,
@@ -1486,10 +2039,13 @@ const iconLibrary: Record<string, LucideIcon> = {
     bird: Bird,
     recycle: Recycle,
     leaf: Leaf,
-    'columns-3': Columns3,
+    'land-plot': LandPlot,
+    route: Route,
+    shovel: Shovel,
+    shrub: Shrub,
     sofa: Sofa,
     flame: Flame,
-    'toy-brick': ToyBrick,
+    'tree-deciduous': TreeDeciduous,
     pencil: Pencil,
     shapes: Shapes,
     'layout-grid': LayoutGrid,
@@ -1520,7 +2076,6 @@ function objectTypeDescription(type: GardenObjectType): string {
         other: 'Oma nimega näiteks maja, puuriit, kiviaed või terrass.',
     }[type];
 }
-
 
 function objectIconSize(object: GardenObject): number {
     const base = Math.min(
@@ -1561,25 +2116,51 @@ function objectVariantType(object: GardenObject): GardenObjectType {
     return object.type;
 }
 
-function onPanMove(event: PointerEvent) {
-    if (!isPanning.value) return;
+function stopPanning(event?: PointerEvent) {
+    if (
+        event &&
+        panPointerId.value !== null &&
+        event.pointerId !== panPointerId.value
+    ) {
+        return;
+    }
 
-    panX.value = panStart.value.originX + (event.clientX - panStart.value.x);
-    panY.value = panStart.value.originY + (event.clientY - panStart.value.y);
-}
+    if (!isPanning.value) {
+        return;
+    }
 
-function stopPanning() {
-    isPanning.value = false;
-    window.removeEventListener('pointermove', onPanMove);
+    window.removeEventListener('pointermove', onPlannerWindowPointerMove);
     window.removeEventListener('pointerup', stopPanning);
     window.removeEventListener('pointercancel', stopPanning);
+
+    const vp = plannerViewport.value;
+    if (vp && panPointerId.value !== null) {
+        try {
+            vp.releasePointerCapture(panPointerId.value);
+        } catch {
+            /* noop */
+        }
+        viewportPointerMap.delete(panPointerId.value);
+    }
+
+    panPointerId.value = null;
+    const moved = panGestureMoved.value;
+    isPanning.value = false;
+
+    if (moved) {
+        suppressPlannerSurfaceClick.value = true;
+        nextTick(() => {
+            suppressPlannerSurfaceClick.value = false;
+        });
+    }
+    panGestureMoved.value = false;
 }
 
 function plannerSurfaceStyle() {
     return {
         width: `${gardenSurfaceWidth.value}px`,
         height: `${gardenSurfaceHeight.value}px`,
-        transform: `translate(${panX.value}px, ${panY.value}px) scale(${zoom.value})`,
+        transform: `scale(${zoom.value})`,
         transformOrigin: 'top left',
         backgroundImage: [
             'linear-gradient(180deg, rgba(243, 251, 234, 0.98), rgba(222, 238, 208, 0.99))',
@@ -1588,24 +2169,195 @@ function plannerSurfaceStyle() {
     };
 }
 
-function goToSelectedBed() {
-    if (!selectedBed.value) return;
-    router.get(`/beds/${selectedBed.value.id}`);
+function clampFitViewZoom(fitWidth: number, fitHeight: number): number {
+    const raw = Math.min(fitWidth, fitHeight);
+    if (!Number.isFinite(raw) || raw <= 0) {
+        return MIN_ZOOM;
+    }
+    return Math.min(MAX_ZOOM, Math.max(FIT_VIEW_MIN_ZOOM, raw));
 }
 
-function applyFitZoom() {
+function getMinZoomSoContentReadable(): number {
+    let maxItemPx = Math.max(MIN_BED_VISUAL_SIZE, MIN_OBJECT_VISUAL_SIZE);
+    for (const bed of props.beds) {
+        const s = bedCardSize(bed);
+        maxItemPx = Math.max(maxItemPx, s.width, s.height);
+    }
+    for (const object of props.gardenObjects) {
+        maxItemPx = Math.max(
+            maxItemPx,
+            getObjectPixelWidth(object),
+            getObjectPixelHeight(object),
+        );
+    }
+    const z = CONTENT_FIT_MIN_VISIBLE_ITEM_PX / maxItemPx;
+    if (!Number.isFinite(z) || z <= 0) {
+        return FIT_VIEW_MIN_ZOOM;
+    }
+    return Math.min(MAX_ZOOM, Math.max(FIT_VIEW_MIN_ZOOM, z));
+}
+
+function getPlannerContentBounds() {
+    const items: { x: number; y: number; width: number; height: number }[] = [];
+
+    props.beds.forEach((bed) => {
+        const position = getBedPosition(bed);
+        const size = bedCardSize(bed);
+        items.push({ ...position, ...size });
+    });
+
+    props.gardenObjects.forEach((object) => {
+        const position = getObjectPosition(object);
+        items.push({
+            ...position,
+            width: getObjectPixelWidth(object),
+            height: getObjectPixelHeight(object),
+        });
+    });
+
+    if (!items.length) return null;
+
+    return {
+        minX: Math.min(...items.map((item) => item.x)),
+        minY: Math.min(...items.map((item) => item.y)),
+        maxX: Math.max(...items.map((item) => item.x + item.width)),
+        maxY: Math.max(...items.map((item) => item.y + item.height)),
+    };
+}
+
+function applyFitContentZoom() {
+    if (!viewportSize.value.width || !viewportSize.value.height) return;
+
+    const bounds = getPlannerContentBounds();
+    if (!bounds) {
+        applyFitGardenZoom();
+        return;
+    }
+
+    const contentWidth = Math.max(
+        1,
+        bounds.maxX - bounds.minX + CONTENT_FIT_PADDING * 2,
+    );
+    const contentHeight = Math.max(
+        1,
+        bounds.maxY - bounds.minY + CONTENT_FIT_PADDING * 2,
+    );
+    const fitWidth = viewportSize.value.width / contentWidth;
+    const fitHeight = viewportSize.value.height / contentHeight;
+    const fitZoom = clampFitViewZoom(fitWidth, fitHeight);
+    const readabilityZoom = getMinZoomSoContentReadable();
+    const nextZoom = Math.min(MAX_ZOOM, Math.max(readabilityZoom, fitZoom));
+    zoom.value = Number.isFinite(nextZoom) ? nextZoom : 1;
+    panX.value = CONTENT_FIT_SIDE_PADDING - bounds.minX * zoom.value;
+    panY.value = CONTENT_FIT_SIDE_PADDING - bounds.minY * zoom.value;
+}
+
+function applyFitGardenZoom() {
     if (!viewportSize.value.width || !viewportSize.value.height) return;
 
     const fitWidth = viewportSize.value.width / gardenSurfaceWidth.value;
     const fitHeight = viewportSize.value.height / gardenSurfaceHeight.value;
-    const nextZoom = Math.min(
-        MAX_ZOOM,
-        Math.max(MIN_ZOOM, Math.min(fitWidth, fitHeight)),
-    );
+    const nextZoom = clampFitViewZoom(fitWidth, fitHeight);
     zoom.value = Number.isFinite(nextZoom) ? nextZoom : 1;
     panX.value = 0;
     panY.value = 0;
 }
+
+function applyInitialGardenZoom() {
+    if (!viewportSize.value.width || !viewportSize.value.height) return;
+
+    const fitWidth = viewportSize.value.width / gardenSurfaceWidth.value;
+    const fitHeight = viewportSize.value.height / gardenSurfaceHeight.value;
+    const fullGardenZoom = clampFitViewZoom(fitWidth, fitHeight);
+    const minUsefulZoom = Math.max(
+        (viewportSize.value.width * INITIAL_GARDEN_MIN_VIEWPORT_WIDTH) /
+            gardenSurfaceWidth.value,
+        (viewportSize.value.height * INITIAL_GARDEN_MIN_VIEWPORT_HEIGHT) /
+            gardenSurfaceHeight.value,
+    );
+    const nextZoom = Math.min(
+        MAX_ZOOM,
+        Math.max(fullGardenZoom, minUsefulZoom),
+    );
+
+    zoom.value = Number.isFinite(nextZoom) ? nextZoom : 1;
+    panX.value = 0;
+    panY.value = 0;
+}
+
+function centerBedInViewport(bed: Bed) {
+    if (!viewportSize.value.width || !viewportSize.value.height) return;
+
+    zoom.value = Math.min(MAX_ZOOM, Math.max(zoom.value, FOCUSED_BED_MIN_ZOOM));
+    const position = getBedPosition(bed);
+    const size = bedCardSize(bed);
+    const bedCenterX = position.x + size.width / 2;
+    const bedCenterY = position.y + size.height / 2;
+
+    panX.value = viewportSize.value.width / 2 - bedCenterX * zoom.value;
+    panY.value = viewportSize.value.height / 2 - bedCenterY * zoom.value;
+}
+
+function runPlannerInitialViewportFit() {
+    if (plannerInitialViewportFitDone.value) return;
+    const { width, height } = viewportSize.value;
+    if (!width || !height) return;
+    if (props.beds.length === 0 && props.gardenObjects.length === 0) {
+        return;
+    }
+
+    applyInitialGardenZoom();
+    plannerInitialViewportFitDone.value = true;
+    const focusedBed = selectedBed.value;
+    if (focusedBed) {
+        centerBedInViewport(focusedBed);
+    }
+
+    nextTick(() => {
+        nextTick(() => {
+            if (
+                !plannerInitialViewportFitDone.value ||
+                !viewportSize.value.width ||
+                !viewportSize.value.height ||
+                !plannerViewport.value
+            ) {
+                return;
+            }
+            const currentFocusedBed = selectedBed.value;
+            if (currentFocusedBed) {
+                centerBedInViewport(currentFocusedBed);
+                return;
+            }
+            applyInitialGardenZoom();
+        });
+    });
+}
+
+watch(
+    () =>
+        [
+            props.gardenPlan.id,
+            props.beds.length,
+            props.gardenObjects.length,
+        ] as const,
+    () => {
+        nextTick(() => {
+            const focusedBedId = getInitialFocusedBedId();
+            if (focusedBedId !== null) {
+                selectedObjectId.value = null;
+                selectedBedId.value = focusedBedId;
+                isLayoutEditing.value = true;
+                const focusedBed = props.beds.find(
+                    (bed) => bed.id === focusedBedId,
+                );
+                if (focusedBed) {
+                    centerBedInViewport(focusedBed);
+                }
+            }
+            runPlannerInitialViewportFit();
+        });
+    },
+);
 
 function changeZoom(delta: number) {
     zoom.value = Math.min(
@@ -1614,17 +2366,10 @@ function changeZoom(delta: number) {
     );
 }
 
-function resetZoom() {
-    zoom.value = 1;
-    panX.value = 0;
-    panY.value = 0;
-}
-
 function onPlannerWheel(event: WheelEvent) {
     const target = event.target as HTMLElement | null;
     if (target?.closest('[data-ui-overlay="true"]')) return;
     event.preventDefault();
-    const pointer = getPlannerLocalPoint(event);
     const delta = event.deltaY > 0 ? -0.12 : 0.12;
     const nextZoom = Math.min(
         MAX_ZOOM,
@@ -1633,9 +2378,9 @@ function onPlannerWheel(event: WheelEvent) {
 
     if (nextZoom === zoom.value) return;
 
-    panX.value -= pointer.x * (nextZoom - zoom.value);
-    panY.value -= pointer.y * (nextZoom - zoom.value);
     zoom.value = nextZoom;
+    panX.value = 0;
+    panY.value = 0;
 }
 
 function saveGardenPlan() {
@@ -1664,18 +2409,18 @@ function saveGardenPlan() {
 <template>
     <Head title="Aiaplaan" />
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="page page-with-bottomnav">
+        <div class="page page-with-bottomnav flex min-h-0 flex-col">
             <div
-                class="font-display min-h-screen bg-background text-foreground antialiased"
+                class="font-display flex min-h-0 flex-1 flex-col bg-background text-foreground antialiased"
             >
                 <div
-                    class="border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x bg-background shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
+                    class="border-beige/50 relative mx-auto flex min-h-0 w-full max-w-[480px] flex-1 flex-col overflow-x-hidden border-x bg-background shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
                 >
                     <DiaryHeader
                         title="Aiaplaan"
-                        header-class="pt-6"
-                        top-row-class="mb-3"
-                        bottom-row-class="mb-4"
+                        header-class="pt-3 md:pt-6"
+                        top-row-class="mb-2 md:mb-3"
+                        bottom-row-class="mb-2 md:mb-4"
                     >
                         <template #leading>
                             <BackIconButton
@@ -1700,16 +2445,22 @@ function saveGardenPlan() {
                         </template>
                     </DiaryHeader>
 
-                    <main class="flex-1 px-6 py-4 md:px-8">
-                        <div class="space-y-6 sm:space-y-8">
-                            <section class="space-y-6">
+                    <main
+                        class="flex min-h-0 flex-1 flex-col px-4 pt-1 pb-3 sm:px-6 sm:pt-2 md:px-8 md:py-3"
+                    >
+                        <div
+                            class="flex min-h-0 flex-1 flex-col space-y-3 sm:space-y-4 md:space-y-6"
+                        >
+                            <section
+                                class="flex min-h-0 flex-1 flex-col space-y-3 sm:space-y-4 md:space-y-6"
+                            >
                                 <div
                                     v-if="plannerFeedback"
                                     class="rounded-[1.5rem] border px-4 py-3 shadow-sm"
                                     :class="
                                         plannerFeedback.tone === 'error'
                                             ? 'border-rose-200 bg-rose-50 text-rose-700'
-                                            : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                            : 'border-amber-200 bg-amber-50 text-amber-800'
                                     "
                                 >
                                     <p class="text-sm font-medium">
@@ -1725,14 +2476,19 @@ function saveGardenPlan() {
                                         class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
                                     >
                                         <div>
-                                            <p class="text-sm font-semibold text-foreground">
-                                                Aiaplaan töötab paremini laiemas vaates
+                                            <p
+                                                class="text-sm font-semibold text-foreground"
+                                            >
+                                                Aiaplaan töötab paremini laiemas
+                                                vaates
                                             </p>
                                             <p
                                                 class="mt-1 text-sm leading-6 text-muted-foreground"
                                             >
-                                                Lohistamine ja paigutus on mugavam, kui kasutad
-                                                horisontaalrežiimi või avad akna laiemaks.
+                                                Lohistamine ja paigutus on
+                                                mugavam, kui kasutad
+                                                horisontaalrežiimi või avad akna
+                                                laiemaks.
                                             </p>
                                         </div>
                                         <button
@@ -1777,175 +2533,401 @@ function saveGardenPlan() {
                                     </div>
                                 </div>
 
-                                <div
-                                    class="rounded-xl border border-border/70 bg-white p-4 shadow-[0_8px_24px_rgba(0,0,0,0.05)] dark:bg-card sm:p-5"
-                                >
+                                <div class="flex min-h-0 min-w-0 flex-1 flex-col">
                                     <div
-                                        class="mb-4 flex flex-wrap items-start justify-between gap-3"
+                                        class="mb-2 shrink-0 border-b border-border/70 pb-2 md:mb-4 md:pb-4"
                                     >
-                                        <div>
-                                            <h3
-                                                class="text-lg font-semibold text-foreground"
-                                            >
-                                                Aiaplaan
-                                            </h3>
-                                            <p
-                                                class="mt-1 text-sm leading-6 text-muted-foreground"
-                                            >
-                                                Paiguta peenrad rahulikult oma
-                                                kohale. Muudatused salvestuvad
-                                                kohe ja peenra detailid avanevad
-                                                ühe vajutusega.
-                                            </p>
-                                        </div>
                                         <div
-                                            class="flex flex-wrap items-center gap-2"
+                                            class="flex flex-wrap items-end justify-between gap-3"
                                         >
-                                            <div
-                                                class="flex items-center gap-2 rounded-2xl border border-border/70 bg-background/80 px-3 py-2 text-xs text-muted-foreground shadow-xs"
-                                            >
-                                                <span
-                                                    class="material-symbols-outlined rounded-xl bg-primary/10 p-2 text-primary"
-                                                    >forest</span
+                                            <div class="min-w-0 flex-1 md:flex-initial">
+                                                <label
+                                                    class="sr-only"
+                                                    for="garden-plan-select"
                                                 >
-                                                <div>
-                                                    Peenraid aias
+                                                    Vali aiaplaan. Peenraid
+                                                    loendis näidatakse vastavalt
+                                                    vahekaardile (Kõik või
+                                                    Lemmikud) ja otsingule.
+                                                </label>
+                                                <div
+                                                    class="flex min-w-0 flex-wrap items-end gap-x-2.5 gap-y-1.5 md:block"
+                                                >
                                                     <div
-                                                        class="text-base font-semibold text-foreground"
+                                                        class="relative inline-block w-max min-w-0 max-w-full md:block md:w-full"
                                                     >
-                                                        {{ plannerBeds.length }}
+                                                        <select
+                                                            id="garden-plan-select"
+                                                            class="block w-max min-w-0 max-w-full appearance-none truncate bg-transparent pr-8 text-2xl leading-tight font-semibold text-foreground transition outline-none hover:text-primary focus:text-primary max-md:[field-sizing:content] md:block md:w-full [&_option]:text-sm [&_option]:font-medium"
+                                                            :value="gardenPlan.id"
+                                                            @change="
+                                                                onGardenPlanSelect
+                                                            "
+                                                        >
+                                                            <option
+                                                                v-for="p in gardenPlans"
+                                                                :key="p.id"
+                                                                :value="p.id"
+                                                            >
+                                                                {{ p.name }}
+                                                            </option>
+                                                        </select>
+                                                        <span
+                                                            class="material-symbols-outlined pointer-events-none absolute top-1/2 right-0 -translate-y-1/2 text-xl text-muted-foreground"
+                                                            >expand_more</span
+                                                        >
+                                                    </div>
+                                                    <div
+                                                        class="flex shrink-0 items-center md:hidden"
+                                                    >
+                                                        <span
+                                                            class="inline-flex max-w-full items-center gap-1.5 rounded-full border border-primary/20 bg-gradient-to-br from-primary/14 via-primary/8 to-transparent px-2.5 py-1 shadow-sm ring-1 ring-primary/10 dark:border-primary/25 dark:from-primary/18 dark:via-primary/10 dark:ring-primary/15"
+                                                            :aria-label="`${mobileListBeds.length} ${mobileBedCountSuffix}`"
+                                                        >
+                                                            <span
+                                                                class="material-symbols-outlined shrink-0 text-[18px] leading-none text-primary"
+                                                                aria-hidden="true"
+                                                                >grid_view</span
+                                                            >
+                                                            <span
+                                                                class="text-lg font-bold leading-none tabular-nums text-foreground"
+                                                                >{{
+                                                                    mobileListBeds.length
+                                                                }}</span
+                                                            >
+                                                            <span
+                                                                class="max-w-[7rem] truncate text-[11px] font-semibold leading-tight text-muted-foreground"
+                                                                >{{
+                                                                    mobileBedCountSuffix
+                                                                }}</span
+                                                            >
+                                                        </span>
                                                     </div>
                                                 </div>
-                                            </div>
-                                            <div
-                                                class="flex items-center gap-2 rounded-2xl border border-border/70 bg-background/80 px-3 py-2 text-xs text-muted-foreground shadow-xs"
-                                            >
-                                                <span
-                                                    class="material-symbols-outlined rounded-xl bg-primary/10 p-2 text-primary"
-                                                    >architecture</span
+                                                <p
+                                                    v-if="searchQuery.trim()"
+                                                    class="mt-1.5 text-xs font-normal leading-snug text-muted-foreground/85 md:hidden"
                                                 >
-                                                <div>
-                                                    Aiaobjekte
-                                                    <div
-                                                        class="text-base font-semibold text-foreground"
+                                                    Otsingule vastavalt
+                                                </p>
+                                                <div
+                                                    class="mt-2 hidden flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted-foreground md:flex"
+                                                >
+                                                    <button
+                                                        type="button"
+                                                        class="inline-flex min-h-8 items-center gap-0.5 rounded-full transition hover:text-primary"
+                                                        :class="
+                                                            plannerListView ===
+                                                            'beds'
+                                                                ? 'text-primary'
+                                                                : ''
+                                                        "
+                                                        @click="
+                                                            togglePlannerListView(
+                                                                'beds',
+                                                            )
+                                                        "
+                                                    >
+                                                        {{ plannerBeds.length }}
+                                                        peenart
+                                                        <span
+                                                            class="material-symbols-outlined text-sm transition-transform"
+                                                            :class="
+                                                                plannerListView ===
+                                                                'beds'
+                                                                    ? 'rotate-180'
+                                                                    : ''
+                                                            "
+                                                            >expand_more</span
+                                                        >
+                                                    </button>
+                                                    <span
+                                                        class="h-1 w-1 rounded-full bg-muted-foreground/35"
+                                                    ></span>
+                                                    <button
+                                                        type="button"
+                                                        class="inline-flex min-h-8 items-center gap-0.5 rounded-full transition hover:text-primary"
+                                                        :class="
+                                                            plannerListView ===
+                                                            'objects'
+                                                                ? 'text-primary'
+                                                                : ''
+                                                        "
+                                                        @click="
+                                                            togglePlannerListView(
+                                                                'objects',
+                                                            )
+                                                        "
                                                     >
                                                         {{
                                                             visibleObjectsCount
                                                         }}
+                                                        objekti
+                                                        <span
+                                                            class="material-symbols-outlined text-sm transition-transform"
+                                                            :class="
+                                                                plannerListView ===
+                                                                'objects'
+                                                                    ? 'rotate-180'
+                                                                    : ''
+                                                            "
+                                                            >expand_more</span
+                                                        >
+                                                    </button>
+                                                    <span
+                                                        class="h-1 w-1 rounded-full bg-muted-foreground/35"
+                                                    ></span>
+                                                    <span>
+                                                        {{
+                                                            gardenDimensionLabel
+                                                        }}
+                                                    </span>
+                                                    <div
+                                                        class="ml-auto flex shrink-0 items-center"
+                                                    >
+                                                        <SortDropdown
+                                                            v-model="
+                                                                selectedBedSort
+                                                            "
+                                                            :options="
+                                                                bedSortOptions
+                                                            "
+                                                            compact
+                                                        />
                                                     </div>
                                                 </div>
                                             </div>
                                             <div
-                                                class="flex items-center gap-1 rounded-2xl border border-border/70 bg-background/85 px-2 py-2 shadow-xs"
+                                                class="flex shrink-0 items-center gap-1"
                                             >
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-foreground transition hover:bg-muted"
-                                                    @click="
-                                                        changeZoom(-ZOOM_STEP)
-                                                    "
+                                                <div
+                                                    class="hidden items-center md:flex"
                                                 >
-                                                    <span
-                                                        class="material-symbols-outlined text-base"
-                                                        >remove</span
+                                                    <div
+                                                        class="inline-flex items-center gap-0.5 rounded-full bg-muted/45 p-1 ring-1 ring-border/70"
                                                     >
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted"
-                                                    @click="resetZoom"
+                                                        <button
+                                                            type="button"
+                                                            class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-background"
+                                                            @click="
+                                                                changeZoom(
+                                                                    -ZOOM_STEP,
+                                                                )
+                                                            "
+                                                        >
+                                                            <span
+                                                                class="material-symbols-outlined text-base"
+                                                                >remove</span
+                                                            >
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            class="inline-flex h-8 min-w-11 items-center justify-center rounded-full bg-background px-2 text-xs font-semibold text-foreground shadow-xs"
+                                                            @click="
+                                                                applyFitContentZoom
+                                                            "
+                                                        >
+                                                            {{ zoomPercent }}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-background"
+                                                            @click="
+                                                                changeZoom(
+                                                                    ZOOM_STEP,
+                                                                )
+                                                            "
+                                                        >
+                                                            <span
+                                                                class="material-symbols-outlined text-base"
+                                                                >add</span
+                                                            >
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div
+                                                    class="hidden shrink-0 md:flex"
                                                 >
-                                                    {{ zoomPercent }}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-foreground transition hover:bg-muted"
-                                                    @click="
-                                                        changeZoom(ZOOM_STEP)
-                                                    "
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-base"
-                                                        >add</span
-                                                    >
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="ml-1 inline-flex rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/15"
-                                                    @click="applyFitZoom"
-                                                >
-                                                    Mahuta
-                                                </button>
+                                                    <CardActionsMenu
+                                                        placement="inline"
+                                                        @edit="
+                                                            openGardenPlanEditor
+                                                        "
+                                                        @delete="
+                                                            deleteGardenPlan
+                                                        "
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     <div
-                                        class="mb-4 flex flex-col gap-2 rounded-xl border border-border/70 bg-background px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+                                        v-if="plannerListView"
+                                        class="mb-3 hidden rounded-2xl bg-background/60 p-2 ring-1 ring-border/70 md:block"
                                     >
-                                        <div class="min-w-0 flex-1">
-                                            <label
-                                                class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                                                for="garden-plan-select"
-                                            >
-                                                Aiaplaan
-                                            </label>
-                                            <select
-                                                id="garden-plan-select"
-                                                class="mt-1.5 block w-full max-w-full rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground sm:max-w-xs"
-                                                :value="gardenPlan.id"
-                                                @change="onGardenPlanSelect"
-                                            >
-                                                <option
-                                                    v-for="p in gardenPlans"
-                                                    :key="p.id"
-                                                    :value="p.id"
-                                                >
-                                                    {{ p.name }}
-                                                </option>
-                                            </select>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-4 py-2 text-xs font-semibold text-primary transition hover:bg-primary/15"
-                                            @click="createGardenPlan"
+                                        <div
+                                            class="mb-1 flex items-center justify-between px-2 py-1"
                                         >
-                                            <span
-                                                class="material-symbols-outlined text-base"
-                                                >add</span
-                                            >
-                                            Uus plaan
-                                        </button>
-                                    </div>
-
-                                    <div
-                                        class="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-[1.5rem] border border-border/70 bg-background/75 px-3 py-3"
-                                    >
-                                        <div class="min-w-0">
                                             <p
-                                                class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                                            >
-                                                Aed
-                                            </p>
-                                            <p
-                                                class="mt-1 text-sm font-medium text-foreground"
+                                                class="text-xs font-semibold text-foreground"
                                             >
                                                 {{
-                                                    gardenForm.name ||
-                                                    'Minu aed'
+                                                    plannerListView === 'beds'
+                                                        ? 'Peenrad kaardil'
+                                                        : 'Objektid kaardil'
                                                 }}
                                             </p>
-                                            <p
-                                                class="text-xs text-muted-foreground"
+                                            <button
+                                                type="button"
+                                                class="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                                @click="plannerListView = null"
                                             >
-                                                {{ gardenDimensionLabel }}
+                                                <span
+                                                    class="material-symbols-outlined text-sm"
+                                                    >close</span
+                                                >
+                                            </button>
+                                        </div>
+
+                                        <div
+                                            v-if="plannerListView === 'beds'"
+                                            class="max-h-56 space-y-1 overflow-y-auto pr-1"
+                                        >
+                                            <div
+                                                v-for="bed in filteredBeds"
+                                                :key="`bed-list-${bed.id}`"
+                                                class="flex items-center gap-1 rounded-xl transition hover:bg-muted"
+                                                :class="
+                                                    selectedBed?.id === bed.id
+                                                        ? 'bg-primary/8'
+                                                        : ''
+                                                "
+                                            >
+                                                <button
+                                                    type="button"
+                                                    class="min-w-0 flex-1 px-3 py-2 text-left"
+                                                    @click="
+                                                        focusBedDetails(bed.id)
+                                                    "
+                                                >
+                                                    <span
+                                                        class="block min-w-0 truncate text-sm font-semibold text-foreground"
+                                                        >{{ bed.name }}</span
+                                                    >
+                                                    <span
+                                                        class="mt-0.5 block truncate text-xs text-muted-foreground"
+                                                        >{{
+                                                            bedPlantSummaryLine(
+                                                                bed,
+                                                            )
+                                                        }}</span
+                                                    >
+                                                    <span
+                                                        v-if="bed.location"
+                                                        class="mt-0.5 block truncate text-xs text-muted-foreground"
+                                                        >{{ bed.location }}</span
+                                                    >
+                                                    <span
+                                                        class="mt-0.5 block truncate text-xs text-muted-foreground"
+                                                        >{{
+                                                            bedDimensionsLabel(
+                                                                bed,
+                                                            )
+                                                        }}</span
+                                                    >
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    class="mr-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-background hover:text-foreground"
+                                                    @click="openBedPage(bed.id)"
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined text-base"
+                                                        >arrow_forward</span
+                                                    >
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    class="mr-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-rose-50 hover:text-rose-700"
+                                                    :aria-label="`Kustuta ${bed.name}`"
+                                                    @click.stop="
+                                                        deleteBed(
+                                                            bed.id,
+                                                            bed.name,
+                                                        )
+                                                    "
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined text-base"
+                                                        >delete</span
+                                                    >
+                                                </button>
+                                            </div>
+                                            <p
+                                                v-if="filteredBeds.length === 0"
+                                                class="px-3 py-4 text-center text-sm text-muted-foreground"
+                                            >
+                                                Peenraid ei ole nähtaval.
                                             </p>
                                         </div>
-                                        <CardActionsMenu
-                                            placement="inline"
-                                            @edit="openGardenPlanEditor"
-                                            @delete="deleteGardenPlan"
-                                        />
+
+                                        <div
+                                            v-if="plannerListView === 'objects'"
+                                            class="max-h-56 space-y-1 overflow-y-auto pr-1"
+                                        >
+                                            <button
+                                                v-for="object in plannerObjects"
+                                                :key="`object-list-${object.id}`"
+                                                type="button"
+                                                class="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-muted"
+                                                :class="
+                                                    selectedObject?.id ===
+                                                    object.id
+                                                        ? 'bg-primary/8'
+                                                        : ''
+                                                "
+                                                @click="
+                                                    focusObjectDetails(
+                                                        object.id,
+                                                    )
+                                                "
+                                            >
+                                                <span class="min-w-0">
+                                                    <span
+                                                        class="block truncate text-sm font-semibold text-foreground"
+                                                        >{{ object.name }}</span
+                                                    >
+                                                    <span
+                                                        class="mt-0.5 block truncate text-xs text-muted-foreground"
+                                                    >
+                                                        {{
+                                                            formatCentimeters(
+                                                                object.width,
+                                                            )
+                                                        }}
+                                                        ×
+                                                        {{
+                                                            formatCentimeters(
+                                                                object.height,
+                                                            )
+                                                        }}
+                                                    </span>
+                                                </span>
+                                                <span
+                                                    class="material-symbols-outlined shrink-0 text-base text-muted-foreground"
+                                                    >my_location</span
+                                                >
+                                            </button>
+                                            <p
+                                                v-if="
+                                                    plannerObjects.length === 0
+                                                "
+                                                class="px-3 py-4 text-center text-sm text-muted-foreground"
+                                            >
+                                                Objekte ei ole nähtaval.
+                                            </p>
+                                        </div>
                                     </div>
 
                                     <div
@@ -1956,7 +2938,9 @@ function saveGardenPlan() {
                                             <button
                                                 type="button"
                                                 class="text-xs font-semibold text-muted-foreground underline-offset-2 transition hover:text-foreground hover:underline"
-                                                @click="plannerControlsOpen = false"
+                                                @click="
+                                                    plannerControlsOpen = false
+                                                "
                                             >
                                                 Sulge
                                             </button>
@@ -1964,310 +2948,298 @@ function saveGardenPlan() {
                                         <div
                                             class="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto]"
                                         >
-                                        <div
-                                            class="rounded-[1.5rem] border border-border/70 bg-background/75 p-3"
-                                        >
-                                            <div class="mb-3">
-                                                <p
-                                                    class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                                                >
-                                                    Kiirvalikud
-                                                </p>
-                                                <div
-                                                    class="mt-2 flex flex-wrap gap-2"
-                                                >
-                                                    <button
-                                                        type="button"
-                                                        :class="
-                                                            gardenPresetButtonClass(
-                                                                isGardenPresetActive(
-                                                                    10,
-                                                                    10,
-                                                                ),
-                                                            )
-                                                        "
-                                                        @click="
-                                                            applyGardenPreset(
-                                                                10,
-                                                                10,
-                                                                'Väike aed',
-                                                            )
-                                                        "
+                                            <div
+                                                class="rounded-[1.5rem] border border-border/70 bg-background/75 p-3"
+                                            >
+                                                <div class="mb-3">
+                                                    <p
+                                                        class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
                                                     >
-                                                        Väike aed
-                                                        <span
-                                                            class="text-[11px] text-current/80"
-                                                            >10 × 10 m</span
+                                                        Kiirvalikud
+                                                    </p>
+                                                    <div
+                                                        class="mt-2 flex flex-wrap gap-2"
+                                                    >
+                                                        <button
+                                                            type="button"
+                                                            :class="
+                                                                gardenPresetButtonClass(
+                                                                    isGardenPresetActive(
+                                                                        10,
+                                                                        10,
+                                                                    ),
+                                                                )
+                                                            "
+                                                            @click="
+                                                                applyGardenPreset(
+                                                                    10,
+                                                                    10,
+                                                                    'Väike aed',
+                                                                )
+                                                            "
                                                         >
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        :class="
-                                                            gardenPresetButtonClass(
-                                                                isGardenPresetActive(
+                                                            Väike aed
+                                                            <span
+                                                                class="text-[11px] text-current/80"
+                                                                >10 × 10 m</span
+                                                            >
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            :class="
+                                                                gardenPresetButtonClass(
+                                                                    isGardenPresetActive(
+                                                                        20,
+                                                                        10,
+                                                                    ),
+                                                                )
+                                                            "
+                                                            @click="
+                                                                applyGardenPreset(
                                                                     20,
                                                                     10,
-                                                                ),
-                                                            )
-                                                        "
-                                                        @click="
-                                                            applyGardenPreset(
-                                                                20,
-                                                                10,
-                                                                'Köögiviljaaed',
-                                                            )
-                                                        "
-                                                    >
-                                                        Köögiviljaaed
-                                                        <span
-                                                            class="text-[11px] text-current/80"
-                                                            >20 × 10 m</span
+                                                                    'Köögiviljaaed',
+                                                                )
+                                                            "
                                                         >
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        :class="
-                                                            gardenPresetButtonClass(
-                                                                isGardenPresetActive(
+                                                            Köögiviljaaed
+                                                            <span
+                                                                class="text-[11px] text-current/80"
+                                                                >20 × 10 m</span
+                                                            >
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            :class="
+                                                                gardenPresetButtonClass(
+                                                                    isGardenPresetActive(
+                                                                        50,
+                                                                        20,
+                                                                    ),
+                                                                )
+                                                            "
+                                                            @click="
+                                                                applyGardenPreset(
                                                                     50,
                                                                     20,
-                                                                ),
-                                                            )
-                                                        "
-                                                        @click="
-                                                            applyGardenPreset(
-                                                                50,
-                                                                20,
-                                                                'Suur aed',
-                                                            )
-                                                        "
-                                                    >
-                                                        Suur aed
-                                                        <span
-                                                            class="text-[11px] text-current/80"
-                                                            >50 × 20 m</span
+                                                                    'Suur aed',
+                                                                )
+                                                            "
                                                         >
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        :class="
-                                                            gardenPresetButtonClass(
-                                                                isGardenPresetActive(
+                                                            Suur aed
+                                                            <span
+                                                                class="text-[11px] text-current/80"
+                                                                >50 × 20 m</span
+                                                            >
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            :class="
+                                                                gardenPresetButtonClass(
+                                                                    isGardenPresetActive(
+                                                                        100,
+                                                                        30,
+                                                                    ),
+                                                                )
+                                                            "
+                                                            @click="
+                                                                applyGardenPreset(
                                                                     100,
                                                                     30,
-                                                                ),
-                                                            )
-                                                        "
-                                                        @click="
-                                                            applyGardenPreset(
-                                                                100,
-                                                                30,
-                                                                'Pikk aiamaa',
-                                                            )
+                                                                    'Pikk aiamaa',
+                                                                )
+                                                            "
+                                                        >
+                                                            Pikk aiamaa
+                                                            <span
+                                                                class="text-[11px] text-current/80"
+                                                                >100 × 30
+                                                                m</span
+                                                            >
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div
+                                                    class="grid gap-3 sm:grid-cols-3"
+                                                >
+                                                    <label
+                                                        class="rounded-2xl border border-border/70 bg-card/85 px-3 py-3 text-sm"
+                                                    >
+                                                        <span
+                                                            class="mb-1 block text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                            >Aia nimi</span
+                                                        >
+                                                        <input
+                                                            v-model="
+                                                                gardenForm.name
+                                                            "
+                                                            type="text"
+                                                            class="w-full bg-transparent text-sm font-medium text-foreground outline-none"
+                                                            placeholder="Minu aed"
+                                                        />
+                                                    </label>
+                                                    <label
+                                                        class="rounded-2xl border border-border/70 bg-card/85 px-3 py-3 text-sm"
+                                                    >
+                                                        <span
+                                                            class="mb-1 block text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                            >Laius (m)</span
+                                                        >
+                                                        <input
+                                                            v-model="
+                                                                gardenForm.widthMeters
+                                                            "
+                                                            type="number"
+                                                            min="0.01"
+                                                            max="1000"
+                                                            step="0.01"
+                                                            class="w-full bg-transparent text-sm font-medium text-foreground outline-none"
+                                                        />
+                                                    </label>
+                                                    <label
+                                                        class="rounded-2xl border border-border/70 bg-card/85 px-3 py-3 text-sm"
+                                                    >
+                                                        <span
+                                                            class="mb-1 block text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                            >Sügavus (m)</span
+                                                        >
+                                                        <input
+                                                            v-model="
+                                                                gardenForm.heightMeters
+                                                            "
+                                                            type="number"
+                                                            min="0.01"
+                                                            max="1000"
+                                                            step="0.01"
+                                                            class="w-full bg-transparent text-sm font-medium text-foreground outline-none"
+                                                        />
+                                                    </label>
+                                                </div>
+
+                                                <div
+                                                    v-if="
+                                                        gardenForm.errors
+                                                            .name ||
+                                                        gardenFormDimensionErrors.width ||
+                                                        gardenFormDimensionErrors.height
+                                                    "
+                                                    class="mt-3 space-y-1 rounded-2xl border border-red-200 bg-red-50/90 px-3 py-2 text-sm text-red-700"
+                                                >
+                                                    <p
+                                                        v-if="
+                                                            gardenForm.errors
+                                                                .name
                                                         "
                                                     >
-                                                        Pikk aiamaa
-                                                        <span
-                                                            class="text-[11px] text-current/80"
-                                                            >100 × 30 m</span
-                                                        >
+                                                        {{
+                                                            gardenForm.errors
+                                                                .name
+                                                        }}
+                                                    </p>
+                                                    <p
+                                                        v-if="
+                                                            gardenFormDimensionErrors.width
+                                                        "
+                                                    >
+                                                        {{
+                                                            gardenFormDimensionErrors.width
+                                                        }}
+                                                    </p>
+                                                    <p
+                                                        v-if="
+                                                            gardenFormDimensionErrors.height
+                                                        "
+                                                    >
+                                                        {{
+                                                            gardenFormDimensionErrors.height
+                                                        }}
+                                                    </p>
+                                                </div>
+
+                                                <div
+                                                    class="mt-3 flex flex-wrap items-center gap-2"
+                                                >
+                                                    <button
+                                                        type="button"
+                                                        class="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/15"
+                                                        :disabled="
+                                                            gardenForm.processing
+                                                        "
+                                                        @click="saveGardenPlan"
+                                                    >
+                                                        Salvesta aed
                                                     </button>
                                                 </div>
                                             </div>
 
                                             <div
-                                                class="grid gap-3 sm:grid-cols-3"
-                                            >
-                                                <label
-                                                    class="rounded-2xl border border-border/70 bg-card/85 px-3 py-3 text-sm"
-                                                >
-                                                    <span
-                                                        class="mb-1 block text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                                                        >Aia nimi</span
-                                                    >
-                                                    <input
-                                                        v-model="
-                                                            gardenForm.name
-                                                        "
-                                                        type="text"
-                                                        class="w-full bg-transparent text-sm font-medium text-foreground outline-none"
-                                                        placeholder="Minu aed"
-                                                    />
-                                                </label>
-                                                <label
-                                                    class="rounded-2xl border border-border/70 bg-card/85 px-3 py-3 text-sm"
-                                                >
-                                                    <span
-                                                        class="mb-1 block text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                                                        >Laius (m)</span
-                                                    >
-                                                    <input
-                                                        v-model="
-                                                            gardenForm.widthMeters
-                                                        "
-                                                        type="number"
-                                                        min="0.01"
-                                                        max="1000"
-                                                        step="0.01"
-                                                        class="w-full bg-transparent text-sm font-medium text-foreground outline-none"
-                                                    />
-                                                </label>
-                                                <label
-                                                    class="rounded-2xl border border-border/70 bg-card/85 px-3 py-3 text-sm"
-                                                >
-                                                    <span
-                                                        class="mb-1 block text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                                                        >Sügavus (m)</span
-                                                    >
-                                                    <input
-                                                        v-model="
-                                                            gardenForm.heightMeters
-                                                        "
-                                                        type="number"
-                                                        min="0.01"
-                                                        max="1000"
-                                                        step="0.01"
-                                                        class="w-full bg-transparent text-sm font-medium text-foreground outline-none"
-                                                    />
-                                                </label>
-                                            </div>
-
-                                            <div
-                                                v-if="
-                                                    gardenForm.errors.name ||
-                                                    gardenForm.errors.width ||
-                                                    gardenForm.errors.height
-                                                "
-                                                class="mt-3 space-y-1 rounded-2xl border border-red-200 bg-red-50/90 px-3 py-2 text-sm text-red-700"
+                                                class="rounded-[1.5rem] border border-border/70 bg-background/75 p-3"
                                             >
                                                 <p
-                                                    v-if="
-                                                        gardenForm.errors.name
-                                                    "
+                                                    class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
                                                 >
-                                                    {{ gardenForm.errors.name }}
+                                                    Vaate kihid
                                                 </p>
-                                                <p
-                                                    v-if="
-                                                        gardenForm.errors.width
-                                                    "
+                                                <div
+                                                    class="mt-3 flex flex-wrap gap-2"
                                                 >
-                                                    {{
-                                                        gardenForm.errors.width
-                                                    }}
-                                                </p>
-                                                <p
-                                                    v-if="
-                                                        gardenForm.errors.height
-                                                    "
-                                                >
-                                                    {{
-                                                        gardenForm.errors.height
-                                                    }}
-                                                </p>
+                                                    <button
+                                                        type="button"
+                                                        :class="
+                                                            layerButtonClass(
+                                                                showBedsLayer,
+                                                            )
+                                                        "
+                                                        @click="
+                                                            showBedsLayer =
+                                                                !showBedsLayer
+                                                        "
+                                                    >
+                                                        <span
+                                                            class="material-symbols-outlined text-sm"
+                                                            >grid_view</span
+                                                        >
+                                                        Peenrad
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        :class="
+                                                            layerButtonClass(
+                                                                showStructuresLayer,
+                                                            )
+                                                        "
+                                                        @click="
+                                                            showStructuresLayer =
+                                                                !showStructuresLayer
+                                                        "
+                                                    >
+                                                        <span
+                                                            class="material-symbols-outlined text-sm"
+                                                            >home_work</span
+                                                        >
+                                                        Hooned
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        :class="
+                                                            layerButtonClass(
+                                                                showWaterLayer,
+                                                            )
+                                                        "
+                                                        @click="
+                                                            showWaterLayer =
+                                                                !showWaterLayer
+                                                        "
+                                                    >
+                                                        <span
+                                                            class="material-symbols-outlined text-sm"
+                                                            >water</span
+                                                        >
+                                                        Vesi
+                                                    </button>
+                                                </div>
                                             </div>
-
-                                            <div
-                                                class="mt-3 flex flex-wrap items-center gap-2"
-                                            >
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/15"
-                                                    :disabled="
-                                                        gardenForm.processing
-                                                    "
-                                                    @click="saveGardenPlan"
-                                                >
-                                                    Salvesta aed
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <div
-                                            class="rounded-[1.5rem] border border-border/70 bg-background/75 p-3"
-                                        >
-                                            <p
-                                                class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                                            >
-                                                Vaate kihid
-                                            </p>
-                                            <div
-                                                class="mt-3 flex flex-wrap gap-2"
-                                            >
-                                                <button
-                                                    type="button"
-                                                    :class="
-                                                        layerButtonClass(
-                                                            showBedsLayer,
-                                                        )
-                                                    "
-                                                    @click="
-                                                        showBedsLayer =
-                                                            !showBedsLayer
-                                                    "
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >grid_view</span
-                                                    >
-                                                    Peenrad
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    :class="
-                                                        layerButtonClass(
-                                                            showStructuresLayer,
-                                                        )
-                                                    "
-                                                    @click="
-                                                        showStructuresLayer =
-                                                            !showStructuresLayer
-                                                    "
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >home_work</span
-                                                    >
-                                                    Hooned
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    :class="
-                                                        layerButtonClass(
-                                                            showWaterLayer,
-                                                        )
-                                                    "
-                                                    @click="
-                                                        showWaterLayer =
-                                                            !showWaterLayer
-                                                    "
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >water</span
-                                                    >
-                                                    Vesi
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    :class="
-                                                        layerButtonClass(
-                                                            showPlannerLabels,
-                                                        )
-                                                    "
-                                                    @click="
-                                                        showPlannerLabels =
-                                                            !showPlannerLabels
-                                                    "
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >label</span
-                                                    >
-                                                    Nimed
-                                                </button>
-                                            </div>
-                                        </div>
                                         </div>
                                     </div>
 
@@ -2329,9 +3301,325 @@ function saveGardenPlan() {
 
                                     <div
                                         v-else
-                                        class="mb-3 grid gap-3"
+                                        class="mb-3 flex min-h-0 flex-1 flex-col md:mb-3 md:block md:flex-none"
                                     >
-                                        <button
+                                        <div
+                                            class="flex min-h-0 flex-1 flex-col md:hidden"
+                                        >
+                                            <div
+                                                class="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.65rem] border border-border/65 bg-card shadow-[0_20px_44px_-18px_rgba(47,67,44,0.14)] dark:border-border/80 dark:shadow-[0_20px_40px_-16px_rgba(0,0,0,0.45)]"
+                                            >
+                                                <div
+                                                    class="flex shrink-0 items-center justify-between gap-2 border-b border-border/60 px-3 py-2"
+                                                >
+                                                    <div
+                                                        class="no-scrollbar flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto"
+                                                    >
+                                                        <button
+                                                            type="button"
+                                                            :class="
+                                                                bedListTabClass(
+                                                                    'all',
+                                                                )
+                                                            "
+                                                            @click="
+                                                                mobileBedListTab =
+                                                                    'all'
+                                                            "
+                                                        >
+                                                            Kõik
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            :class="
+                                                                bedListTabClass(
+                                                                    'favorites',
+                                                                )
+                                                            "
+                                                            @click="
+                                                                mobileBedListTab =
+                                                                    'favorites'
+                                                            "
+                                                        >
+                                                            Lemmikud
+                                                        </button>
+                                                    </div>
+                                                    <div class="shrink-0">
+                                                        <SortDropdown
+                                                            v-model="
+                                                                selectedBedSort
+                                                            "
+                                                            :options="
+                                                                bedSortOptions
+                                                            "
+                                                            compact
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div
+                                                    class="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-y-contain px-2 pb-3 pt-1.5"
+                                                >
+                                                    <div
+                                                        v-for="bed in mobileListBeds"
+                                                        :key="`bed-list-mobile-${bed.id}`"
+                                                        class="relative rounded-2xl border bg-card p-3 shadow-sm transition hover:shadow-md"
+                                                        :class="
+                                                            selectedBed?.id ===
+                                                            bed.id
+                                                                ? 'border-primary/40 ring-2 ring-primary/25 ring-offset-2 ring-offset-background'
+                                                                : 'border-primary/10'
+                                                        "
+                                                    >
+                                                        <div
+                                                            class="flex items-center gap-3"
+                                                        >
+                                                            <button
+                                                                type="button"
+                                                                class="flex min-w-0 flex-1 items-center gap-3 text-left"
+                                                                @click="
+                                                                    openBedPage(
+                                                                        bed.id,
+                                                                    )
+                                                                "
+                                                            >
+                                                                <div
+                                                                    class="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-primary/10 bg-muted/40"
+                                                                >
+                                                                    <img
+                                                                        v-if="
+                                                                            getBedPreviewImage(
+                                                                                bed,
+                                                                            )
+                                                                        "
+                                                                        :src="
+                                                                            getBedPreviewImage(
+                                                                                bed,
+                                                                            )!
+                                                                        "
+                                                                        :alt="
+                                                                            bed.name
+                                                                        "
+                                                                        class="h-full w-full object-cover"
+                                                                    />
+                                                                    <div
+                                                                        v-else
+                                                                        class="flex h-full w-full items-center justify-center text-primary/70"
+                                                                    >
+                                                                        <span
+                                                                            class="material-symbols-outlined text-2xl"
+                                                                            >yard</span
+                                                                        >
+                                                                    </div>
+                                                                </div>
+                                                                <div
+                                                                    class="min-w-0 flex-1"
+                                                                >
+                                                                    <div
+                                                                        class="text-text-main min-w-0 truncate text-base font-bold leading-snug"
+                                                                    >
+                                                                        {{
+                                                                            bed.name
+                                                                        }}
+                                                                    </div>
+                                                                    <div
+                                                                        class="text-text-muted mt-0.5 truncate text-sm"
+                                                                    >
+                                                                        {{
+                                                                            bedPlantSummaryLine(
+                                                                                bed,
+                                                                            )
+                                                                        }}
+                                                                    </div>
+                                                                    <div
+                                                                        v-if="
+                                                                            bed.location
+                                                                        "
+                                                                        class="text-text-muted mt-0.5 truncate text-sm"
+                                                                    >
+                                                                        {{
+                                                                            bed.location
+                                                                        }}
+                                                                    </div>
+                                                                    <div
+                                                                        class="text-text-muted mt-0.5 truncate text-sm"
+                                                                    >
+                                                                        {{
+                                                                            bedDimensionsLabel(
+                                                                                bed,
+                                                                            )
+                                                                        }}
+                                                                    </div>
+                                                                </div>
+                                                            </button>
+
+                                                            <div
+                                                                class="ml-1 flex shrink-0 items-center gap-1.5"
+                                                                @click.stop
+                                                            >
+                                                                <button
+                                                                    type="button"
+                                                                    class="flex h-9 w-9 items-center justify-center rounded-full border border-primary/10 bg-background transition hover:scale-105 hover:bg-primary/5"
+                                                                    :class="
+                                                                        bed.is_favorite
+                                                                            ? 'text-rose-600 shadow-sm'
+                                                                            : 'text-foreground/45'
+                                                                    "
+                                                                    @click.prevent.stop="
+                                                                        toggleBedFavorite(
+                                                                            bed.id,
+                                                                        )
+                                                                    "
+                                                                    aria-label="Lisa lemmikuks"
+                                                                    :title="
+                                                                        bed.is_favorite
+                                                                            ? 'Eemalda lemmikutest'
+                                                                            : 'Lisa lemmikuks'
+                                                                    "
+                                                                >
+                                                                    <span
+                                                                        class="material-symbols-outlined text-[20px] leading-none transition"
+                                                                        :style="
+                                                                            bed.is_favorite
+                                                                                ? {
+                                                                                      fontVariationSettings: `'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24`,
+                                                                                  }
+                                                                                : {
+                                                                                      fontVariationSettings: `'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
+                                                                                  }
+                                                                        "
+                                                                    >
+                                                                        favorite
+                                                                    </span>
+                                                                </button>
+
+                                                                <DropdownMenu>
+                                                                    <DropdownMenuTrigger
+                                                                        as-child
+                                                                    >
+                                                                        <button
+                                                                            type="button"
+                                                                            class="text-text-muted flex h-9 w-9 items-center justify-center rounded-full border border-transparent transition hover:bg-primary/10"
+                                                                            aria-label="Menüü"
+                                                                        >
+                                                                            <span
+                                                                                class="material-symbols-outlined text-[22px]"
+                                                                                >more_horiz</span
+                                                                            >
+                                                                        </button>
+                                                                    </DropdownMenuTrigger>
+                                                                    <DropdownMenuContent
+                                                                        align="end"
+                                                                        side="bottom"
+                                                                        :side-offset="
+                                                                            6
+                                                                        "
+                                                                        class="min-w-[10.75rem] rounded-xl border border-primary/10 p-1 shadow-lg"
+                                                                    >
+                                                                        <DropdownMenuItem
+                                                                            class="cursor-pointer gap-2 py-2.5"
+                                                                            @click="
+                                                                                openBedEditPage(
+                                                                                    bed.id,
+                                                                                )
+                                                                            "
+                                                                        >
+                                                                            <span
+                                                                                class="material-symbols-outlined text-base text-primary"
+                                                                                >edit</span
+                                                                            >
+                                                                            Muuda
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuItem
+                                                                            variant="destructive"
+                                                                            class="cursor-pointer gap-2 py-2.5"
+                                                                            @click="
+                                                                                deleteBed(
+                                                                                    bed.id,
+                                                                                    bed.name,
+                                                                                )
+                                                                            "
+                                                                        >
+                                                                            <span
+                                                                                class="material-symbols-outlined text-base"
+                                                                                >delete</span
+                                                                            >
+                                                                            Kustuta
+                                                                        </DropdownMenuItem>
+                                                                    </DropdownMenuContent>
+                                                                </DropdownMenu>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div
+                                                        v-if="mobileListBeds.length === 0"
+                                                        class="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center"
+                                                    >
+                                                        <template
+                                                            v-if="
+                                                                mobileBedListTab ===
+                                                                    'favorites' &&
+                                                                filteredBeds.length >
+                                                                    0
+                                                            "
+                                                        >
+                                                            <span
+                                                                class="flex h-12 w-12 items-center justify-center rounded-2xl bg-background text-muted-foreground shadow-inner ring-1 ring-border/50"
+                                                            >
+                                                                <span
+                                                                    class="material-symbols-outlined text-2xl text-rose-500/80"
+                                                                    >favorite</span
+                                                                >
+                                                            </span>
+                                                            <p
+                                                                class="text-sm font-medium text-foreground"
+                                                            >
+                                                                Lemmikpeenraid
+                                                                pole veel valitud
+                                                            </p>
+                                                            <p
+                                                                class="max-w-[16rem] text-xs leading-relaxed text-muted-foreground"
+                                                            >
+                                                                Puuduta südant
+                                                                peenra juures, et
+                                                                see kuvataks
+                                                                siin.
+                                                            </p>
+                                                        </template>
+                                                        <template v-else>
+                                                            <span
+                                                                class="flex h-12 w-12 items-center justify-center rounded-2xl bg-background text-muted-foreground shadow-inner ring-1 ring-border/50"
+                                                            >
+                                                                <span
+                                                                    class="material-symbols-outlined text-2xl"
+                                                                    >search_off</span
+                                                                >
+                                                            </span>
+                                                            <p
+                                                                class="text-sm font-medium text-foreground"
+                                                            >
+                                                                Siin pole praegu
+                                                                midagi
+                                                            </p>
+                                                            <p
+                                                                class="max-w-[16rem] text-xs leading-relaxed text-muted-foreground"
+                                                            >
+                                                                Proovi otsingut
+                                                                muuta või lisa
+                                                                uus peenar
+                                                                plussnupust.
+                                                            </p>
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            class="hidden min-h-0 grid gap-3 md:grid"
+                                        >
+                                            <button
                                             type="button"
                                             class="hidden items-center justify-between rounded-xl border border-border/80 bg-white px-4 py-3 text-left shadow-sm dark:bg-card"
                                             @click="
@@ -2376,7 +3664,7 @@ function saveGardenPlan() {
                                         </button>
 
                                         <aside
-                                            class="hidden rounded-xl border border-border/80 bg-white p-4 shadow-sm dark:bg-card xl:sticky xl:top-6 xl:self-start"
+                                            class="hidden rounded-xl border border-border/80 bg-white p-4 shadow-sm xl:sticky xl:top-6 xl:self-start dark:bg-card"
                                         >
                                             <div
                                                 class="flex items-start justify-between gap-3"
@@ -2400,7 +3688,8 @@ function saveGardenPlan() {
                                                         klõpsa
                                                         <span
                                                             class="font-medium text-foreground/85"
-                                                            >rohelisel plaanil</span
+                                                            >rohelisel
+                                                            plaanil</span
                                                         >
                                                         kohta. Uue peenra jaoks
                                                         kasuta paremal all
@@ -2452,7 +3741,9 @@ function saveGardenPlan() {
                                                     :key="`tool-category-${category.id}`"
                                                     class="rounded-xl border border-border/70 bg-background/60 p-2"
                                                 >
-                                                    <p class="px-2 py-1 text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                                                    <p
+                                                        class="px-2 py-1 text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
+                                                    >
                                                         {{ category.label }}
                                                     </p>
                                                     <div class="space-y-1.5">
@@ -2472,11 +3763,19 @@ function saveGardenPlan() {
                                                                 )
                                                             "
                                                         >
-                                                            <span class="flex items-start gap-2">
+                                                            <span
+                                                                class="flex items-start gap-2"
+                                                            >
                                                                 <component
-                                                                    :is="iconFor(variant.icon)"
+                                                                    :is="
+                                                                        iconFor(
+                                                                            variant.icon,
+                                                                        )
+                                                                    "
                                                                     :size="18"
-                                                                    :stroke-width="1.75"
+                                                                    :stroke-width="
+                                                                        1.75
+                                                                    "
                                                                     class="mt-0.5 shrink-0"
                                                                     :class="
                                                                         toolVariantIconToneClass(
@@ -2484,12 +3783,22 @@ function saveGardenPlan() {
                                                                         )
                                                                     "
                                                                 />
-                                                                <span class="min-w-0">
-                                                                    <span class="block text-sm font-semibold text-foreground">
-                                                                        {{ variant.label }}
+                                                                <span
+                                                                    class="min-w-0"
+                                                                >
+                                                                    <span
+                                                                        class="block text-sm font-semibold text-foreground"
+                                                                    >
+                                                                        {{
+                                                                            variant.label
+                                                                        }}
                                                                     </span>
-                                                                    <span class="mt-0.5 block text-xs text-muted-foreground">
-                                                                        {{ variant.description }}
+                                                                    <span
+                                                                        class="mt-0.5 block text-xs text-muted-foreground"
+                                                                    >
+                                                                        {{
+                                                                            variant.description
+                                                                        }}
                                                                     </span>
                                                                 </span>
                                                             </span>
@@ -2515,17 +3824,24 @@ function saveGardenPlan() {
                                                 <div
                                                     class="font-semibold text-primary"
                                                 >
-                                                    {{ selectedToolDisplayLabel }}
+                                                    {{
+                                                        selectedToolDisplayLabel
+                                                    }}
                                                 </div>
                                                 <p
-                                                    v-if="selectedToolDisplayDescription"
+                                                    v-if="
+                                                        selectedToolDisplayDescription
+                                                    "
                                                     class="mt-1 text-xs text-muted-foreground"
                                                 >
-                                                    {{ selectedToolDisplayDescription }}
+                                                    {{
+                                                        selectedToolDisplayDescription
+                                                    }}
                                                 </p>
                                                 <div
                                                     v-if="
-                                                        activeTool === 'other' &&
+                                                        activeTool ===
+                                                            'other' &&
                                                         activeToolVariant?.requiresCustomName
                                                     "
                                                     class="mt-3 space-y-1"
@@ -2550,16 +3866,21 @@ function saveGardenPlan() {
                                                         />
                                                     </label>
                                                     <p
-                                                        v-if="otherObjectNameError"
+                                                        v-if="
+                                                            otherObjectNameError
+                                                        "
                                                         class="text-xs text-rose-600"
                                                     >
-                                                        {{ otherObjectNameError }}
+                                                        {{
+                                                            otherObjectNameError
+                                                        }}
                                                     </p>
                                                 </div>
                                                 <div
                                                     class="mt-1 leading-6 text-muted-foreground"
                                                     :class="
-                                                        activeTool === 'other' &&
+                                                        activeTool ===
+                                                            'other' &&
                                                         activeToolVariant?.requiresCustomName
                                                             ? 'mt-3'
                                                             : ''
@@ -2567,7 +3888,8 @@ function saveGardenPlan() {
                                                 >
                                                     <template
                                                         v-if="
-                                                            activeTool === 'other' &&
+                                                            activeTool ===
+                                                                'other' &&
                                                             activeToolVariant?.requiresCustomName
                                                         "
                                                     >
@@ -2597,19 +3919,19 @@ function saveGardenPlan() {
                                             >
                                                 Sulge tööriistad
                                             </button>
-
                                         </aside>
 
-                                        <div class="relative flex gap-3">
+                                        <div class="relative min-w-0">
                                             <aside
+                                                v-if="isLayoutEditing"
                                                 data-ui-overlay="true"
-                                                class="pointer-events-auto z-30 flex w-14 shrink-0 flex-col items-center gap-2 self-start rounded-2xl border border-border/80 bg-white/95 px-2 py-2 shadow-lg backdrop-blur dark:bg-card/95"
+                                                class="pointer-events-auto absolute top-3 left-3 z-30 flex flex-col items-center gap-1.5 rounded-xl border border-white/70 bg-white/82 px-1.5 py-1.5 shadow-lg shadow-emerald-950/10 backdrop-blur-xl dark:border-emerald-200/10 dark:bg-card/82"
                                             >
                                                 <button
                                                     v-for="category in toolCategories"
                                                     :key="`quick-tool-${category.id}`"
                                                     type="button"
-                                                    class="inline-flex h-10 w-10 items-center justify-center rounded-xl border transition"
+                                                    class="inline-flex h-9 w-9 items-center justify-center rounded-lg border transition"
                                                     :class="
                                                         categoryButtonToneClass(
                                                             category.id,
@@ -2625,7 +3947,11 @@ function saveGardenPlan() {
                                                     "
                                                 >
                                                     <component
-                                                        :is="iconFor(category.icon)"
+                                                        :is="
+                                                            iconFor(
+                                                                category.icon,
+                                                            )
+                                                        "
                                                         :size="20"
                                                         :stroke-width="1.75"
                                                         :class="
@@ -2642,24 +3968,34 @@ function saveGardenPlan() {
                                                     type="button"
                                                     class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/70 bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground"
                                                     title="Tühista valik"
-                                                    @click.stop="clearToolSelection"
+                                                    @click.stop="
+                                                        clearToolSelection
+                                                    "
                                                 >
-                                                    <span class="material-symbols-outlined text-sm">close</span>
+                                                    <span
+                                                        class="material-symbols-outlined text-sm"
+                                                        >close</span
+                                                    >
                                                 </button>
                                             </aside>
 
                                             <div
-                                                v-if="selectedQuickCategoryId"
+                                                v-if="
+                                                    isLayoutEditing &&
+                                                    selectedQuickCategoryId
+                                                "
                                                 data-ui-overlay="true"
-                                                class="pointer-events-auto absolute top-0 left-[68px] z-30 w-72 rounded-2xl border border-border/80 bg-white/96 p-3 shadow-xl backdrop-blur dark:bg-card/96"
+                                                class="pointer-events-auto absolute top-3 left-[64px] z-30 w-[min(17rem,calc(100%-4.75rem))] rounded-xl border border-white/70 bg-white/94 p-3 shadow-lg shadow-emerald-950/10 backdrop-blur-xl dark:border-emerald-200/10 dark:bg-card/94"
                                             >
-                                                <div class="mb-2 flex items-center justify-between">
-                                                    <p class="text-sm font-semibold text-foreground">
+                                                <div
+                                                    class="mb-2 flex items-center justify-between"
+                                                >
+                                                    <p
+                                                        class="text-sm font-semibold text-foreground"
+                                                    >
                                                         {{
                                                             toolCategories.find(
-                                                                (
-                                                                    item,
-                                                                ) =>
+                                                                (item) =>
                                                                     item.id ===
                                                                     selectedQuickCategoryId,
                                                             )?.label
@@ -2670,27 +4006,47 @@ function saveGardenPlan() {
                                                         type="button"
                                                         class="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
                                                         @click.stop="
-                                                            selectedQuickCategoryId = null
+                                                            selectedQuickCategoryId =
+                                                                null
                                                         "
                                                     >
-                                                        <span class="material-symbols-outlined text-sm">close</span>
+                                                        <span
+                                                            class="material-symbols-outlined text-sm"
+                                                            >close</span
+                                                        >
                                                     </button>
                                                 </div>
-                                                <div class="max-h-[min(68vh,26rem)] space-y-1.5 overflow-y-auto pr-1">
+                                                <div
+                                                    class="max-h-[min(68vh,26rem)] space-y-1.5 overflow-y-auto pr-1"
+                                                >
                                                     <button
-                                                        v-for="variant in toolCategories.find((item) => item.id === selectedQuickCategoryId)?.variants ?? []"
+                                                        v-for="variant in toolCategories.find(
+                                                            (item) =>
+                                                                item.id ===
+                                                                selectedQuickCategoryId,
+                                                        )?.variants ?? []"
                                                         :key="variant.id"
                                                         type="button"
                                                         class="w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-left transition hover:border-primary/20 hover:bg-primary/6"
                                                         @click.stop="
-                                                            chooseToolVariant(variant)
+                                                            chooseToolVariant(
+                                                                variant,
+                                                            )
                                                         "
                                                     >
-                                                        <div class="flex items-start gap-2">
+                                                        <div
+                                                            class="flex items-start gap-2"
+                                                        >
                                                             <component
-                                                                :is="iconFor(variant.icon)"
+                                                                :is="
+                                                                    iconFor(
+                                                                        variant.icon,
+                                                                    )
+                                                                "
                                                                 :size="18"
-                                                                :stroke-width="1.75"
+                                                                :stroke-width="
+                                                                    1.75
+                                                                "
                                                                 class="mt-0.5 shrink-0"
                                                                 :class="
                                                                     toolVariantIconToneClass(
@@ -2698,12 +4054,22 @@ function saveGardenPlan() {
                                                                     )
                                                                 "
                                                             />
-                                                            <span class="min-w-0">
-                                                                <span class="block text-sm font-semibold text-foreground">
-                                                                    {{ variant.label }}
+                                                            <span
+                                                                class="min-w-0"
+                                                            >
+                                                                <span
+                                                                    class="block text-sm font-semibold text-foreground"
+                                                                >
+                                                                    {{
+                                                                        variant.label
+                                                                    }}
                                                                 </span>
-                                                                <span class="mt-0.5 block text-xs text-muted-foreground">
-                                                                    {{ variant.description }}
+                                                                <span
+                                                                    class="mt-0.5 block text-xs text-muted-foreground"
+                                                                >
+                                                                    {{
+                                                                        variant.description
+                                                                    }}
                                                                 </span>
                                                             </span>
                                                         </div>
@@ -2713,419 +4079,346 @@ function saveGardenPlan() {
 
                                             <div
                                                 ref="plannerViewport"
-                                                class="relative flex-1 min-w-0 overflow-auto rounded-[1.75rem] border border-border/80 bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(244,239,229,0.98))] p-3 shadow-inner dark:bg-[linear-gradient(180deg,rgba(30,38,32,0.98),rgba(22,29,24,0.98))] sm:p-4 cursor-default"
-                                                :style="{
-                                                    height: 'min(72vh, 920px)',
-                                                }"
-                                                @pointerdown="startPanning($event)"
-                                                @wheel="onPlannerWheel($event)"
-                                            >
-                                            <div
-                                                class="relative overflow-hidden rounded-[1.6rem] border border-emerald-900/10 bg-emerald-50/80 dark:border-emerald-200/15 dark:bg-emerald-950/35"
-                                                :style="plannerSurfaceStyle()"
-                                                @click="
-                                                    handlePlannerSurfaceClick(
+                                                class="relative h-[min(62vh,620px)] w-full max-w-full min-w-0 cursor-default touch-none overflow-hidden rounded-[1.5rem] border bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(241,247,235,0.98))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_14px_34px_rgba(47,67,44,0.10)] transition sm:p-3 md:h-[min(72vh,920px)] dark:bg-[linear-gradient(180deg,rgba(30,38,32,0.98),rgba(22,29,24,0.98))]"
+                                                :class="
+                                                    isLayoutEditing
+                                                        ? 'border-primary/25 ring-2 ring-primary/10'
+                                                        : 'border-border/80'
+                                                "
+                                                @pointerdown="
+                                                    handleViewportPointerDown(
                                                         $event,
                                                     )
                                                 "
+                                                @wheel.prevent="
+                                                    onPlannerWheel($event)
+                                                "
                                             >
                                                 <div
-                                                    class="pointer-events-none absolute inset-x-4 top-3 z-20 flex items-center justify-between text-[11px] font-semibold tracking-[0.18em] text-emerald-900/60 uppercase dark:text-foreground/85"
-                                                >
-                                                    <span
-                                                        class="rounded-full bg-white/70 px-2.5 py-1 backdrop-blur-sm dark:bg-card/80"
-                                                        >Aed</span
-                                                    >
-                                                    <span
-                                                        class="rounded-full bg-white/70 px-2.5 py-1 backdrop-blur-sm dark:bg-card/80"
-                                                        >Lohista peenraid</span
-                                                    >
-                                                </div>
-
-                                                <div
-                                                    class="pointer-events-none absolute bottom-4 left-4 z-20 rounded-2xl border border-emerald-900/10 bg-white/78 px-3 py-2 text-[11px] font-medium text-emerald-950/80 shadow-sm backdrop-blur-sm dark:border-emerald-200/20 dark:bg-card/85 dark:text-foreground/90"
-                                                >
-                                                    <div
-                                                        class="mb-1 tracking-[0.16em] text-emerald-900/60 uppercase dark:text-foreground/65"
-                                                    >
-                                                        Mõõtkava
-                                                    </div>
-                                                    <div
-                                                        class="flex items-center gap-2"
-                                                    >
-                                                        <div
-                                                            class="relative h-2 rounded-full bg-emerald-700/75 dark:bg-foreground/35"
-                                                            :style="{
-                                                                width: `${scaleBarWidthPx}px`,
-                                                            }"
-                                                        >
-                                                            <span
-                                                                class="absolute -top-1.5 -left-px h-5 w-px bg-emerald-900/55 dark:bg-foreground/45"
-                                                            ></span>
-                                                            <span
-                                                                class="absolute -top-1.5 -right-px h-5 w-px bg-emerald-900/55 dark:bg-foreground/45"
-                                                            ></span>
-                                                        </div>
-                                                        <span
-                                                            class="font-semibold text-foreground"
-                                                            >1 m</span
-                                                        >
-                                                    </div>
-                                                </div>
-
-                                                <article
-                                                    v-for="bed in plannerBeds"
-                                                    :key="bed.id"
-                                                    class="group absolute transition-transform duration-150"
-                                                    :class="[
-                                                        draggingBedId === bed.id
-                                                            ? 'z-30 scale-[1.02]'
-                                                            : 'z-10 hover:z-20 hover:-translate-y-1',
-                                                    ]"
+                                                    class="relative overflow-hidden rounded-[1.45rem] border border-emerald-900/10 bg-emerald-50/80 dark:border-emerald-200/15 dark:bg-emerald-950/35"
                                                     :style="
-                                                        plannerBedStyle(bed)
+                                                        plannerSurfaceStyle()
                                                     "
-                                                    data-bed-shape="true"
-                                                    @pointerdown="
-                                                        startDragging(
-                                                            bed,
+                                                    @click="
+                                                        handlePlannerSurfaceClick(
                                                             $event,
                                                         )
                                                     "
-                                                    @mouseenter="
-                                                        showBedInfo(bed.id)
-                                                    "
-                                                    @mouseleave="
-                                                        hideBedInfo(bed.id)
-                                                    "
-                                                    @click="
-                                                        focusBedDetails(bed.id)
-                                                    "
                                                 >
-                                                    <div class="relative z-10">
-                                                        <div
-                                                            class="grid place-content-center gap-[2px] rounded-[0.9rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(241,250,232,0.96),rgba(228,240,217,0.98))] p-1 transition"
-                                                            :class="
-                                                                selectedBed?.id ===
-                                                                bed.id
-                                                                    ? 'ring-2 ring-emerald-400/55 ring-offset-4 ring-offset-[#eef4e6] dark:ring-emerald-300/45 dark:ring-offset-background'
-                                                                    : ''
-                                                            "
-                                                            :style="
-                                                                bedPreviewGridStyle(
-                                                                    bed,
-                                                                )
-                                                            "
+                                                    <div
+                                                        class="pointer-events-none absolute inset-x-4 top-3 z-20 flex items-center justify-between text-[11px] font-semibold tracking-[0.18em] text-emerald-900/45 uppercase"
+                                                    >
+                                                        <span
+                                                            class="rounded-full bg-white/70 px-2.5 py-1 backdrop-blur-sm dark:bg-card/70"
+                                                            >Aed</span
                                                         >
-                                                            <template
-                                                                v-for="(
-                                                                    rowData, r
-                                                                ) in getBedVisibleLayout(
-                                                                    bed,
-                                                                )"
-                                                                :key="`plan-row-${bed.id}-${r}`"
+                                                        <span
+                                                            class="rounded-full bg-white/70 px-2.5 py-1 backdrop-blur-sm dark:bg-card/70"
+                                                            >{{
+                                                                isLayoutEditing
+                                                                    ? 'Lohista peenraid'
+                                                                    : 'Vaatamise režiim'
+                                                            }}</span
+                                                        >
+                                                    </div>
+
+                                                    <div
+                                                        class="pointer-events-none absolute bottom-4 left-4 z-20 rounded-2xl border border-emerald-900/10 bg-white/78 px-3 py-2 text-[11px] font-medium text-emerald-950/75 shadow-sm backdrop-blur-sm dark:border-emerald-200/20 dark:bg-card/78 dark:text-emerald-100/80"
+                                                    >
+                                                        <div
+                                                            class="mb-1 tracking-[0.16em] text-emerald-900/55 uppercase"
+                                                        >
+                                                            Mõõtkava
+                                                        </div>
+                                                        <div
+                                                            class="flex items-center gap-2"
+                                                        >
+                                                            <div
+                                                                class="relative h-2 rounded-full bg-emerald-700/75"
+                                                                :style="{
+                                                                    width: `${scaleBarWidthPx}px`,
+                                                                }"
                                                             >
                                                                 <span
-                                                                    v-for="(
-                                                                        _, c
-                                                                    ) in rowData"
-                                                                    :key="`plan-cell-${bed.id}-${r}-${c}`"
-                                                                    class="rounded-[3px] border"
-                                                                    :class="
-                                                                        rowData[
-                                                                            c
-                                                                        ] === 1
-                                                                            ? 'border-emerald-900/15 bg-[linear-gradient(180deg,rgba(131,171,116,0.95),rgba(95,139,84,0.98))]'
-                                                                            : 'border-emerald-700/15 bg-emerald-100/55'
-                                                                    "
-                                                                    :style="
-                                                                        rowData[
-                                                                            c
-                                                                        ] === 1 &&
-                                                                        getPlantPreviewImageAtVisibleCell(
-                                                                            bed,
-                                                                            r,
-                                                                            c,
-                                                                        )
-                                                                            ? {
-                                                                                  backgroundImage: `linear-gradient(180deg,rgba(32,44,30,0.18),rgba(32,44,30,0.32)), url('${getPlantPreviewImageAtVisibleCell(
-                                                                                      bed,
-                                                                                      r,
-                                                                                      c,
-                                                                                  )}')`,
-                                                                                  backgroundSize:
-                                                                                      'cover',
-                                                                                  backgroundPosition:
-                                                                                      'center',
-                                                                              }
-                                                                            : undefined
-                                                                    "
-                                                                />
-                                                            </template>
-                                                        </div>
-
-                                                        <div
-                                                            v-if="
-                                                                showPlannerLabels
-                                                            "
-                                                            class="pointer-events-none absolute top-full left-1/2 z-20 mt-2 -translate-x-1/2 rounded-full bg-white/88 px-2.5 py-1 text-[11px] font-semibold text-foreground shadow-sm backdrop-blur-sm dark:bg-card/88"
-                                                        >
-                                                            {{ bed.name }}
-                                                        </div>
-
-                                                        <div
-                                                            v-if="
-                                                                hoveredBedId ===
-                                                                bed.id
-                                                            "
-                                                            class="absolute top-full left-1/2 z-30 mt-3 hidden w-44 -translate-x-1/2 rounded-[1.2rem] border border-emerald-900/10 bg-white/92 p-3 text-left shadow-lg backdrop-blur-sm dark:border-emerald-200/20 dark:bg-card/92 md:block"
-                                                        >
-                                                            <p
-                                                                class="truncate text-sm font-semibold text-foreground"
-                                                            >
-                                                                {{ bed.name }}
-                                                            </p>
-                                                            <p
-                                                                class="mt-1 text-xs text-muted-foreground"
-                                                            >
-                                                                {{
-                                                                    bed.location ||
-                                                                    'Asukoht lisamata'
-                                                                }}
-                                                            </p>
-                                                            <div
-                                                                class="mt-3 grid grid-cols-2 gap-2 text-[11px]"
-                                                            >
-                                                                <div
-                                                                    class="rounded-xl bg-muted/60 px-2 py-2"
-                                                                >
-                                                                    <div
-                                                                        class="text-muted-foreground"
-                                                                    >
-                                                                        Mõõt
-                                                                    </div>
-                                                                    <div
-                                                                        class="mt-1 font-semibold text-foreground"
-                                                                    >
-                                                                        {{
-                                                                            formatCentimeters(
-                                                                                getBedPhysicalWidthCm(
-                                                                                    bed,
-                                                                                ),
-                                                                            )
-                                                                        }}
-                                                                        ×
-                                                                        {{
-                                                                            formatCentimeters(
-                                                                                getBedPhysicalHeightCm(
-                                                                                    bed,
-                                                                                ),
-                                                                            )
-                                                                        }}
-                                                                    </div>
-                                                                </div>
-                                                                <div
-                                                                    class="rounded-xl bg-muted/60 px-2 py-2"
-                                                                >
-                                                                    <div
-                                                                        class="text-muted-foreground"
-                                                                    >
-                                                                        Taimi
-                                                                    </div>
-                                                                    <div
-                                                                        class="mt-1 font-semibold text-foreground"
-                                                                    >
-                                                                        {{
-                                                                            bed
-                                                                                .plants
-                                                                                .length
-                                                                        }}
-                                                                    </div>
-                                                                </div>
+                                                                    class="absolute -top-1.5 -left-px h-5 w-px bg-emerald-900/55"
+                                                                ></span>
+                                                                <span
+                                                                    class="absolute -top-1.5 -right-px h-5 w-px bg-emerald-900/55"
+                                                                ></span>
                                                             </div>
-                                                            <div
-                                                                class="mt-3 grid gap-2"
+                                                            <span
+                                                                class="font-semibold text-foreground"
+                                                                >1 m</span
                                                             >
-                                                                <button
-                                                                    type="button"
-                                                                    class="inline-flex w-full items-center justify-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-2 text-[11px] font-semibold text-primary transition hover:bg-primary/15"
-                                                                    @click.stop="
-                                                                        focusBedDetails(
-                                                                            bed.id,
-                                                                        )
-                                                                    "
+                                                        </div>
+                                                    </div>
+
+                                                    <article
+                                                        v-for="bed in plannerBeds"
+                                                        :key="bed.id"
+                                                        class="group absolute touch-none transition-transform duration-150"
+                                                        :class="[
+                                                            draggingBedId ===
+                                                            bed.id
+                                                                ? 'z-30 scale-[1.02]'
+                                                                : 'z-10 hover:z-20',
+                                                            isLayoutEditing
+                                                                ? 'cursor-grab hover:-translate-y-1 active:cursor-grabbing'
+                                                                : 'cursor-pointer',
+                                                        ]"
+                                                        :style="
+                                                            plannerBedStyle(bed)
+                                                        "
+                                                        data-bed-shape="true"
+                                                        @pointerdown="
+                                                            startDragging(
+                                                                bed,
+                                                                $event,
+                                                            )
+                                                        "
+                                                        @mouseenter="
+                                                            showBedInfo(bed.id)
+                                                        "
+                                                        @mouseleave="
+                                                            hideBedInfo(bed.id)
+                                                        "
+                                                        @click="
+                                                            openBedPage(bed.id)
+                                                        "
+                                                    >
+                                                        <div
+                                                            class="relative z-10 h-full w-full"
+                                                        >
+                                                            <div
+                                                                class="bed-grid-frame bed-grid-frame--map relative z-10 grid h-full w-full place-content-center gap-0.5 overflow-hidden rounded-[0.9rem] border border-emerald-900/10 p-0.5 transition"
+                                                                :class="
+                                                                    selectedBed?.id ===
+                                                                    bed.id
+                                                                        ? 'ring-2 ring-emerald-400/55 ring-offset-4 ring-offset-[#eef4e6]'
+                                                                        : ''
+                                                                "
+                                                                :style="
+                                                                    bedPreviewGridStyle(
+                                                                        bed,
+                                                                    )
+                                                                "
+                                                            >
+                                                                <template
+                                                                    v-for="(
+                                                                        rowData,
+                                                                        r
+                                                                    ) in getBedVisibleLayout(
+                                                                        bed,
+                                                                    )"
+                                                                    :key="`plan-row-${bed.id}-${r}`"
                                                                 >
-                                                                    Ava vaade
-                                                                </button>
+                                                                    <span
+                                                                        v-for="(
+                                                                            _, c
+                                                                        ) in rowData"
+                                                                        :key="`plan-cell-${bed.id}-${r}-${c}`"
+                                                                        class="block"
+                                                                        :class="
+                                                                            mapPlannerBedCellClass(
+                                                                                rowData[
+                                                                                    c
+                                                                                ],
+                                                                                bed,
+                                                                                r,
+                                                                                c,
+                                                                            )
+                                                                        "
+                                                                        :style="
+                                                                            rowData[
+                                                                                c
+                                                                            ] ===
+                                                                                1 &&
+                                                                            getPlantAtVisibleCell(
+                                                                                bed,
+                                                                                r,
+                                                                                c,
+                                                                            )
+                                                                                ?.image_url
+                                                                                ? {
+                                                                                      backgroundImage: `linear-gradient(180deg,rgba(32,44,30,0.18),rgba(32,44,30,0.32)), url('${getPlantAtVisibleCell(
+                                                                                          bed,
+                                                                                          r,
+                                                                                          c,
+                                                                                      )!.image_url!}')`,
+                                                                                      backgroundSize:
+                                                                                          'cover',
+                                                                                      backgroundPosition:
+                                                                                          'center',
+                                                                                  }
+                                                                                : undefined
+                                                                        "
+                                                                    />
+                                                                </template>
+                                                            </div>
+
+                                                            <div
+                                                                v-if="
+                                                                    hoveredBedId ===
+                                                                    bed.id
+                                                                "
+                                                                class="absolute top-full left-1/2 z-30 mt-3 hidden w-48 -translate-x-1/2 rounded-xl border border-border/70 bg-card/95 p-2.5 text-left shadow-lg backdrop-blur-sm md:block"
+                                                            >
+                                                                <div
+                                                                    class="flex items-center gap-2.5"
+                                                                >
+                                                                    <div
+                                                                        class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/70 bg-muted/50"
+                                                                    >
+                                                                        <img
+                                                                            v-if="
+                                                                                getBedPreviewImage(
+                                                                                    bed,
+                                                                                )
+                                                                            "
+                                                                            :src="
+                                                                                getBedPreviewImage(
+                                                                                    bed,
+                                                                                )!
+                                                                            "
+                                                                            :alt="
+                                                                                bed.name
+                                                                            "
+                                                                            class="h-full w-full object-cover"
+                                                                        />
+                                                                        <span
+                                                                            v-else
+                                                                            class="material-symbols-outlined text-lg text-muted-foreground"
+                                                                            >yard</span
+                                                                        >
+                                                                    </div>
+                                                                    <p
+                                                                        class="min-w-0 truncate text-sm font-semibold text-foreground"
+                                                                    >
+                                                                        {{
+                                                                            bed.name
+                                                                        }}
+                                                                    </p>
+                                                                </div>
                                                                 <button
                                                                     type="button"
-                                                                    class="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border/70 bg-background px-3 py-2 text-[11px] font-semibold text-foreground transition hover:bg-muted"
+                                                                    class="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/15"
                                                                     @click.stop="
                                                                         openBedPage(
                                                                             bed.id,
                                                                         )
                                                                     "
                                                                 >
-                                                                    Ava peenar
+                                                                    Ava vaade
                                                                 </button>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                </article>
+                                                    </article>
 
-                                                <article
-                                                    v-for="object in plannerObjects"
-                                                    :key="`object-${object.id}`"
-                                                    class="group absolute transition-transform duration-150"
-                                                    :class="
-                                                        draggingObjectId ===
-                                                        object.id
-                                                            ? 'z-30 scale-[1.02]'
-                                                            : 'z-10 hover:z-20 hover:-translate-y-1'
-                                                    "
-                                                    :style="
-                                                        plannerObjectStyle(
-                                                            object,
-                                                        )
-                                                    "
-                                                    data-object-shape="true"
-                                                    @pointerdown="
-                                                        startObjectDragging(
-                                                            object,
-                                                            $event,
-                                                        )
-                                                    "
-                                                    @mouseenter="
-                                                        showObjectInfo(
-                                                            object.id,
-                                                        )
-                                                    "
-                                                    @mouseleave="
-                                                        hideObjectInfo(
-                                                            object.id,
-                                                        )
-                                                    "
-                                                    @click.stop="
-                                                        focusObjectDetails(
-                                                            object.id,
-                                                        )
-                                                    "
-                                                >
-                                                    <div
-                                                        class="relative z-10 flex h-full w-full items-center justify-center p-1"
+                                                    <article
+                                                        v-for="object in plannerObjects"
+                                                        :key="`object-${object.id}`"
+                                                        class="group absolute touch-none transition-transform duration-150"
+                                                        :class="[
+                                                            draggingObjectId ===
+                                                            object.id
+                                                                ? 'z-30 scale-[1.02]'
+                                                                : 'z-10 hover:z-20',
+                                                            isLayoutEditing
+                                                                ? 'cursor-grab hover:-translate-y-1 active:cursor-grabbing'
+                                                                : 'cursor-pointer',
+                                                        ]"
+                                                        :style="
+                                                            plannerObjectStyle(
+                                                                object,
+                                                            )
+                                                        "
+                                                        data-object-shape="true"
+                                                        @pointerdown="
+                                                            startObjectDragging(
+                                                                object,
+                                                                $event,
+                                                            )
+                                                        "
+                                                        @mouseenter="
+                                                            showObjectInfo(
+                                                                object.id,
+                                                            )
+                                                        "
+                                                        @mouseleave="
+                                                            hideObjectInfo(
+                                                                object.id,
+                                                            )
+                                                        "
+                                                        @click.stop="
+                                                            focusObjectDetails(
+                                                                object.id,
+                                                            )
+                                                        "
                                                     >
                                                         <div
-                                                            class="flex max-w-full flex-col items-center gap-1"
+                                                            class="relative z-10 flex h-full w-full items-center justify-center p-1"
                                                         >
-                                                            <component
-                                                                :is="iconFor(objectVariantIcon(object))"
-                                                                :size="objectIconSize(object)"
-                                                                :stroke-width="1.5"
-                                                                class="relative shrink-0"
-                                                                :class="
-                                                                    toolVariantIconToneClass(
-                                                                        objectVariantType(
+                                                            <div
+                                                                class="flex max-w-full flex-col items-center gap-1"
+                                                            >
+                                                                <component
+                                                                    :is="
+                                                                        iconFor(
+                                                                            objectVariantIcon(
+                                                                                object,
+                                                                            ),
+                                                                        )
+                                                                    "
+                                                                    :size="
+                                                                        objectIconSize(
                                                                             object,
-                                                                        ),
-                                                                    )
-                                                                "
-                                                            />
+                                                                        )
+                                                                    "
+                                                                    :stroke-width="
+                                                                        1.5
+                                                                    "
+                                                                    class="relative shrink-0"
+                                                                    :class="
+                                                                        toolVariantIconToneClass(
+                                                                            objectVariantType(
+                                                                                object,
+                                                                            ),
+                                                                        )
+                                                                    "
+                                                                />
 
-                                                            <div
-                                                                v-if="
-                                                                    showPlannerLabels
-                                                                "
-                                                                class="pointer-events-none max-w-[min(14rem,100%)] truncate rounded-full bg-white/88 px-2.5 py-0.5 text-center text-[11px] font-semibold text-foreground shadow-sm backdrop-blur-sm dark:bg-card/88"
-                                                            >
-                                                                {{ object.name }}
-                                                            </div>
-
-                                                            <div
-                                                                v-if="
-                                                                    hoveredObjectId ===
-                                                                        object.id &&
-                                                                    selectedObject?.id !==
-                                                                        object.id
-                                                                "
-                                                            class="z-30 hidden w-44 max-w-[min(14rem,calc(100vw-2rem))] rounded-[1.2rem] border border-emerald-900/10 bg-white/92 p-3 text-left shadow-lg backdrop-blur-sm dark:border-emerald-200/20 dark:bg-card/92 md:block"
-                                                        >
-                                                            <p
-                                                                class="truncate text-sm font-semibold text-foreground"
-                                                            >
-                                                                {{
-                                                                    object.name
-                                                                }}
-                                                            </p>
-                                                            <p
-                                                                class="mt-1 text-xs text-muted-foreground"
-                                                            >
-                                                                {{
-                                                                    objectTypeLabel(
-                                                                        object.type,
-                                                                    )
-                                                                }}
-                                                            </p>
-                                                            <div
-                                                                class="mt-3 grid grid-cols-2 gap-2 text-[11px]"
-                                                            >
                                                                 <div
-                                                                    class="rounded-xl bg-muted/60 px-2 py-2"
+                                                                    v-if="
+                                                                        hoveredObjectId ===
+                                                                            object.id &&
+                                                                        selectedObject?.id !==
+                                                                            object.id
+                                                                    "
+                                                                    class="z-30 hidden w-40 max-w-[min(12rem,calc(100vw-2rem))] rounded-xl border border-border/70 bg-card/95 p-2.5 text-left shadow-lg backdrop-blur-sm md:block"
                                                                 >
-                                                                    <div
-                                                                        class="text-muted-foreground"
-                                                                    >
-                                                                        Mõõt
-                                                                    </div>
-                                                                    <div
-                                                                        class="mt-1 font-semibold text-foreground"
+                                                                    <p
+                                                                        class="truncate text-sm font-semibold text-foreground"
                                                                     >
                                                                         {{
-                                                                            formatCentimeters(
-                                                                                object.width,
-                                                                            )
+                                                                            object.name
                                                                         }}
-                                                                        ×
-                                                                        {{
-                                                                            formatCentimeters(
-                                                                                object.height,
+                                                                    </p>
+                                                                    <button
+                                                                        type="button"
+                                                                        class="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/15"
+                                                                        @click.stop="
+                                                                            focusObjectDetails(
+                                                                                object.id,
                                                                             )
-                                                                        }}
-                                                                    </div>
-                                                                </div>
-                                                                <div
-                                                                    class="rounded-xl bg-muted/60 px-2 py-2"
-                                                                >
-                                                                    <div
-                                                                        class="text-muted-foreground"
+                                                                        "
                                                                     >
-                                                                        Tüüp
-                                                                    </div>
-                                                                    <div
-                                                                        class="mt-1 font-semibold text-foreground"
-                                                                    >
-                                                                        {{
-                                                                            objectTypeLabel(
-                                                                                object.type,
-                                                                            )
-                                                                        }}
-                                                                    </div>
+                                                                        Muuda
+                                                                    </button>
                                                                 </div>
                                                             </div>
-                                                            <button
-                                                                type="button"
-                                                                class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-2 text-[11px] font-semibold text-primary transition hover:bg-primary/15"
-                                                                @click.stop="
-                                                                    focusObjectDetails(
-                                                                        object.id,
-                                                                    )
-                                                                "
-                                                            >
-                                                                Ava vaade
-                                                            </button>
                                                         </div>
-                                                        </div>
-                                                    </div>
-                                                </article>
+                                                    </article>
+                                                </div>
                                             </div>
                                         </div>
                                         </div>
@@ -3134,7 +4427,7 @@ function saveGardenPlan() {
                                     <div
                                         v-if="selectedObject"
                                         ref="selectedObjectPanel"
-                                        class="xl:backdrop-blur-0 sticky bottom-20 z-20 mt-3 rounded-[1.5rem] border border-border/80 bg-card/95 p-4 shadow-lg backdrop-blur xl:static xl:bottom-auto xl:z-auto xl:shadow-sm"
+                                        class="xl:backdrop-blur-0 sticky bottom-20 z-20 mt-3 rounded-[1.25rem] border border-border/80 bg-card/95 p-3 shadow-lg backdrop-blur xl:static xl:bottom-auto xl:z-auto xl:p-4 xl:shadow-sm"
                                         :class="
                                             highlightSelectedObjectPanel
                                                 ? 'ring-2 ring-primary/35 ring-offset-2 ring-offset-background transition'
@@ -3238,7 +4531,7 @@ function saveGardenPlan() {
                                                     Tüüp
                                                 </p>
                                                 <p
-                                                    class="mt-1 break-words text-xs font-semibold leading-snug text-foreground"
+                                                    class="mt-1 text-xs leading-snug font-semibold break-words text-foreground"
                                                 >
                                                     {{
                                                         objectTypeLabel(
@@ -3256,7 +4549,7 @@ function saveGardenPlan() {
                                                     Mõõt
                                                 </p>
                                                 <p
-                                                    class="mt-1 text-xs font-semibold leading-snug text-foreground"
+                                                    class="mt-1 text-xs leading-snug font-semibold text-foreground"
                                                 >
                                                     {{
                                                         formatCentimeters(
@@ -3280,7 +4573,7 @@ function saveGardenPlan() {
                                                     Asukoht
                                                 </p>
                                                 <p
-                                                    class="mt-1 text-xs font-semibold tabular-nums text-foreground"
+                                                    class="mt-1 text-xs font-semibold text-foreground tabular-nums"
                                                 >
                                                     {{
                                                         getObjectPosition(
@@ -3296,9 +4589,9 @@ function saveGardenPlan() {
                                             </div>
                                         </div>
 
-                                            <div
-                                                class="mt-3 rounded-[1.1rem] border border-border/70 bg-background/70 p-3"
-                                            >
+                                        <div
+                                            class="mt-3 rounded-[1.1rem] border border-border/70 bg-background/70 p-3"
+                                        >
                                             <div class="mb-2">
                                                 <p
                                                     class="text-xs font-semibold text-foreground"
@@ -3388,10 +4681,8 @@ function saveGardenPlan() {
                                                 </button>
                                                 <p
                                                     v-if="
-                                                        objectForm.errors
-                                                            .width ||
-                                                        objectForm.errors
-                                                            .height ||
+                                                        objectFormDimensionErrors.width ||
+                                                        objectFormDimensionErrors.height ||
                                                         objectForm.errors.name
                                                     "
                                                     class="text-xs text-rose-600"
@@ -3399,203 +4690,54 @@ function saveGardenPlan() {
                                                     {{
                                                         objectForm.errors
                                                             .name ||
-                                                        objectForm.errors
-                                                            .width ||
-                                                        objectForm.errors.height
+                                                        objectFormDimensionErrors.width ||
+                                                        objectFormDimensionErrors.height
                                                     }}
                                                 </p>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div
-                                        v-else-if="selectedBed"
-                                        ref="selectedBedPanel"
-                                        class="xl:backdrop-blur-0 sticky bottom-20 z-20 mt-3 rounded-[1.5rem] border border-border/80 bg-card/95 p-4 shadow-lg backdrop-blur xl:static xl:bottom-auto xl:z-auto xl:shadow-sm"
-                                        :class="
-                                            highlightSelectedBedPanel
-                                                ? 'ring-2 ring-primary/35 ring-offset-2 ring-offset-background transition'
-                                                : ''
-                                        "
-                                    >
-                                        <div
-                                            class="mb-2 flex justify-center xl:hidden"
-                                        >
-                                            <span
-                                                class="h-1 w-10 rounded-full bg-foreground/15"
-                                            ></span>
-                                        </div>
-                                        <div
-                                            class="flex flex-wrap items-start justify-between gap-2"
-                                        >
-                                            <div class="min-w-0">
-                                                <p
-                                                    class="text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
-                                                >
-                                                    Valitud peenar
-                                                </p>
-                                                <h4
-                                                    class="mt-0.5 text-base font-semibold text-foreground"
-                                                >
-                                                    {{ selectedBed.name }}
-                                                </h4>
-                                                <p
-                                                    class="mt-0.5 text-[11px] text-muted-foreground"
-                                                >
-                                                    {{
-                                                        selectedBed.location ||
-                                                        'Asukoht lisamata'
-                                                    }}
-                                                </p>
-                                                <p
-                                                    class="mt-1 text-xs leading-5 text-muted-foreground"
-                                                >
-                                                    Ava peenar, et taimi ruutudesse
-                                                    paigutada ja märkmeid hallata.
-                                                </p>
-                                            </div>
-                                            <div
-                                                class="flex flex-wrap items-center gap-1.5"
-                                                data-no-drag="true"
-                                            >
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-foreground transition hover:bg-muted xl:hidden"
-                                                    @click="
-                                                        clearSelectionDetails
-                                                    "
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >close</span
-                                                    >
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1.5 text-[11px] font-semibold text-primary transition hover:bg-primary/15"
-                                                    @click="goToSelectedBed"
-                                                >
-                                                    Ava peenar
-                                                    <span
-                                                        class="material-symbols-outlined text-base"
-                                                        >arrow_forward</span
-                                                    >
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1.5 text-[11px] font-semibold text-foreground transition hover:bg-muted"
-                                                    @click="
-                                                        editBed(selectedBed.id)
-                                                    "
-                                                >
-                                                    Muuda peenart
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-100"
-                                                    @click="
-                                                        deleteBed(
-                                                            selectedBed.id,
-                                                            selectedBed.name,
-                                                        )
-                                                    "
-                                                >
-                                                    Kustuta
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <div
-                                            class="mt-2.5 grid grid-cols-3 gap-2"
-                                        >
-                                            <div
-                                                class="min-w-0 rounded-lg border border-border/70 bg-background/70 px-2 py-2"
-                                            >
-                                                <p
-                                                    class="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
-                                                >
-                                                    Kuju
-                                                </p>
-                                                <p
-                                                    class="mt-1 text-xs font-semibold leading-snug text-foreground"
-                                                >
-                                                    {{
-                                                        getBedHeightInCells(
-                                                            selectedBed,
-                                                        )
-                                                    }}
-                                                    ×
-                                                    {{
-                                                        getBedWidthInCells(
-                                                            selectedBed,
-                                                        )
-                                                    }}
-                                                    ruutu
-                                                </p>
-                                            </div>
-                                            <div
-                                                class="min-w-0 rounded-lg border border-border/70 bg-background/70 px-2 py-2"
-                                            >
-                                                <p
-                                                    class="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
-                                                >
-                                                    Päris mõõt
-                                                </p>
-                                                <p
-                                                    class="mt-1 text-xs font-semibold leading-snug text-foreground"
-                                                >
-                                                    {{
-                                                        formatCentimeters(
-                                                            getBedPhysicalWidthCm(
-                                                                selectedBed,
-                                                            ),
-                                                        )
-                                                    }}
-                                                    ×
-                                                    {{
-                                                        formatCentimeters(
-                                                            getBedPhysicalHeightCm(
-                                                                selectedBed,
-                                                            ),
-                                                        )
-                                                    }}
-                                                </p>
-                                            </div>
-                                            <div
-                                                class="min-w-0 rounded-lg border border-border/70 bg-background/70 px-2 py-2"
-                                            >
-                                                <p
-                                                    class="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase"
-                                                >
-                                                    Taimi
-                                                </p>
-                                                <p
-                                                    class="mt-1 text-xs font-semibold text-foreground"
-                                                >
-                                                    {{
-                                                        selectedBed.plants
-                                                            .length
-                                                    }}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             </section>
                         </div>
                     </main>
                 </div>
 
+                <div
+                    v-if="createMenuOpen"
+                    class="fixed right-6 bottom-[176px] z-40 w-44 rounded-2xl border border-border/80 bg-card/96 p-2 shadow-xl shadow-emerald-950/10 backdrop-blur"
+                >
+                    <button
+                        type="button"
+                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold text-foreground transition hover:bg-muted"
+                        @click="openCreateBed"
+                    >
+                        <span
+                            class="material-symbols-outlined text-base text-primary"
+                            >grid_view</span
+                        >
+                        Uus peenar
+                    </button>
+                    <button
+                        type="button"
+                        class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-semibold text-foreground transition hover:bg-muted"
+                        @click="openCreateGardenPlanModal"
+                    >
+                        <span
+                            class="material-symbols-outlined text-base text-primary"
+                            >map</span
+                        >
+                        Uus aed
+                    </button>
+                </div>
+
                 <FloatingPlusButton
-                    aria-label="Lisa peenar"
+                    aria-label="Lisa"
                     :size-px="52"
                     :icon-size-px="30"
                     :bottom-px="112"
-                    @click="
-                        router.visit(
-                            `/map/${gardenPlan.id}/beds/new`,
-                        )
-                    "
+                    @click="createMenuOpen = !createMenuOpen"
                 />
 
                 <BottomNav active="map" />
@@ -3611,6 +4753,114 @@ function saveGardenPlan() {
             @search="(q) => (searchQuery = q)"
             @clear="searchQuery = ''"
         />
+
+        <div
+            v-if="createGardenPlanModalOpen"
+            class="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 px-4"
+            @click.self="closeCreateGardenPlanModal"
+        >
+            <form
+                class="w-full max-w-md rounded-3xl border border-border/70 bg-background p-5 shadow-2xl"
+                @submit.prevent="submitCreateGardenPlan"
+            >
+                <div class="mb-4">
+                    <p
+                        class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                    >
+                        Uus aiaplaan
+                    </p>
+                    <h3 class="mt-1 text-lg font-semibold text-foreground">
+                        Lisa uue aia nimi
+                    </h3>
+                    <p class="mt-1 text-sm text-muted-foreground">
+                        Tühja nime korral kasutatakse vaikimisi nime "Minu aed".
+                    </p>
+                </div>
+
+                <label class="block">
+                    <span class="sr-only">Uue aia nimi</span>
+                    <input
+                        ref="createGardenPlanNameInput"
+                        v-model="createGardenPlanForm.name"
+                        type="text"
+                        class="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-foreground ring-primary/25 outline-none placeholder:text-muted-foreground focus:ring-2"
+                        placeholder="Minu aed"
+                        maxlength="120"
+                        @keydown.esc.prevent="closeCreateGardenPlanModal"
+                    />
+                </label>
+
+                <p
+                    v-if="createGardenPlanForm.errors.name"
+                    class="mt-2 text-sm text-red-600"
+                >
+                    {{ createGardenPlanForm.errors.name }}
+                </p>
+
+                <div class="mt-5 flex items-center justify-end gap-2">
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+                        :disabled="createGardenPlanForm.processing"
+                        @click="closeCreateGardenPlanModal"
+                    >
+                        Tühista
+                    </button>
+                    <button
+                        type="submit"
+                        class="inline-flex items-center rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-70"
+                        :disabled="createGardenPlanForm.processing"
+                    >
+                        {{
+                            createGardenPlanForm.processing
+                                ? 'Loon aiaplaani...'
+                                : 'Loo aiaplaan'
+                        }}
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div
+            v-if="confirmDialogOpen"
+            class="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 px-4"
+            @click.self="closeConfirmDialog"
+        >
+            <form
+                class="w-full max-w-md rounded-3xl border border-border/70 bg-background p-5 shadow-2xl"
+                @submit.prevent="runConfirmDialogAction"
+            >
+                <div class="mb-4">
+                    <p
+                        class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                    >
+                        Kinnitus
+                    </p>
+                    <h3 class="mt-1 text-lg font-semibold text-foreground">
+                        {{ confirmDialogTitle }}
+                    </h3>
+                    <p class="mt-2 text-sm text-muted-foreground">
+                        {{ confirmDialogMessage }}
+                    </p>
+                </div>
+
+                <div class="mt-5 flex items-center justify-end gap-2">
+                    <button
+                        type="button"
+                        class="inline-flex items-center rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+                        @click="closeConfirmDialog"
+                    >
+                        Tühista
+                    </button>
+                    <button
+                        type="submit"
+                        class="inline-flex items-center rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
+                    >
+                        {{ confirmDialogConfirmLabel }}
+                    </button>
+                </div>
+            </form>
+        </div>
     </AppLayout>
 </template>
 

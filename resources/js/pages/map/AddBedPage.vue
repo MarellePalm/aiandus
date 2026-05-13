@@ -28,8 +28,8 @@ const breadcrumbs = [
             <main class="mx-auto w-full max-w-5xl space-y-4 px-4 pb-6">
                 <DiaryHeader
                     title="Lisa peenar"
-                    title-class="text-foreground text-3xl font-bold tracking-tight"
-                    header-class="pt-6 px-0 md:px-0"
+                    title-class="text-foreground text-2xl font-semibold tracking-tight"
+                    header-class="pt-5 px-0 md:px-0"
                     top-row-class="mb-2"
                     bottom-row-class="mb-0"
                 >
@@ -42,9 +42,10 @@ const breadcrumbs = [
                 </DiaryHeader>
                 <p
                     v-if="props.showGuide"
-                    class="-mt-2 rounded-xl border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-muted-foreground"
+                    class="rounded-xl bg-primary/8 px-4 py-3 text-sm leading-6 text-muted-foreground ring-1 ring-primary/15"
                 >
-                    Loo uus peenar ja joonista selle kuju ruutudest.
+                    Alusta nimest ja asukohast. Peenra kuju saad kohe allpool
+                    ruutudest kokku puudutada.
                 </p>
 
                 <AddBed :garden-plan-id="props.gardenPlanId" />

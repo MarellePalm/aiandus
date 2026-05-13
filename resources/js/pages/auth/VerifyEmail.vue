@@ -16,7 +16,7 @@ defineProps<{
 <template>
     <AuthLayout
         title="Kinnita e-post"
-        description="Please verify your email address by clicking on the link we just emailed to you."
+        description="Palun kinnita oma e-posti aadress, klõpsates lingil, mille saatsime sulle meilile."
     >
         <Head title="E-posti kinnitamine" />
 
@@ -24,8 +24,8 @@ defineProps<{
             v-if="status === 'verification-link-sent'"
             class="mb-4 text-center text-sm font-medium text-green-600"
         >
-            A new verification link has been sent to the email address you
-            provided during registration.
+            Uus kinnituslink saadeti e-posti aadressile, mille registreerimisel
+            sisestasid.
         </div>
 
         <Form
@@ -35,7 +35,7 @@ defineProps<{
         >
             <Button :disabled="processing" variant="secondary">
                 <Spinner v-if="processing" />
-                Resend verification email
+                Saada kinnituslink uuesti
             </Button>
 
             <TextLink
@@ -43,7 +43,7 @@ defineProps<{
                 as="button"
                 class="mx-auto block text-sm"
             >
-                Log out
+                Logi välja
             </TextLink>
         </Form>
     </AuthLayout>

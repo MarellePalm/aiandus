@@ -14,10 +14,22 @@ class GardenMapController extends Controller
     public function redirect(Request $request)
     {
         $user = $request->user();
-        $plan = GardenPlan::query()
-            ->where('user_id', $user->id)
-            ->orderBy('id')
-            ->first();
+        $rememberedPlanId = $request->session()->get('active_garden_plan_id');
+        $plan = null;
+
+        if ($rememberedPlanId) {
+            $plan = GardenPlan::query()
+                ->where('user_id', $user->id)
+                ->where('id', $rememberedPlanId)
+                ->first();
+        }
+
+        if (! $plan) {
+            $plan = GardenPlan::query()
+                ->where('user_id', $user->id)
+                ->orderBy('id')
+                ->first();
+        }
 
         if (! $plan) {
             $plan = GardenPlan::query()->create([
@@ -35,6 +47,8 @@ class GardenMapController extends Controller
     public function show(Request $request, GardenPlan $gardenPlan)
     {
         abort_unless($gardenPlan->user_id === $request->user()->id, 403);
+
+        $request->session()->put('active_garden_plan_id', $gardenPlan->id);
 
         $user = $request->user();
 
@@ -60,6 +74,9 @@ class GardenMapController extends Controller
                 'name' => $b->name,
                 'location' => $b->location,
                 'image_url' => $b->image_url,
+                'is_favorite' => (bool) ($b->is_favorite ?? false),
+                'sort_order' => (int) ($b->sort_order ?? 0),
+                'created_at' => $b->created_at?->toIso8601String(),
                 'rows' => (int) ($b->rows ?? 3),
                 'columns' => (int) ($b->columns ?? 3),
                 'garden_x' => (int) ($b->garden_x ?? 0),
@@ -121,6 +138,8 @@ class GardenMapController extends Controller
     public function createBed(Request $request, GardenPlan $gardenPlan)
     {
         abort_unless($gardenPlan->user_id === $request->user()->id, 403);
+
+        $request->session()->put('active_garden_plan_id', $gardenPlan->id);
 
         $isFirstBed = ! Bed::query()
             ->where('garden_plan_id', $gardenPlan->id)
