@@ -2,6 +2,7 @@
 import { useForm } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
+import LocalDatePicker from '@/components/LocalDatePicker.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import { normalizeImageForUpload } from '@/lib/imageUpload';
 
@@ -263,17 +264,12 @@ onBeforeUnmount(() => {
                                     Istutamise kuupäev
                                 </label>
 
-                                <input
+                                <LocalDatePicker
                                     v-model="form.planted_at"
-                                    type="date"
-                                    lang="et-EE"
-                                    @change="form.clearErrors('planted_at')"
-                                    @click="
-                                        (
-                                            $event.target as HTMLInputElement
-                                        ).showPicker?.()
+                                    placeholder="pp.kk.aaaa"
+                                    @update:model-value="
+                                        form.clearErrors('planted_at')
                                     "
-                                    class="mt-3 w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 />
 
                                 <p
