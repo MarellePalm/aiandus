@@ -361,4 +361,15 @@ class BedController extends Controller
 
         return back()->with('success', 'Peenar eemaldatud.');
     }
+
+    public function toggleFavorite(Request $request, Bed $bed)
+    {
+        abort_unless($bed->user_id === $request->user()->id, 403);
+
+        $bed->update([
+            'is_favorite' => ! $bed->is_favorite,
+        ]);
+
+        return back();
+    }
 }

@@ -13,6 +13,7 @@ type Bed = {
     name: string;
     location: string | null;
     image_url?: string | null;
+    is_favorite?: boolean;
     cell_size_cm?: number;
     layout?: number[][] | null;
     plants?: {

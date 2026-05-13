@@ -21,6 +21,7 @@ class Bed extends Model
         'garden_x',
         'garden_y',
         'cell_size_cm',
+        'is_favorite',
     ];
 
     protected $casts = [
@@ -28,6 +29,7 @@ class Bed extends Model
         'garden_x' => 'integer',
         'garden_y' => 'integer',
         'cell_size_cm' => 'integer',
+        'is_favorite' => 'boolean',
     ];
 
     public function user(): BelongsTo

@@ -45,6 +45,13 @@ import CardActionsMenu from '@/components/CardActionsMenu.vue';
 import DesktopSearchField from '@/components/DesktopSearchField.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
+import SortDropdown from '@/components/SortDropdown.vue';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 import SearchModal from '@/pages/Seeds/SearchModal.vue';
@@ -61,6 +68,9 @@ type Bed = {
     name: string;
     location: string | null;
     image_url?: string | null;
+    is_favorite?: boolean;
+    sort_order?: number;
+    created_at?: string | null;
     rows: number;
     columns: number;
     garden_x: number;
@@ -69,6 +79,58 @@ type Bed = {
     layout?: number[][] | null;
     plants: PlantInBed[];
 };
+
+type BedListTabKey = 'all' | 'favorites';
+
+const bedSortOptions = [
+    { label: 'Järjekord aiaplaanil', value: 'plan_order' },
+    { label: 'Nimi A–Z', value: 'name_asc' },
+    { label: 'Nimi Z–A', value: 'name_desc' },
+    { label: 'Loodud: uuemad enne', value: 'created_desc' },
+    { label: 'Loodud: vanemad enne', value: 'created_asc' },
+] as { label: string; value: string }[];
+
+function parseBedCreatedAt(bed: Bed): number {
+    if (!bed.created_at) return 0;
+    const t = new Date(bed.created_at).getTime();
+    return Number.isNaN(t) ? 0 : t;
+}
+
+function sortBedsForPlanner(beds: Bed[], sortKey: string): Bed[] {
+    const list = [...beds];
+    switch (sortKey) {
+        case 'name_desc':
+            return list.sort((a, b) =>
+                (b.name ?? '').localeCompare(a.name ?? '', 'et', {
+                    sensitivity: 'base',
+                }),
+            );
+        case 'created_desc':
+            return list.sort(
+                (a, b) => parseBedCreatedAt(b) - parseBedCreatedAt(a),
+            );
+        case 'created_asc':
+            return list.sort(
+                (a, b) => parseBedCreatedAt(a) - parseBedCreatedAt(b),
+            );
+        case 'name_asc':
+            return list.sort((a, b) =>
+                (a.name ?? '').localeCompare(b.name ?? '', 'et', {
+                    sensitivity: 'base',
+                }),
+            );
+        case 'plan_order':
+        default:
+            return list.sort((a, b) => {
+                const ao = a.sort_order ?? 0;
+                const bo = b.sort_order ?? 0;
+                if (ao !== bo) return ao - bo;
+                return (a.name ?? '').localeCompare(b.name ?? '', 'et', {
+                    sensitivity: 'base',
+                });
+            });
+    }
+}
 type GardenObjectType = 'greenhouse' | 'pond' | 'shed' | 'compost' | 'other';
 type GardenObject = {
     id: number;
@@ -142,6 +204,53 @@ const breadcrumbs = computed(() => [
 const showOnboardingHint = computed(() => props.beds.length === 0);
 const showSearch = ref(false);
 const searchQuery = ref('');
+
+const localBeds = ref<Bed[]>([...props.beds]);
+watch(
+    () => props.beds,
+    (next) => {
+        localBeds.value = [...next];
+    },
+);
+
+const mobileBedListTab = ref<BedListTabKey>('all');
+const selectedBedSort = ref('plan_order');
+
+function bedListTabClass(key: BedListTabKey) {
+    const base =
+        'px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition';
+
+    return mobileBedListTab.value === key
+        ? `${base} bg-primary text-primary-foreground`
+        : `${base} bg-primary/10 text-primary`;
+}
+
+function toggleBedFavorite(bedId: number) {
+    const idx = localBeds.value.findIndex((b) => b.id === bedId);
+    if (idx === -1) return;
+
+    const prev = localBeds.value[idx].is_favorite === true;
+
+    localBeds.value[idx] = {
+        ...localBeds.value[idx],
+        is_favorite: !prev,
+    };
+
+    router.patch(
+        `/beds/${bedId}/favorite`,
+        {},
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onError: () => {
+                localBeds.value[idx] = {
+                    ...localBeds.value[idx],
+                    is_favorite: prev,
+                };
+            },
+        },
+    );
+}
 
 const GARDEN_PADDING = 24;
 const CM_TO_PX = 0.5;
@@ -650,11 +759,10 @@ function syncPositionsFromProps() {
     localObjectPositions.value = objectPositions;
 }
 
-const bedNames = computed(() => props.beds.map((b) => b.name));
+const bedNames = computed(() => localBeds.value.map((b) => b.name));
 
 const filteredBeds = computed(() => {
-    let list = [...props.beds];
-    list = list.slice().sort((a, b) => a.name.localeCompare(b.name, 'et'));
+    let list = sortBedsForPlanner(localBeds.value, selectedBedSort.value);
 
     if (searchQuery.value.trim()) {
         const q = searchQuery.value.toLowerCase();
@@ -666,6 +774,24 @@ const filteredBeds = computed(() => {
     }
 
     return list;
+});
+
+const mobileListBeds = computed(() => {
+    let list = [...filteredBeds.value];
+
+    if (mobileBedListTab.value === 'favorites') {
+        list = list.filter((b) => b.is_favorite === true);
+    }
+
+    return list;
+});
+
+const mobileBedCountSuffix = computed(() => {
+    const n = mobileListBeds.value.length;
+    if (mobileBedListTab.value === 'favorites') {
+        return n === 1 ? 'lemmik' : 'lemmikut';
+    }
+    return n === 1 ? 'peenar' : 'peenart';
 });
 const plannerFeedback = computed(() => {
     const gardenPlanError = page.props.errors?.garden_plan;
@@ -1032,6 +1158,21 @@ function formatCentimeters(cm: number): string {
     return `${(cm / 100).toFixed(1)} m`;
 }
 
+function bedPlantsCount(bed: Bed): number {
+    return bed.plants?.length ?? 0;
+}
+
+function bedPlantSummaryLine(bed: Bed): string {
+    const n = bedPlantsCount(bed);
+    if (n === 0) return 'Taimi veel ei ole';
+    if (n === 1) return '1 taim';
+    return `${n} taime`;
+}
+
+function bedDimensionsLabel(bed: Bed): string {
+    return `${formatCentimeters(getBedPhysicalWidthCm(bed))} × ${formatCentimeters(getBedPhysicalHeightCm(bed))}`;
+}
+
 function bedPreviewGridStyle(bed: Bed) {
     const cols = getBedWidthInCells(bed);
     const rows = getBedHeightInCells(bed);
@@ -1209,6 +1350,11 @@ function getPlannerLocalPoint(event: PointerEvent | WheelEvent | MouseEvent) {
 function openBedPage(bedId: number) {
     if (dragMoved.value) return;
     router.get(`/beds/${bedId}`);
+}
+
+function openBedEditPage(bedId: number) {
+    if (dragMoved.value) return;
+    router.get(`/beds/${bedId}/edit`);
 }
 
 function showBedInfo(bedId: number) {
@@ -2263,18 +2409,18 @@ function saveGardenPlan() {
 <template>
     <Head title="Aiaplaan" />
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="page page-with-bottomnav">
+        <div class="page page-with-bottomnav flex min-h-0 flex-col">
             <div
-                class="font-display min-h-screen bg-background text-foreground antialiased"
+                class="font-display flex min-h-0 flex-1 flex-col bg-background text-foreground antialiased"
             >
                 <div
-                    class="border-beige/50 relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x bg-background shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
+                    class="border-beige/50 relative mx-auto flex min-h-0 w-full max-w-[480px] flex-1 flex-col overflow-x-hidden border-x bg-background shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
                 >
                     <DiaryHeader
                         title="Aiaplaan"
-                        header-class="pt-6"
-                        top-row-class="mb-3"
-                        bottom-row-class="mb-4"
+                        header-class="pt-3 md:pt-6"
+                        top-row-class="mb-2 md:mb-3"
+                        bottom-row-class="mb-2 md:mb-4"
                     >
                         <template #leading>
                             <BackIconButton
@@ -2299,9 +2445,15 @@ function saveGardenPlan() {
                         </template>
                     </DiaryHeader>
 
-                    <main class="flex-1 px-4 py-3 sm:px-6 md:px-8">
-                        <div class="space-y-4 sm:space-y-6">
-                            <section class="space-y-4 sm:space-y-6">
+                    <main
+                        class="flex min-h-0 flex-1 flex-col px-4 pt-1 pb-3 sm:px-6 sm:pt-2 md:px-8 md:py-3"
+                    >
+                        <div
+                            class="flex min-h-0 flex-1 flex-col space-y-3 sm:space-y-4 md:space-y-6"
+                        >
+                            <section
+                                class="flex min-h-0 flex-1 flex-col space-y-3 sm:space-y-4 md:space-y-6"
+                            >
                                 <div
                                     v-if="plannerFeedback"
                                     class="rounded-[1.5rem] border px-4 py-3 shadow-sm"
@@ -2381,46 +2533,85 @@ function saveGardenPlan() {
                                     </div>
                                 </div>
 
-                                <div class="min-w-0">
+                                <div class="flex min-h-0 min-w-0 flex-1 flex-col">
                                     <div
-                                        class="mb-4 border-b border-border/70 pb-4"
+                                        class="mb-2 shrink-0 border-b border-border/70 pb-2 md:mb-4 md:pb-4"
                                     >
                                         <div
                                             class="flex flex-wrap items-end justify-between gap-3"
                                         >
-                                            <div class="min-w-0">
+                                            <div class="min-w-0 flex-1 md:flex-initial">
                                                 <label
                                                     class="sr-only"
                                                     for="garden-plan-select"
                                                 >
-                                                    Vali aiaplaan
+                                                    Vali aiaplaan. Peenraid
+                                                    loendis näidatakse vastavalt
+                                                    vahekaardile (Kõik või
+                                                    Lemmikud) ja otsingule.
                                                 </label>
                                                 <div
-                                                    class="relative w-full max-w-full sm:w-auto"
+                                                    class="flex min-w-0 flex-wrap items-end gap-x-2.5 gap-y-1.5 md:block"
                                                 >
-                                                    <select
-                                                        id="garden-plan-select"
-                                                        class="block w-full max-w-full appearance-none truncate bg-transparent pr-8 text-2xl leading-tight font-semibold text-foreground transition outline-none hover:text-primary focus:text-primary sm:w-auto [&_option]:text-sm [&_option]:font-medium"
-                                                        :value="gardenPlan.id"
-                                                        @change="
-                                                            onGardenPlanSelect
-                                                        "
+                                                    <div
+                                                        class="relative inline-block w-max min-w-0 max-w-full md:block md:w-full"
                                                     >
-                                                        <option
-                                                            v-for="p in gardenPlans"
-                                                            :key="p.id"
-                                                            :value="p.id"
+                                                        <select
+                                                            id="garden-plan-select"
+                                                            class="block w-max min-w-0 max-w-full appearance-none truncate bg-transparent pr-8 text-2xl leading-tight font-semibold text-foreground transition outline-none hover:text-primary focus:text-primary max-md:[field-sizing:content] md:block md:w-full [&_option]:text-sm [&_option]:font-medium"
+                                                            :value="gardenPlan.id"
+                                                            @change="
+                                                                onGardenPlanSelect
+                                                            "
                                                         >
-                                                            {{ p.name }}
-                                                        </option>
-                                                    </select>
-                                                    <span
-                                                        class="material-symbols-outlined pointer-events-none absolute top-1/2 right-0 -translate-y-1/2 text-xl text-muted-foreground"
-                                                        >expand_more</span
+                                                            <option
+                                                                v-for="p in gardenPlans"
+                                                                :key="p.id"
+                                                                :value="p.id"
+                                                            >
+                                                                {{ p.name }}
+                                                            </option>
+                                                        </select>
+                                                        <span
+                                                            class="material-symbols-outlined pointer-events-none absolute top-1/2 right-0 -translate-y-1/2 text-xl text-muted-foreground"
+                                                            >expand_more</span
+                                                        >
+                                                    </div>
+                                                    <div
+                                                        class="flex shrink-0 items-center md:hidden"
                                                     >
+                                                        <span
+                                                            class="inline-flex max-w-full items-center gap-1.5 rounded-full border border-primary/20 bg-gradient-to-br from-primary/14 via-primary/8 to-transparent px-2.5 py-1 shadow-sm ring-1 ring-primary/10 dark:border-primary/25 dark:from-primary/18 dark:via-primary/10 dark:ring-primary/15"
+                                                            :aria-label="`${mobileListBeds.length} ${mobileBedCountSuffix}`"
+                                                        >
+                                                            <span
+                                                                class="material-symbols-outlined shrink-0 text-[18px] leading-none text-primary"
+                                                                aria-hidden="true"
+                                                                >grid_view</span
+                                                            >
+                                                            <span
+                                                                class="text-lg font-bold leading-none tabular-nums text-foreground"
+                                                                >{{
+                                                                    mobileListBeds.length
+                                                                }}</span
+                                                            >
+                                                            <span
+                                                                class="max-w-[7rem] truncate text-[11px] font-semibold leading-tight text-muted-foreground"
+                                                                >{{
+                                                                    mobileBedCountSuffix
+                                                                }}</span
+                                                            >
+                                                        </span>
+                                                    </div>
                                                 </div>
+                                                <p
+                                                    v-if="searchQuery.trim()"
+                                                    class="mt-1.5 text-xs font-normal leading-snug text-muted-foreground/85 md:hidden"
+                                                >
+                                                    Otsingule vastavalt
+                                                </p>
                                                 <div
-                                                    class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted-foreground"
+                                                    class="mt-2 hidden flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-muted-foreground md:flex"
                                                 >
                                                     <button
                                                         type="button"
@@ -2491,64 +2682,89 @@ function saveGardenPlan() {
                                                             gardenDimensionLabel
                                                         }}
                                                     </span>
+                                                    <div
+                                                        class="ml-auto flex shrink-0 items-center"
+                                                    >
+                                                        <SortDropdown
+                                                            v-model="
+                                                                selectedBedSort
+                                                            "
+                                                            :options="
+                                                                bedSortOptions
+                                                            "
+                                                            compact
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div
-                                                class="flex items-center gap-1"
+                                                class="flex shrink-0 items-center gap-1"
                                             >
                                                 <div
-                                                    class="inline-flex items-center gap-0.5 rounded-full bg-muted/45 p-1 ring-1 ring-border/70"
+                                                    class="hidden items-center md:flex"
                                                 >
-                                                    <button
-                                                        type="button"
-                                                        class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-background"
-                                                        @click="
-                                                            changeZoom(
-                                                                -ZOOM_STEP,
-                                                            )
-                                                        "
+                                                    <div
+                                                        class="inline-flex items-center gap-0.5 rounded-full bg-muted/45 p-1 ring-1 ring-border/70"
                                                     >
-                                                        <span
-                                                            class="material-symbols-outlined text-base"
-                                                            >remove</span
+                                                        <button
+                                                            type="button"
+                                                            class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-background"
+                                                            @click="
+                                                                changeZoom(
+                                                                    -ZOOM_STEP,
+                                                                )
+                                                            "
                                                         >
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        class="inline-flex h-8 min-w-11 items-center justify-center rounded-full bg-background px-2 text-xs font-semibold text-foreground shadow-xs"
-                                                        @click="
-                                                            applyFitContentZoom
-                                                        "
-                                                    >
-                                                        {{ zoomPercent }}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-background"
-                                                        @click="
-                                                            changeZoom(
-                                                                ZOOM_STEP,
-                                                            )
-                                                        "
-                                                    >
-                                                        <span
-                                                            class="material-symbols-outlined text-base"
-                                                            >add</span
+                                                            <span
+                                                                class="material-symbols-outlined text-base"
+                                                                >remove</span
+                                                            >
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            class="inline-flex h-8 min-w-11 items-center justify-center rounded-full bg-background px-2 text-xs font-semibold text-foreground shadow-xs"
+                                                            @click="
+                                                                applyFitContentZoom
+                                                            "
                                                         >
-                                                    </button>
+                                                            {{ zoomPercent }}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-background"
+                                                            @click="
+                                                                changeZoom(
+                                                                    ZOOM_STEP,
+                                                                )
+                                                            "
+                                                        >
+                                                            <span
+                                                                class="material-symbols-outlined text-base"
+                                                                >add</span
+                                                            >
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                                <CardActionsMenu
-                                                    placement="inline"
-                                                    @edit="openGardenPlanEditor"
-                                                    @delete="deleteGardenPlan"
-                                                />
+                                                <div
+                                                    class="hidden shrink-0 md:flex"
+                                                >
+                                                    <CardActionsMenu
+                                                        placement="inline"
+                                                        @edit="
+                                                            openGardenPlanEditor
+                                                        "
+                                                        @delete="
+                                                            deleteGardenPlan
+                                                        "
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     <div
                                         v-if="plannerListView"
-                                        class="mb-3 rounded-2xl bg-background/60 p-2 ring-1 ring-border/70"
+                                        class="mb-3 hidden rounded-2xl bg-background/60 p-2 ring-1 ring-border/70 md:block"
                                     >
                                         <div
                                             class="mb-1 flex items-center justify-between px-2 py-1"
@@ -2596,28 +2812,30 @@ function saveGardenPlan() {
                                                     "
                                                 >
                                                     <span
-                                                        class="block truncate text-sm font-semibold text-foreground"
+                                                        class="block min-w-0 truncate text-sm font-semibold text-foreground"
                                                         >{{ bed.name }}</span
                                                     >
                                                     <span
                                                         class="mt-0.5 block truncate text-xs text-muted-foreground"
+                                                        >{{
+                                                            bedPlantSummaryLine(
+                                                                bed,
+                                                            )
+                                                        }}</span
                                                     >
-                                                        {{
-                                                            formatCentimeters(
-                                                                getBedPhysicalWidthCm(
-                                                                    bed,
-                                                                ),
+                                                    <span
+                                                        v-if="bed.location"
+                                                        class="mt-0.5 block truncate text-xs text-muted-foreground"
+                                                        >{{ bed.location }}</span
+                                                    >
+                                                    <span
+                                                        class="mt-0.5 block truncate text-xs text-muted-foreground"
+                                                        >{{
+                                                            bedDimensionsLabel(
+                                                                bed,
                                                             )
-                                                        }}
-                                                        ×
-                                                        {{
-                                                            formatCentimeters(
-                                                                getBedPhysicalHeightCm(
-                                                                    bed,
-                                                                ),
-                                                            )
-                                                        }}
-                                                    </span>
+                                                        }}</span
+                                                    >
                                                 </button>
                                                 <button
                                                     type="button"
@@ -3081,8 +3299,327 @@ function saveGardenPlan() {
                                         </button>
                                     </div>
 
-                                    <div v-else class="mb-3 grid gap-3">
-                                        <button
+                                    <div
+                                        v-else
+                                        class="mb-3 flex min-h-0 flex-1 flex-col md:mb-3 md:block md:flex-none"
+                                    >
+                                        <div
+                                            class="flex min-h-0 flex-1 flex-col md:hidden"
+                                        >
+                                            <div
+                                                class="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.65rem] border border-border/65 bg-card shadow-[0_20px_44px_-18px_rgba(47,67,44,0.14)] dark:border-border/80 dark:shadow-[0_20px_40px_-16px_rgba(0,0,0,0.45)]"
+                                            >
+                                                <div
+                                                    class="flex shrink-0 items-center justify-between gap-2 border-b border-border/60 px-3 py-2"
+                                                >
+                                                    <div
+                                                        class="no-scrollbar flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto"
+                                                    >
+                                                        <button
+                                                            type="button"
+                                                            :class="
+                                                                bedListTabClass(
+                                                                    'all',
+                                                                )
+                                                            "
+                                                            @click="
+                                                                mobileBedListTab =
+                                                                    'all'
+                                                            "
+                                                        >
+                                                            Kõik
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            :class="
+                                                                bedListTabClass(
+                                                                    'favorites',
+                                                                )
+                                                            "
+                                                            @click="
+                                                                mobileBedListTab =
+                                                                    'favorites'
+                                                            "
+                                                        >
+                                                            Lemmikud
+                                                        </button>
+                                                    </div>
+                                                    <div class="shrink-0">
+                                                        <SortDropdown
+                                                            v-model="
+                                                                selectedBedSort
+                                                            "
+                                                            :options="
+                                                                bedSortOptions
+                                                            "
+                                                            compact
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div
+                                                    class="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-y-contain px-2 pb-3 pt-1.5"
+                                                >
+                                                    <div
+                                                        v-for="bed in mobileListBeds"
+                                                        :key="`bed-list-mobile-${bed.id}`"
+                                                        class="relative rounded-2xl border bg-card p-3 shadow-sm transition hover:shadow-md"
+                                                        :class="
+                                                            selectedBed?.id ===
+                                                            bed.id
+                                                                ? 'border-primary/40 ring-2 ring-primary/25 ring-offset-2 ring-offset-background'
+                                                                : 'border-primary/10'
+                                                        "
+                                                    >
+                                                        <div
+                                                            class="flex items-center gap-3"
+                                                        >
+                                                            <button
+                                                                type="button"
+                                                                class="flex min-w-0 flex-1 items-center gap-3 text-left"
+                                                                @click="
+                                                                    openBedPage(
+                                                                        bed.id,
+                                                                    )
+                                                                "
+                                                            >
+                                                                <div
+                                                                    class="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-primary/10 bg-muted/40"
+                                                                >
+                                                                    <img
+                                                                        v-if="
+                                                                            getBedPreviewImage(
+                                                                                bed,
+                                                                            )
+                                                                        "
+                                                                        :src="
+                                                                            getBedPreviewImage(
+                                                                                bed,
+                                                                            )!
+                                                                        "
+                                                                        :alt="
+                                                                            bed.name
+                                                                        "
+                                                                        class="h-full w-full object-cover"
+                                                                    />
+                                                                    <div
+                                                                        v-else
+                                                                        class="flex h-full w-full items-center justify-center text-primary/70"
+                                                                    >
+                                                                        <span
+                                                                            class="material-symbols-outlined text-2xl"
+                                                                            >yard</span
+                                                                        >
+                                                                    </div>
+                                                                </div>
+                                                                <div
+                                                                    class="min-w-0 flex-1"
+                                                                >
+                                                                    <div
+                                                                        class="text-text-main min-w-0 truncate text-base font-bold leading-snug"
+                                                                    >
+                                                                        {{
+                                                                            bed.name
+                                                                        }}
+                                                                    </div>
+                                                                    <div
+                                                                        class="text-text-muted mt-0.5 truncate text-sm"
+                                                                    >
+                                                                        {{
+                                                                            bedPlantSummaryLine(
+                                                                                bed,
+                                                                            )
+                                                                        }}
+                                                                    </div>
+                                                                    <div
+                                                                        v-if="
+                                                                            bed.location
+                                                                        "
+                                                                        class="text-text-muted mt-0.5 truncate text-sm"
+                                                                    >
+                                                                        {{
+                                                                            bed.location
+                                                                        }}
+                                                                    </div>
+                                                                    <div
+                                                                        class="text-text-muted mt-0.5 truncate text-sm"
+                                                                    >
+                                                                        {{
+                                                                            bedDimensionsLabel(
+                                                                                bed,
+                                                                            )
+                                                                        }}
+                                                                    </div>
+                                                                </div>
+                                                            </button>
+
+                                                            <div
+                                                                class="ml-1 flex shrink-0 items-center gap-1.5"
+                                                                @click.stop
+                                                            >
+                                                                <button
+                                                                    type="button"
+                                                                    class="flex h-9 w-9 items-center justify-center rounded-full border border-primary/10 bg-background transition hover:scale-105 hover:bg-primary/5"
+                                                                    :class="
+                                                                        bed.is_favorite
+                                                                            ? 'text-rose-600 shadow-sm'
+                                                                            : 'text-foreground/45'
+                                                                    "
+                                                                    @click.prevent.stop="
+                                                                        toggleBedFavorite(
+                                                                            bed.id,
+                                                                        )
+                                                                    "
+                                                                    aria-label="Lisa lemmikuks"
+                                                                    :title="
+                                                                        bed.is_favorite
+                                                                            ? 'Eemalda lemmikutest'
+                                                                            : 'Lisa lemmikuks'
+                                                                    "
+                                                                >
+                                                                    <span
+                                                                        class="material-symbols-outlined text-[20px] leading-none transition"
+                                                                        :style="
+                                                                            bed.is_favorite
+                                                                                ? {
+                                                                                      fontVariationSettings: `'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24`,
+                                                                                  }
+                                                                                : {
+                                                                                      fontVariationSettings: `'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
+                                                                                  }
+                                                                        "
+                                                                    >
+                                                                        favorite
+                                                                    </span>
+                                                                </button>
+
+                                                                <DropdownMenu>
+                                                                    <DropdownMenuTrigger
+                                                                        as-child
+                                                                    >
+                                                                        <button
+                                                                            type="button"
+                                                                            class="text-text-muted flex h-9 w-9 items-center justify-center rounded-full border border-transparent transition hover:bg-primary/10"
+                                                                            aria-label="Menüü"
+                                                                        >
+                                                                            <span
+                                                                                class="material-symbols-outlined text-[22px]"
+                                                                                >more_horiz</span
+                                                                            >
+                                                                        </button>
+                                                                    </DropdownMenuTrigger>
+                                                                    <DropdownMenuContent
+                                                                        align="end"
+                                                                        side="bottom"
+                                                                        :side-offset="
+                                                                            6
+                                                                        "
+                                                                        class="min-w-[10.75rem] rounded-xl border border-primary/10 p-1 shadow-lg"
+                                                                    >
+                                                                        <DropdownMenuItem
+                                                                            class="cursor-pointer gap-2 py-2.5"
+                                                                            @click="
+                                                                                openBedEditPage(
+                                                                                    bed.id,
+                                                                                )
+                                                                            "
+                                                                        >
+                                                                            <span
+                                                                                class="material-symbols-outlined text-base text-primary"
+                                                                                >edit</span
+                                                                            >
+                                                                            Muuda
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuItem
+                                                                            variant="destructive"
+                                                                            class="cursor-pointer gap-2 py-2.5"
+                                                                            @click="
+                                                                                deleteBed(
+                                                                                    bed.id,
+                                                                                    bed.name,
+                                                                                )
+                                                                            "
+                                                                        >
+                                                                            <span
+                                                                                class="material-symbols-outlined text-base"
+                                                                                >delete</span
+                                                                            >
+                                                                            Kustuta
+                                                                        </DropdownMenuItem>
+                                                                    </DropdownMenuContent>
+                                                                </DropdownMenu>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div
+                                                        v-if="mobileListBeds.length === 0"
+                                                        class="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center"
+                                                    >
+                                                        <template
+                                                            v-if="
+                                                                mobileBedListTab ===
+                                                                    'favorites' &&
+                                                                filteredBeds.length >
+                                                                    0
+                                                            "
+                                                        >
+                                                            <span
+                                                                class="flex h-12 w-12 items-center justify-center rounded-2xl bg-background text-muted-foreground shadow-inner ring-1 ring-border/50"
+                                                            >
+                                                                <span
+                                                                    class="material-symbols-outlined text-2xl text-rose-500/80"
+                                                                    >favorite</span
+                                                                >
+                                                            </span>
+                                                            <p
+                                                                class="text-sm font-medium text-foreground"
+                                                            >
+                                                                Lemmikpeenraid
+                                                                pole veel valitud
+                                                            </p>
+                                                            <p
+                                                                class="max-w-[16rem] text-xs leading-relaxed text-muted-foreground"
+                                                            >
+                                                                Puuduta südant
+                                                                peenra juures, et
+                                                                see kuvataks
+                                                                siin.
+                                                            </p>
+                                                        </template>
+                                                        <template v-else>
+                                                            <span
+                                                                class="flex h-12 w-12 items-center justify-center rounded-2xl bg-background text-muted-foreground shadow-inner ring-1 ring-border/50"
+                                                            >
+                                                                <span
+                                                                    class="material-symbols-outlined text-2xl"
+                                                                    >search_off</span
+                                                                >
+                                                            </span>
+                                                            <p
+                                                                class="text-sm font-medium text-foreground"
+                                                            >
+                                                                Siin pole praegu
+                                                                midagi
+                                                            </p>
+                                                            <p
+                                                                class="max-w-[16rem] text-xs leading-relaxed text-muted-foreground"
+                                                            >
+                                                                Proovi otsingut
+                                                                muuta või lisa
+                                                                uus peenar
+                                                                plussnupust.
+                                                            </p>
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            class="hidden min-h-0 grid gap-3 md:grid"
+                                        >
+                                            <button
                                             type="button"
                                             class="hidden items-center justify-between rounded-xl border border-border/80 bg-white px-4 py-3 text-left shadow-sm dark:bg-card"
                                             @click="
@@ -3883,6 +4420,7 @@ function saveGardenPlan() {
                                                     </article>
                                                 </div>
                                             </div>
+                                        </div>
                                         </div>
                                     </div>
 

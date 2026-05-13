@@ -207,6 +207,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'name' => $bed->name,
                 'location' => $bed->location,
                 'image_url' => $bed->image_url,
+                'is_favorite' => (bool) ($bed->is_favorite ?? false),
                 'rows' => (int) ($bed->rows ?? 3),
                 'columns' => (int) ($bed->columns ?? 3),
                 'cell_size_cm' => (int) ($bed->cell_size_cm ?? 30),
@@ -235,6 +236,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'name' => $bed->name,
                 'location' => $bed->location,
                 'image_url' => $bed->image_url,
+                'is_favorite' => (bool) ($bed->is_favorite ?? false),
                 'rows' => (int) ($bed->rows ?? 3),
                 'columns' => (int) ($bed->columns ?? 3),
                 'cell_size_cm' => (int) ($bed->cell_size_cm ?? 30),
@@ -251,6 +253,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('beds', [BedController::class, 'store'])->name('beds.store');
     Route::put('beds/{bed}', [BedController::class, 'update'])->name('beds.update');
+    Route::patch('beds/{bed}/favorite', [BedController::class, 'toggleFavorite'])
+        ->name('beds.favorite');
     Route::delete('beds/{bed}', [BedController::class, 'destroy'])->name('beds.destroy');
     Route::post('garden-objects', [GardenObjectController::class, 'store'])->name('garden-objects.store');
     Route::put('garden-objects/{gardenObject}', [GardenObjectController::class, 'update'])->name('garden-objects.update');
