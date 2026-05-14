@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -20,4 +21,19 @@ test('new users can register', function () {
 
     $this->assertAuthenticated();
     $response->assertRedirect(route('dashboard', absolute: false));
+});
+
+test('duplicate email during registration shows a generic account message', function () {
+    User::factory()->create(['email' => 'taken@example.com']);
+
+    $response = $this->from(route('register'))->post(route('register.store'), [
+        'name' => 'Other User',
+        'email' => 'taken@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ]);
+
+    $response->assertSessionHasErrors([
+        'email' => 'Kontot ei õnnestunud luua. Kontrolli sisestatud andmeid või logi sisse olemasoleva kontoga.',
+    ]);
 });

@@ -47,6 +47,23 @@
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
 
+        {{-- Kuni Vite CSS jõuab kohale: skip-link ei tohi jääda tavalisse dokumentivoogu (muidu näed teksti üleval). --}}
+        <style>
+            .skip-to-main:not(:focus) {
+                position: fixed;
+                left: 1rem;
+                top: 1rem;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                margin: -1px;
+                overflow: hidden;
+                clip-path: inset(50%);
+                white-space: nowrap;
+                border: 0;
+            }
+        </style>
+
         @vite(['resources/js/app.ts'])
         @inertiaHead
     </head>
