@@ -8,6 +8,7 @@ use App\Models\Plant;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -358,6 +359,13 @@ class CalendarNoteController extends Controller
     public function destroy(Request $request, CalendarNote $note)
     {
         abort_unless($note->user_id === $request->user()->id, 403);
+
+        $paths = $note->media ?? [];
+        foreach ($paths as $path) {
+            if (is_string($path) && $path !== '') {
+                Storage::disk('public')->delete($path);
+            }
+        }
 
         $note->delete();
 

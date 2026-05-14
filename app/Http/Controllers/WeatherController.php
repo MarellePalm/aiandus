@@ -120,7 +120,7 @@ class WeatherController extends Controller
                 $msg = $body['message'] ?? $weatherRes->body();
                 Log::warning('OpenWeather current failed', ['status' => $weatherRes->status(), 'body' => $msg]);
 
-                return ['_error' => $msg ?: 'OpenWeather API viga'];
+                return ['_error' => 'Ilmateenuse päring ebaõnnestus. Proovi veidi hiljem uuesti.'];
             }
 
             $weatherJson = $weatherRes->json();
