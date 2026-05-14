@@ -111,7 +111,7 @@ class PlantController extends Controller
 
     public function show(Request $request, Plant $plant)
     {
-        abort_unless($plant->user_id === $request->user()->id, 403);
+        $this->authorize('view', $plant);
 
         $plant->loadMissing(['category:id,slug', 'bed:id,name,garden_plan_id,image_url']);
 
@@ -218,7 +218,7 @@ class PlantController extends Controller
 
     public function water(Request $request, Plant $plant)
     {
-        abort_unless($plant->user_id === $request->user()->id, 403);
+        $this->authorize('water', $plant);
 
         $plant->update([
             'last_watered_at' => now(),
@@ -279,7 +279,7 @@ class PlantController extends Controller
 
     public function edit(Request $request, Plant $plant)
     {
-        abort_unless($plant->user_id === $request->user()->id, 403);
+        $this->authorize('update', $plant);
 
         return Inertia::render('Plants/Edit', [
             'plant' => [
@@ -301,7 +301,7 @@ class PlantController extends Controller
 
     public function update(Request $request, Plant $plant)
     {
-        abort_unless($plant->user_id === $request->user()->id, 403);
+        $this->authorize('update', $plant);
 
         $data = $request->validate([
             'name' => ['nullable', 'string', 'max:255'],
@@ -317,8 +317,8 @@ class PlantController extends Controller
 
         if (! empty($data['bed_id'])) {
             $bed = Bed::find($data['bed_id']);
-            if ($bed && $bed->user_id !== $request->user()->id) {
-                abort(403);
+            if ($bed) {
+                $this->authorize('update', $bed);
             }
         }
 
@@ -329,10 +329,10 @@ class PlantController extends Controller
 
         unset($data['image']);
 
-        DB::transaction(function () use ($request, $plant, $data): void {
+        DB::transaction(function () use ($plant, $data): void {
             $locked = Plant::query()->whereKey($plant->id)->lockForUpdate()->firstOrFail();
 
-            abort_unless($locked->user_id === $request->user()->id, 403);
+            $this->authorize('update', $locked);
 
             $assigningToBedFromStock = $locked->bed_id === null
                 && array_key_exists('bed_id', $data)
@@ -400,8 +400,10 @@ class PlantController extends Controller
         return redirect()->route('plants.show', $plant->id)->with('success', 'Taim uuendatud!');
     }
 
-    public function toggleFavorite(Plant $plant)
+    public function toggleFavorite(Request $request, Plant $plant)
     {
+        $this->authorize('toggleFavorite', $plant);
+
         $plant->update([
             'is_favorite' => ! $plant->is_favorite,
         ]);
@@ -411,7 +413,7 @@ class PlantController extends Controller
 
     public function destroy(Request $request, Plant $plant)
     {
-        abort_unless($plant->user_id === $request->user()->id, 403);
+        $this->authorize('delete', $plant);
         $plant->delete();
 
         return redirect('/dashboard');

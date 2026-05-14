@@ -46,7 +46,7 @@ class GardenMapController extends Controller
 
     public function show(Request $request, GardenPlan $gardenPlan)
     {
-        abort_unless($gardenPlan->user_id === $request->user()->id, 403);
+        $this->authorize('view', $gardenPlan);
 
         $request->session()->put('active_garden_plan_id', $gardenPlan->id);
 
@@ -137,7 +137,7 @@ class GardenMapController extends Controller
 
     public function createBed(Request $request, GardenPlan $gardenPlan)
     {
-        abort_unless($gardenPlan->user_id === $request->user()->id, 403);
+        $this->authorize('update', $gardenPlan);
 
         $request->session()->put('active_garden_plan_id', $gardenPlan->id);
 

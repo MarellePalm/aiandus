@@ -201,7 +201,7 @@ class CalendarNoteController extends Controller
 
     public function edit(Request $request, CalendarNote $note)
     {
-        abort_unless($note->user_id === $request->user()->id, 403);
+        $this->authorize('update', $note);
 
         $user = $request->user();
 
@@ -241,7 +241,7 @@ class CalendarNoteController extends Controller
 
     public function show(Request $request, CalendarNote $note)
     {
-        abort_unless($note->user_id === $request->user()->id, 403);
+        $this->authorize('view', $note);
 
         $note->loadMissing(['bed:id,name', 'plant:id,name']);
 
@@ -289,7 +289,7 @@ class CalendarNoteController extends Controller
 
     public function update(Request $request, CalendarNote $note)
     {
-        abort_unless($note->user_id === $request->user()->id, 403);
+        $this->authorize('update', $note);
 
         $user = $request->user();
 
@@ -358,7 +358,7 @@ class CalendarNoteController extends Controller
 
     public function destroy(Request $request, CalendarNote $note)
     {
-        abort_unless($note->user_id === $request->user()->id, 403);
+        $this->authorize('delete', $note);
 
         $paths = $note->media ?? [];
         foreach ($paths as $path) {
@@ -379,7 +379,7 @@ class CalendarNoteController extends Controller
 
     public function toggleDone(Request $request, CalendarNote $note)
     {
-        abort_unless($note->user_id === $request->user()->id, 403);
+        $this->authorize('toggleDone', $note);
 
         $note->update(['done' => ! $note->done]);
 

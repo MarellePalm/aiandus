@@ -36,7 +36,7 @@ class SeedCategoryController extends Controller
     public function update(Request $request, Category $category)
     {
         abort_unless($category->scope === Category::SCOPE_SEED, 404);
-        abort_unless($category->user_id === $request->user()->id, 403);
+        $this->authorize('update', $category);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:80'],
@@ -65,7 +65,7 @@ class SeedCategoryController extends Controller
     public function toggleFavorite(Request $request, Category $category)
     {
         abort_unless($category->scope === Category::SCOPE_SEED, 404);
-        abort_unless($category->user_id === $request->user()->id, 403);
+        $this->authorize('toggleFavorite', $category);
 
         $category->update([
             'is_favorite' => ! (bool) $category->is_favorite,
@@ -77,7 +77,7 @@ class SeedCategoryController extends Controller
     public function destroy(Request $request, Category $category)
     {
         abort_unless($category->scope === Category::SCOPE_SEED, 404);
-        abort_unless($category->user_id === $request->user()->id, 403);
+        $this->authorize('delete', $category);
 
         if ($category->image && str_starts_with($category->image, '/storage/')) {
             $path = str_replace('/storage/', '', $category->image);

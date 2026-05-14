@@ -19,6 +19,7 @@ use App\Models\Plant;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -44,7 +45,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('map/{gardenPlan}', [GardenMapController::class, 'show'])->name('map.show');
 
     Route::get('beds/{bed}', function (Request $request, Bed $bed) {
-        abort_unless($bed->user_id === $request->user()->id, 403);
+        Gate::authorize('view', $bed);
 
         $plantsWithoutBed = Plant::query()
             ->where('user_id', $request->user()->id)
@@ -104,7 +105,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('beds.show');
 
     Route::get('beds/{bed}/edit', function (Request $request, Bed $bed) {
-        abort_unless($bed->user_id === $request->user()->id, 403);
+        Gate::authorize('update', $bed);
         $bed->load(['plants' => fn ($q) => $q->select('id', 'name', 'image_url', 'bed_id', 'position_in_bed')]);
 
         return Inertia::render('map/EditBedPage', [

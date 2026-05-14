@@ -28,7 +28,7 @@ class GardenPlanController extends Controller
 
     public function update(Request $request, GardenPlan $gardenPlan)
     {
-        abort_unless($gardenPlan->user_id === $request->user()->id, 403);
+        $this->authorize('update', $gardenPlan);
 
         $data = $request->validate([
             'name' => ['nullable', 'string', 'max:120'],
@@ -56,7 +56,7 @@ class GardenPlanController extends Controller
 
     public function destroy(Request $request, GardenPlan $gardenPlan)
     {
-        abort_unless($gardenPlan->user_id === $request->user()->id, 403);
+        $this->authorize('delete', $gardenPlan);
 
         if (GardenPlan::query()->where('user_id', $request->user()->id)->count() <= 1) {
             return back()->withErrors([
