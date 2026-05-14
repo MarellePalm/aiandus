@@ -25,6 +25,17 @@ export type MoonInfo = {
     lunationT: number;
 };
 
+/** Sama kalendripäeva kuuinfo ei arvuta uuesti (kalendrivaated korduvad kuupäevadega). */
+const moonInfoByLocalDateKey = new Map<string, MoonInfo>();
+
+function moonInfoCacheKey(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+
+    return `${y}-${m}-${d}`;
+}
+
 /** Keskmine sünoodiline kuu (päevades); kasutusel ka pärimusliku ajastuse jaoks. */
 export const SYNODIC_MONTH = 29.530588853;
 
@@ -75,6 +86,12 @@ function meanElongationMoonSunDegrees(jd: number): number {
 }
 
 export function getMoonInfo(date = new Date()): MoonInfo {
+    const key = moonInfoCacheKey(date);
+    const cached = moonInfoByLocalDateKey.get(key);
+    if (cached) {
+        return cached;
+    }
+
     const jd = julianDayLocalNoon(date);
     const D = meanElongationMoonSunDegrees(jd);
     /** 0 = uuskuu, 0,5 = täiskuu (keskmine elongatsioon → lunatsiooni asend) */
@@ -100,11 +117,14 @@ export function getMoonInfo(date = new Date()): MoonInfo {
         'Kahanev sirp',
     ];
 
-    return {
+    const info: MoonInfo = {
         phase: phases[phaseIndex],
         illumination,
         phaseIndex,
         ageDays,
         lunationT: t,
     };
+    moonInfoByLocalDateKey.set(key, info);
+
+    return info;
 }

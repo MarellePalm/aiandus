@@ -343,6 +343,9 @@ onBeforeUnmount(() => {
                                 class="text-sm font-semibold tracking-widest text-[#2E2E2E]/70 uppercase"
                                 >Pilt</label
                             >
+                            <p class="mt-1 text-xs text-[#2E2E2E]/60">
+                                max 5 MB
+                            </p>
                             <input
                                 ref="fileInputRef"
                                 type="file"

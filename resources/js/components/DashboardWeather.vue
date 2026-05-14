@@ -33,14 +33,18 @@ type WeatherSnapshotFromServer = {
     weatherIconSource?: string | null;
 };
 
-const { coords, loading: geoLoading, error: geoError } = useGeolocation();
+const { coords, loading: geoLoading, error: geoError, requestPosition } =
+    useGeolocation();
+
+const canRequestBrowserLocation = computed(
+    () => typeof navigator !== 'undefined' && 'geolocation' in navigator,
+);
 
 const queryEnabled = computed(() => {
     return (
         !geoLoading.value &&
         typeof coords.value?.latitude === 'number' &&
-        typeof coords.value?.longitude === 'number' &&
-        !geoError.value
+        typeof coords.value?.longitude === 'number'
     );
 });
 
@@ -492,6 +496,24 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div
+            v-if="canRequestBrowserLocation"
+            class="mt-3 px-4 pb-1"
+        >
+            <button
+                type="button"
+                class="text-xs font-medium text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary disabled:cursor-wait disabled:opacity-60"
+                :disabled="geoLoading"
+                @click="requestPosition"
+            >
+                {{
+                    geoLoading
+                        ? 'Asukohta tuvastatakse…'
+                        : 'Kasuta minu asukohta (täpsem ilm)'
+                }}
+            </button>
         </div>
 
         <div

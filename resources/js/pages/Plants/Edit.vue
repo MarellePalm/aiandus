@@ -162,6 +162,9 @@ onBeforeUnmount(() => {
                                 accept="image/*"
                                 @change="onFileChange"
                             />
+                            <p class="mt-2 text-xs text-muted-foreground">
+                                max 5 MB
+                            </p>
 
                             <div class="mt-4 flex flex-wrap items-center gap-3">
                                 <button

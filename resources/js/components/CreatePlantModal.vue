@@ -314,6 +314,9 @@ onBeforeUnmount(() => {
                                 >
                                     Pilt
                                 </label>
+                                <p class="mt-1 text-xs text-muted-foreground">
+                                    max 5 MB
+                                </p>
 
                                 <input
                                     ref="fileInputRef"
