@@ -61,7 +61,7 @@ const statusStyles = (s: PlantStatus) => {
             <div>
                 <div class="flex items-start justify-between gap-3">
                     <h2
-                        class="serif-italic text-text-main min-w-0 flex-1 truncate text-xl leading-tight"
+                        class="serif-italic text-text-main min-w-0 flex-1 truncate text-sm leading-tight sm:text-base md:text-xl"
                     >
                         {{ plant.name }}
                     </h2>

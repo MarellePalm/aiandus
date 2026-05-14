@@ -269,7 +269,7 @@ function onPlantImageError(event: Event) {
                 >
                     <DiaryHeader
                         :title="props.category.name"
-                        title-class="text-forest text-3xl font-bold tracking-tight truncate sm:truncate-none"
+                        title-class="text-forest text-sm font-bold tracking-tight truncate sm:text-base md:text-xl lg:text-3xl"
                         header-class="pt-6"
                         top-row-class="mb-2"
                         bottom-row-class="mb-0"
@@ -288,7 +288,7 @@ function onPlantImageError(event: Event) {
                             <button
                                 type="button"
                                 aria-label="Otsi"
-                                class="flex h-10 w-10 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 lg:hidden"
+                                class="flex h-9 w-9 items-center justify-center rounded-full text-primary transition hover:bg-primary/10 sm:h-10 sm:w-10 lg:hidden"
                                 @click="showSearch = true"
                             >
                                 <span
@@ -415,7 +415,7 @@ function onPlantImageError(event: Event) {
 
                                             <div class="min-w-0 flex-1">
                                                 <div
-                                                    class="text-text-main truncate text-lg leading-tight font-bold"
+                                                    class="text-text-main truncate text-sm leading-tight font-bold sm:text-base"
                                                 >
                                                     {{ p.subtitle }}
                                                 </div>

@@ -294,7 +294,7 @@ onBeforeUnmount(() => {
                 >
                     <DiaryHeader
                         :title="props.category.name"
-                        title-class="text-foreground text-3xl font-bold tracking-tight truncate sm:truncate-none"
+                        title-class="text-foreground text-sm font-bold tracking-tight truncate sm:text-base md:text-xl lg:text-3xl"
                         header-class="pt-6"
                     >
                         <template #leading>
@@ -421,7 +421,7 @@ onBeforeUnmount(() => {
 
                                         <div class="min-w-0 flex-1">
                                             <h3
-                                                class="truncate text-lg leading-tight font-semibold"
+                                                class="truncate text-sm leading-tight font-semibold sm:text-base"
                                             >
                                                 {{ seed.name }}
                                             </h3>
@@ -482,7 +482,7 @@ onBeforeUnmount(() => {
                                             <div class="relative">
                                                 <button
                                                     type="button"
-                                                    class="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition hover:bg-primary/10"
+                                                    class="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-primary/10"
                                                     aria-label="Menüü"
                                                     @click.stop.prevent="
                                                         toggleMenu(seed.id)
