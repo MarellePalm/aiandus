@@ -498,7 +498,7 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
             v-if="geoError"
             class="mt-4 px-4 pb-3 text-xs text-red-600 dark:text-red-400"
         >
-            Asukoht pole lubatud või pole saadaval. Luba brauseris Location
+            Asukoht pole lubatud või pole saadaval. Luba brauseris asukoha
             õigused.
         </div>
 

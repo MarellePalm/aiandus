@@ -80,9 +80,9 @@ class PlantController extends Controller
                 $first = $group->sortByDesc(
                     fn (Plant $p) => $p->created_at?->getTimestamp() ?? 0,
                 )->first();
-                $totalQty = $group->sum(fn ($p) => $p->quantity ?? 1);
-                $inBed = $group->filter(fn ($p) => $p->bed_id !== null)->sum(fn ($p) => $p->quantity ?? 1);
-                $inStock = $group->filter(fn ($p) => $p->bed_id === null)->sum(fn ($p) => $p->quantity ?? 1);
+                $totalQty = $group->sum(fn ($p) => (int) $p->quantity);
+                $inBed = $group->filter(fn ($p) => $p->bed_id !== null)->sum(fn ($p) => (int) $p->quantity);
+                $inStock = $group->filter(fn ($p) => $p->bed_id === null)->sum(fn ($p) => (int) $p->quantity);
 
                 return [
                     'id' => $first->id,
@@ -123,7 +123,7 @@ class PlantController extends Controller
                 'bed_name' => $plant->bed->name,
                 'garden_plan_id' => (int) $plant->bed->garden_plan_id,
                 'image_url' => $plant->bed->image_url,
-                'quantity' => $plant->quantity ?? 1,
+                'quantity' => (int) $plant->quantity,
             ]);
         }
 
@@ -156,7 +156,7 @@ class PlantController extends Controller
                         'bed_name' => $first->bed->name,
                         'garden_plan_id' => (int) $first->bed->garden_plan_id,
                         'image_url' => $first->bed->image_url,
-                        'quantity' => $group->sum(fn (Plant $p) => $p->quantity ?? 1),
+                        'quantity' => $group->sum(fn (Plant $p) => (int) $p->quantity),
                     ];
                 })
                 ->filter()
@@ -207,7 +207,7 @@ class PlantController extends Controller
                 'fertilizing_frequency' => $plant->fertilizing_frequency,
                 'next_fertilizing_label' => $plant->next_fertilizing_label,
                 'category_slug' => $plant->category?->slug,
-                'quantity' => $plant->quantity ?? 1,
+                'quantity' => (int) $plant->quantity,
                 'quantity_in_stock' => $qtySplit['in_stock'],
                 'quantity_on_beds' => $qtySplit['on_beds'],
                 'bed_locations' => $bedLocations,
@@ -231,7 +231,7 @@ class PlantController extends Controller
     {
         $user = $request->user();
 
-        $data = $request->validate([
+        $data = array_merge(['quantity' => 1], $request->validate([
             'category_id' => [
                 'required',
                 Rule::exists('categories', 'id')
@@ -244,8 +244,8 @@ class PlantController extends Controller
             'fertilizing_frequency' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
             'image' => ['nullable', 'image', 'max:5120', 'dimensions:min_width=300,min_height=300,max_width=6000,max_height=6000'],
-            'quantity' => ['nullable', 'integer', 'min:1', 'max:100'],
-        ]);
+            'quantity' => ['sometimes', 'integer', 'min:1', 'max:100'],
+        ]));
 
         $imagePath = null;
         if ($request->hasFile('image')) {
@@ -269,7 +269,7 @@ class PlantController extends Controller
             'notes' => $data['notes'] ?? null,
             'image_url' => $imagePath ? "/storage/{$imagePath}" : null,
             'user_id' => $user->id,
-            'quantity' => $data['quantity'] ?? 1,
+            'quantity' => (int) $data['quantity'],
         ]);
 
         return redirect()
@@ -294,7 +294,7 @@ class PlantController extends Controller
                 'fertilizing_frequency' => $plant->fertilizing_frequency,
                 'bed_id' => $plant->bed_id,
                 'position_in_bed' => $plant->position_in_bed,
-                'quantity' => $plant->quantity ?? 1,
+                'quantity' => (int) $plant->quantity,
             ],
         ]);
     }
@@ -329,64 +329,69 @@ class PlantController extends Controller
 
         unset($data['image']);
 
-        $assigningToBedFromStock = $plant->bed_id === null
-            && array_key_exists('bed_id', $data)
-            && ! empty($data['bed_id'])
-            && array_key_exists('position_in_bed', $data)
-            && ($data['position_in_bed'] ?? '') !== '';
+        DB::transaction(function () use ($request, $plant, $data): void {
+            $locked = Plant::query()->whereKey($plant->id)->lockForUpdate()->firstOrFail();
 
-        $prevQty = max(1, (int) ($plant->quantity ?? 1));
-        $assignQty = $prevQty;
+            abort_unless($locked->user_id === $request->user()->id, 403);
 
-        if ($assigningToBedFromStock) {
-            $requested = array_key_exists('quantity', $data) ? (int) $data['quantity'] : $prevQty;
-            $assignQty = max(1, min($requested, $prevQty));
-            $data['quantity'] = $assignQty;
-        }
+            $assigningToBedFromStock = $locked->bed_id === null
+                && array_key_exists('bed_id', $data)
+                && ! empty($data['bed_id'])
+                && array_key_exists('position_in_bed', $data)
+                && ($data['position_in_bed'] ?? '') !== '';
 
-        $payload = [
-            'subtitle' => $data['subtitle'] ?? $plant->subtitle,
-            'notes' => $data['notes'] ?? $plant->notes,
-            'watering_frequency' => $data['watering_frequency'] ?? $plant->watering_frequency,
-            'fertilizing_frequency' => $data['fertilizing_frequency'] ?? $plant->fertilizing_frequency,
-            'image_url' => $data['image_url'] ?? $plant->image_url,
-            'quantity' => $data['quantity'] ?? $plant->quantity,
-        ];
+            $prevQty = max(1, (int) $locked->quantity);
 
-        if (array_key_exists('notes', $data)) {
-            $payload['notes'] = $data['notes'] === '' ? null : $data['notes'];
-        }
+            $assignQty = $prevQty;
 
-        if (array_key_exists('watering_frequency', $data)) {
-            $payload['watering_frequency'] = $data['watering_frequency'] === '' ? null : $data['watering_frequency'];
-        }
+            if ($assigningToBedFromStock) {
+                $requested = array_key_exists('quantity', $data) ? (int) $data['quantity'] : $prevQty;
+                $assignQty = max(1, min($requested, $prevQty));
+                $data['quantity'] = $assignQty;
+            }
 
-        if (array_key_exists('fertilizing_frequency', $data)) {
-            $payload['fertilizing_frequency'] = $data['fertilizing_frequency'] === '' ? null : $data['fertilizing_frequency'];
-        }
+            $payload = [
+                'subtitle' => $data['subtitle'] ?? $locked->subtitle,
+                'notes' => $data['notes'] ?? $locked->notes,
+                'watering_frequency' => $data['watering_frequency'] ?? $locked->watering_frequency,
+                'fertilizing_frequency' => $data['fertilizing_frequency'] ?? $locked->fertilizing_frequency,
+                'image_url' => $data['image_url'] ?? $locked->image_url,
+                'quantity' => array_key_exists('quantity', $data) ? $data['quantity'] : $locked->quantity,
+            ];
 
-        if (array_key_exists('bed_id', $data)) {
-            $payload['bed_id'] = $data['bed_id'];
-        }
+            if (array_key_exists('notes', $data)) {
+                $payload['notes'] = $data['notes'] === '' ? null : $data['notes'];
+            }
 
-        if (array_key_exists('position_in_bed', $data)) {
-            $payload['position_in_bed'] = $data['position_in_bed'];
-        }
+            if (array_key_exists('watering_frequency', $data)) {
+                $payload['watering_frequency'] = $data['watering_frequency'] === '' ? null : $data['watering_frequency'];
+            }
 
-        if ($assigningToBedFromStock && $assignQty < $prevQty) {
-            DB::transaction(function () use ($plant, $payload, $assignQty, $prevQty): void {
+            if (array_key_exists('fertilizing_frequency', $data)) {
+                $payload['fertilizing_frequency'] = $data['fertilizing_frequency'] === '' ? null : $data['fertilizing_frequency'];
+            }
+
+            if (array_key_exists('bed_id', $data)) {
+                $payload['bed_id'] = $data['bed_id'];
+            }
+
+            if (array_key_exists('position_in_bed', $data)) {
+                $payload['position_in_bed'] = $data['position_in_bed'];
+            }
+
+            if ($assigningToBedFromStock && $assignQty < $prevQty) {
                 $remainder = $prevQty - $assignQty;
-                $stockPlant = $plant->replicate(['bed_id', 'position_in_bed', 'quantity']);
+                $stockPlant = $locked->replicate(['bed_id', 'position_in_bed', 'quantity']);
                 $stockPlant->bed_id = null;
                 $stockPlant->position_in_bed = null;
                 $stockPlant->quantity = $remainder;
                 $stockPlant->save();
 
-                $plant->update($payload);
-            });
-        } else {
-            $plant->update($payload);
-        }
+                $locked->update($payload);
+            } else {
+                $locked->update($payload);
+            }
+        });
 
         if ($request->has('bed_id') || $request->has('position_in_bed')) {
             return back()->with('success', 'Taim peenrale määratud.');
@@ -425,7 +430,7 @@ class PlantController extends Controller
     private static function sumVarietyStockAndBeds(Plant $plant): array
     {
         if (! $plant->category_id) {
-            $q = (int) ($plant->quantity ?? 1);
+            $q = (int) $plant->quantity;
             if ($plant->bed_id === null) {
                 return ['in_stock' => $q, 'on_beds' => 0];
             }
@@ -446,7 +451,7 @@ class PlantController extends Controller
             if (self::plantVarietyKey($row) !== $key) {
                 continue;
             }
-            $q = (int) ($row->quantity ?? 1);
+            $q = (int) $row->quantity;
             if ($row->bed_id === null) {
                 $inStock += $q;
             } else {

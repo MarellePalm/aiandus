@@ -97,7 +97,7 @@ watch(cellModal, (value) => {
         return;
     }
     const existing = plantAt(value.row, value.col);
-    selectedPlantQuantity.value = existing?.quantity ?? 1;
+    selectedPlantQuantity.value = existing ? existing.quantity : 1;
 });
 
 function bedCoverImage(): string | null {
@@ -986,7 +986,7 @@ function handleBedStatusAction() {
                                                 >
                                                     {{
                                                         plantAt(r, c)
-                                                            ?.quantity ?? 1
+                                                            ?.quantity
                                                     }}
                                                     tk
                                                 </span>
@@ -1107,7 +1107,7 @@ function handleBedStatusAction() {
                                     <span
                                         class="rounded-full bg-background px-2 py-0.5 text-xs font-semibold text-muted-foreground"
                                     >
-                                        {{ p.quantity ?? 1 }} tk
+                                        {{ p.quantity }} tk
                                     </span>
                                     <button
                                         type="button"
@@ -1506,7 +1506,7 @@ function handleBedStatusAction() {
                                                         class="mt-1 block text-xs text-muted-foreground"
                                                     >
                                                         {{
-                                                            plant.quantity ?? 1
+                                                            plant.quantity
                                                         }}
                                                         tk saadaval
                                                     </span>

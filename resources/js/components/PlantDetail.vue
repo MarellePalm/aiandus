@@ -15,7 +15,7 @@ type Plant = {
     fertilizing_frequency?: string | null;
     next_fertilizing_label?: string | null;
     category_slug?: string;
-    quantity?: number | null;
+    quantity: number;
     quantity_in_stock?: number;
     quantity_on_beds?: number;
     bed_locations?: {
@@ -80,7 +80,7 @@ const quantityCardShow = computed(() => {
         );
     }
 
-    return props.plant.quantity ?? 1;
+    return props.plant.quantity;
 });
 
 const hasNotes = computed(

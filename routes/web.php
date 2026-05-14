@@ -197,7 +197,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'id' => $p->id,
                 'name' => $p->name,
                 'image_url' => $p->image_url,
-                'quantity' => (int) ($p->quantity ?? 1),
+                'quantity' => (int) $p->quantity,
                 'category' => $p->category ? ['name' => $p->category->name, 'slug' => $p->category->slug] : null,
             ]);
 
@@ -236,7 +236,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     'name' => $p->name,
                     'image_url' => $p->image_url,
                     'position_in_bed' => $p->position_in_bed,
-                    'quantity' => (int) ($p->quantity ?? 1),
+                    'quantity' => (int) $p->quantity,
                 ]),
             ],
             'plantsWithoutBed' => $plantsWithoutBed,

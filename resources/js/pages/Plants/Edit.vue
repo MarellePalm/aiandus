@@ -12,7 +12,7 @@ type Plant = {
     image_url?: string | null;
     watering_frequency?: string | null;
     fertilizing_frequency?: string | null;
-    quantity?: number | null;
+    quantity: number;
 };
 
 const props = defineProps<{ plant: Plant }>();
@@ -27,7 +27,7 @@ const form = useForm({
     fertilizing_frequency: props.plant.fertilizing_frequency ?? '',
     notes: props.plant.notes ?? '',
     image: null as File | null,
-    quantity: props.plant.quantity ?? 1,
+    quantity: props.plant.quantity,
 });
 
 const currentImage = computed(

@@ -30,6 +30,7 @@ class Plant extends Model
         'tags' => 'array',
         'last_watered_at' => 'datetime',
         'planted_at' => 'date',
+        'quantity' => 'integer',
     ];
 
     public function user(): BelongsTo
