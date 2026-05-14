@@ -319,7 +319,7 @@ const openEditCategory = (category: Category) => {
                                     >
                                         {{ cat.count }} varu
                                     </span>
-                                    <h3 class="text-lg font-bold lg:text-base">
+                                    <h3 class="text-lg font-bold">
                                         {{ cat.name }}
                                     </h3>
                                 </div>
