@@ -230,9 +230,6 @@ onBeforeUnmount(() => {
                                             >Lohistage foto siia või
                                             klõpsake</span
                                         >
-                                        <span class="text-xs text-foreground/40"
-                                            >PNG, JPG, WEBP</span
-                                        >
                                     </div>
                                 </template>
 
