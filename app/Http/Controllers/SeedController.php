@@ -170,7 +170,7 @@ class SeedController extends Controller
 
     public function show(Request $request, Seed $seed)
     {
-        abort_unless($seed->user_id === $request->user()->id, 403);
+        $this->authorize('view', $seed);
 
         return Inertia::render('Seeds/Show', [
             'seed' => [
@@ -190,7 +190,7 @@ class SeedController extends Controller
 
     public function update(Request $request, Seed $seed)
     {
-        abort_unless($seed->user_id === $request->user()->id, 403);
+        $this->authorize('update', $seed);
 
         $data = $request->validate(
             [
@@ -234,7 +234,7 @@ class SeedController extends Controller
 
     public function toggleFavorite(Request $request, Seed $seed)
     {
-        abort_unless($seed->user_id === $request->user()->id, 403);
+        $this->authorize('toggleFavorite', $seed);
 
         $seed->is_favorite = ! $seed->is_favorite;
         $seed->save();
@@ -244,7 +244,7 @@ class SeedController extends Controller
 
     public function destroy(Request $request, Seed $seed)
     {
-        abort_unless($seed->user_id === $request->user()->id, 403);
+        $this->authorize('delete', $seed);
 
         $seed->delete();
 

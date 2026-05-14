@@ -248,7 +248,7 @@ class BedController extends Controller
 
     public function update(Request $request, Bed $bed)
     {
-        abort_unless($bed->user_id === $request->user()->id, 403);
+        $this->authorize('update', $bed);
 
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:120'],
@@ -355,7 +355,7 @@ class BedController extends Controller
 
     public function destroy(Request $request, Bed $bed)
     {
-        abort_unless($bed->user_id === $request->user()->id, 403);
+        $this->authorize('delete', $bed);
         $bed->plants()->update(['bed_id' => null, 'position_in_bed' => null]);
         $bed->delete();
 
@@ -364,7 +364,7 @@ class BedController extends Controller
 
     public function toggleFavorite(Request $request, Bed $bed)
     {
-        abort_unless($bed->user_id === $request->user()->id, 403);
+        $this->authorize('toggleFavorite', $bed);
 
         $bed->update([
             'is_favorite' => ! $bed->is_favorite,

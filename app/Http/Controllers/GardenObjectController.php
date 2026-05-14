@@ -28,7 +28,7 @@ class GardenObjectController extends Controller
         ]);
 
         $plan = GardenPlan::query()->findOrFail($data['garden_plan_id']);
-        abort_unless($plan->user_id === $request->user()->id, 403);
+        $this->authorize('update', $plan);
 
         GardenObject::query()->create([
             'garden_plan_id' => $plan->id,
@@ -46,7 +46,7 @@ class GardenObjectController extends Controller
 
     public function update(Request $request, GardenObject $gardenObject)
     {
-        abort_unless($gardenObject->gardenPlan->user_id === $request->user()->id, 403);
+        $this->authorize('update', $gardenObject);
 
         $data = $request->validate([
             'name' => ['sometimes', 'nullable', 'string', 'max:120'],
@@ -70,7 +70,7 @@ class GardenObjectController extends Controller
 
     public function destroy(Request $request, GardenObject $gardenObject)
     {
-        abort_unless($gardenObject->gardenPlan->user_id === $request->user()->id, 403);
+        $this->authorize('delete', $gardenObject);
         $gardenObject->delete();
 
         return back()->with('success', 'Aiaelement eemaldatud.');
@@ -78,7 +78,7 @@ class GardenObjectController extends Controller
 
     public function duplicate(Request $request, GardenObject $gardenObject)
     {
-        abort_unless($gardenObject->gardenPlan->user_id === $request->user()->id, 403);
+        $this->authorize('update', $gardenObject);
 
         GardenObject::query()->create([
             'garden_plan_id' => $gardenObject->garden_plan_id,
@@ -96,7 +96,7 @@ class GardenObjectController extends Controller
 
     public function rotate(Request $request, GardenObject $gardenObject)
     {
-        abort_unless($gardenObject->gardenPlan->user_id === $request->user()->id, 403);
+        $this->authorize('update', $gardenObject);
 
         $meta = is_array($gardenObject->meta) ? $gardenObject->meta : [];
         $rotation = ((int) ($meta['rotation'] ?? 0) + 90) % 360;
