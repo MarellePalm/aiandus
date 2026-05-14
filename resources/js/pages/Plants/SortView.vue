@@ -269,7 +269,7 @@ function onPlantImageError(event: Event) {
                 >
                     <DiaryHeader
                         :title="props.category.name"
-                        title-class="text-forest text-3xl font-bold tracking-tight"
+                        title-class="text-forest text-3xl font-bold tracking-tight truncate sm:truncate-none"
                         header-class="pt-6"
                         top-row-class="mb-2"
                         bottom-row-class="mb-0"
@@ -415,7 +415,7 @@ function onPlantImageError(event: Event) {
 
                                             <div class="min-w-0 flex-1">
                                                 <div
-                                                    class="text-text-main break-words text-lg leading-tight font-bold"
+                                                    class="text-text-main truncate text-lg leading-tight font-bold"
                                                 >
                                                     {{ p.subtitle }}
                                                 </div>
@@ -557,7 +557,7 @@ function onPlantImageError(event: Event) {
 
                                                 <div class="min-w-0 flex-1">
                                                     <div
-                                                        class="text-text-main break-words text-xl leading-tight font-bold"
+                                                        class="text-text-main truncate text-xl leading-tight font-bold"
                                                     >
                                                         {{ p.subtitle }}
                                                     </div>

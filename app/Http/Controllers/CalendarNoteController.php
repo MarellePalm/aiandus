@@ -145,7 +145,7 @@ class CalendarNoteController extends Controller
             'due_date' => ['nullable', 'date'],
             'due_time' => ['nullable', 'string', 'regex:/^\d{1,2}:\d{2}$/'],
             'photos' => ['nullable', 'array'],
-            'photos.*' => ['image', 'max:5120', 'dimensions:min_width=300,min_height=300,max_width=6000,max_height=6000'],
+            'photos.*' => ['image', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
             'bed_id' => ['nullable', 'integer', 'exists:beds,id'],
             'plant_id' => ['nullable', 'integer', 'exists:plants,id'],
         ]);
@@ -302,7 +302,7 @@ class CalendarNoteController extends Controller
             'due_date' => ['nullable', 'date'],
             'due_time' => ['nullable', 'string', 'regex:/^\d{1,2}:\d{2}$/'],
             'photos' => ['nullable', 'array'],
-            'photos.*' => ['image', 'max:5120', 'dimensions:min_width=300,min_height=300,max_width=6000,max_height=6000'],
+            'photos.*' => ['image', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
             'bed_id' => ['nullable', 'integer', 'exists:beds,id'],
             'plant_id' => ['nullable', 'integer', 'exists:plants,id'],
         ]);

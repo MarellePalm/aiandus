@@ -294,7 +294,7 @@ onBeforeUnmount(() => {
                 >
                     <DiaryHeader
                         :title="props.category.name"
-                        title-class="text-foreground text-3xl font-bold tracking-tight max-w-[12rem] truncate sm:max-w-none"
+                        title-class="text-foreground text-3xl font-bold tracking-tight truncate sm:truncate-none"
                         header-class="pt-6"
                     >
                         <template #leading>
@@ -421,7 +421,7 @@ onBeforeUnmount(() => {
 
                                         <div class="min-w-0 flex-1">
                                             <h3
-                                                class="break-words text-lg leading-tight font-semibold"
+                                                class="truncate text-lg leading-tight font-semibold"
                                             >
                                                 {{ seed.name }}
                                             </h3>
@@ -563,7 +563,7 @@ onBeforeUnmount(() => {
 
                                             <div class="min-w-0 flex-1">
                                                 <h3
-                                                    class="break-words text-xl leading-tight font-bold"
+                                                    class="truncate text-xl leading-tight font-bold"
                                                 >
                                                     {{ seed.name }}
                                                 </h3>
