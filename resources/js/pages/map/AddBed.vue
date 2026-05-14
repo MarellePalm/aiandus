@@ -1587,9 +1587,6 @@ watch(selectedCellId, async () => {
                             >
                             <strong>Lisa peenra foto</strong>
                             <small>Puuduta, et valida pilt galeriist.</small>
-                            <small class="mt-1 block text-foreground/70"
-                                >max 5 MB</small
-                            >
                         </label>
                     </div>
 

@@ -193,9 +193,6 @@ onBeforeUnmount(() => {
                             >
                                 Vali esindusfoto
                             </label>
-                            <p class="mt-1 text-xs text-muted-foreground">
-                                max 5 MB
-                            </p>
 
                             <input
                                 ref="fileInputRef"
@@ -232,9 +229,6 @@ onBeforeUnmount(() => {
                                         <span class="text-base"
                                             >Lohistage foto siia või
                                             klõpsake</span
-                                        >
-                                        <span class="text-xs text-foreground/40"
-                                            >PNG, JPG, WEBP</span
                                         >
                                     </div>
                                 </template>

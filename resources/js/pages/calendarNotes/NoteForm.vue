@@ -387,9 +387,6 @@ function cancel() {
                                     class="text-sm font-semibold tracking-widest text-foreground/70 uppercase"
                                     >Fotod</label
                                 >
-                                <p class="mt-1 text-xs text-muted-foreground">
-                                    max 5 MB
-                                </p>
                                 <input
                                     type="file"
                                     accept="image/*"
