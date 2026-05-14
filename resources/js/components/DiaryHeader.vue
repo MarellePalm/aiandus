@@ -127,7 +127,7 @@ const wrapperClass = computed(() =>
         <div
             :class="`flex items-center justify-between gap-3 lg:hidden ${topRowClass} ${bottomRowClass}`"
         >
-            <div class="flex min-w-0 items-center gap-3">
+            <div class="flex min-w-0 flex-1 basis-0 items-center gap-3">
                 <Link
                     v-if="backHref"
                     :href="backHref"
@@ -139,7 +139,9 @@ const wrapperClass = computed(() =>
                     >
                 </Link>
                 <slot name="leading" />
-                <h1 v-if="!hideTitle" :class="titleClass">{{ title }}</h1>
+                <h1 v-if="!hideTitle" :class="[titleClass, 'min-w-0']">
+                    {{ title }}
+                </h1>
             </div>
             <div class="flex shrink-0 items-center gap-2 sm:gap-5">
                 <slot name="actions" />
@@ -150,7 +152,7 @@ const wrapperClass = computed(() =>
         <div
             :class="`hidden items-center justify-between gap-6 lg:flex ${topRowClass} ${bottomRowClass}`"
         >
-            <div class="flex min-w-0 items-center gap-3">
+            <div class="flex min-w-0 flex-1 basis-0 items-center gap-3">
                 <Link
                     v-if="backHref"
                     :href="backHref"
@@ -162,7 +164,9 @@ const wrapperClass = computed(() =>
                     >
                 </Link>
                 <slot name="leading" />
-                <h1 v-if="!hideTitle" :class="titleClass">{{ title }}</h1>
+                <h1 v-if="!hideTitle" :class="[titleClass, 'min-w-0']">
+                    {{ title }}
+                </h1>
             </div>
             <div class="flex shrink-0 items-center gap-5">
                 <slot name="actions" />

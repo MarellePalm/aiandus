@@ -51,9 +51,11 @@ const quickItems = [
             >
                 <div class="grid min-h-[420px] grid-cols-1 lg:min-h-[520px] lg:grid-cols-[47%_53%]">
                     <div class="relative z-10 flex flex-col justify-center px-5 py-7 sm:px-10 sm:py-9 lg:px-12">
-                        <div class="mb-10 flex items-center gap-2 text-foreground sm:mb-14 lg:mb-20">
+                        <div
+                            class="mb-10 flex items-center gap-2 text-primary dark:text-foreground sm:mb-14 lg:mb-20"
+                        >
                             <span
-                                class="material-symbols-outlined text-[23px] text-primary dark:text-foreground"
+                                class="material-symbols-outlined text-[23px]"
                                 >potted_plant</span
                             >
                             <span class="text-xl font-bold tracking-tight"
