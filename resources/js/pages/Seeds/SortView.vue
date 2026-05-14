@@ -294,7 +294,7 @@ onBeforeUnmount(() => {
                 >
                     <DiaryHeader
                         :title="props.category.name"
-                        title-class="text-foreground text-sm font-bold tracking-tight truncate sm:text-base md:text-xl lg:text-3xl"
+                        title-class="text-foreground text-2xl font-bold tracking-tight truncate sm:text-3xl"
                         header-class="pt-6"
                     >
                         <template #leading>
