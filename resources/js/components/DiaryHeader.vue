@@ -66,7 +66,8 @@ function isNavActive(item: { key: NavKey; href: string }): boolean {
     if (item.key === 'calendar') return path.startsWith('/calendar');
     if (item.key === 'plants') return path.startsWith('/plants');
     if (item.key === 'seeds') return path.startsWith('/seeds');
-    if (item.key === 'map') return path.startsWith('/map') || path.startsWith('/beds');
+    if (item.key === 'map')
+        return path.startsWith('/map') || path.startsWith('/beds');
     return path === item.href;
 }
 

@@ -88,9 +88,7 @@ const reminderLabel = computed(() => {
 });
 
 const hasBodyOrMedia = computed(
-    () =>
-        !!props.note.body?.trim() ||
-        ((props.note.media_urls?.length ?? 0) > 0),
+    () => !!props.note.body?.trim() || (props.note.media_urls?.length ?? 0) > 0,
 );
 </script>
 
@@ -157,9 +155,7 @@ const hasBodyOrMedia = computed(
                                     <span
                                         class="shrink-0 text-xs text-muted-foreground"
                                     >
-                                        {{
-                                            formatNoteDate(note.note_date)
-                                        }}
+                                        {{ formatNoteDate(note.note_date) }}
                                     </span>
                                 </div>
 
@@ -210,7 +206,10 @@ const hasBodyOrMedia = computed(
                                     </Link>
                                 </div>
 
-                                <div v-if="hasBodyOrMedia" class="mt-3 space-y-4">
+                                <div
+                                    v-if="hasBodyOrMedia"
+                                    class="mt-3 space-y-4"
+                                >
                                     <p
                                         v-if="note.body?.trim()"
                                         class="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90"

@@ -14,21 +14,24 @@ class GardenPlan extends Model
         'width',
         'height',
         'unit',
+        'shape_mask',
+        'center_lat',
+        'center_lng',
+        'boundary_polygon',
     ];
 
     protected $casts = [
         'width' => 'integer',
         'height' => 'integer',
+        'shape_mask' => 'array',
+        'center_lat' => 'float',
+        'center_lng' => 'float',
+        'boundary_polygon' => 'array',
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function objects(): HasMany
-    {
-        return $this->hasMany(GardenObject::class);
     }
 
     public function beds(): HasMany

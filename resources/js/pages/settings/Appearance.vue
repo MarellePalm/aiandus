@@ -8,7 +8,6 @@ import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { edit } from '@/routes/appearance';
 import { type BreadcrumbItem } from '@/types';
 
-
 const breadcrumbItems: BreadcrumbItem[] = [
     {
         title: 'Välimuse seaded',

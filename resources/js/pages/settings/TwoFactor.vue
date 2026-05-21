@@ -14,7 +14,6 @@ import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { disable, enable, show } from '@/routes/two-factor';
 import { BreadcrumbItem } from '@/types';
 
-
 interface Props {
     requiresConfirmation?: boolean;
     twoFactorEnabled?: boolean;

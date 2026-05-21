@@ -47,7 +47,9 @@ async function onFileChange(e: Event) {
     form.image = normalizedFile;
 
     if (localPreview.value) URL.revokeObjectURL(localPreview.value);
-    localPreview.value = normalizedFile ? URL.createObjectURL(normalizedFile) : null;
+    localPreview.value = normalizedFile
+        ? URL.createObjectURL(normalizedFile)
+        : null;
 }
 
 function clearFile() {

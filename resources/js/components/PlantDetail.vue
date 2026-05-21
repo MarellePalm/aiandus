@@ -75,9 +75,7 @@ const quantityCardShow = computed(() => {
         typeof props.plant.quantity_in_stock === 'number' &&
         typeof props.plant.quantity_on_beds === 'number'
     ) {
-        return (
-            props.plant.quantity_in_stock + props.plant.quantity_on_beds
-        );
+        return props.plant.quantity_in_stock + props.plant.quantity_on_beds;
     }
 
     return props.plant.quantity;
@@ -86,12 +84,10 @@ const quantityCardShow = computed(() => {
 const hasNotes = computed(
     () =>
         !!props.plant.notes?.trim() ||
-        ((props.plant.calendar_notes?.length ?? 0) > 0),
+        (props.plant.calendar_notes?.length ?? 0) > 0,
 );
 
-const calendarNotesList = computed(
-    () => props.plant.calendar_notes ?? [],
-);
+const calendarNotesList = computed(() => props.plant.calendar_notes ?? []);
 
 function formatCalendarNoteDate(iso: string): string {
     const d = new Date(iso);
@@ -109,10 +105,7 @@ function calendarNoteHref(noteId: number): string {
     return `/calendar/notes/${noteId}?return_to=${encodeURIComponent(`/plants/${props.plant.id}`)}`;
 }
 
-function calendarNoteTitle(cn: {
-    title: string | null;
-    body: string;
-}): string {
+function calendarNoteTitle(cn: { title: string | null; body: string }): string {
     const t = cn.title?.trim();
     if (t) {
         return t;
@@ -148,10 +141,7 @@ function toggleBedMenu(bedId: number) {
     }
 }
 
-function goToBedFromMenu(loc: {
-    bed_id: number;
-    garden_plan_id: number;
-}) {
+function goToBedFromMenu(loc: { bed_id: number; garden_plan_id: number }) {
     bedMenuOpenId.value = null;
     router.visit(`/beds/${loc.bed_id}`);
 }
@@ -213,10 +203,7 @@ const onDocClick = (e: MouseEvent) => {
     if (menuOpen.value && !t?.closest?.('[data-plant-menu]')) {
         menuOpen.value = false;
     }
-    if (
-        bedMenuOpenId.value !== null &&
-        !t?.closest?.('[data-bed-card-menu]')
-    ) {
+    if (bedMenuOpenId.value !== null && !t?.closest?.('[data-bed-card-menu]')) {
         bedMenuOpenId.value = null;
     }
 };
@@ -264,12 +251,12 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
 
 <template>
     <div
-        class="bg-background-light dark:bg-background-dark font-display min-h-screen text-foreground antialiased"
+        class="font-display min-h-screen bg-background-light text-foreground antialiased dark:bg-background-dark"
     >
         <div class="relative flex w-full flex-col pt-20">
             <!-- Top App Bar -->
             <div
-                class="bg-background-light/80 fixed top-0 right-0 left-0 z-50 backdrop-blur-md"
+                class="fixed top-0 right-0 left-0 z-50 bg-background-light/80 backdrop-blur-md"
             >
                 <div
                     class="flex w-full items-center justify-between px-4 py-3 md:px-6"
@@ -280,7 +267,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                             aria-label="Tagasi kategooriasse"
                         />
                         <h1
-                            class="text-forest max-w-[14rem] truncate text-left text-xl font-bold tracking-tight sm:max-w-[20rem]"
+                            class="max-w-[14rem] truncate text-left text-xl font-bold tracking-tight text-forest sm:max-w-[20rem]"
                         >
                             {{ props.plant.subtitle }}
                         </h1>
@@ -366,7 +353,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                                         class="flex min-w-0 flex-1 items-start gap-4"
                                     >
                                         <div
-                                            class="rounded-xl bg-primary/10 p-3 text-primary shrink-0 dark:bg-primary/20"
+                                            class="shrink-0 rounded-xl bg-primary/10 p-3 text-primary dark:bg-primary/20"
                                         >
                                             <span
                                                 class="material-symbols-outlined"
@@ -390,7 +377,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                                                 class="mt-3 flex flex-wrap gap-2"
                                             >
                                                 <span
-                                                    v-for="tag in props.plant.tags"
+                                                    v-for="tag in props.plant
+                                                        .tags"
                                                     :key="tag"
                                                     class="rounded-full bg-primary/5 px-3 py-1 text-[11px] font-bold tracking-tighter text-primary uppercase dark:bg-primary/10"
                                                 >
@@ -452,7 +440,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                             class="md:col-span-2"
                         >
                             <div
-                                class="rounded-2xl border border-[#e6e2d5] bg-surface-light shadow-sm dark:border-white/5 dark:bg-surface-dark"
+                                class="bg-surface-light dark:bg-surface-dark rounded-2xl border border-[#e6e2d5] shadow-sm dark:border-white/5"
                             >
                                 <p
                                     class="px-3 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted-foreground sm:px-4"
@@ -482,12 +470,14 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                                                     >
                                                 </div>
                                                 <div
-                                                    class="min-w-0 flex flex-col text-left"
+                                                    class="flex min-w-0 flex-col text-left"
                                                 >
                                                     <span
                                                         class="font-body truncate text-[15px] leading-snug font-medium text-foreground"
                                                         >{{
-                                                            calendarNoteTitle(cn)
+                                                            calendarNoteTitle(
+                                                                cn,
+                                                            )
                                                         }}</span
                                                     >
                                                     <span
@@ -581,7 +571,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                             class="md:col-span-2"
                         >
                             <div
-                                class="rounded-2xl border border-[#e6e2d5] bg-surface-light shadow-sm dark:border-white/5 dark:bg-surface-dark"
+                                class="bg-surface-light dark:bg-surface-dark rounded-2xl border border-[#e6e2d5] shadow-sm dark:border-white/5"
                             >
                                 <ul
                                     class="divide-y divide-[#e6e2d5] dark:divide-white/10"
@@ -599,7 +589,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                                                     loc.image_url &&
                                                     loc.image_url.trim() !== ''
                                                 "
-                                                class="h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-[#e6e2d5] bg-muted/20 dark:border-white/10 sm:h-12 sm:w-12"
+                                                class="h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-[#e6e2d5] bg-muted/20 sm:h-12 sm:w-12 dark:border-white/10"
                                             >
                                                 <img
                                                     :src="loc.image_url"
@@ -618,7 +608,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                                                     >yard</span
                                                 >
                                             </div>
-                                            <div class="min-w-0 flex flex-col">
+                                            <div class="flex min-w-0 flex-col">
                                                 <span
                                                     class="font-body text-[15px] leading-snug font-medium text-foreground"
                                                 >
@@ -652,8 +642,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
 
                                             <div
                                                 v-if="
-                                                    bedMenuOpenId ===
-                                                    loc.bed_id
+                                                    bedMenuOpenId === loc.bed_id
                                                 "
                                                 class="absolute top-10 right-0 z-50 w-48 overflow-hidden rounded-2xl border border-border bg-card shadow-xl ring-1 ring-border sm:top-11"
                                                 @click.stop

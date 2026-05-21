@@ -489,7 +489,9 @@ function cancel() {
                                         <button
                                             type="button"
                                             role="option"
-                                            :aria-selected="form.plant_id === null"
+                                            :aria-selected="
+                                                form.plant_id === null
+                                            "
                                             class="flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                                             :class="
                                                 form.plant_id === null
@@ -515,7 +517,9 @@ function cancel() {
                                             :key="plant.id"
                                             type="button"
                                             role="option"
-                                            :aria-selected="form.plant_id === plant.id"
+                                            :aria-selected="
+                                                form.plant_id === plant.id
+                                            "
                                             class="flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                                             :class="
                                                 form.plant_id === plant.id

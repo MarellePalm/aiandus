@@ -880,8 +880,10 @@
     }
 }
 
+@import '@fontsource/material-symbols-outlined/400.css';
+
 /*
-  Material Symbols (Google’i link head-is): muutujafond vajab telgi väärtusi;
+  Material Symbols (bundelitud @fontsource): muutujafond vajab telgi väärtusi;
   kui need pärivad html-ilt “normal”-ina, jäävad ligatuur-ikoonid tühjaks (ainult taust).
   See plokk on @layer-väline, et alati võidaks Tailwindi base/preflight pärimise.
 */

@@ -14,6 +14,7 @@ type PlantInBed = {
     image_url: string | null;
     position_in_bed: string | null;
     quantity: number;
+    seed_id?: number | null;
 };
 type Bed = {
     id: number;
@@ -32,6 +33,7 @@ type PlantWithoutBed = {
     name: string;
     image_url: string | null;
     quantity: number;
+    seed_id?: number | null;
     category?: { name: string; slug: string } | null;
 };
 type BedNote = {
@@ -79,11 +81,29 @@ onMounted(() => {
     coverTimer = setInterval(() => {
         coverTick.value += 1;
     }, 3500);
+
+    if (typeof ResizeObserver !== 'undefined') {
+        bedGridResizeObserver = new ResizeObserver(() => {
+            if (bedGridPinchState.value) {
+                return;
+            }
+            fitBedGridZoom();
+        });
+    }
+
+    requestAnimationFrame(() => {
+        fitBedGridZoom();
+        if (bedGridViewportRef.value && bedGridResizeObserver) {
+            bedGridResizeObserver.observe(bedGridViewportRef.value);
+        }
+    });
 });
 
 onBeforeUnmount(() => {
     if (coverTimer) clearInterval(coverTimer);
     if (inlineFeedbackTimer) clearTimeout(inlineFeedbackTimer);
+    bedGridResizeObserver?.disconnect();
+    bedGridResizeObserver = null;
     if (typeof document !== 'undefined') {
         document.body.style.overflow = '';
     }
@@ -142,6 +162,156 @@ const bedCellSize = computed(() => {
     return 64;
 });
 
+const BED_GRID_MIN_ZOOM = 0.4;
+const BED_GRID_MAX_ZOOM = 2.75;
+const BED_GRID_ZOOM_STEP = 0.12;
+const BED_GRID_GAP_PX = 8;
+const BED_GRID_FRAME_PADDING_PX = 24;
+
+const bedGridViewportRef = ref<HTMLElement | null>(null);
+const bedGridZoom = ref(1);
+const bedGridPinchState = ref<{
+    startDistance: number;
+    startZoom: number;
+} | null>(null);
+const bedGridPointerMap = new Map<number, { x: number; y: number }>();
+let bedGridResizeObserver: ResizeObserver | null = null;
+
+const bedGridNaturalSize = computed(() => {
+    const cols = getBedColumns();
+    const rows = getBedLayout().length || 1;
+    const cell = bedCellSize.value;
+    const gap = BED_GRID_GAP_PX;
+    const pad = BED_GRID_FRAME_PADDING_PX;
+
+    return {
+        width: cols * cell + Math.max(0, cols - 1) * gap + pad,
+        height: rows * cell + Math.max(0, rows - 1) * gap + pad,
+    };
+});
+
+const bedGridZoomPercent = computed(() => Math.round(bedGridZoom.value * 100));
+
+function clampBedGridZoom(value: number): number {
+    return Math.min(
+        BED_GRID_MAX_ZOOM,
+        Math.max(BED_GRID_MIN_ZOOM, Number(value.toFixed(3))),
+    );
+}
+
+function fitBedGridZoom() {
+    const viewport = bedGridViewportRef.value;
+    if (!viewport) {
+        return;
+    }
+
+    const { width: naturalW, height: naturalH } = bedGridNaturalSize.value;
+    if (!naturalW || !naturalH) {
+        return;
+    }
+
+    const availableW = viewport.clientWidth - 8;
+    const availableH = Math.max(viewport.clientHeight, 220) - 8;
+    const fit = Math.min(availableW / naturalW, availableH / naturalH);
+
+    bedGridZoom.value = clampBedGridZoom(fit * 0.96);
+}
+
+function changeBedGridZoom(delta: number) {
+    bedGridZoom.value = clampBedGridZoom(bedGridZoom.value + delta);
+}
+
+function onBedGridWheel(event: WheelEvent) {
+    event.preventDefault();
+    const delta = event.deltaY > 0 ? -BED_GRID_ZOOM_STEP : BED_GRID_ZOOM_STEP;
+    changeBedGridZoom(delta);
+}
+
+function applyBedGridPinchZoom() {
+    const state = bedGridPinchState.value;
+    if (!state || bedGridPointerMap.size < 2) {
+        return;
+    }
+
+    const points = [...bedGridPointerMap.values()];
+    const distance = Math.hypot(
+        points[1].x - points[0].x,
+        points[1].y - points[0].y,
+    );
+    if (distance < 8) {
+        return;
+    }
+
+    const ratio = distance / state.startDistance;
+    bedGridZoom.value = clampBedGridZoom(state.startZoom * ratio);
+}
+
+function onBedGridPointerDown(event: PointerEvent) {
+    const target = event.target as HTMLElement | null;
+    if (
+        target?.closest('button, [role="button"], a, input, select, textarea')
+    ) {
+        return;
+    }
+
+    bedGridPointerMap.set(event.pointerId, {
+        x: event.clientX,
+        y: event.clientY,
+    });
+
+    const viewport = bedGridViewportRef.value;
+    if (viewport) {
+        try {
+            viewport.setPointerCapture(event.pointerId);
+        } catch {
+            /* noop */
+        }
+    }
+
+    if (bedGridPointerMap.size === 2) {
+        const points = [...bedGridPointerMap.values()];
+        bedGridPinchState.value = {
+            startDistance: Math.hypot(
+                points[1].x - points[0].x,
+                points[1].y - points[0].y,
+            ),
+            startZoom: bedGridZoom.value,
+        };
+    }
+}
+
+function onBedGridPointerMove(event: PointerEvent) {
+    if (!bedGridPointerMap.has(event.pointerId)) {
+        return;
+    }
+
+    bedGridPointerMap.set(event.pointerId, {
+        x: event.clientX,
+        y: event.clientY,
+    });
+
+    if (bedGridPinchState.value) {
+        applyBedGridPinchZoom();
+    }
+}
+
+function onBedGridPointerUp(event: PointerEvent) {
+    bedGridPointerMap.delete(event.pointerId);
+
+    if (bedGridPointerMap.size < 2) {
+        bedGridPinchState.value = null;
+    }
+
+    const viewport = bedGridViewportRef.value;
+    if (viewport?.hasPointerCapture(event.pointerId)) {
+        try {
+            viewport.releasePointerCapture(event.pointerId);
+        } catch {
+            /* noop */
+        }
+    }
+}
+
 function plantAt(row: number, col: number): PlantInBed | undefined {
     const key = `${row},${col}`;
     return props.bed.plants.find((p) => p.position_in_bed === key);
@@ -172,34 +342,43 @@ function removePlantFromBed(plant: PlantInBed) {
     );
 }
 
+function isUnknownQuantityPlant(
+    plant: Pick<PlantWithoutBed, 'quantity'> | Pick<PlantInBed, 'quantity'>,
+): boolean {
+    return plant.quantity === 0;
+}
+
 function assignPlantToCell(plantId: number, row: number, col: number) {
+    const plant = props.plantsWithoutBed.find((p) => p.id === plantId);
     const key = `${row},${col}`;
     assigningPlantId.value = plantId;
-    router.put(
-        `/plants/${plantId}`,
-        {
-            bed_id: props.bed.id,
-            position_in_bed: key,
-            quantity: Math.max(1, Math.round(selectedPlantQuantity.value || 1)),
+    const payload: Record<string, unknown> = {
+        bed_id: props.bed.id,
+        position_in_bed: key,
+    };
+    if (!plant || !isUnknownQuantityPlant(plant)) {
+        payload.quantity = Math.max(
+            1,
+            Math.round(selectedPlantQuantity.value || 1),
+        );
+    }
+    router.put(`/plants/${plantId}`, payload, {
+        preserveScroll: true,
+        onSuccess: () => {
+            cellModal.value = null;
+            selectedPlantQuantity.value = 1;
+            setInlineFeedback('success', 'Taim lisati valitud ruutu.');
         },
-        {
-            preserveScroll: true,
-            onSuccess: () => {
-                cellModal.value = null;
-                selectedPlantQuantity.value = 1;
-                setInlineFeedback('success', 'Taim lisati valitud ruutu.');
-            },
-            onError: () => {
-                setInlineFeedback(
-                    'error',
-                    'Taime lisamine ei õnnestunud. Proovi uuesti.',
-                );
-            },
-            onFinish: () => {
-                assigningPlantId.value = null;
-            },
+        onError: () => {
+            setInlineFeedback(
+                'error',
+                'Taime lisamine ei õnnestunud. Proovi uuesti.',
+            );
         },
-    );
+        onFinish: () => {
+            assigningPlantId.value = null;
+        },
+    });
 }
 
 function updatePlantQuantityInCell(plantId: number, row: number, col: number) {
@@ -240,6 +419,9 @@ const plantsWithoutBedByCategory = computed(() => {
     );
 });
 const availablePlantsCount = computed(() => props.plantsWithoutBed.length);
+const assignShowsQuantityPicker = computed(() =>
+    props.plantsWithoutBed.some((p) => !isUnknownQuantityPlant(p)),
+);
 const cellModalLabel = computed(() => {
     if (!cellModal.value) return '';
     return `Rida ${cellModal.value.row + 1}, veerg ${cellModal.value.col + 1}`;
@@ -396,6 +578,18 @@ function formatNoteDate(iso: string | null): string {
 
 const gridLayout = computed(() => getBedLayout());
 const hasPlantsInBed = computed(() => props.bed.plants.length > 0);
+
+watch(
+    () => [
+        props.bed.layout,
+        props.bed.rows,
+        props.bed.columns,
+        bedCellSize.value,
+    ],
+    () => {
+        requestAnimationFrame(() => fitBedGridZoom());
+    },
+);
 const pageFeedback = computed(() => {
     if (inlineFeedback.value) return inlineFeedback.value;
     if (page.props.flash?.error) {
@@ -916,138 +1110,237 @@ function handleBedStatusAction() {
                                 </div>
                             </div>
                             <div
-                                class="custom-scrollbar -mx-1 touch-pan-x overflow-x-auto overflow-y-visible overscroll-x-contain px-1 pb-1"
+                                ref="bedGridViewportRef"
+                                class="bed-grid-viewport relative -mx-1 min-h-[min(52vw,22rem)] rounded-[1.35rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,253,245,0.35),rgba(255,251,235,0.2))] px-1 pb-1"
+                                @wheel.prevent="onBedGridWheel"
+                                @pointerdown="onBedGridPointerDown"
+                                @pointermove="onBedGridPointerMove"
+                                @pointerup="onBedGridPointerUp"
+                                @pointercancel="onBedGridPointerUp"
+                                @pointerleave="onBedGridPointerUp"
                             >
                                 <div
-                                    class="bed-grid-frame inline-grid w-max min-w-0 gap-2 rounded-[1.35rem] border border-emerald-900/10 p-3 ring-1 ring-white/70 sm:gap-2.5 sm:p-4"
-                                    :style="{
-                                        gridTemplateColumns: `repeat(${getBedColumns()}, ${bedCellSize}px)`,
-                                        gridTemplateRows: `repeat(${gridLayout.length}, ${bedCellSize}px)`,
-                                    }"
+                                    class="pointer-events-none absolute top-2 right-2 z-10 flex items-center gap-1 rounded-full border border-white/70 bg-white/90 p-0.5 shadow-sm backdrop-blur"
                                 >
-                                    <template
-                                        v-for="r in range(gridLayout.length)"
-                                        :key="r"
+                                    <button
+                                        type="button"
+                                        class="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted"
+                                        aria-label="Vähenda suum"
+                                        @click.stop="
+                                            changeBedGridZoom(
+                                                -BED_GRID_ZOOM_STEP,
+                                            )
+                                        "
                                     >
-                                        <template
-                                            v-for="c in range(getBedColumns())"
-                                            :key="`${r}-${c}`"
+                                        <span
+                                            class="material-symbols-outlined text-base"
+                                            >remove</span
                                         >
-                                            <div
-                                                v-if="plantAt(r, c)"
-                                                role="button"
-                                                tabindex="0"
-                                                class="group relative cursor-pointer touch-manipulation overflow-hidden text-left outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2"
-                                                :class="plantedCellClass(r, c)"
-                                                :style="{
-                                                    width: `${bedCellSize}px`,
-                                                    height: `${bedCellSize}px`,
-                                                }"
-                                                :aria-label="`Ruut: ${plantAt(r, c)?.name ?? 'taim'}. Ava üksikasjad.`"
-                                                @click="openCellModal(r, c)"
-                                                @keydown.enter.prevent="
-                                                    openCellModal(r, c)
-                                                "
-                                                @keydown.space.prevent="
-                                                    openCellModal(r, c)
-                                                "
+                                    </button>
+                                    <span
+                                        class="min-w-[2.75rem] text-center text-[11px] font-semibold text-foreground/80 tabular-nums"
+                                    >
+                                        {{ bedGridZoomPercent }}%
+                                    </span>
+                                    <button
+                                        type="button"
+                                        class="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted"
+                                        aria-label="Suurenda suum"
+                                        @click.stop="
+                                            changeBedGridZoom(
+                                                BED_GRID_ZOOM_STEP,
+                                            )
+                                        "
+                                    >
+                                        <span
+                                            class="material-symbols-outlined text-base"
+                                            >add</span
+                                        >
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full text-foreground hover:bg-muted"
+                                        aria-label="Mahuta vaatesse"
+                                        @click.stop="fitBedGridZoom"
+                                    >
+                                        <span
+                                            class="material-symbols-outlined text-base"
+                                            >fit_screen</span
+                                        >
+                                    </button>
+                                </div>
+                                <div
+                                    class="flex h-full min-h-[inherit] items-center justify-center py-3"
+                                >
+                                    <div
+                                        class="bed-grid-zoom-stage"
+                                        :style="{
+                                            transform: `scale(${bedGridZoom})`,
+                                        }"
+                                    >
+                                        <div
+                                            class="bed-grid-frame inline-grid w-max min-w-0 gap-2 rounded-[1.35rem] border border-emerald-900/10 bg-card/40 p-3 ring-1 ring-white/70 sm:gap-2.5 sm:p-4"
+                                            :style="{
+                                                gridTemplateColumns: `repeat(${getBedColumns()}, ${bedCellSize}px)`,
+                                                gridTemplateRows: `repeat(${gridLayout.length}, ${bedCellSize}px)`,
+                                            }"
+                                        >
+                                            <template
+                                                v-for="r in range(
+                                                    gridLayout.length,
+                                                )"
+                                                :key="r"
                                             >
-                                                <div
-                                                    class="plant-bloom absolute inset-0"
-                                                ></div>
-                                                <span class="plant-avatar">
-                                                    <img
-                                                        v-if="
-                                                            plantAt(r, c)
-                                                                ?.image_url
+                                                <template
+                                                    v-for="c in range(
+                                                        getBedColumns(),
+                                                    )"
+                                                    :key="`${r}-${c}`"
+                                                >
+                                                    <div
+                                                        v-if="plantAt(r, c)"
+                                                        role="button"
+                                                        tabindex="0"
+                                                        class="group relative cursor-pointer touch-manipulation overflow-hidden text-left outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2"
+                                                        :class="
+                                                            plantedCellClass(
+                                                                r,
+                                                                c,
+                                                            )
                                                         "
-                                                        :src="
-                                                            plantAt(r, c)!
-                                                                .image_url!
+                                                        :style="{
+                                                            width: `${bedCellSize}px`,
+                                                            height: `${bedCellSize}px`,
+                                                        }"
+                                                        :aria-label="`Ruut: ${plantAt(r, c)?.name ?? 'taim'}. Ava üksikasjad.`"
+                                                        @click="
+                                                            openCellModal(r, c)
                                                         "
-                                                        :alt="
-                                                            plantAt(r, c)?.name
+                                                        @keydown.enter.prevent="
+                                                            openCellModal(r, c)
                                                         "
+                                                        @keydown.space.prevent="
+                                                            openCellModal(r, c)
+                                                        "
+                                                    >
+                                                        <div
+                                                            class="plant-bloom absolute inset-0"
+                                                        ></div>
+                                                        <span
+                                                            class="plant-avatar"
+                                                        >
+                                                            <img
+                                                                v-if="
+                                                                    plantAt(
+                                                                        r,
+                                                                        c,
+                                                                    )?.image_url
+                                                                "
+                                                                :src="
+                                                                    plantAt(
+                                                                        r,
+                                                                        c,
+                                                                    )!
+                                                                        .image_url!
+                                                                "
+                                                                :alt="
+                                                                    plantAt(
+                                                                        r,
+                                                                        c,
+                                                                    )?.name
+                                                                "
+                                                            />
+                                                            <span
+                                                                v-else
+                                                                class="material-symbols-outlined"
+                                                                >psychiatry</span
+                                                            >
+                                                        </span>
+                                                        <span
+                                                            class="absolute right-1.5 bottom-1.5 left-1.5 truncate rounded-full bg-emerald-950/45 px-1.5 py-0.5 text-center text-[10px] font-semibold text-white backdrop-blur-[2px]"
+                                                            >{{
+                                                                plantAt(r, c)
+                                                                    ?.name
+                                                            }}</span
+                                                        >
+                                                        <span
+                                                            class="absolute top-1.5 left-1.5 rounded-full bg-white/92 px-1.5 py-0.5 text-[10px] font-semibold text-foreground shadow-sm dark:bg-card/92"
+                                                        >
+                                                            {{
+                                                                plantAt(r, c)
+                                                                    ?.quantity
+                                                            }}
+                                                            tk
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            class="absolute top-1 right-1 z-20 flex min-h-9 min-w-9 items-center justify-center rounded-full bg-black/60 p-1.5 text-white opacity-100 shadow-sm md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100"
+                                                            aria-label="Eemalda taim ruudust"
+                                                            @click.stop="
+                                                                removePlantFromBed(
+                                                                    plantAt(
+                                                                        r,
+                                                                        c,
+                                                                    )!,
+                                                                )
+                                                            "
+                                                        >
+                                                            <span
+                                                                class="material-symbols-outlined text-base"
+                                                                >close</span
+                                                            >
+                                                        </button>
+                                                    </div>
+                                                    <div
+                                                        v-else-if="
+                                                            (gridLayout[r]?.[
+                                                                c
+                                                            ] ?? 0) === -1
+                                                        "
+                                                        class="bed-cell bed-cell--walkway"
+                                                        :style="{
+                                                            width: `${bedCellSize}px`,
+                                                            height: `${bedCellSize}px`,
+                                                        }"
                                                     />
-                                                    <span
+                                                    <div
+                                                        v-else-if="
+                                                            (gridLayout[r]?.[
+                                                                c
+                                                            ] ?? 1) === 0
+                                                        "
+                                                        class="pointer-events-none rounded-xl opacity-0"
+                                                        :style="{
+                                                            width: `${bedCellSize}px`,
+                                                            height: `${bedCellSize}px`,
+                                                        }"
+                                                    />
+                                                    <button
                                                         v-else
-                                                        class="material-symbols-outlined"
-                                                        >psychiatry</span
+                                                        type="button"
+                                                        class="group flex touch-manipulation items-center justify-center text-emerald-800/75"
+                                                        :class="
+                                                            emptyCellClass(r, c)
+                                                        "
+                                                        :style="{
+                                                            width: `${bedCellSize}px`,
+                                                            height: `${bedCellSize}px`,
+                                                        }"
+                                                        :title="`Lisa taim ruutu (rida ${r + 1}, veerg ${c + 1})`"
+                                                        :aria-label="`Lisa taim ruutu, rida ${r + 1}, veerg ${c + 1}`"
+                                                        @click="
+                                                            openCellModal(r, c)
+                                                        "
                                                     >
-                                                </span>
-                                                <span
-                                                    class="absolute right-1.5 bottom-1.5 left-1.5 truncate rounded-full bg-emerald-950/45 px-1.5 py-0.5 text-center text-[10px] font-semibold text-white backdrop-blur-[2px]"
-                                                    >{{
-                                                        plantAt(r, c)?.name
-                                                    }}</span
-                                                >
-                                                <span
-                                                    class="absolute top-1.5 left-1.5 rounded-full bg-white/92 px-1.5 py-0.5 text-[10px] font-semibold text-foreground shadow-sm dark:bg-card/92"
-                                                >
-                                                    {{
-                                                        plantAt(r, c)
-                                                            ?.quantity
-                                                    }}
-                                                    tk
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    class="absolute top-1 right-1 z-20 flex min-h-9 min-w-9 items-center justify-center rounded-full bg-black/60 p-1.5 text-white opacity-100 shadow-sm md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100"
-                                                    aria-label="Eemalda taim ruudust"
-                                                    @click.stop="
-                                                        removePlantFromBed(
-                                                            plantAt(r, c)!,
-                                                        )
-                                                    "
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-base"
-                                                        >close</span
-                                                    >
-                                                </button>
-                                            </div>
-                                            <div
-                                                v-else-if="
-                                                    (gridLayout[r]?.[c] ??
-                                                        0) === -1
-                                                "
-                                                class="bed-cell bed-cell--walkway"
-                                                :style="{
-                                                    width: `${bedCellSize}px`,
-                                                    height: `${bedCellSize}px`,
-                                                }"
-                                            />
-                                            <div
-                                                v-else-if="
-                                                    (gridLayout[r]?.[c] ??
-                                                        1) === 0
-                                                "
-                                                class="pointer-events-none rounded-xl opacity-0"
-                                                :style="{
-                                                    width: `${bedCellSize}px`,
-                                                    height: `${bedCellSize}px`,
-                                                }"
-                                            />
-                                            <button
-                                                v-else
-                                                type="button"
-                                                class="group flex touch-manipulation items-center justify-center text-emerald-800/75"
-                                                :class="emptyCellClass(r, c)"
-                                                :style="{
-                                                    width: `${bedCellSize}px`,
-                                                    height: `${bedCellSize}px`,
-                                                }"
-                                                :title="`Lisa taim ruutu (rida ${r + 1}, veerg ${c + 1})`"
-                                                :aria-label="`Lisa taim ruutu, rida ${r + 1}, veerg ${c + 1}`"
-                                                @click="openCellModal(r, c)"
-                                            >
-                                                <span
-                                                    class="material-symbols-outlined sprout-preview text-xl"
-                                                    >psychiatry</span
-                                                >
-                                            </button>
-                                        </template>
-                                    </template>
+                                                        <span
+                                                            class="material-symbols-outlined sprout-preview text-xl"
+                                                            >psychiatry</span
+                                                        >
+                                                    </button>
+                                                </template>
+                                            </template>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </section>
@@ -1266,6 +1559,23 @@ function handleBedStatusAction() {
                                 </div>
 
                                 <div
+                                    v-if="isUnknownQuantityPlant(modalPlant)"
+                                    class="mb-3 rounded-2xl border border-amber-200/60 bg-amber-50/80 px-3.5 py-3"
+                                >
+                                    <span
+                                        class="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900"
+                                    >
+                                        Seemnetest
+                                    </span>
+                                    <p
+                                        class="mt-2 text-xs leading-5 text-muted-foreground"
+                                    >
+                                        Kogus on teadmata kuni idanemist
+                                        märgitakse seemnepaketi juures.
+                                    </p>
+                                </div>
+                                <div
+                                    v-else
                                     class="mb-3 rounded-2xl border border-border/60 bg-background/70 px-3.5 py-3"
                                 >
                                     <p
@@ -1324,6 +1634,9 @@ function handleBedStatusAction() {
 
                                 <div class="grid gap-2 sm:grid-cols-2">
                                     <button
+                                        v-if="
+                                            !isUnknownQuantityPlant(modalPlant)
+                                        "
                                         type="button"
                                         class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-500/40 bg-[linear-gradient(135deg,rgb(16,185,129),rgb(64,133,63))] px-3.5 py-3 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(16,185,129,0.24)] transition hover:brightness-105 sm:min-h-0"
                                         @click="
@@ -1383,6 +1696,7 @@ function handleBedStatusAction() {
                                     .
                                 </div>
                                 <div
+                                    v-if="assignShowsQuantityPicker"
                                     class="mb-3 rounded-2xl border border-border/60 bg-background/70 px-3.5 py-3"
                                 >
                                     <p
@@ -1503,11 +1817,20 @@ function handleBedStatusAction() {
                                                         }}
                                                     </span>
                                                     <span
+                                                        v-if="
+                                                            isUnknownQuantityPlant(
+                                                                plant,
+                                                            )
+                                                        "
+                                                        class="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900"
+                                                    >
+                                                        Seemnetest
+                                                    </span>
+                                                    <span
+                                                        v-else
                                                         class="mt-1 block text-xs text-muted-foreground"
                                                     >
-                                                        {{
-                                                            plant.quantity
-                                                        }}
+                                                        {{ plant.quantity }}
                                                         tk saadaval
                                                     </span>
                                                 </span>
@@ -1623,6 +1946,22 @@ function handleBedStatusAction() {
     transition:
         width 850ms cubic-bezier(0.22, 1, 0.36, 1),
         background-color 350ms ease;
+}
+
+.bed-grid-viewport {
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+}
+
+.bed-grid-zoom-stage {
+    transform-origin: center center;
+    transition: transform 120ms ease-out;
+    will-change: transform;
+}
+
+.bed-grid-viewport:has(.bed-grid-zoom-stage:active) .bed-grid-zoom-stage {
+    transition: none;
 }
 
 .cell-sheet {

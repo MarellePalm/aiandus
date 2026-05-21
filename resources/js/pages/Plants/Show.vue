@@ -36,7 +36,7 @@ const { plant } = defineProps<{ plant: Plant }>();
 
 <template>
     <div class="page page-with-bottomnav">
-        <div class="text-text-main font-display min-h-screen bg-background">
+        <div class="font-display min-h-screen bg-background text-text-main">
             <div
                 class="relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x border-primary/10 bg-background shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
             >

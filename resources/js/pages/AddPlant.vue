@@ -99,12 +99,7 @@ onBeforeUnmount(() => {
     <div
         class="font-display min-h-screen bg-background text-foreground antialiased"
     >
-        <Head title="Lisa taim">
-            <link
-                href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-                rel="stylesheet"
-            />
-        </Head>
+        <Head title="Lisa taim" />
 
         <div
             class="fixed inset-0 z-50 flex items-start justify-center p-4 pt-6 sm:items-center sm:pt-4"

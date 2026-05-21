@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bed;
-use App\Models\GardenObject;
 use App\Models\GardenPlan;
 use App\Models\Plant;
 use Illuminate\Http\Request;
@@ -104,22 +103,6 @@ class GardenMapController extends Controller
                 'category' => $p->category ? ['name' => $p->category->name, 'slug' => $p->category->slug] : null,
             ]);
 
-        $gardenObjects = GardenObject::query()
-            ->where('garden_plan_id', $gardenPlan->id)
-            ->orderBy('type')
-            ->orderBy('id')
-            ->get()
-            ->map(fn ($object) => [
-                'id' => $object->id,
-                'type' => $object->type,
-                'name' => $object->name,
-                'x' => (int) $object->x,
-                'y' => (int) $object->y,
-                'width' => (int) $object->width,
-                'height' => (int) $object->height,
-                'meta' => $object->meta,
-            ]);
-
         return Inertia::render('map/MapView', [
             'gardenPlans' => $gardenPlans,
             'gardenPlan' => [
@@ -128,9 +111,12 @@ class GardenMapController extends Controller
                 'width' => (int) $gardenPlan->width,
                 'height' => (int) $gardenPlan->height,
                 'unit' => $gardenPlan->unit,
+                'shape_mask' => $gardenPlan->shape_mask,
+                'center_lat' => $gardenPlan->center_lat,
+                'center_lng' => $gardenPlan->center_lng,
+                'boundary_polygon' => $gardenPlan->boundary_polygon,
             ],
             'beds' => $beds,
-            'gardenObjects' => $gardenObjects,
             'plantsWithoutBed' => $plantsWithoutBed,
         ]);
     }

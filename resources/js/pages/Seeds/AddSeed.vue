@@ -308,7 +308,8 @@ onBeforeUnmount(() => {
                                     {{ form.errors.expires_at }}
                                 </p>
                                 <p class="mt-2 text-xs text-foreground/50">
-                                    Kuupäeva formaat: (PP.KK.AAAA), nt 05.09.2026
+                                    Kuupäeva formaat: (PP.KK.AAAA), nt
+                                    05.09.2026
                                 </p>
                             </div>
                         </div>
@@ -551,7 +552,8 @@ onBeforeUnmount(() => {
                                     {{ form.errors.expires_at }}
                                 </p>
                                 <p class="mt-2 text-xs text-foreground/50">
-                                    Kuupäeva formaat: (PP.KK.AAAA), nt 05.09.2026
+                                    Kuupäeva formaat: (PP.KK.AAAA), nt
+                                    05.09.2026
                                 </p>
                             </div>
                         </div>

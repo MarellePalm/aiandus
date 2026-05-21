@@ -262,10 +262,10 @@ function onPlantImageError(event: Event) {
     >
         <div class="page page-with-bottomnav">
             <div
-                class="bg-background-light text-text-main font-display min-h-screen"
+                class="font-display min-h-screen bg-background-light text-text-main"
             >
                 <div
-                    class="bg-background-light relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x border-primary/10 shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
+                    class="relative mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden border-x border-primary/10 bg-background-light shadow-2xl md:mx-0 md:max-w-none md:border-0 md:shadow-none"
                 >
                     <DiaryHeader
                         :title="props.category.name"
@@ -364,7 +364,9 @@ function onPlantImageError(event: Event) {
                                         >potted_plant</span
                                     >
                                 </div>
-                                <h2 class="text-lg font-semibold text-foreground">
+                                <h2
+                                    class="text-lg font-semibold text-foreground"
+                                >
                                     {{
                                         activeTab === 'favorites'
                                             ? 'Lemmikud puuduvad'
@@ -408,14 +410,16 @@ function onPlantImageError(event: Event) {
                                                         ? 'bg-gray-100 object-contain p-2'
                                                         : 'object-cover',
                                                 ]"
-                                                :src="p.image_url || fallbackImage"
+                                                :src="
+                                                    p.image_url || fallbackImage
+                                                "
                                                 :alt="p.subtitle"
                                                 @error="onPlantImageError"
                                             />
 
                                             <div class="min-w-0 flex-1">
                                                 <div
-                                                    class="text-text-main truncate text-sm leading-tight font-bold sm:text-base"
+                                                    class="truncate text-sm leading-tight font-bold text-text-main sm:text-base"
                                                 >
                                                     {{ p.subtitle }}
                                                 </div>
@@ -537,7 +541,9 @@ function onPlantImageError(event: Event) {
                                     >
                                         <div
                                             class="cursor-pointer p-4"
-                                            @click="router.visit(`/plants/${p.id}`)"
+                                            @click="
+                                                router.visit(`/plants/${p.id}`)
+                                            "
                                         >
                                             <div class="flex items-start gap-3">
                                                 <img
@@ -557,7 +563,7 @@ function onPlantImageError(event: Event) {
 
                                                 <div class="min-w-0 flex-1">
                                                     <div
-                                                        class="text-text-main truncate text-xl leading-tight font-bold"
+                                                        class="truncate text-xl leading-tight font-bold text-text-main"
                                                     >
                                                         {{ p.subtitle }}
                                                     </div>
@@ -675,7 +681,9 @@ function onPlantImageError(event: Event) {
                                                 class="material-symbols-outlined text-5xl leading-none opacity-70 transition group-hover:opacity-100"
                                                 >add</span
                                             >
-                                            <p class="mt-2 text-sm font-semibold">
+                                            <p
+                                                class="mt-2 text-sm font-semibold"
+                                            >
                                                 Lisa uus taim
                                             </p>
                                         </div>

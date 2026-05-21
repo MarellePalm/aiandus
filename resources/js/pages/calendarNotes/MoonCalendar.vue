@@ -473,9 +473,7 @@ onUnmounted(() => {
                                         >
                                             {{ selectedInfo.biodynamicLabel }}
                                         </p>
-                                        <p
-                                            class="mt-1 text-sm text-white/70"
-                                        >
+                                        <p class="mt-1 text-sm text-white/70">
                                             {{ selectedDateLabel }}
                                         </p>
                                         <h2
@@ -485,9 +483,7 @@ onUnmounted(() => {
                                         </h2>
                                         <p class="mt-0.5 text-sm text-white/75">
                                             {{
-                                                isWaxing
-                                                    ? 'Kasvav'
-                                                    : 'Kahanev'
+                                                isWaxing ? 'Kasvav' : 'Kahanev'
                                             }}
                                             · valgustatud
                                             <span
@@ -504,7 +500,9 @@ onUnmounted(() => {
                                             {{ selectedInfo.moodHeadline }}
                                         </p>
                                     </div>
-                                    <div class="moon-night-disc relative shrink-0">
+                                    <div
+                                        class="moon-night-disc relative shrink-0"
+                                    >
                                         <span
                                             class="moon-night-glow"
                                             aria-hidden="true"
@@ -567,7 +565,9 @@ onUnmounted(() => {
                                             {{ selectedTimingBadge }}
                                         </span>
                                     </div>
-                                    <p class="text-sm leading-snug text-white/85">
+                                    <p
+                                        class="text-sm leading-snug text-white/85"
+                                    >
                                         {{ selectedInfo?.timingReason }}
                                     </p>
                                 </div>
@@ -664,7 +664,7 @@ onUnmounted(() => {
                             >
                                 <button
                                     type="button"
-                                    class="flex h-9 w-9 items-center justify-center rounded-full bg-white/85 text-indigo-700 ring-1 ring-indigo-200/60 shadow-sm transition hover:bg-white hover:text-amber-600 hover:ring-amber-300/60 dark:bg-white/10 dark:text-amber-100 dark:ring-white/15 dark:hover:bg-white/15"
+                                    class="flex h-9 w-9 items-center justify-center rounded-full bg-white/85 text-indigo-700 shadow-sm ring-1 ring-indigo-200/60 transition hover:bg-white hover:text-amber-600 hover:ring-amber-300/60 dark:bg-white/10 dark:text-amber-100 dark:ring-white/15 dark:hover:bg-white/15"
                                     @click="prevMonth"
                                     aria-label="Eelmine kuu"
                                 >
@@ -685,7 +685,7 @@ onUnmounted(() => {
                                 </h2>
                                 <button
                                     type="button"
-                                    class="flex h-9 w-9 items-center justify-center rounded-full bg-white/85 text-indigo-700 ring-1 ring-indigo-200/60 shadow-sm transition hover:bg-white hover:text-amber-600 hover:ring-amber-300/60 dark:bg-white/10 dark:text-amber-100 dark:ring-white/15 dark:hover:bg-white/15"
+                                    class="flex h-9 w-9 items-center justify-center rounded-full bg-white/85 text-indigo-700 shadow-sm ring-1 ring-indigo-200/60 transition hover:bg-white hover:text-amber-600 hover:ring-amber-300/60 dark:bg-white/10 dark:text-amber-100 dark:ring-white/15 dark:hover:bg-white/15"
                                     @click="nextMonth"
                                     aria-label="Järgmine kuu"
                                 >
@@ -1163,11 +1163,7 @@ onUnmounted(() => {
             rgba(99, 102, 241, 0.08) 0,
             transparent 60%
         ),
-        radial-gradient(
-            circle at 50% 50%,
-            transparent 0,
-            transparent 100%
-        );
+        radial-gradient(circle at 50% 50%, transparent 0, transparent 100%);
 }
 :global(.dark) .moon-cal-shell {
     background-image:

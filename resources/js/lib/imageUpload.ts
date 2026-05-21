@@ -28,7 +28,12 @@ function loadImage(file: File): Promise<HTMLImageElement> {
     });
 }
 
-function scaleToFit(width: number, height: number, maxWidth: number, maxHeight: number) {
+function scaleToFit(
+    width: number,
+    height: number,
+    maxWidth: number,
+    maxHeight: number,
+) {
     const ratio = Math.min(maxWidth / width, maxHeight / height, 1);
     return {
         width: Math.max(1, Math.round(width * ratio)),
@@ -98,7 +103,12 @@ export async function normalizeImageForUpload(
     if (!bestBlob) return file;
     if (bestBlob.size >= file.size && file.size <= maxBytes) return file;
 
-    const ext = outputType === 'image/png' ? 'png' : outputType === 'image/webp' ? 'webp' : 'jpg';
+    const ext =
+        outputType === 'image/png'
+            ? 'png'
+            : outputType === 'image/webp'
+              ? 'webp'
+              : 'jpg';
     const safeName = file.name.replace(/\.[^.]+$/, '') || 'photo';
     return new File([bestBlob], `${safeName}.${ext}`, { type: outputType });
 }

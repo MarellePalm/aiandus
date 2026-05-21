@@ -12,7 +12,6 @@ import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { edit } from '@/routes/user-password';
 import { type BreadcrumbItem } from '@/types';
 
-
 const breadcrumbItems: BreadcrumbItem[] = [
     {
         title: 'Parooli seaded',
