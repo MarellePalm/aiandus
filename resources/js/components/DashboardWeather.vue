@@ -33,8 +33,13 @@ type WeatherSnapshotFromServer = {
     weatherIconSource?: string | null;
 };
 
-const { coords, loading: geoLoading, error: geoError, requestPosition, restoredFromStorage } =
-    useGeolocation();
+const {
+    coords,
+    loading: geoLoading,
+    error: geoError,
+    requestPosition,
+    restoredFromStorage,
+} = useGeolocation();
 
 const canRequestBrowserLocation = computed(
     () => typeof navigator !== 'undefined' && 'geolocation' in navigator,
@@ -502,15 +507,12 @@ function dailyIconUrl(icon: string | null | undefined, retina = false) {
             v-if="canRequestBrowserLocation && !restoredFromStorage"
             class="mt-2 px-4 text-xs text-muted-foreground"
         >
-            Ilma jaoks kasutatakse esimesel korral üht vaikekohta (Tallinn), kuni
-            vajutad all ja lubad brauseril oma asukoha määrata. Hiljem mäletatakse
-            viimast õnnestunud asukohta selles seadmes.
+            Ilma jaoks kasutatakse esimesel korral üht vaikekohta (Tallinn),
+            kuni vajutad all ja lubad brauseril oma asukoha määrata. Hiljem
+            mäletatakse viimast õnnestunud asukohta selles seadmes.
         </div>
 
-        <div
-            v-if="canRequestBrowserLocation"
-            class="mt-3 px-4 pb-1"
-        >
+        <div v-if="canRequestBrowserLocation" class="mt-3 px-4 pb-1">
             <button
                 type="button"
                 class="text-xs font-medium text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary disabled:cursor-wait disabled:opacity-60"

@@ -10,6 +10,7 @@ class Plant extends Model
     protected $fillable = [
         'user_id',
         'category_id',
+        'seed_id',
         'bed_id',
         'position_in_bed',
         'name',
@@ -41,6 +42,11 @@ class Plant extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function seed(): BelongsTo
+    {
+        return $this->belongsTo(Seed::class);
     }
 
     public function bed(): BelongsTo

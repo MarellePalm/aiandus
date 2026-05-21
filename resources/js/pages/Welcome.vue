@@ -2,8 +2,7 @@
 import { Head, Link } from '@inertiajs/vue3';
 
 /** Ühtne kaardi taust (hele: secondary→card; tume: tokenid) */
-const cardTone =
-    'from-secondary to-card dark:from-white/5 dark:to-card';
+const cardTone = 'from-secondary to-card dark:from-white/5 dark:to-card';
 
 const quickItems = [
     {
@@ -45,17 +44,22 @@ const quickItems = [
     <Head title="Avaleht" />
 
     <div class="min-h-screen bg-background text-foreground">
-        <main class="mx-auto w-full max-w-[1180px] px-4 py-4 sm:px-6 sm:py-5 lg:py-7">
+        <main
+            class="mx-auto w-full max-w-[1180px] px-4 py-4 sm:px-6 sm:py-5 lg:py-7"
+        >
             <section
                 class="overflow-hidden rounded-[24px] border border-border/70 bg-card shadow-xl shadow-black/5 sm:rounded-[32px] dark:shadow-black/40"
             >
-                <div class="grid min-h-[420px] grid-cols-1 lg:min-h-[520px] lg:grid-cols-[47%_53%]">
-                    <div class="relative z-10 flex flex-col justify-center px-5 py-7 sm:px-10 sm:py-9 lg:px-12">
+                <div
+                    class="grid min-h-[420px] grid-cols-1 lg:min-h-[520px] lg:grid-cols-[47%_53%]"
+                >
+                    <div
+                        class="relative z-10 flex flex-col justify-center px-5 py-7 sm:px-10 sm:py-9 lg:px-12"
+                    >
                         <div
-                            class="mb-10 flex items-center gap-2 text-primary dark:text-foreground sm:mb-14 lg:mb-20"
+                            class="mb-10 flex items-center gap-2 text-primary sm:mb-14 lg:mb-20 dark:text-foreground"
                         >
-                            <span
-                                class="material-symbols-outlined text-[23px]"
+                            <span class="material-symbols-outlined text-[23px]"
                                 >potted_plant</span
                             >
                             <span class="text-xl font-bold tracking-tight"
@@ -70,7 +74,7 @@ const quickItems = [
                         </p>
 
                         <h1
-                            class="mt-5 max-w-[430px] text-4xl font-extrabold leading-[1.02] tracking-tight text-foreground sm:mt-6 sm:text-6xl sm:leading-[0.98]"
+                            class="mt-5 max-w-[430px] text-4xl leading-[1.02] font-extrabold tracking-tight text-foreground sm:mt-6 sm:text-6xl sm:leading-[0.98]"
                         >
                             Sinu
                             <span class="text-primary dark:text-foreground"
@@ -97,7 +101,9 @@ const quickItems = [
                         </Link>
                     </div>
 
-                    <div class="relative min-h-[220px] overflow-hidden sm:min-h-[280px] lg:min-h-full">
+                    <div
+                        class="relative min-h-[220px] overflow-hidden sm:min-h-[280px] lg:min-h-full"
+                    >
                         <div
                             class="absolute inset-y-0 -left-16 z-10 hidden w-36 rounded-r-[55%] bg-card lg:block"
                         ></div>
@@ -124,7 +130,7 @@ const quickItems = [
                 </div>
 
                 <section
-                    class="px-5 pb-7 pt-6 sm:px-10 sm:pb-8 sm:pt-7 lg:px-12 lg:pb-12"
+                    class="px-5 pt-6 pb-7 sm:px-10 sm:pt-7 sm:pb-8 lg:px-12 lg:pb-12"
                 >
                     <div
                         class="mt-3 grid grid-cols-2 gap-2.5 sm:mt-6 sm:gap-5 lg:grid-cols-4"
@@ -160,7 +166,7 @@ const quickItems = [
                             </p>
 
                             <div
-                                class="absolute bottom-2.5 right-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-card text-primary shadow-md shadow-black/5 transition group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0 sm:bottom-5 sm:right-5 sm:h-10 sm:w-10 dark:bg-muted dark:text-foreground dark:shadow-black/30"
+                                class="absolute right-2.5 bottom-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-card text-primary shadow-md shadow-black/5 transition group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0 sm:right-5 sm:bottom-5 sm:h-10 sm:w-10 dark:bg-muted dark:text-foreground dark:shadow-black/30"
                             >
                                 <span
                                     class="material-symbols-outlined text-[14px] sm:text-[18px]"

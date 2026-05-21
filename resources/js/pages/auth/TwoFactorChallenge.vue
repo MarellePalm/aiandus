@@ -31,8 +31,7 @@ const authConfigContent = computed<AuthConfigContent>(() => {
 
     return {
         title: 'Autentimiskood',
-        description:
-            'Sisesta autentimisrakenduse poolt kuvatud kood.',
+        description: 'Sisesta autentimisrakenduse poolt kuvatud kood.',
         toggleText: 'logi sisse taastamiskoodiga',
     };
 });

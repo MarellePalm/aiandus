@@ -7,7 +7,6 @@ use App\Http\Controllers\CalendarNoteController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GardenMapController;
-use App\Http\Controllers\GardenObjectController;
 use App\Http\Controllers\GardenPlanController;
 use App\Http\Controllers\PlantController;
 use App\Http\Controllers\SeedCategoryController;
@@ -51,16 +50,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->whereNull('bed_id')
             ->orderBy('name')
             ->with('category:id,name,slug')
-            ->get(['id', 'name', 'image_url', 'category_id', 'quantity'])
+            ->get(['id', 'name', 'image_url', 'category_id', 'quantity', 'seed_id'])
             ->map(fn ($p) => [
                 'id' => $p->id,
                 'name' => $p->name,
                 'image_url' => $p->image_url,
                 'quantity' => (int) $p->quantity,
+                'seed_id' => $p->seed_id,
                 'category' => $p->category ? ['name' => $p->category->name, 'slug' => $p->category->slug] : null,
             ]);
 
-        $bed->load(['plants' => fn ($q) => $q->select('id', 'name', 'image_url', 'bed_id', 'position_in_bed', 'quantity')]);
+        $bed->load(['plants' => fn ($q) => $q->select('id', 'name', 'image_url', 'bed_id', 'position_in_bed', 'quantity', 'seed_id')]);
 
         $bedNotes = CalendarNote::query()
             ->where('user_id', $request->user()->id)
@@ -96,6 +96,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                     'image_url' => $p->image_url,
                     'position_in_bed' => $p->position_in_bed,
                     'quantity' => (int) $p->quantity,
+                    'seed_id' => $p->seed_id,
                 ]),
             ],
             'plantsWithoutBed' => $plantsWithoutBed,
@@ -134,11 +135,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('beds/{bed}/favorite', [BedController::class, 'toggleFavorite'])
         ->name('beds.favorite');
     Route::delete('beds/{bed}', [BedController::class, 'destroy'])->name('beds.destroy');
-    Route::post('garden-objects', [GardenObjectController::class, 'store'])->name('garden-objects.store');
-    Route::put('garden-objects/{gardenObject}', [GardenObjectController::class, 'update'])->name('garden-objects.update');
-    Route::post('garden-objects/{gardenObject}/duplicate', [GardenObjectController::class, 'duplicate'])->name('garden-objects.duplicate');
-    Route::post('garden-objects/{gardenObject}/rotate', [GardenObjectController::class, 'rotate'])->name('garden-objects.rotate');
-    Route::delete('garden-objects/{gardenObject}', [GardenObjectController::class, 'destroy'])->name('garden-objects.destroy');
     Route::post('garden-plans', [GardenPlanController::class, 'store'])->name('garden-plans.store');
     Route::put('garden-plans/{gardenPlan}', [GardenPlanController::class, 'update'])->name('garden-plans.update');
     Route::delete('garden-plans/{gardenPlan}', [GardenPlanController::class, 'destroy'])->name('garden-plans.destroy');
@@ -149,6 +145,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('seeds.category');
     Route::patch('seeds/{seed}/favorite', [SeedController::class, 'toggleFavorite'])
         ->name('seeds.favorite');
+    Route::post('seeds/{seed}/plant-from-seed', [SeedController::class, 'plantFromSeed'])
+        ->name('seeds.plant-from-seed');
+    Route::post('seeds/{seed}/mark-germinated', [SeedController::class, 'markGerminated'])
+        ->name('seeds.mark-germinated');
     Route::post('/seeds/categories', [SeedCategoryController::class, 'store'])
         ->name('seeds.categories.store');
     Route::patch('/seeds/categories/{category}', [SeedCategoryController::class, 'update'])

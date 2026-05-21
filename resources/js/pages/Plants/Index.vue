@@ -295,9 +295,7 @@ const resetToAll = () => {
                                     >
                                         {{ cat.count }} Sorti
                                     </span>
-                                    <h3
-                                        class="text-lg font-bold text-white"
-                                    >
+                                    <h3 class="text-lg font-bold text-white">
                                         {{ cat.name }}
                                     </h3>
                                 </div>

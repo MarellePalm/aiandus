@@ -183,7 +183,6 @@ function clear() {
                             Otsi
                         </button>
                     </div>
-
                 </div>
             </div>
         </div>

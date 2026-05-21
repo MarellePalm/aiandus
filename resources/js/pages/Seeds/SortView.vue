@@ -238,7 +238,7 @@ const confirmDeleteSeed = () => {
 const openSeedEdit = (seed: SeedItem) => {
     const yearNumber =
         typeof seed.year === 'string'
-            ? (Number.parseInt(seed.year, 10) || null)
+            ? Number.parseInt(seed.year, 10) || null
             : (seed.year ?? null);
 
     editingSeed.value = {
@@ -380,7 +380,8 @@ onBeforeUnmount(() => {
                                 class="mt-4 hidden items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 lg:inline-flex"
                                 @click="showAddSeed = true"
                             >
-                                <span class="material-symbols-outlined text-[18px]"
+                                <span
+                                    class="material-symbols-outlined text-[18px]"
                                     >add</span
                                 >
                                 Lisa uus varu
@@ -436,7 +437,11 @@ onBeforeUnmount(() => {
                                                 class="mt-1 text-sm text-muted-foreground"
                                             >
                                                 Aegub:
-                                                {{ formatDateEE(seed.expires_at) }}
+                                                {{
+                                                    formatDateEE(
+                                                        seed.expires_at,
+                                                    )
+                                                }}
                                             </p>
                                         </div>
 
@@ -495,7 +500,10 @@ onBeforeUnmount(() => {
                                                 </button>
 
                                                 <div
-                                                    v-if="menuOpenForId === seed.id"
+                                                    v-if="
+                                                        menuOpenForId ===
+                                                        seed.id
+                                                    "
                                                     class="absolute top-12 right-0 z-20 w-48 overflow-hidden rounded-xl border border-primary/10 bg-card shadow-lg"
                                                     @click.stop
                                                 >
@@ -512,8 +520,11 @@ onBeforeUnmount(() => {
                                                         type="button"
                                                         class="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-500/10"
                                                         @click.stop="
-                                                            openDeleteSeed(seed);
-                                                            menuOpenForId = null;
+                                                            openDeleteSeed(
+                                                                seed,
+                                                            );
+                                                            menuOpenForId =
+                                                                null;
                                                         "
                                                     >
                                                         Kustuta
@@ -538,7 +549,9 @@ onBeforeUnmount(() => {
                                         role="button"
                                         tabindex="0"
                                         @click="openSeed(seed.id)"
-                                        @keydown.enter.prevent="openSeed(seed.id)"
+                                        @keydown.enter.prevent="
+                                            openSeed(seed.id)
+                                        "
                                     >
                                         <div class="flex items-start gap-3">
                                             <div

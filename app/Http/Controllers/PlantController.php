@@ -312,7 +312,7 @@ class PlantController extends Controller
             'bed_id' => ['nullable', 'exists:beds,id'],
             'position_in_bed' => ['nullable', 'string', 'max:120'],
             'image' => ['nullable', 'image', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
-            'quantity' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'quantity' => ['nullable', 'integer', 'min:0', 'max:100'],
         ]);
 
         if (! empty($data['bed_id'])) {
@@ -340,13 +340,19 @@ class PlantController extends Controller
                 && array_key_exists('position_in_bed', $data)
                 && ($data['position_in_bed'] ?? '') !== '';
 
-            $prevQty = max(1, (int) $locked->quantity);
+            $prevQty = max(0, (int) $locked->quantity);
 
             $assignQty = $prevQty;
 
             if ($assigningToBedFromStock) {
-                $requested = array_key_exists('quantity', $data) ? (int) $data['quantity'] : $prevQty;
-                $assignQty = max(1, min($requested, $prevQty));
+                if ($prevQty === 0) {
+                    $assignQty = array_key_exists('quantity', $data)
+                        ? max(0, (int) $data['quantity'])
+                        : 0;
+                } else {
+                    $requested = array_key_exists('quantity', $data) ? (int) $data['quantity'] : $prevQty;
+                    $assignQty = max(1, min($requested, $prevQty));
+                }
                 $data['quantity'] = $assignQty;
             }
 
@@ -379,7 +385,7 @@ class PlantController extends Controller
                 $payload['position_in_bed'] = $data['position_in_bed'];
             }
 
-            if ($assigningToBedFromStock && $assignQty < $prevQty) {
+            if ($assigningToBedFromStock && $prevQty > 0 && $assignQty < $prevQty) {
                 $remainder = $prevQty - $assignQty;
                 $stockPlant = $locked->replicate(['bed_id', 'position_in_bed', 'quantity']);
                 $stockPlant->bed_id = null;

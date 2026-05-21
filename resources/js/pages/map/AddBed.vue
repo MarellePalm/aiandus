@@ -91,7 +91,8 @@ const designBrushes: Array<{
         id: 'plantable',
         label: 'Peenraruut',
         icon: 'psychiatry',
-        description: 'Siia saab taime istutada.',
+        description:
+            'Klõps aktiivsel ruudul lülitab selle välja; teine klõps taastab.',
     },
     {
         id: 'walkway',
@@ -240,6 +241,11 @@ const walkwayCellCount = computed(
 const emptyDesignCellCount = computed(
     () => cells.value.filter((cell) => cell.kind === 'empty').length,
 );
+const inactivePlantableCellCount = computed(
+    () =>
+        cells.value.filter((cell) => cell.kind === 'plantable' && !cell.active)
+            .length,
+);
 const selectedCellLabel = computed(() =>
     selectedCell.value
         ? `Veerg ${displayColumnNumber(selectedCell.value.x)}, rida ${displayRowNumber(selectedCell.value.y)}`
@@ -348,6 +354,11 @@ function addBedEditorCellClasses(x: number, y: number): string[] {
         classes.push('bed-cell--editor-selected');
         return classes;
     }
+    if (cell.kind === 'plantable' && !cell.active) {
+        classes.push('bed-cell--inactive');
+        classes.push('hover:border-primary/25');
+        return classes;
+    }
     if (cell.kind === 'walkway') {
         classes.push('bed-cell--walkway');
         classes.push('hover:-translate-y-0.5', 'hover:shadow-md');
@@ -383,12 +394,14 @@ function cellIcon(cell: BedCell): string {
     if (cell.plants.length) return 'eco';
     if (cell.kind === 'walkway') return 'texture';
     if (cell.kind === 'empty') return 'crop_free';
+    if (!cell.active) return 'crop_square';
     return 'grid_view';
 }
 
 function cellKindLabel(cell: BedCell): string {
     if (cell.kind === 'walkway') return 'tee või kivi';
     if (cell.kind === 'empty') return 'tühi ala';
+    if (!cell.active) return 'kasutamata ruut';
     return 'peenraruut';
 }
 
@@ -599,7 +612,40 @@ function setCellKindAt(x: number, y: number, kind: DesignBrush) {
     form.clearErrors('cells');
 }
 
+function togglePlantableCell(cell: BedCell) {
+    if (cell.plants.length) {
+        form.setError(
+            'cells',
+            'Taimedega ruutu ei saa peenrast välja lülitada.',
+        );
+        selectCell(cell);
+        return;
+    }
+
+    if (cell.kind === 'plantable' && cell.active) {
+        if (activeCells.value.length <= 1) {
+            form.setError('cells', 'Peenras peab olema vähemalt üks ruut.');
+            selectCell(cell);
+            return;
+        }
+
+        cells.value = cells.value.map((item) =>
+            item.id === cell.id ? { ...item, active: false } : item,
+        );
+        selectCell(cell);
+        form.clearErrors('cells');
+        return;
+    }
+
+    setCellKindAt(cell.x, cell.y, 'plantable');
+}
+
 function paintCell(cell: BedCell) {
+    if (designBrush.value === 'plantable') {
+        togglePlantableCell(cell);
+        return;
+    }
+
     setCellKindAt(cell.x, cell.y, designBrush.value);
 }
 
@@ -713,7 +759,7 @@ function syncCellsToForm() {
             const cell = getCellAt(x, y);
             if (!cell) return 0;
             if (cell.kind === 'walkway') return -1;
-            if (cell.kind === 'empty') return 0;
+            if (cell.kind === 'empty' || !cell.active) return 0;
             return 1;
         }),
     );
@@ -974,8 +1020,8 @@ watch(selectedCellId, async () => {
                             <p
                                 class="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground"
                             >
-                                Vali pintsel ja puuduta ruute: peenraruut,
-                                kivitee või tühi ala.
+                                Vali pintsel ja puuduta ruute. Peenraruudul
+                                klõps lülitab ruudu sisse või välja.
                             </p>
                         </div>
                         <div
@@ -1017,6 +1063,10 @@ watch(selectedCellId, async () => {
                         >
                         <span class="legend-pill legend-pill--walkway"
                             >{{ walkwayCellCount }} teed/kivi</span
+                        >
+                        <span class="legend-pill legend-pill--inactive"
+                            >{{ inactivePlantableCellCount }} välja
+                            lülitatud</span
                         >
                         <span class="legend-pill legend-pill--empty"
                             >{{ emptyDesignCellCount }} tühja ala</span
@@ -1967,6 +2017,17 @@ watch(selectedCellId, async () => {
         rgb(168, 162, 158);
 }
 
+.legend-pill--inactive {
+    color: rgb(100, 116, 139);
+    border-color: rgba(148, 163, 184, 0.28);
+    background: rgba(248, 250, 252, 0.45);
+}
+
+.legend-pill--inactive::before {
+    border: 1px dashed rgba(148, 163, 184, 0.45);
+    background: transparent;
+}
+
 .legend-pill--empty {
     color: rgb(100, 116, 139);
     border-color: rgba(148, 163, 184, 0.28);
@@ -2036,6 +2097,13 @@ watch(selectedCellId, async () => {
     box-shadow:
         0 10px 22px rgba(34, 197, 94, 0.22),
         inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.bed-cell--inactive {
+    border-color: rgba(148, 163, 184, 0.22);
+    color: rgba(100, 116, 139, 0.45);
+    background: transparent;
+    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.18);
 }
 
 .bed-cell--walkway {

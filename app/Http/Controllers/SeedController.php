@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ResolvesPlantCategoryFromSeed;
+use App\Models\Bed;
 use App\Models\Category;
+use App\Models\Plant;
 use App\Models\Seed;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -11,6 +15,8 @@ use Inertia\Inertia;
 
 class SeedController extends Controller
 {
+    use ResolvesPlantCategoryFromSeed;
+
     public function index(Request $request)
     {
         $user = $request->user();
@@ -172,7 +178,39 @@ class SeedController extends Controller
     {
         abort_unless($seed->user_id === $request->user()->id, 403);
 
+        $user = $request->user();
+
+        $beds = Bed::query()
+            ->where('user_id', $user->id)
+            ->orderBy('name')
+            ->get(['id', 'name', 'garden_plan_id']);
+
+        $bedsUsed = Plant::query()
+            ->where('seed_id', $seed->id)
+            ->where('user_id', $user->id)
+            ->whereNotNull('bed_id')
+            ->with('bed:id,name,garden_plan_id')
+            ->get()
+            ->filter(fn (Plant $plant) => $plant->bed !== null)
+            ->unique(fn (Plant $plant) => $plant->bed_id)
+            ->map(fn (Plant $plant) => [
+                'bed_id' => $plant->bed_id,
+                'bed_name' => $plant->bed->name,
+                'garden_plan_id' => $plant->bed->garden_plan_id,
+            ])
+            ->values()
+            ->all();
+
+        $hasPendingGermination = Plant::query()
+            ->where('seed_id', $seed->id)
+            ->where('user_id', $user->id)
+            ->where('quantity', 0)
+            ->exists();
+
         return Inertia::render('Seeds/Show', [
+            'beds' => $beds,
+            'bedsUsed' => $bedsUsed,
+            'hasPendingGermination' => $hasPendingGermination,
             'seed' => [
                 'id' => $seed->id,
                 'name' => $seed->name,
@@ -186,6 +224,65 @@ class SeedController extends Controller
                 'is_favorite' => (bool) $seed->is_favorite,
             ],
         ]);
+    }
+
+    public function plantFromSeed(Request $request, Seed $seed): RedirectResponse
+    {
+        abort_unless($seed->user_id === $request->user()->id, 403);
+
+        $data = $request->validate([
+            'bed_id' => [
+                'required',
+                'integer',
+                Rule::exists('beds', 'id')->where('user_id', $request->user()->id),
+            ],
+        ]);
+
+        $category = $this->plantCategoryFromSeed($seed, $request->user()->id);
+
+        $plant = Plant::create([
+            'user_id' => $request->user()->id,
+            'category_id' => $category?->id,
+            'seed_id' => $seed->id,
+            'name' => $seed->name,
+            'subtitle' => $seed->name,
+            'planted_at' => now()->toDateString(),
+            'image_url' => $seed->image_url,
+            'quantity' => 0,
+        ]);
+
+        return redirect()
+            ->route('beds.show', ['bed' => $data['bed_id']])
+            ->with('success', 'Taim seemnepaketist lisatud. Vali peenral ruut.');
+    }
+
+    public function markGerminated(Request $request, Seed $seed): RedirectResponse
+    {
+        abort_unless($seed->user_id === $request->user()->id, 403);
+
+        $data = $request->validate([
+            'germinated_count' => ['required', 'integer', 'min:0', 'max:10000'],
+        ]);
+
+        $plants = Plant::query()
+            ->where('seed_id', $seed->id)
+            ->where('user_id', $request->user()->id)
+            ->get();
+
+        foreach ($plants as $plant) {
+            $plant->update(['quantity' => $data['germinated_count']]);
+        }
+
+        $dateLabel = now()->format('d.m.Y');
+        $usageLine = "Kasutatud {$dateLabel}, {$data['germinated_count']} tõusis";
+        $existingNotes = trim((string) ($seed->notes ?? ''));
+        $seed->update([
+            'notes' => $existingNotes !== ''
+                ? "{$existingNotes}\n{$usageLine}"
+                : $usageLine,
+        ]);
+
+        return back()->with('success', 'Idanemine salvestatud.');
     }
 
     public function update(Request $request, Seed $seed)

@@ -18,17 +18,35 @@ const showPasswordConfirmation = ref(false);
 <template>
     <Head title="Registreerimine" />
 
-    <div class="hidden min-h-screen bg-background p-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(430px,520px)] lg:gap-10">
-        <section class="relative overflow-hidden rounded-3xl border border-border bg-card">
-            <img src="/welcome-garden.png" alt="Aed" class="absolute inset-0 h-full w-full object-cover" />
-            <div class="absolute inset-0 bg-gradient-to-r from-background/95 via-background/85 to-transparent"></div>
-            <div class="relative z-10 flex h-full flex-col justify-between p-10">
+    <div
+        class="hidden min-h-screen bg-background p-6 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(430px,520px)] lg:gap-10"
+    >
+        <section
+            class="relative overflow-hidden rounded-3xl border border-border bg-card"
+        >
+            <img
+                src="/welcome-garden.png"
+                alt="Aed"
+                class="absolute inset-0 h-full w-full object-cover"
+            />
+            <div
+                class="absolute inset-0 bg-gradient-to-r from-background/95 via-background/85 to-transparent"
+            ></div>
+            <div
+                class="relative z-10 flex h-full flex-col justify-between p-10"
+            >
                 <div class="flex items-center gap-2 text-primary">
-                    <span class="material-symbols-outlined text-[22px]">potted_plant</span>
-                    <span class="text-2xl font-bold tracking-tight">Aiapäevik</span>
+                    <span class="material-symbols-outlined text-[22px]"
+                        >potted_plant</span
+                    >
+                    <span class="text-2xl font-bold tracking-tight"
+                        >Aiapäevik</span
+                    >
                 </div>
                 <div class="max-w-sm">
-                    <h1 class="text-5xl leading-[1.05] font-extrabold tracking-tight text-foreground">
+                    <h1
+                        class="text-5xl leading-[1.05] font-extrabold tracking-tight text-foreground"
+                    >
                         Loo oma
                         <span class="text-primary">aia</span>
                         konto
@@ -41,13 +59,26 @@ const showPasswordConfirmation = ref(false);
         </section>
 
         <section class="flex items-center justify-center">
-            <div class="panel w-full max-w-xl rounded-3xl border border-border bg-card p-8 shadow-sm">
+            <div
+                class="panel w-full max-w-xl rounded-3xl border border-border bg-card p-8 shadow-sm"
+            >
                 <div class="mb-6 text-center">
-                    <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-                        <span class="material-symbols-outlined text-3xl text-primary">potted_plant</span>
+                    <div
+                        class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10"
+                    >
+                        <span
+                            class="material-symbols-outlined text-3xl text-primary"
+                            >potted_plant</span
+                        >
                     </div>
-                    <h2 class="text-4xl font-bold tracking-tight text-foreground">Registreerimine</h2>
-                    <p class="mt-2 text-base text-muted-foreground">Loo oma konto ja alusta aiapäevikuga</p>
+                    <h2
+                        class="text-4xl font-bold tracking-tight text-foreground"
+                    >
+                        Registreerimine
+                    </h2>
+                    <p class="mt-2 text-base text-muted-foreground">
+                        Loo oma konto ja alusta aiapäevikuga
+                    </p>
                 </div>
 
                 <Form
@@ -58,7 +89,10 @@ const showPasswordConfirmation = ref(false);
                 >
                     <div class="flex flex-col gap-2">
                         <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium text-muted-foreground">Nimi</span>
+                            <span
+                                class="text-sm font-medium text-muted-foreground"
+                                >Nimi</span
+                            >
                         </div>
                         <label class="auth-field">
                             <span class="sr-only">Nimi</span>
@@ -79,7 +113,10 @@ const showPasswordConfirmation = ref(false);
 
                     <div class="flex flex-col gap-2">
                         <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium text-muted-foreground">E-post</span>
+                            <span
+                                class="text-sm font-medium text-muted-foreground"
+                                >E-post</span
+                            >
                         </div>
                         <label class="auth-field">
                             <span class="sr-only">E-post</span>
@@ -99,7 +136,10 @@ const showPasswordConfirmation = ref(false);
 
                     <div class="flex flex-col gap-2">
                         <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium text-muted-foreground">Parool</span>
+                            <span
+                                class="text-sm font-medium text-muted-foreground"
+                                >Parool</span
+                            >
                         </div>
                         <label class="auth-field relative">
                             <span class="sr-only">Parool</span>
@@ -118,10 +158,18 @@ const showPasswordConfirmation = ref(false);
                                 class="auth-eye"
                                 @click="showPassword = !showPassword"
                                 tabindex="-1"
-                                :aria-label="showPassword ? 'Peida parool' : 'Näita parooli'"
+                                :aria-label="
+                                    showPassword
+                                        ? 'Peida parool'
+                                        : 'Näita parooli'
+                                "
                             >
                                 <span class="material-symbols-outlined">
-                                    {{ showPassword ? 'visibility_off' : 'visibility' }}
+                                    {{
+                                        showPassword
+                                            ? 'visibility_off'
+                                            : 'visibility'
+                                    }}
                                 </span>
                             </button>
                         </label>
@@ -130,14 +178,21 @@ const showPasswordConfirmation = ref(false);
 
                     <div class="flex flex-col gap-2">
                         <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium text-muted-foreground">Kinnita parool</span>
+                            <span
+                                class="text-sm font-medium text-muted-foreground"
+                                >Kinnita parool</span
+                            >
                         </div>
                         <label class="auth-field relative">
                             <span class="sr-only">Kinnita parool</span>
                             <input
                                 id="password_confirmation-desktop"
                                 name="password_confirmation"
-                                :type="showPasswordConfirmation ? 'text' : 'password'"
+                                :type="
+                                    showPasswordConfirmation
+                                        ? 'text'
+                                        : 'password'
+                                "
                                 required
                                 :tabindex="4"
                                 autocomplete="new-password"
@@ -147,14 +202,23 @@ const showPasswordConfirmation = ref(false);
                             <button
                                 type="button"
                                 class="auth-eye"
-                                @click="showPasswordConfirmation = !showPasswordConfirmation"
+                                @click="
+                                    showPasswordConfirmation =
+                                        !showPasswordConfirmation
+                                "
                                 tabindex="-1"
                                 :aria-label="
-                                    showPasswordConfirmation ? 'Peida parool' : 'Näita parooli'
+                                    showPasswordConfirmation
+                                        ? 'Peida parool'
+                                        : 'Näita parooli'
                                 "
                             >
                                 <span class="material-symbols-outlined">
-                                    {{ showPasswordConfirmation ? 'visibility_off' : 'visibility' }}
+                                    {{
+                                        showPasswordConfirmation
+                                            ? 'visibility_off'
+                                            : 'visibility'
+                                    }}
                                 </span>
                             </button>
                         </label>
@@ -183,7 +247,11 @@ const showPasswordConfirmation = ref(false);
 
                         <p class="text-center text-sm text-muted-foreground">
                             On juba konto?
-                            <TextLink :href="login()" class="auth-link" :tabindex="6">
+                            <TextLink
+                                :href="login()"
+                                class="auth-link"
+                                :tabindex="6"
+                            >
                                 Logi sisse
                             </TextLink>
                         </p>
@@ -210,7 +278,10 @@ const showPasswordConfirmation = ref(false);
                 >
                     <div class="flex flex-col gap-2">
                         <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium text-muted-foreground">Nimi</span>
+                            <span
+                                class="text-sm font-medium text-muted-foreground"
+                                >Nimi</span
+                            >
                         </div>
                         <label class="auth-field">
                             <span class="sr-only">Nimi</span>
@@ -231,7 +302,10 @@ const showPasswordConfirmation = ref(false);
 
                     <div class="flex flex-col gap-2">
                         <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium text-muted-foreground">E-post</span>
+                            <span
+                                class="text-sm font-medium text-muted-foreground"
+                                >E-post</span
+                            >
                         </div>
                         <label class="auth-field">
                             <span class="sr-only">E-post</span>
@@ -251,7 +325,10 @@ const showPasswordConfirmation = ref(false);
 
                     <div class="flex flex-col gap-2">
                         <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium text-muted-foreground">Parool</span>
+                            <span
+                                class="text-sm font-medium text-muted-foreground"
+                                >Parool</span
+                            >
                         </div>
                         <label class="auth-field relative">
                             <span class="sr-only">Parool</span>
@@ -270,10 +347,18 @@ const showPasswordConfirmation = ref(false);
                                 class="auth-eye"
                                 @click="showPassword = !showPassword"
                                 tabindex="-1"
-                                :aria-label="showPassword ? 'Peida parool' : 'Näita parooli'"
+                                :aria-label="
+                                    showPassword
+                                        ? 'Peida parool'
+                                        : 'Näita parooli'
+                                "
                             >
                                 <span class="material-symbols-outlined">
-                                    {{ showPassword ? 'visibility_off' : 'visibility' }}
+                                    {{
+                                        showPassword
+                                            ? 'visibility_off'
+                                            : 'visibility'
+                                    }}
                                 </span>
                             </button>
                         </label>
@@ -282,14 +367,21 @@ const showPasswordConfirmation = ref(false);
 
                     <div class="flex flex-col gap-2">
                         <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium text-muted-foreground">Kinnita parool</span>
+                            <span
+                                class="text-sm font-medium text-muted-foreground"
+                                >Kinnita parool</span
+                            >
                         </div>
                         <label class="auth-field relative">
                             <span class="sr-only">Kinnita parool</span>
                             <input
                                 id="password_confirmation"
                                 name="password_confirmation"
-                                :type="showPasswordConfirmation ? 'text' : 'password'"
+                                :type="
+                                    showPasswordConfirmation
+                                        ? 'text'
+                                        : 'password'
+                                "
                                 required
                                 :tabindex="4"
                                 autocomplete="new-password"
@@ -299,14 +391,23 @@ const showPasswordConfirmation = ref(false);
                             <button
                                 type="button"
                                 class="auth-eye"
-                                @click="showPasswordConfirmation = !showPasswordConfirmation"
+                                @click="
+                                    showPasswordConfirmation =
+                                        !showPasswordConfirmation
+                                "
                                 tabindex="-1"
                                 :aria-label="
-                                    showPasswordConfirmation ? 'Peida parool' : 'Näita parooli'
+                                    showPasswordConfirmation
+                                        ? 'Peida parool'
+                                        : 'Näita parooli'
                                 "
                             >
                                 <span class="material-symbols-outlined">
-                                    {{ showPasswordConfirmation ? 'visibility_off' : 'visibility' }}
+                                    {{
+                                        showPasswordConfirmation
+                                            ? 'visibility_off'
+                                            : 'visibility'
+                                    }}
                                 </span>
                             </button>
                         </label>
@@ -335,7 +436,11 @@ const showPasswordConfirmation = ref(false);
 
                         <p class="text-center text-sm text-muted-foreground">
                             On juba konto?
-                            <TextLink :href="login()" class="auth-link" :tabindex="6">
+                            <TextLink
+                                :href="login()"
+                                class="auth-link"
+                                :tabindex="6"
+                            >
                                 Logi sisse
                             </TextLink>
                         </p>

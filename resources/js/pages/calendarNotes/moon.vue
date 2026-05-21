@@ -81,7 +81,9 @@ const stars = [
                 }"
             />
 
-            <div class="relative flex items-center gap-4 px-4 py-3 sm:px-5 sm:py-4">
+            <div
+                class="relative flex items-center gap-4 px-4 py-3 sm:px-5 sm:py-4"
+            >
                 <div class="moon-disc-wrap relative shrink-0">
                     <span class="moon-disc-glow" aria-hidden="true" />
                     <div class="moon-disc-float relative">
@@ -118,7 +120,7 @@ const stars = [
                     class="flex items-center justify-between text-[10px] font-medium tracking-[0.16em] text-white/55 uppercase"
                 >
                     <span>Kuutsükkel</span>
-                    <span class="tabular-nums text-white/75">
+                    <span class="text-white/75 tabular-nums">
                         {{ ageDaysLabel }}
                     </span>
                 </div>

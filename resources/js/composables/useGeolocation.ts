@@ -51,9 +51,7 @@ export function useGeolocation(
     defaultCoords: Coords = { latitude: 59.437, longitude: 24.7536 },
 ) {
     const fromStorage = readStoredCoords();
-    const coords = ref<Coords>(
-        fromStorage ?? { ...defaultCoords },
-    );
+    const coords = ref<Coords>(fromStorage ?? { ...defaultCoords });
     /** True, kui laadisime koordinaadid localStorage’ist (kasutaja varem nuppu vajutanud). */
     const restoredFromStorage = ref(fromStorage !== null);
     const loading = ref(false);

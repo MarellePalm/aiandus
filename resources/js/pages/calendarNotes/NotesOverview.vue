@@ -269,12 +269,7 @@ watch(query, () => {
 
 <template>
     <div class="page page-with-bottomnav">
-        <Head title="Koondvaade">
-            <link
-                href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-                rel="stylesheet"
-            />
-        </Head>
+        <Head title="Koondvaade" />
 
         <div
             class="font-display min-h-screen bg-background text-foreground antialiased"
@@ -413,10 +408,14 @@ watch(query, () => {
                                     role="button"
                                     tabindex="0"
                                     @click="
-                                        router.visit(overviewNoteShowUrl(note.id))
+                                        router.visit(
+                                            overviewNoteShowUrl(note.id),
+                                        )
                                     "
                                     @keydown.enter="
-                                        router.visit(overviewNoteShowUrl(note.id))
+                                        router.visit(
+                                            overviewNoteShowUrl(note.id),
+                                        )
                                     "
                                 >
                                     <span
