@@ -916,6 +916,8 @@ function onGardenPlanSelect(event: Event) {
     router.visit(`/map/${id}`);
 }
 
+
+
 function openCreateGardenPlanModal() {
     createMenuOpen.value = false;
     resetCreateGardenPlanModalState();
