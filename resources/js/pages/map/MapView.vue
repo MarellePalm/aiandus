@@ -471,9 +471,6 @@ function openCreateBed() {
     );
 }
 
-function onFloatingPlusClick() {
-    createMenuOpen.value = !createMenuOpen.value;
-}
 
 function openCreateGardenPlanModal() {
     createMenuOpen.value = false;
