@@ -460,16 +460,6 @@ function onGardenPlanSelect(event: Event) {
     router.visit(`/map/${id}`);
 }
 
-function openCreateBed() {
-    createMenuOpen.value = false;
-    isLayoutEditing.value = true;
-    nextTick(() =>
-        plannerViewport.value?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-        }),
-    );
-}
 
 
 function openCreateGardenPlanModal() {
