@@ -10,16 +10,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Unlock stale deploy lock
-        uses: deployphp/action@v1
-        continue-on-error: true
-        with:
-          deployer-version: "7.5.12"
-          dep: deploy:unlock stage
-          private-key: ${{ secrets.PRIVATE_KEY }}
-          known-hosts: |
-            ta24palm.itmajakas.ee ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDRuoPzg4CHDx1NxAXEH5BDxUuBdkrTdOLGAiG61Dqko4GCmLjN9jgq37yobnjHHWkkNGTfH0HB5jdxjNFHfnwwPwaS1qiumvc6noPwAbvrWTVpO+AAL32wY8aXnJSLm/Xgj4ZzKtcV9Lmq7pr5Te+nH9tt69Bf7E9pD2HvCqoHA7LgK1OJEOakxNNFdY4sxuWH9TSqXLNmMkumbivHK2ExI1zOxI5VtlhNl73amzZoJ5pO7H6p7Xg0JgUGO3M4dSgWV01hoqNzkRdoX09+WbkVIz8DxOR+NYsmrga3ke5lHvTYjKStQ3E4EqKAqDPfjSrBaLohR07lMu9iLoPsoW0m4vrb/M9zvBWYqNKR6iEpmtTKuYEqVeo9CYaQGSogCQEjw/394BEmW6tFDt/wjJwqLRxK14bD3djIptXhk2tkMR4YHo2cpn1Yh3NnlW6TaxyOaQOwOqAOV9nMLNs8EEObalRbhUuEb1EQkP53nZ+ikA3UN9XHCFbmcO6oBRsqiRs=
-            ta24palm.itmajakas.ee ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIApdOwYghRP94sIs+/3esOap0qZ0sea/AFdOVQIG/H6O
       - name: Deploy
         uses: deployphp/action@v1
         with:
