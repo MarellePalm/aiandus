@@ -916,7 +916,20 @@ function onGardenPlanSelect(event: Event) {
     router.visit(`/map/${id}`);
 }
 
+function openCreateBed() {
+    createMenuOpen.value = false;
+    isLayoutEditing.value = true;
+    nextTick(() =>
+        plannerViewport.value?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+        }),
+    );
+}
 
+function onFloatingPlusClick() {
+    createMenuOpen.value = !createMenuOpen.value;
+}
 
 function openCreateGardenPlanModal() {
     createMenuOpen.value = false;
@@ -2798,10 +2811,7 @@ function clampUserZoom(value: number): number {
         );
     }
 
-    return Math.min(
-        MAX_ZOOM,
-        Math.max(fitZoom, Number(value.toFixed(3))),
-    );
+    return Math.min(MAX_ZOOM, Math.max(fitZoom, Number(value.toFixed(3))));
 }
 
 function setZoomAtViewportPoint(
