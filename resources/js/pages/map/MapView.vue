@@ -212,7 +212,7 @@ const GARDEN_GRID_CELL_CM = 30;
 /** Ortofoto peenra kuva: ikoon → ääris → ruudustik (sharpenFactor = zoom / fitZoom). */
 const ORTOPHOTO_BED_LOD_OUTLINE_SHARPEN = 1.2;
 const ORTOPHOTO_BED_LOD_GRID_SHARPEN = 2;
-const MAX_ORTOPHOTO_NATIVE_ZOOM = 18;
+const MAX_ORTOPHOTO_NATIVE_ZOOM = 20;
 /** Shape mask grid cell size on the plan (10 m × 10 m). */
 const GARDEN_SHAPE_CELL_CM = 1000;
 const MIN_ZOOM = 0.1;
@@ -1073,12 +1073,7 @@ function refreshPlannerOrtophoto() {
 }
 
 function plannerZoomStepDelta(): number {
-    if (usesOrtophotoSharpZoom.value) {
-        const fit = fitGardenZoom.value;
-        return Math.max(0.04, fit * 0.3);
-    }
-
-    return ZOOM_STEP;
+    return 0.05;
 }
 
 function wheelZoomDelta(event: WheelEvent): number {
@@ -1434,9 +1429,10 @@ function getPlannerCanvasSize(zoomLevel = zoom.value): {
     const base = gardenSurfaceSize.value;
 
     if (usesOrtophotoSharpZoom.value) {
+        const scale = plannerVisualScale(zoomLevel);
         return {
-            width: base.width * zoomLevel,
-            height: base.height * zoomLevel,
+            width: base.width * scale,
+            height: base.height * scale,
         };
     }
 
@@ -2794,9 +2790,17 @@ function getFitGardenZoom(): number {
 }
 
 function clampUserZoom(value: number): number {
+    const fitZoom = getFitGardenZoom();
+    if (usesOrtophotoSharpZoom.value) {
+        return Math.min(
+            fitZoom * 4,
+            Math.max(fitZoom, Number(value.toFixed(3))),
+        );
+    }
+
     return Math.min(
         MAX_ZOOM,
-        Math.max(getFitGardenZoom(), Number(value.toFixed(3))),
+        Math.max(fitZoom, Number(value.toFixed(3))),
     );
 }
 
@@ -2820,7 +2824,9 @@ function setZoomAtViewportPoint(
 function getFitGardenPan(fitZoom: number): { x: number; y: number } {
     const vw = viewportSize.value.width;
     const vh = viewportSize.value.height;
-    const visualZoom = usesOrtophotoSharpZoom.value ? zoom.value : fitZoom;
+    const visualZoom = usesOrtophotoSharpZoom.value
+        ? plannerVisualScale()
+        : fitZoom;
     const scaledW = gardenSurfaceWidth.value * visualZoom;
     const scaledH = gardenSurfaceHeight.value * visualZoom;
 
@@ -2903,28 +2909,22 @@ function plannerVisualScale(zoomLevel = zoom.value): number {
         return zoomLevel;
     }
 
-    return zoomLevel;
+    const fitZoom = getFitGardenZoom();
+    return fitZoom > 0.001 ? zoomLevel / fitZoom : 1;
 }
 
-/** Ortofotol skaleeritakse kaart + peenrad ühes kihis (teravus Leaflet sharpZoomFactor). */
 function plannerOrtophotoInnerStyle(): Record<string, string> {
-    if (!usesOrtophotoSharpZoom.value) {
-        return {
-            width: '100%',
-            height: '100%',
-        };
-    }
-
-    return {
-        width: `${gardenSurfaceWidth.value}px`,
-        height: `${gardenSurfaceHeight.value}px`,
-        transform: `scale(${zoom.value})`,
-        transformOrigin: 'top left',
-    };
+    return { width: '100%', height: '100%' };
 }
 
 function plannerContentLayerStyle(): Record<string, string> {
-    return {};
+    if (!usesOrtophotoSharpZoom.value) {
+        return {};
+    }
+    return {
+        transform: `scale(${plannerVisualScale()})`,
+        transformOrigin: 'top left',
+    };
 }
 
 function plannerGardenSurfaceStyle() {

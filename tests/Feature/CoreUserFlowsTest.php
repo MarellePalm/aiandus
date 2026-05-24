@@ -1009,6 +1009,35 @@ test('user can save small balcony-sized garden plan dimensions', function () {
     expect($plan->height)->toBe(150);
 });
 
+test('user can update garden plan with boundary polygon and coordinates', function () {
+    $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
+
+    $boundary = [
+        ['lat' => 58.401, 'lng' => 26.701],
+        ['lat' => 58.402, 'lng' => 26.703],
+        ['lat' => 58.400, 'lng' => 26.704],
+    ];
+
+    $this->actingAs($user)
+        ->put(route('garden-plans.update', $plan), [
+            'name' => 'Ortofoto aed',
+            'width' => 1200,
+            'height' => 800,
+            'center_lat' => 58.401,
+            'center_lng' => 26.702,
+            'boundary_polygon' => $boundary,
+        ])
+        ->assertSessionHas('success', 'Aia mõõdud uuendatud.');
+
+    $plan->refresh();
+    expect($plan->name)->toBe('Ortofoto aed');
+    expect((float) $plan->center_lat)->toBe(58.401);
+    expect((float) $plan->center_lng)->toBe(26.702);
+    expect($plan->boundary_polygon)->toHaveCount(3);
+    expect((float) $plan->boundary_polygon[0]['lat'])->toBe(58.401);
+});
+
 test('garden plan dimensions reject zero width', function () {
     $user = User::factory()->create();
     $plan = makeGardenPlan($user);
