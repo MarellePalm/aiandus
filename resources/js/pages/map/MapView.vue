@@ -747,8 +747,7 @@ const hasGardenCoordinates = computed(
 );
 const canPlaceBedsOnMap = computed(() => hasGardenCoordinates.value);
 const gardenBoundaryDrawReady = computed(
-    () =>
-        gardenPolygonLatLng.value.length >= GARDEN_BOUNDARY_MIN_VERTICES,
+    () => gardenPolygonLatLng.value.length >= GARDEN_BOUNDARY_MIN_VERTICES,
 );
 const gardenManualSetupReady = computed(() => {
     const lat = gardenForm.center_lat;
@@ -1132,10 +1131,7 @@ function clampNewBedPosition(x: number, y: number) {
     return {
         x: Math.max(
             GARDEN_PADDING,
-            Math.min(
-                x,
-                gardenSurfaceWidth.value - size.width - GARDEN_PADDING,
-            ),
+            Math.min(x, gardenSurfaceWidth.value - size.width - GARDEN_PADDING),
         ),
         y: Math.max(
             GARDEN_PADDING,
@@ -1409,8 +1405,7 @@ function wheelZoomDelta(event: WheelEvent): number {
         direction *= 0.2;
     }
 
-    const magnitude =
-        plannerZoomOnePercentDelta() * (event.ctrlKey ? 3 : 1);
+    const magnitude = plannerZoomOnePercentDelta() * (event.ctrlKey ? 3 : 1);
 
     return direction * magnitude;
 }
@@ -1565,6 +1560,11 @@ const filteredBeds = computed(() => {
 
     return list;
 });
+
+function resetPlannerFilters() {
+    searchQuery.value = '';
+    showBedsLayer.value = true;
+}
 
 const mobileListBeds = computed(() => {
     let list = [...filteredBeds.value];
@@ -1807,10 +1807,7 @@ const plannerOrtophotoFocusSpanMeters = computed(() => {
     if (ring && ring.length >= 3) {
         const geo = latLngRingToGardenBounds(ring);
 
-        return ortophotoFocusSpanMeters(
-            geo.widthMeters,
-            geo.heightMeters,
-        );
+        return ortophotoFocusSpanMeters(geo.widthMeters, geo.heightMeters);
     }
 
     return ortophotoFocusSpanMeters(
@@ -2008,9 +2005,7 @@ function bedDimensionsCompactLabel(bed: Bed): string {
 }
 
 function isBedCardVisible(bedId: number): boolean {
-    return (
-        hoveredBedId.value === bedId || activeBedCardId.value === bedId
-    );
+    return hoveredBedId.value === bedId || activeBedCardId.value === bedId;
 }
 
 function bedCardSize(bed: Bed) {
@@ -2184,8 +2179,7 @@ function toggleBedCard(bedId: number) {
         return;
     }
 
-    activeBedCardId.value =
-        activeBedCardId.value === bedId ? null : bedId;
+    activeBedCardId.value = activeBedCardId.value === bedId ? null : bedId;
 }
 
 function togglePlannerBedList() {
@@ -2944,9 +2938,7 @@ function saveGardenPlan(options?: {
     }
 
     if (options?.requireBoundaryPolygon) {
-        if (
-            gardenPolygonLatLng.value.length < GARDEN_BOUNDARY_MIN_VERTICES
-        ) {
+        if (gardenPolygonLatLng.value.length < GARDEN_BOUNDARY_MIN_VERTICES) {
             gardenDimensionsMessage.value = `Joonista piir: märgi ortofotol vähemalt ${GARDEN_BOUNDARY_MIN_VERTICES} nurka.`;
             return;
         }
@@ -3126,14 +3118,14 @@ function saveGardenPlan(options?: {
                                                     v-if="canPlaceBedsOnMap"
                                                 >
                                                     Sinu aia piir on kaardil.
-                                                    Klõpsa kaardil, et
-                                                    paigutada esimene peenar.
+                                                    Klõpsa kaardil, et paigutada
+                                                    esimene peenar.
                                                 </template>
                                                 <template v-else>
-                                                    Vali mõõtmed ortofotolt
-                                                    (4 nurka) või sisesta laius
-                                                    ja sügavus käsitsi — kõik
-                                                    aiad ei ole ristkülikud.
+                                                    Vali mõõtmed ortofotolt (4
+                                                    nurka) või sisesta laius ja
+                                                    sügavus käsitsi — kõik aiad
+                                                    ei ole ristkülikud.
                                                 </template>
                                             </p>
                                         </div>
@@ -3846,10 +3838,9 @@ function saveGardenPlan(options?: {
                                                             >
                                                             <span
                                                                 class="text-xs leading-5 text-muted-foreground"
-                                                                >Joonista piir
-                                                                4 nurga abil —
-                                                                sobib
-                                                                keerukale
+                                                                >Joonista piir 4
+                                                                nurga abil —
+                                                                sobib keerukale
                                                                 kujule.</span
                                                             >
                                                         </button>
@@ -4199,7 +4190,9 @@ function saveGardenPlan(options?: {
                                                     :disabled="
                                                         gardenForm.processing
                                                     "
-                                                    @click="saveGardenPlan"
+                                                    @click="
+                                                        () => saveGardenPlan()
+                                                    "
                                                 >
                                                     Salvesta aed
                                                 </button>
@@ -4253,10 +4246,10 @@ function saveGardenPlan(options?: {
                                     <p
                                         class="mx-auto mt-2 max-w-xl text-center text-sm leading-6 text-muted-foreground"
                                     >
-                                        Vali, kuidas aed kaardile tuleb. Ortofoto
-                                        abil saad piirjoone nelja või enama nurga
-                                        järgi; käsitsi saad sisestada ligikaudsed
-                                        mõõdud ja asukoha.
+                                        Vali, kuidas aed kaardile tuleb.
+                                        Ortofoto abil saad piirjoone nelja või
+                                        enama nurga järgi; käsitsi saad
+                                        sisestada ligikaudsed mõõdud ja asukoha.
                                     </p>
 
                                     <div
@@ -4287,7 +4280,8 @@ function saveGardenPlan(options?: {
                                                 class="text-xs leading-5 text-muted-foreground"
                                                 >Märgi 4 nurka — sobib
                                                 L-kujulistele ja
-                                                ebakorrapärastele aedadele.</span
+                                                ebakorrapärastele
+                                                aedadele.</span
                                             >
                                         </button>
                                         <button
@@ -4411,7 +4405,9 @@ function saveGardenPlan(options?: {
                                                 type="button"
                                                 class="inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-2xl border border-border/70 bg-card/85 px-3 text-sm font-semibold text-foreground transition hover:bg-muted disabled:opacity-60"
                                                 :disabled="geolocationLoading"
-                                                @click="requestGardenGeolocation"
+                                                @click="
+                                                    requestGardenGeolocation
+                                                "
                                             >
                                                 <span
                                                     v-if="geolocationLoading"
@@ -4424,9 +4420,7 @@ function saveGardenPlan(options?: {
                                         </div>
 
                                         <div
-                                            v-if="
-                                                gardenSetupMode === 'manual'
-                                            "
+                                            v-if="gardenSetupMode === 'manual'"
                                             class="grid gap-3 sm:grid-cols-2"
                                         >
                                             <label
@@ -5034,12 +5028,14 @@ function saveGardenPlan(options?: {
                                                                 }"
                                                             />
                                                             <div
-                                                                v-if="isPlacingBed"
+                                                                v-if="
+                                                                    isPlacingBed
+                                                                "
                                                                 class="pointer-events-none absolute top-3 left-1/2 z-30 max-w-[min(92%,20rem)] -translate-x-1/2 rounded-full border border-emerald-600/25 bg-white/92 px-3 py-1.5 text-center text-[11px] font-semibold text-emerald-900 shadow-sm backdrop-blur-sm dark:bg-card/92 dark:text-emerald-50"
                                                             >
                                                                 Kliki kaardile,
-                                                                kuhu soovid peenra
-                                                                paigutada
+                                                                kuhu soovid
+                                                                peenra paigutada
                                                             </div>
 
                                                             <div
@@ -5083,7 +5079,7 @@ function saveGardenPlan(options?: {
                                                                     draggingBedId ===
                                                                     bed.id
                                                                         ? 'z-30 cursor-grabbing'
-                                                                        : 'z-10 hover:z-20 cursor-pointer',
+                                                                        : 'z-10 cursor-pointer hover:z-20',
                                                                 ]"
                                                                 :style="
                                                                     bedPinWrapperStyle(
@@ -5202,7 +5198,8 @@ function saveGardenPlan(options?: {
                                                                                 )
                                                                             "
                                                                         >
-                                                                            Ava peenar
+                                                                            Ava
+                                                                            peenar
                                                                         </button>
                                                                     </div>
                                                                 </div>
@@ -5277,14 +5274,10 @@ function saveGardenPlan(options?: {
                         class="w-full max-w-sm rounded-2xl border border-border/80 bg-card p-4 shadow-xl"
                         @click.stop
                     >
-                        <p
-                            class="text-base font-semibold text-foreground"
-                        >
+                        <p class="text-base font-semibold text-foreground">
                             Uus peenar
                         </p>
-                        <p
-                            class="mt-1 text-sm text-muted-foreground"
-                        >
+                        <p class="mt-1 text-sm text-muted-foreground">
                             Anna peenrale nimi.
                         </p>
                         <label
@@ -5298,12 +5291,10 @@ function saveGardenPlan(options?: {
                             v-model="placeBedName"
                             type="text"
                             maxlength="120"
-                            class="mt-1.5 w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-sm font-medium text-foreground outline-none ring-offset-background focus:border-primary focus:ring-2 focus:ring-primary/20"
+                            class="mt-1.5 w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-sm font-medium text-foreground ring-offset-background outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                             @keydown.enter.prevent="submitPlaceBed"
                         />
-                        <div
-                            class="mt-4 flex flex-wrap justify-end gap-2"
-                        >
+                        <div class="mt-4 flex flex-wrap justify-end gap-2">
                             <button
                                 type="button"
                                 class="rounded-full border border-border/70 px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"

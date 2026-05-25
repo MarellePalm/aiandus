@@ -52,10 +52,7 @@ export function ortophotoFocusSpanMeters(
         ORTOPHOTO_FOCUS_MIN_SPAN_M,
     );
 
-    return Math.min(
-        ORTOPHOTO_FOCUS_MAX_SPAN_M,
-        Math.round(padded * 10) / 10,
-    );
+    return Math.min(ORTOPHOTO_FOCUS_MAX_SPAN_M, Math.round(padded * 10) / 10);
 }
 
 function metersPerDegreeLng(lat: number): number {

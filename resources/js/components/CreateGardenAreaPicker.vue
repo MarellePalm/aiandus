@@ -268,8 +268,7 @@ onBeforeUnmount(() => {
         <p class="mt-1 text-sm leading-6 text-muted-foreground">
             Alusta tühjalt — iga nurk tekib klõpsuga ortofotol (vähemalt
             {{ minVertices }}). Lohista rohelisi täppe täpsustamiseks. Suumi
-            rullikuga või +/-,
-            liiguta kaarti lohistades.
+            rullikuga või +/-, liiguta kaarti lohistades.
         </p>
 
         <div class="mt-2 flex flex-wrap gap-2">
