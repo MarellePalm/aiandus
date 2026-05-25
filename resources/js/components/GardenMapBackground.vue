@@ -33,18 +33,14 @@ const emit = defineEmits<{
     leafletZoomChange: [zoom: number];
 }>();
 
-/** Maa-ameti ortofoto WMTS REST/JPEG (Web Mercator / GMC). */
-const ORTOFOTO_TILE_URL =
-    'https://tiles.maaamet.ee/tm/wmts/1.0.0/foto/default/GMC/{z}/{y}/{x}.jpg';
+const WMS_URL = 'https://kaart.maaamet.ee/wms/alus-geo';
 
-/** Maa-ameti foto GMC kuni tasemeni 18 (üle 18 skaleerib viimast kachi). */
-const MAX_NATIVE_ZOOM = 18;
-/** Üleskaalatud suum täppide paigutamiseks (interaktiivne eelvaade). */
 const MAX_MAP_ZOOM = 22;
 
 const containerRef = ref<HTMLElement | null>(null);
+const isLoading = ref(true);
 let map: L.Map | null = null;
-let tileLayer: L.TileLayer | null = null;
+let tileLayer: L.TileLayer.WMS | null = null;
 let resizeObserver: ResizeObserver | null = null;
 let lastBoundsKey = '';
 let anchorBaseZoom: number | null = null;
@@ -238,16 +234,27 @@ function initMap() {
         wheelPxPerZoomLevel: props.interactive ? 60 : 60,
     });
 
-    tileLayer = L.tileLayer(ORTOFOTO_TILE_URL, {
+    tileLayer = L.tileLayer.wms(WMS_URL, {
+        layers: 'of10000',
+        format: 'image/jpeg',
+        transparent: false,
+        version: '1.1.1',
         maxZoom: MAX_MAP_ZOOM,
-        maxNativeZoom: MAX_NATIVE_ZOOM,
         tileSize: 256,
-        detectRetina: false,
         minZoom: 4,
-        crossOrigin: 'anonymous',
-        keepBuffer: 4,
+        keepBuffer: 2,
     });
     tileLayer.addTo(map);
+
+    map.once('load', () => {
+        isLoading.value = false;
+    });
+    tileLayer.on('loading', () => {
+        isLoading.value = true;
+    });
+    tileLayer.on('load', () => {
+        isLoading.value = false;
+    });
 
     map.on('moveend zoomend', notifyViewChange);
 
@@ -354,6 +361,16 @@ defineExpose({
         :class="interactive ? '' : 'pointer-events-none'"
         aria-hidden="true"
     />
+    <transition name="fade">
+        <div
+            v-if="isLoading"
+            class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
+        >
+            <div
+                class="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white/90 drop-shadow"
+            />
+        </div>
+    </transition>
     <p
         class="pointer-events-none absolute right-2 bottom-1 z-[1] text-[9px] leading-none text-white/80 drop-shadow-sm"
     >
@@ -362,6 +379,15 @@ defineExpose({
 </template>
 
 <style scoped>
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+
 :deep(.leaflet-container) {
     width: 100%;
     height: 100%;

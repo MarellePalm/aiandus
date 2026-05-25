@@ -1,4 +1,4 @@
-<script setup lang="ts">
+'<script setup lang="ts">
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import { useDebounceFn } from '@vueuse/core';
 import {
@@ -18,6 +18,9 @@ import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import GardenMapBackground from '@/components/GardenMapBackground.vue';
 import GardenPlannerBoundaryOverlay from '@/components/GardenPlannerBoundaryOverlay.vue';
+import MapConfirmDialog from '@/components/map/MapConfirmDialog.vue';
+import MapGardenSetupSection from '@/components/map/MapGardenSetupSection.vue';
+import MapPlaceBedDialog from '@/components/map/MapPlaceBedDialog.vue';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -41,6 +44,51 @@ import {
     ortophotoFocusSpanMeters,
 } from '@/lib/gardenAreaSelection';
 import BottomNav from '@/pages/BottomNav.vue';
+import { getInitialFocusedBedId, sortBedsForPlanner } from '@/pages/map/bedPlannerUtils';
+import {
+    CM_TO_PX,
+    DEFAULT_CREATE_GARDEN_HEIGHT_M,
+    DEFAULT_CREATE_GARDEN_WIDTH_M,
+    DEFAULT_NEW_BED_LAYOUT,
+    FIT_VIEW_MIN_ZOOM,
+    FOCUSED_BED_MIN_ZOOM,
+    GARDEN_BOUNDARY_MIN_VERTICES,
+    GARDEN_GRID_CELL_CM,
+    GARDEN_PADDING,
+    GARDEN_SHAPE_CELL_CM,
+    MAX_ZOOM,
+    MIN_BED_VISUAL_SIZE,
+    MIN_PINCH_DISTANCE_PX,
+    MIN_ZOOM,
+    ORTOPHOTO_MAX_ZOOM_FACTOR,
+    ORTOPHOTO_MIN_ZOOM_FACTOR,
+    PAN_CLICK_SUPPRESS_PX,
+    PLANNER_LANDSCAPE_HINT_KEY,
+} from '@/pages/map/constants';
+import {
+    coordinateInputValue,
+    optionalDimensionInputValue,
+    parseCoordinateInput,
+    parseOptionalDimensionInput,
+    roundGardenCoordinate,
+} from '@/pages/map/coordinateInput';
+import { fetchGardenAddressResults, gardenSetupChoiceClass } from '@/pages/map/gardenAddressSearch';
+import {
+    gardenShapeMaskCmFromForm,
+    gardenShapeMaskCols,
+    gardenShapeMaskRows,
+    resizeGardenShapeMask,
+} from '@/pages/map/gardenShapeMask';
+import { computeGardenSurfacePx } from '@/pages/map/gardenSurface';
+import type {
+    Bed,
+    BedListTabKey,
+    DimensionFormErrors,
+    GardenAddressSearchResult,
+    GardenSetupMode,
+    MapViewProps,
+    ViewportPinchState,
+} from '@/pages/map/types';
 import SearchModal from '@/pages/Seeds/SearchModal.vue';
 import type { AppPageProps } from '@/types';
 
@@ -48,99 +96,7 @@ const CreateGardenAreaPicker = defineAsyncComponent(
     () => import('@/components/CreateGardenAreaPicker.vue'),
 );
 
-type PlantInBed = {
-    id: number;
-    name: string;
-    image_url: string | null;
-    position_in_bed: string | null;
-};
-type Bed = {
-    id: number;
-    name: string;
-    location: string | null;
-    image_url?: string | null;
-    is_favorite?: boolean;
-    sort_order?: number;
-    created_at?: string | null;
-    rows: number;
-    columns: number;
-    garden_x: number;
-    garden_y: number;
-    cell_size_cm: number;
-    layout?: number[][] | null;
-    plants: PlantInBed[];
-};
-
-type BedListTabKey = 'all' | 'favorites';
-
-function parseBedCreatedAt(bed: Bed): number {
-    if (!bed.created_at) return 0;
-    const t = new Date(bed.created_at).getTime();
-    return Number.isNaN(t) ? 0 : t;
-}
-
-function sortBedsForPlanner(beds: Bed[], sortKey: string): Bed[] {
-    const list = [...beds];
-    switch (sortKey) {
-        case 'name_desc':
-            return list.sort((a, b) =>
-                (b.name ?? '').localeCompare(a.name ?? '', 'et', {
-                    sensitivity: 'base',
-                }),
-            );
-        case 'created_desc':
-            return list.sort(
-                (a, b) => parseBedCreatedAt(b) - parseBedCreatedAt(a),
-            );
-        case 'created_asc':
-            return list.sort(
-                (a, b) => parseBedCreatedAt(a) - parseBedCreatedAt(b),
-            );
-        case 'name_asc':
-            return list.sort((a, b) =>
-                (a.name ?? '').localeCompare(b.name ?? '', 'et', {
-                    sensitivity: 'base',
-                }),
-            );
-        case 'plan_order':
-        default:
-            return list.sort((a, b) => {
-                const ao = a.sort_order ?? 0;
-                const bo = b.sort_order ?? 0;
-                if (ao !== bo) return ao - bo;
-                return (a.name ?? '').localeCompare(b.name ?? '', 'et', {
-                    sensitivity: 'base',
-                });
-            });
-    }
-}
-type PlantWithoutBed = {
-    id: number;
-    name: string;
-    image_url: string | null;
-    category?: { name: string; slug: string } | null;
-};
-type GardenPlan = {
-    id: number;
-    name: string;
-    width: number;
-    height: number;
-    unit: string;
-    shape_mask: number[][] | null;
-    center_lat: number | null;
-    center_lng: number | null;
-    boundary_polygon: LatLngPoint[] | null;
-};
-type GardenPlanSummary = {
-    id: number;
-    name: string;
-};
-const props = defineProps<{
-    gardenPlans: GardenPlanSummary[];
-    gardenPlan: GardenPlan;
-    beds: Bed[];
-    plantsWithoutBed: PlantWithoutBed[];
-}>();
+const props = defineProps<MapViewProps>();
 
 type MapPageProps = AppPageProps<{
     flash?: {
@@ -150,8 +106,6 @@ type MapPageProps = AppPageProps<{
     };
     errors?: Record<string, string>;
 }>;
-
-type DimensionFormErrors = Record<'width' | 'height', string | undefined>;
 
 const page = usePage<MapPageProps>();
 const breadcrumbs = computed(() => [
@@ -207,56 +161,7 @@ function toggleBedFavorite(bedId: number) {
     );
 }
 
-const GARDEN_PADDING = 24;
-const CM_TO_PX = 0.5;
-const GARDEN_GRID_CELL_CM = 30;
-/** Uus peenar algab ühe ruuduga; kuju täpsustatakse redigeerimises. */
-const DEFAULT_NEW_BED_LAYOUT: number[][] = [[1]];
-/** Shape mask grid cell size on the plan (10 m × 10 m). */
-const GARDEN_SHAPE_CELL_CM = 1000;
-const MIN_ZOOM = 0.1;
-/** "Mahuta sisu" / "Kogu aed" may go lower so large plans actually fit on screen. */
-const FIT_VIEW_MIN_ZOOM = 0.001;
-const MAX_ZOOM = 4.5;
-const FOCUSED_BED_MIN_ZOOM = 0.75;
-/** Ortofoto: 100% = kogu aed vaates; väiksem % = laiem kontekst ümber aia. */
-const ORTOPHOTO_MIN_ZOOM_FACTOR = 0.25;
-const ORTOPHOTO_MAX_ZOOM_FACTOR = 4;
-const MIN_PINCH_DISTANCE_PX = 10;
-const MIN_BED_VISUAL_SIZE = 44;
-const MAX_GARDEN_SURFACE_WIDTH = 3200;
-const MAX_GARDEN_SURFACE_HEIGHT = 2200;
-
-function computeGardenSurfacePx(
-    widthCm: number,
-    heightCm: number,
-): {
-    width: number;
-    height: number;
-} {
-    let width = Math.max(320, Math.round(widthCm * CM_TO_PX));
-    let height = Math.max(240, Math.round(heightCm * CM_TO_PX));
-    const scale = Math.min(
-        1,
-        MAX_GARDEN_SURFACE_WIDTH / width,
-        MAX_GARDEN_SURFACE_HEIGHT / height,
-    );
-
-    if (scale < 1) {
-        width = Math.max(320, Math.round(width * scale));
-        height = Math.max(240, Math.round(height * scale));
-    }
-
-    return { width, height };
-}
-
 const viewportPointerMap = new Map<number, { x: number; y: number }>();
-type ViewportPinchState = {
-    startDistance: number;
-    startZoom: number;
-    gx: number;
-    gy: number;
-};
 
 const localPositions = ref<Record<number, { x: number; y: number }>>({});
 const draggingBedId = ref<number | null>(null);
@@ -273,7 +178,7 @@ const activeBedCardId = ref<number | null>(null);
 const panPointerId = ref<number | null>(null);
 const pinchState = ref<ViewportPinchState | null>(null);
 const hoveredBedId = ref<number | null>(null);
-const initialFocusedBedId = getInitialFocusedBedId();
+const initialFocusedBedId = getInitialFocusedBedId(props.beds);
 const selectedBedId = ref<number | null>(initialFocusedBedId);
 const isLayoutEditing = ref(initialFocusedBedId !== null);
 const plannerBedListOpen = ref(false);
@@ -315,132 +220,15 @@ const isPanning = ref(false);
 const panGestureMoved = ref(false);
 const suppressPlannerSurfaceClick = ref(false);
 const panStart = ref({ x: 0, y: 0, originX: 0, originY: 0 });
-const PAN_CLICK_SUPPRESS_PX = 8;
 let resizeObserver: ResizeObserver | null = null;
 let mobileBedListIntersectionObserver: IntersectionObserver | null = null;
 const plannerLandscapeHintDismissed = ref(false);
-const PLANNER_LANDSCAPE_HINT_KEY = 'planner-landscape-hint-dismissed';
 
 const shouldShowLandscapeHint = computed(
     () =>
         !plannerLandscapeHintDismissed.value &&
         (viewportSize.value.width < 860 || viewportSize.value.height < 560),
 );
-
-function gardenShapeMaskCols(widthCm: number): number {
-    return Math.max(1, Math.ceil(widthCm / GARDEN_SHAPE_CELL_CM));
-}
-
-function gardenShapeMaskRows(heightCm: number): number {
-    return Math.max(1, Math.ceil(heightCm / GARDEN_SHAPE_CELL_CM));
-}
-
-function createDefaultGardenShapeMask(
-    widthCm: number,
-    heightCm: number,
-): number[][] {
-    const rows = gardenShapeMaskRows(heightCm);
-    const cols = gardenShapeMaskCols(widthCm);
-
-    return Array.from({ length: rows }, () =>
-        Array.from({ length: cols }, () => 1),
-    );
-}
-
-function resizeGardenShapeMask(
-    mask: number[][] | null | undefined,
-    widthCm: number,
-    heightCm: number,
-): number[][] {
-    const rows = gardenShapeMaskRows(heightCm);
-    const cols = gardenShapeMaskCols(widthCm);
-    const next = createDefaultGardenShapeMask(widthCm, heightCm);
-
-    if (!mask?.length) {
-        return next;
-    }
-
-    for (let y = 0; y < rows; y += 1) {
-        for (let x = 0; x < cols; x += 1) {
-            if (mask[y]?.[x] !== undefined) {
-                next[y][x] = mask[y][x] === 1 ? 1 : 0;
-            }
-        }
-    }
-
-    return next;
-}
-
-function gardenShapeMaskCmFromForm(widthMeters: number, heightMeters: number) {
-    return {
-        widthCm: Math.max(1, Math.round(Number(widthMeters || 0) * 100)),
-        heightCm: Math.max(1, Math.round(Number(heightMeters || 0) * 100)),
-    };
-}
-
-function parseCoordinateInput(value: string): number | null {
-    const trimmed = value.trim();
-    if (!trimmed) {
-        return null;
-    }
-
-    const parsed = Number(trimmed);
-    return Number.isFinite(parsed) ? parsed : null;
-}
-
-function coordinateInputValue(value: number | null): string {
-    return value == null ? '' : String(value);
-}
-
-function optionalDimensionInputValue(value: number | null | undefined): string {
-    if (value == null || !Number.isFinite(Number(value))) {
-        return '';
-    }
-
-    return String(value);
-}
-
-function parseOptionalDimensionInput(value: string): number | null {
-    const trimmed = value.trim();
-    if (!trimmed) {
-        return null;
-    }
-
-    const parsed = Number(trimmed);
-    return Number.isFinite(parsed) ? parsed : null;
-}
-
-const DEFAULT_CREATE_GARDEN_WIDTH_M = 12;
-const DEFAULT_CREATE_GARDEN_HEIGHT_M = 8;
-
-function roundGardenCoordinate(value: number): number {
-    return Math.round(value * 10_000_000) / 10_000_000;
-}
-
-type InAddressApiItem = {
-    pikkaadress?: string;
-    ipikkaadress?: string;
-    aadresstekst?: string;
-    maakond?: string;
-    viitepunkt_b?: string;
-    viitepunkt_l?: string;
-    adr_id?: string | number;
-    tunnus?: string;
-    g_boundingbox?: string;
-    liikVal?: string;
-};
-
-type GardenAddressSearchResult = {
-    id: string;
-    label: string;
-    county: string;
-    lat: number;
-    lng: number;
-    gBoundingBox: string | null;
-};
-
-const INAADRESS_GAZETTEER_URL =
-    'https://inaadress.maaamet.ee/inaadress/gazetteer';
 
 const addressSearchQuery = ref('');
 const addressSearchResults = ref<GardenAddressSearchResult[]>([]);
@@ -467,10 +255,7 @@ const createMapFrame = ref<ParcelBounds | null>(null);
 const createLocationAnchor = ref<{ lat: number; lng: number } | null>(null);
 const createPolygonLatLng = ref<LatLngPoint[]>([]);
 const createGardenShapeMask = ref<number[][] | null>(null);
-const GARDEN_BOUNDARY_MIN_VERTICES = 4;
-type GardenSetupMode = 'ortophoto' | 'manual';
 const gardenSetupMode = ref<GardenSetupMode | null>(null);
-const gardenSetupSectionRef = ref<HTMLElement | null>(null);
 const gardenMapFrame = ref<ParcelBounds | null>(null);
 const gardenLocationAnchor = ref<{ lat: number; lng: number } | null>(null);
 const gardenPolygonLatLng = ref<LatLngPoint[]>([]);
@@ -481,48 +266,6 @@ const {
     error: geolocationError,
     requestPosition: requestGeolocationPosition,
 } = useGeolocation();
-
-async function fetchGardenAddressResults(
-    query: string,
-): Promise<GardenAddressSearchResult[]> {
-    const url = `${INAADRESS_GAZETTEER_URL}?address=${encodeURIComponent(query)}&results=5&appartment=0`;
-    const response = await fetch(url);
-
-    if (!response.ok) {
-        throw new Error('Address search failed');
-    }
-
-    const data = (await response.json()) as {
-        addresses?: InAddressApiItem[];
-    };
-
-    return (data.addresses ?? [])
-        .map((item, index) => {
-            const lat = Number(item.viitepunkt_b);
-            const lng = Number(item.viitepunkt_l);
-
-            if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-                return null;
-            }
-
-            const label = String(
-                item.pikkaadress ||
-                    item.ipikkaadress ||
-                    item.aadresstekst ||
-                    'Aadress',
-            );
-
-            return {
-                id: `${item.adr_id ?? index}-${item.tunnus ?? 'addr'}`,
-                label,
-                county: String(item.maakond ?? ''),
-                lat,
-                lng,
-                gBoundingBox: item.g_boundingbox?.trim() || null,
-            };
-        })
-        .filter((item): item is GardenAddressSearchResult => item !== null);
-}
 
 const runGardenAddressSearch = useDebounceFn(async (query: string) => {
     const trimmed = query.trim();
@@ -733,6 +476,17 @@ const hasGardenCoordinates = computed(
         Number.isFinite(Number(props.gardenPlan.center_lng)),
 );
 const canPlaceBedsOnMap = computed(() => hasGardenCoordinates.value);
+/** Ortofotolt piirjoone joonistamisel pole vaja käsitsi mõõte, kiirvalikuid ega kuju ruute. */
+const gardenOrtophotoSetupActive = computed(
+    () =>
+        !hasGardenCoordinates.value &&
+        gardenSetupMode.value === 'ortophoto',
+);
+const hideGardenQuickPresets = computed(
+    () =>
+        gardenSetupMode.value === 'ortophoto' ||
+        (props.gardenPlan.boundary_polygon?.length ?? 0) >= 3,
+);
 const gardenBoundaryDrawReady = computed(
     () => gardenPolygonLatLng.value.length >= GARDEN_BOUNDARY_MIN_VERTICES,
 );
@@ -822,16 +576,6 @@ function applyGardenPreset(
     }
 }
 
-const gardenSetupChoiceClass = (active: boolean) => {
-    const base =
-        'flex flex-col gap-1.5 rounded-2xl border p-4 text-left transition';
-    if (active) {
-        return `${base} border-primary/30 bg-primary/5 ring-2 ring-primary/15`;
-    }
-
-    return `${base} border-border/70 bg-card/85 hover:border-primary/20 hover:bg-muted/40`;
-};
-
 function chooseGardenSetupMode(mode: GardenSetupMode) {
     gardenSetupMode.value = mode;
     gardenDimensionsMessage.value = null;
@@ -846,16 +590,6 @@ function chooseGardenSetupMode(mode: GardenSetupMode) {
     }
 
     startGardenBoundaryDraw();
-}
-
-function openGardenSetup() {
-    gardenSetupMode.value = null;
-    nextTick(() =>
-        gardenSetupSectionRef.value?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-        }),
-    );
 }
 
 function startGardenBoundaryDraw() {
@@ -1488,18 +1222,6 @@ onMounted(() => {
         resizeObserver.observe(plannerViewport.value);
     }
 });
-
-function getInitialFocusedBedId(): number | null {
-    if (typeof window === 'undefined') return null;
-
-    const value = new URLSearchParams(window.location.search).get('bed');
-    if (!value) return null;
-
-    const bedId = Number(value);
-    if (!Number.isInteger(bedId)) return null;
-
-    return props.beds.some((bed) => bed.id === bedId) ? bedId : null;
-}
 
 function dismissLandscapeHint() {
     plannerLandscapeHintDismissed.value = true;
@@ -3104,7 +2826,10 @@ function saveGardenPlan(options?: {
                                 </div>
 
                                 <div
-                                    v-if="showOnboardingHint"
+                                    v-if="
+                                        showOnboardingHint &&
+                                        canPlaceBedsOnMap
+                                    "
                                     class="rounded-xl border border-primary/20 bg-primary/5 p-5 shadow-sm"
                                 >
                                     <div
@@ -3114,45 +2839,22 @@ function saveGardenPlan(options?: {
                                             <p
                                                 class="text-base font-semibold text-foreground"
                                             >
-                                                {{
-                                                    canPlaceBedsOnMap
-                                                        ? 'Lisa esimene peenar'
-                                                        : 'Seadista aiaplaan'
-                                                }}
+                                                Lisa esimene peenar
                                             </p>
                                             <p
                                                 class="mt-1 text-sm leading-6 text-muted-foreground"
                                             >
-                                                <template
-                                                    v-if="canPlaceBedsOnMap"
-                                                >
-                                                    Sinu aia piir on kaardil.
-                                                    Klõpsa kaardil, et paigutada
-                                                    esimene peenar.
-                                                </template>
-                                                <template v-else>
-                                                    Vali mõõtmed ortofotolt (4
-                                                    nurka) või sisesta laius ja
-                                                    sügavus käsitsi — kõik aiad
-                                                    ei ole ristkülikud.
-                                                </template>
+                                                Sinu aia piir on kaardil.
+                                                Klõpsa kaardil, et paigutada
+                                                esimene peenar.
                                             </p>
                                         </div>
                                         <button
-                                            v-if="canPlaceBedsOnMap"
                                             type="button"
                                             class="inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
                                             @click="startNewBedOnMap"
                                         >
                                             Lisa peenar kaardile
-                                        </button>
-                                        <button
-                                            v-else
-                                            type="button"
-                                            class="inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
-                                            @click="openGardenSetup"
-                                        >
-                                            Seadista aiaplaan
                                         </button>
                                     </div>
                                 </div>
@@ -3472,7 +3174,10 @@ function saveGardenPlan(options?: {
                                         <div
                                             class="rounded-[1.5rem] border border-border/70 bg-background/75 p-3"
                                         >
-                                            <div class="mb-3">
+                                            <div
+                                                v-if="!hideGardenQuickPresets"
+                                                class="mb-3"
+                                            >
                                                 <p
                                                     class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
                                                 >
@@ -3581,7 +3286,11 @@ function saveGardenPlan(options?: {
                                             </div>
 
                                             <div
-                                                class="grid gap-3 sm:grid-cols-3"
+                                                :class="
+                                                    gardenOrtophotoSetupActive
+                                                        ? 'grid gap-3'
+                                                        : 'grid gap-3 sm:grid-cols-3'
+                                                "
                                             >
                                                 <label
                                                     class="rounded-2xl border border-border/70 bg-card/85 px-3 py-3 text-sm"
@@ -3600,6 +3309,9 @@ function saveGardenPlan(options?: {
                                                     />
                                                 </label>
                                                 <label
+                                                    v-if="
+                                                        !gardenOrtophotoSetupActive
+                                                    "
                                                     class="rounded-2xl border border-border/70 bg-card/85 px-3 py-3 text-sm"
                                                 >
                                                     <span
@@ -3618,6 +3330,9 @@ function saveGardenPlan(options?: {
                                                     />
                                                 </label>
                                                 <label
+                                                    v-if="
+                                                        !gardenOrtophotoSetupActive
+                                                    "
                                                     class="rounded-2xl border border-border/70 bg-card/85 px-3 py-3 text-sm"
                                                 >
                                                     <span
@@ -3646,13 +3361,25 @@ function saveGardenPlan(options?: {
                                                 <p
                                                     class="mt-1 text-sm leading-6 text-muted-foreground"
                                                 >
-                                                    Otsi aadressi või kasuta
-                                                    geolokatsiooni — krundi
-                                                    mõõdud ja koordinaadid
-                                                    täituvad automaatselt
-                                                    (kataster või hoone piir).
-                                                    Vajadusel saad käsitsi
-                                                    muuta.
+                                                    <template
+                                                        v-if="
+                                                            gardenOrtophotoSetupActive
+                                                        "
+                                                    >
+                                                        Otsi aadress või kasuta
+                                                        geolokatsiooni, seejärel
+                                                        märgi aia piir
+                                                        ortofotol.
+                                                    </template>
+                                                    <template v-else>
+                                                        Otsi aadressi või kasuta
+                                                        geolokatsiooni — krundi
+                                                        mõõdud ja koordinaadid
+                                                        täituvad automaatselt
+                                                        (kataster või hoone
+                                                        piir). Vajadusel saad
+                                                        käsitsi muuta.
+                                                    </template>
                                                 </p>
                                                 <div
                                                     class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start"
@@ -3964,6 +3691,9 @@ function saveGardenPlan(options?: {
                                                     </button>
                                                 </div>
                                                 <div
+                                                    v-if="
+                                                        !gardenOrtophotoSetupActive
+                                                    "
                                                     class="mt-3 grid gap-3 sm:grid-cols-2"
                                                 >
                                                     <label
@@ -4069,7 +3799,12 @@ function saveGardenPlan(options?: {
                                                 </p>
                                             </div>
 
-                                            <div class="mt-4">
+                                            <div
+                                                v-if="
+                                                    !gardenOrtophotoSetupActive
+                                                "
+                                                class="mt-4"
+                                            >
                                                 <p
                                                     class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
                                                 >
@@ -4191,6 +3926,9 @@ function saveGardenPlan(options?: {
                                             </div>
 
                                             <div
+                                                v-if="
+                                                    !gardenOrtophotoSetupActive
+                                                "
                                                 class="mt-3 flex flex-wrap items-center gap-2"
                                             >
                                                 <button
@@ -4242,326 +3980,75 @@ function saveGardenPlan(options?: {
                                     </div>
                                 </div>
 
-                                <div
-                                    v-if="!showPlannerMapCanvas"
-                                    ref="gardenSetupSectionRef"
-                                    class="rounded-xl border-2 border-dashed border-primary/25 bg-background p-6 text-left sm:p-8"
-                                >
-                                    <p
-                                        class="text-center text-base font-semibold text-foreground"
-                                    >
-                                        Aiaplaan on veel tühi
-                                    </p>
-                                    <p
-                                        class="mx-auto mt-2 max-w-xl text-center text-sm leading-6 text-muted-foreground"
-                                    >
-                                        Vali, kuidas aed kaardile tuleb.
-                                        Ortofoto abil saad piirjoone nelja või
-                                        enama nurga järgi; käsitsi saad
-                                        sisestada ligikaudsed mõõdud ja asukoha.
-                                    </p>
-
-                                    <div
-                                        v-if="!gardenSetupMode"
-                                        class="mx-auto mt-5 grid max-w-xl gap-3 sm:grid-cols-2"
-                                    >
-                                        <button
-                                            type="button"
-                                            :class="
-                                                gardenSetupChoiceClass(false)
-                                            "
-                                            @click="
-                                                chooseGardenSetupMode(
-                                                    'ortophoto',
-                                                )
-                                            "
-                                        >
-                                            <span
-                                                class="flex items-center gap-2 text-sm font-semibold text-foreground"
-                                            >
-                                                <span
-                                                    class="material-symbols-outlined text-base text-primary"
-                                                    >satellite_alt</span
-                                                >
-                                                Ortofoto
-                                            </span>
-                                            <span
-                                                class="text-xs leading-5 text-muted-foreground"
-                                                >Märgi 4 nurka — sobib
-                                                L-kujulistele ja
-                                                ebakorrapärastele
-                                                aedadele.</span
-                                            >
-                                        </button>
-                                        <button
-                                            type="button"
-                                            :class="
-                                                gardenSetupChoiceClass(false)
-                                            "
-                                            @click="
-                                                chooseGardenSetupMode('manual')
-                                            "
-                                        >
-                                            <span
-                                                class="flex items-center gap-2 text-sm font-semibold text-foreground"
-                                            >
-                                                <span
-                                                    class="material-symbols-outlined text-base text-primary"
-                                                    >straighten</span
-                                                >
-                                                Käsitsi mõõdud
-                                            </span>
-                                            <span
-                                                class="text-xs leading-5 text-muted-foreground"
-                                                >Laius ja sügavus meetrites +
-                                                asukoht (ristküliku
-                                                piirkujund).</span
-                                            >
-                                        </button>
-                                    </div>
-
-                                    <div
-                                        v-else
-                                        class="mx-auto mt-4 flex max-w-xl justify-center"
-                                    >
-                                        <button
-                                            type="button"
-                                            class="text-xs font-semibold text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                                            @click="gardenSetupMode = null"
-                                        >
-                                            ← Vali teine viis
-                                        </button>
-                                    </div>
-
-                                    <div
-                                        v-if="gardenSetupMode"
-                                        class="mx-auto mt-5 max-w-xl space-y-3"
-                                    >
-                                        <div
-                                            class="flex flex-col gap-2 sm:flex-row sm:items-start"
-                                        >
-                                            <div
-                                                class="relative min-w-0 flex-1"
-                                            >
-                                                <div
-                                                    class="flex items-center rounded-2xl border border-border/70 bg-card/85 px-3 py-2 ring-offset-background focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
-                                                >
-                                                    <input
-                                                        v-model="
-                                                            addressSearchQuery
-                                                        "
-                                                        type="search"
-                                                        autocomplete="off"
-                                                        class="min-w-0 flex-1 bg-transparent text-sm font-medium text-foreground outline-none"
-                                                        placeholder="Otsi aadressi..."
-                                                        @input="
-                                                            onGardenAddressSearchInput
-                                                        "
-                                                        @focus="
-                                                            addressSearchOpen =
-                                                                addressSearchResults.length >
-                                                                    0 ||
-                                                                addressSearchError
-                                                        "
-                                                    />
-                                                    <span
-                                                        v-if="
-                                                            addressSearchLoading
-                                                        "
-                                                        class="material-symbols-outlined shrink-0 animate-spin text-base text-muted-foreground"
-                                                        aria-hidden="true"
-                                                        >progress_activity</span
-                                                    >
-                                                </div>
-                                                <div
-                                                    v-if="
-                                                        addressSearchOpen &&
-                                                        (addressSearchResults.length >
-                                                            0 ||
-                                                            addressSearchLoading ||
-                                                            addressSearchError)
-                                                    "
-                                                    class="absolute top-full right-0 left-0 z-30 mt-1 overflow-hidden rounded-xl border border-border/80 bg-card shadow-lg"
-                                                >
-                                                    <ul
-                                                        v-if="
-                                                            addressSearchResults.length
-                                                        "
-                                                        class="max-h-52 overflow-y-auto py-1"
-                                                    >
-                                                        <li
-                                                            v-for="result in addressSearchResults"
-                                                            :key="result.id"
-                                                        >
-                                                            <button
-                                                                type="button"
-                                                                class="w-full px-3 py-2.5 text-left text-sm transition hover:bg-muted"
-                                                                @mousedown.prevent="
-                                                                    selectGardenAddress(
-                                                                        result,
-                                                                    )
-                                                                "
-                                                            >
-                                                                {{
-                                                                    result.label
-                                                                }}
-                                                            </button>
-                                                        </li>
-                                                    </ul>
-                                                </div>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                class="inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-2xl border border-border/70 bg-card/85 px-3 text-sm font-semibold text-foreground transition hover:bg-muted disabled:opacity-60"
-                                                :disabled="geolocationLoading"
-                                                @click="
-                                                    requestGardenGeolocation
-                                                "
-                                            >
-                                                <span
-                                                    v-if="geolocationLoading"
-                                                    class="material-symbols-outlined animate-spin text-base"
-                                                    >progress_activity</span
-                                                >
-                                                <span v-else>📍</span>
-                                                <span>Minu asukoht</span>
-                                            </button>
-                                        </div>
-
-                                        <div
-                                            v-if="gardenSetupMode === 'manual'"
-                                            class="grid gap-3 sm:grid-cols-2"
-                                        >
-                                            <label
-                                                class="rounded-2xl border border-border/70 bg-card/85 px-3 py-3 text-sm"
-                                            >
-                                                <span
-                                                    class="mb-1 block text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                                                    >Laius (m)</span
-                                                >
-                                                <input
-                                                    v-model.number="
-                                                        gardenForm.widthMeters
-                                                    "
-                                                    type="number"
-                                                    min="0.01"
-                                                    max="1000"
-                                                    step="0.01"
-                                                    class="w-full bg-transparent text-sm font-medium text-foreground outline-none"
-                                                />
-                                            </label>
-                                            <label
-                                                class="rounded-2xl border border-border/70 bg-card/85 px-3 py-3 text-sm"
-                                            >
-                                                <span
-                                                    class="mb-1 block text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                                                    >Sügavus (m)</span
-                                                >
-                                                <input
-                                                    v-model.number="
-                                                        gardenForm.heightMeters
-                                                    "
-                                                    type="number"
-                                                    min="0.01"
-                                                    max="1000"
-                                                    step="0.01"
-                                                    class="w-full bg-transparent text-sm font-medium text-foreground outline-none"
-                                                />
-                                            </label>
-                                        </div>
-
-                                        <p
-                                            v-if="gardenDimensionsMessage"
-                                            class="text-xs leading-5 text-muted-foreground"
-                                        >
-                                            {{ gardenDimensionsMessage }}
-                                        </p>
-
-                                        <CreateGardenAreaPicker
-                                            v-if="
-                                                gardenSetupMode ===
-                                                    'ortophoto' &&
-                                                gardenMapFrame
-                                            "
-                                            :map-frame="gardenMapFrame"
-                                            :polygon-lat-lng="
-                                                gardenPolygonLatLng
-                                            "
-                                            :min-vertices="
-                                                GARDEN_BOUNDARY_MIN_VERTICES
-                                            "
-                                            :focus-anchor-lat="
-                                                gardenLocationAnchor?.lat ??
-                                                null
-                                            "
-                                            :focus-anchor-lng="
-                                                gardenLocationAnchor?.lng ??
-                                                null
-                                            "
-                                            @update:polygon-lat-lng="
-                                                gardenPolygonLatLng = $event
-                                            "
-                                            @apply="
-                                                applyGardenAreaSelectionToForm
-                                            "
-                                        />
-
-                                        <div
-                                            class="flex flex-wrap justify-center gap-2 pt-1"
-                                        >
-                                            <button
-                                                v-if="
-                                                    gardenSetupMode ===
-                                                        'ortophoto' &&
-                                                    !gardenMapFrame
-                                                "
-                                                type="button"
-                                                class="inline-flex items-center justify-center rounded-full border border-border/70 bg-card px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
-                                                disabled
-                                            >
-                                                Vali kõigepealt asukoht
-                                            </button>
-                                            <button
-                                                v-if="
-                                                    gardenSetupMode ===
-                                                        'ortophoto' &&
-                                                    gardenMapFrame
-                                                "
-                                                type="button"
-                                                class="inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                                                :disabled="
-                                                    gardenForm.processing ||
-                                                    !gardenBoundaryDrawReady
-                                                "
-                                                @click="
-                                                    saveGardenPlan({
-                                                        requireBoundaryPolygon: true,
-                                                    })
-                                                "
-                                            >
-                                                Salvesta piir ja ava kaart
-                                            </button>
-                                            <button
-                                                v-if="
-                                                    gardenSetupMode === 'manual'
-                                                "
-                                                type="button"
-                                                class="inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                                                :disabled="
-                                                    gardenForm.processing ||
-                                                    !gardenManualSetupReady
-                                                "
-                                                @click="
-                                                    saveGardenPlan({
-                                                        requireManualDimensions: true,
-                                                    })
-                                                "
-                                            >
-                                                Salvesta mõõdud ja ava kaart
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+                                <MapGardenSetupSection
+                                    v-if="
+                                        !showPlannerMapCanvas &&
+                                        !plannerControlsOpen
+                                    "
+                                    :setup-mode="gardenSetupMode"
+                                    :address-search-query="addressSearchQuery"
+                                    :address-search-results="
+                                        addressSearchResults
+                                    "
+                                    :address-search-loading="
+                                        addressSearchLoading
+                                    "
+                                    :address-search-error="addressSearchError"
+                                    :address-search-open="addressSearchOpen"
+                                    :geolocation-loading="geolocationLoading"
+                                    :garden-dimensions-message="
+                                        gardenDimensionsMessage
+                                    "
+                                    :width-meters="gardenForm.widthMeters"
+                                    :height-meters="gardenForm.heightMeters"
+                                    :form-processing="gardenForm.processing"
+                                    :garden-map-frame="gardenMapFrame"
+                                    :polygon-lat-lng="gardenPolygonLatLng"
+                                    :location-anchor="gardenLocationAnchor"
+                                    :boundary-draw-ready="
+                                        gardenBoundaryDrawReady
+                                    "
+                                    :manual-setup-ready="gardenManualSetupReady"
+                                    @choose-mode="chooseGardenSetupMode"
+                                    @reset-mode="gardenSetupMode = null"
+                                    @update:address-search-query="
+                                        addressSearchQuery = $event
+                                    "
+                                    @address-search-input="
+                                        onGardenAddressSearchInput
+                                    "
+                                    @address-search-focus="
+                                        addressSearchOpen =
+                                            addressSearchResults.length >
+                                                0 || addressSearchError
+                                    "
+                                    @select-address="selectGardenAddress"
+                                    @request-geolocation="
+                                        requestGardenGeolocation
+                                    "
+                                    @update:width-meters="
+                                        gardenForm.widthMeters = $event
+                                    "
+                                    @update:height-meters="
+                                        gardenForm.heightMeters = $event
+                                    "
+                                    @update:polygon-lat-lng="
+                                        gardenPolygonLatLng = $event
+                                    "
+                                    @apply-area="
+                                        applyGardenAreaSelectionToForm
+                                    "
+                                    @save-boundary="
+                                        saveGardenPlan({
+                                            requireBoundaryPolygon: true,
+                                        })
+                                    "
+                                    @save-manual="
+                                        saveGardenPlan({
+                                            requireManualDimensions: true,
+                                        })
+                                    "
+                                />
 
                                 <div
                                     v-else-if="showPlannerFiltersEmptyState"
@@ -5291,58 +4778,14 @@ function saveGardenPlan(options?: {
                     @click="onFloatingPlusClick"
                 />
 
-                <div
-                    v-if="placeBedDialogOpen"
-                    data-place-bed-dialog
-                    class="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-4 sm:items-center"
-                    @click.self="cancelPlaceBed"
-                >
-                    <div
-                        data-place-bed-dialog
-                        class="w-full max-w-sm rounded-2xl border border-border/80 bg-card p-4 shadow-xl"
-                        @click.stop
-                    >
-                        <p class="text-base font-semibold text-foreground">
-                            Uus peenar
-                        </p>
-                        <p class="mt-1 text-sm text-muted-foreground">
-                            Asukoht on valitud. Anna peenrale nimi — seejärel
-                            joonistad kuju ruutude kaupa.
-                        </p>
-                        <label
-                            class="mt-4 block text-xs font-semibold tracking-wide text-muted-foreground uppercase"
-                            for="place-bed-name"
-                        >
-                            Peenra nimi
-                        </label>
-                        <input
-                            id="place-bed-name"
-                            v-model="placeBedName"
-                            type="text"
-                            maxlength="120"
-                            class="mt-1.5 w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-sm font-medium text-foreground ring-offset-background outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                            @keydown.enter.prevent="submitPlaceBed"
-                        />
-                        <div class="mt-4 flex flex-wrap justify-end gap-2">
-                            <button
-                                type="button"
-                                class="rounded-full border border-border/70 px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
-                                :disabled="placeBedSubmitting"
-                                @click="cancelPlaceBed"
-                            >
-                                Tühista
-                            </button>
-                            <button
-                                type="button"
-                                class="rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
-                                :disabled="placeBedSubmitting"
-                                @click="submitPlaceBed"
-                            >
-                                Loo peenar
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <MapPlaceBedDialog
+                    :open="placeBedDialogOpen"
+                    :name="placeBedName"
+                    :submitting="placeBedSubmitting"
+                    @update:name="placeBedName = $event"
+                    @cancel="cancelPlaceBed"
+                    @submit="submitPlaceBed"
+                />
 
                 <BottomNav active="map" />
             </div>
@@ -5639,46 +5082,14 @@ function saveGardenPlan(options?: {
             </form>
         </div>
 
-        <div
-            v-if="confirmDialogOpen"
-            class="fixed inset-0 z-[80] flex items-center justify-center bg-black/45 px-4"
-            @click.self="closeConfirmDialog"
-        >
-            <form
-                class="w-full max-w-md rounded-3xl border border-border/70 bg-background p-5 shadow-2xl"
-                @submit.prevent="runConfirmDialogAction"
-            >
-                <div class="mb-4">
-                    <p
-                        class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
-                    >
-                        Kinnitus
-                    </p>
-                    <h3 class="mt-1 text-lg font-semibold text-foreground">
-                        {{ confirmDialogTitle }}
-                    </h3>
-                    <p class="mt-2 text-sm text-muted-foreground">
-                        {{ confirmDialogMessage }}
-                    </p>
-                </div>
-
-                <div class="mt-5 flex items-center justify-end gap-2">
-                    <button
-                        type="button"
-                        class="inline-flex items-center rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
-                        @click="closeConfirmDialog"
-                    >
-                        Tühista
-                    </button>
-                    <button
-                        type="submit"
-                        class="inline-flex items-center rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
-                    >
-                        {{ confirmDialogConfirmLabel }}
-                    </button>
-                </div>
-            </form>
-        </div>
+        <MapConfirmDialog
+            :open="confirmDialogOpen"
+            :title="confirmDialogTitle"
+            :message="confirmDialogMessage"
+            :confirm-label="confirmDialogConfirmLabel"
+            @close="closeConfirmDialog"
+            @confirm="runConfirmDialogAction"
+        />
     </AppLayout>
 </template>
 
