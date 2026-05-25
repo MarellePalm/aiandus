@@ -32,6 +32,31 @@ export type AreaPickerMode = 'rectangle' | 'polygon';
 
 const MIN_GARDEN_DIM_M = 5;
 const SHAPE_CELL_CM = 1000;
+/** Ortofoto algvaate min/max ulatus keskpunkti ümber (m). */
+const ORTOPHOTO_FOCUS_MIN_SPAN_M = 22;
+const ORTOPHOTO_FOCUS_MAX_SPAN_M = 56;
+
+/** Suumi ortofoto nii, et aed oleks loetav, mitte kogu krunt ühe ekraaniga. */
+export function ortophotoFocusSpanMeters(
+    widthMeters: number,
+    heightMeters: number,
+): number {
+    const maxDim = Math.max(widthMeters, heightMeters, MIN_GARDEN_DIM_M);
+    const minDim = Math.min(
+        Math.max(widthMeters, MIN_GARDEN_DIM_M),
+        Math.max(heightMeters, MIN_GARDEN_DIM_M),
+    );
+    const padded = Math.max(
+        maxDim * 1.3,
+        minDim * 1.55,
+        ORTOPHOTO_FOCUS_MIN_SPAN_M,
+    );
+
+    return Math.min(
+        ORTOPHOTO_FOCUS_MAX_SPAN_M,
+        Math.round(padded * 10) / 10,
+    );
+}
 
 function metersPerDegreeLng(lat: number): number {
     return 111_320 * Math.max(0.01, Math.cos((lat * Math.PI) / 180));

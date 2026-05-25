@@ -238,12 +238,21 @@ class BedController extends Controller
 
         $bed = Bed::create($payload);
 
-        Session::flash('success', 'Peenar lisatud. Lohista see aiaplaanil õigesse kohta.');
+        $placedOnMap = $request->has('garden_x') && $request->has('garden_y');
 
-        return redirect()->route('map.show', [
-            'gardenPlan' => $gardenPlanId,
-            'bed' => $bed->id,
-        ]);
+        Session::flash(
+            'success',
+            $placedOnMap
+                ? 'Peenar lisatud.'
+                : 'Peenar lisatud. Lohista see aiaplaanil õigesse kohta.',
+        );
+
+        $redirectParams = ['gardenPlan' => $gardenPlanId];
+        if (! $placedOnMap) {
+            $redirectParams['bed'] = $bed->id;
+        }
+
+        return redirect()->route('map.show', $redirectParams);
     }
 
     public function update(Request $request, Bed $bed)

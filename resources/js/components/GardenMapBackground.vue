@@ -33,11 +33,11 @@ const emit = defineEmits<{
     leafletZoomChange: [zoom: number];
 }>();
 
-/** Maa-ameti ortofoto WMTS (Web Mercator / GMC) – ametlik KVP URL. */
+/** Maa-ameti ortofoto WMTS REST/JPEG (Web Mercator / GMC). */
 const ORTOFOTO_TILE_URL =
-    'https://tiles.maaamet.ee/tm/wmts?service=WMTS&request=GetTile&version=1.0.0&layers=&styles=&tilematrixSet=GMC&format=image/png&layer=foto&tilematrix={z}&tilerow={y}&tilecol={x}';
+    'https://tiles.maaamet.ee/tm/wmts/1.0.0/foto/default/GMC/{z}/{y}/{x}.jpg';
 
-/** Maa-ameti kache maksimaalne zoom. */
+/** Maa-ameti foto GMC kuni tasemeni 18 (19+ kache puuduvad). */
 const MAX_NATIVE_ZOOM = 18;
 /** Üleskaalatud suum täppide paigutamiseks (interaktiivne eelvaade). */
 const MAX_MAP_ZOOM = 22;
@@ -58,6 +58,8 @@ function boundsSyncKey(): string {
         props.focusAnchorLat,
         props.focusAnchorLng,
         props.focusSpanMeters,
+        props.plannerZoom.toFixed(4),
+        props.fitZoom.toFixed(4),
     ].join('|');
 }
 
@@ -127,9 +129,18 @@ function maxMapZoom(): number {
     return MAX_MAP_ZOOM;
 }
 
+/** Sünkroonis MapView ORTOPHOTO_MIN_ZOOM_FACTOR (0.25). */
+const MIN_SHARP_ZOOM_FACTOR = 0.25;
+const MAX_SHARP_ZOOM_FACTOR = 4;
+
 function sharpZoomFactor(): number {
     const fit = Math.max(props.fitZoom, 0.001);
-    return Math.max(0.25, props.plannerZoom / fit);
+    const raw = props.plannerZoom / fit;
+
+    return Math.min(
+        MAX_SHARP_ZOOM_FACTOR,
+        Math.max(MIN_SHARP_ZOOM_FACTOR, raw),
+    );
 }
 
 function syncMapView() {
@@ -230,10 +241,11 @@ function initMap() {
     tileLayer = L.tileLayer(ORTOFOTO_TILE_URL, {
         maxZoom: MAX_MAP_ZOOM,
         maxNativeZoom: MAX_NATIVE_ZOOM,
+        tileSize: 256,
         detectRetina: false,
         minZoom: 4,
         crossOrigin: 'anonymous',
-        keepBuffer: 2,
+        keepBuffer: 4,
     });
     tileLayer.addTo(map);
 
