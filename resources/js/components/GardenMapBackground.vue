@@ -33,21 +33,20 @@ const emit = defineEmits<{
     leafletZoomChange: [zoom: number];
 }>();
 
-/** Maa-ameti ortofoto WMTS REST/JPEG (Web Mercator / GMC). */
 const ORTOFOTO_TILE_URL =
     'https://tiles.maaamet.ee/tm/wmts/1.0.0/foto/default/GMC/{z}/{y}/{x}.jpg';
 
-/** Maa-ameti foto GMC kuni tasemeni 18 (üle 18 skaleerib viimast kachi). */
+const MAX_MAP_ZOOM = 19;
 const MAX_NATIVE_ZOOM = 18;
-/** Üleskaalatud suum täppide paigutamiseks (interaktiivne eelvaade). */
-const MAX_MAP_ZOOM = 22;
 
 const containerRef = ref<HTMLElement | null>(null);
+const isLoading = ref(true);
 let map: L.Map | null = null;
 let tileLayer: L.TileLayer | null = null;
 let resizeObserver: ResizeObserver | null = null;
 let lastBoundsKey = '';
 let anchorBaseZoom: number | null = null;
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 function boundsSyncKey(): string {
     return [
@@ -58,8 +57,6 @@ function boundsSyncKey(): string {
         props.focusAnchorLat,
         props.focusAnchorLng,
         props.focusSpanMeters,
-        props.plannerZoom.toFixed(4),
-        props.fitZoom.toFixed(4),
     ].join('|');
 }
 
@@ -173,6 +170,11 @@ function syncMapView() {
         Math.max(0, (anchorBaseZoom ?? 0) + extraZoom),
     );
 
+    if (props.interactive && !boundsChanged && anchorBaseZoom !== null) {
+        map.setView(center, map.getZoom(), { animate: false });
+        return;
+    }
+
     map.setView(center, targetZoom, { animate: false });
 }
 
@@ -183,30 +185,31 @@ function notifyViewChange() {
     }
 }
 
+function runMapRefresh() {
+    if (!map) {
+        return;
+    }
+
+    map.invalidateSize({ pan: false });
+    syncMapView();
+    notifyViewChange();
+}
+
 function scheduleMapRefresh() {
     if (!map) {
         return;
     }
 
-    requestAnimationFrame(() => {
-        if (!map) {
-            return;
-        }
+    if (refreshTimer !== null) {
+        clearTimeout(refreshTimer);
+    }
 
-        map.invalidateSize({ pan: false });
-        syncMapView();
-        notifyViewChange();
-
+    refreshTimer = setTimeout(() => {
+        refreshTimer = null;
         requestAnimationFrame(() => {
-            if (!map) {
-                return;
-            }
-
-            map.invalidateSize({ pan: false });
-            syncMapView();
-            notifyViewChange();
+            runMapRefresh();
         });
-    });
+    }, 80);
 }
 
 function initMap() {
@@ -242,12 +245,21 @@ function initMap() {
         maxZoom: MAX_MAP_ZOOM,
         maxNativeZoom: MAX_NATIVE_ZOOM,
         tileSize: 256,
-        detectRetina: false,
         minZoom: 4,
+        keepBuffer: 2,
         crossOrigin: 'anonymous',
-        keepBuffer: 4,
     });
     tileLayer.addTo(map);
+
+    tileLayer.on('loading', () => {
+        isLoading.value = true;
+    });
+    tileLayer.on('load', () => {
+        isLoading.value = false;
+    });
+    tileLayer.on('tileerror', () => {
+        isLoading.value = false;
+    });
 
     map.on('moveend zoomend', notifyViewChange);
 
@@ -280,6 +292,10 @@ function initMap() {
 }
 
 function destroyMap() {
+    if (refreshTimer !== null) {
+        clearTimeout(refreshTimer);
+        refreshTimer = null;
+    }
     resizeObserver?.disconnect();
     resizeObserver = null;
     tileLayer = null;
@@ -287,6 +303,7 @@ function destroyMap() {
     map = null;
     lastBoundsKey = '';
     anchorBaseZoom = null;
+    isLoading.value = true;
 }
 
 function getMap(): L.Map | null {
@@ -328,12 +345,21 @@ watch(
             props.focusSpanMeters,
         ];
 
-        keys.push(props.plannerZoom, props.fitZoom);
-
         return keys;
     },
     () => {
         scheduleMapRefresh();
+    },
+);
+
+watch(
+    () => [props.plannerZoom, props.fitZoom] as const,
+    () => {
+        if (!map) {
+            return;
+        }
+        syncMapView();
+        notifyViewChange();
     },
 );
 
@@ -348,20 +374,41 @@ defineExpose({
 </script>
 
 <template>
-    <div
-        ref="containerRef"
-        class="absolute inset-0 z-0"
-        :class="interactive ? '' : 'pointer-events-none'"
-        aria-hidden="true"
-    />
-    <p
-        class="pointer-events-none absolute right-2 bottom-1 z-[1] text-[9px] leading-none text-white/80 drop-shadow-sm"
-    >
-        © Maa- ja Ruumiamet
-    </p>
+    <div class="absolute inset-0">
+        <div
+            ref="containerRef"
+            class="absolute inset-0 z-0"
+            :class="interactive ? '' : 'pointer-events-none'"
+            aria-hidden="true"
+        />
+        <transition name="fade">
+            <div
+                v-if="isLoading"
+                class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#e5e3df]/60"
+            >
+                <div
+                    class="h-8 w-8 animate-spin rounded-full border-2 border-emerald-900/20 border-t-emerald-800/80"
+                />
+            </div>
+        </transition>
+        <p
+            class="pointer-events-none absolute right-2 bottom-1 z-[1] text-[9px] leading-none text-white/80 drop-shadow-sm"
+        >
+            © Maa- ja Ruumiamet
+        </p>
+    </div>
 </template>
 
 <style scoped>
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+
 :deep(.leaflet-container) {
     width: 100%;
     height: 100%;

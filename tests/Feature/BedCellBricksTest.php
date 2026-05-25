@@ -66,3 +66,32 @@ test('user can save bed with multi cell bricks', function () {
         ],
     ]);
 });
+
+test('user can save bed brick up to three meters wide', function () {
+    $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
+
+    $this->actingAs($user)
+        ->post(route('beds.store'), [
+            'garden_plan_id' => $plan->id,
+            'name' => 'Õunapuu',
+            'cell_size_cm' => 30,
+            'cell_bricks' => [
+                [
+                    'x' => 0,
+                    'y' => 0,
+                    'w' => 10,
+                    'h' => 10,
+                    'width_cm' => 300,
+                    'height_cm' => 300,
+                    'kind' => 'plantable',
+                ],
+            ],
+        ])
+        ->assertSessionHasNoErrors();
+
+    $bed = Bed::query()->where('user_id', $user->id)->first();
+
+    expect($bed->cell_bricks[0]['width_cm'])->toBe(300);
+    expect($bed->cell_bricks[0]['w'])->toBe(10);
+});

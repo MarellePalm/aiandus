@@ -13,6 +13,9 @@ class BedController extends Controller
 {
     private const DEFAULT_CELL_SIZE_CM = 30;
 
+    /** Maks ruute ühes plokis (nt õunapuu ~3 m laius @ 30 cm ruut ≈ 10 ruutu). */
+    private const MAX_BRICK_GRID_SPAN = 12;
+
     private function defaultGardenPosition(int $bedCount): array
     {
         $columns = 3;
@@ -80,12 +83,12 @@ class BedController extends Controller
         return collect($bricks)
             ->filter(fn ($brick) => is_array($brick))
             ->map(function ($brick) use ($unitCm) {
-                $w = max(1, min(4, (int) ($brick['w'] ?? 1)));
-                $h = max(1, min(4, (int) ($brick['h'] ?? 1)));
+                $w = max(1, min(self::MAX_BRICK_GRID_SPAN, (int) ($brick['w'] ?? 1)));
+                $h = max(1, min(self::MAX_BRICK_GRID_SPAN, (int) ($brick['h'] ?? 1)));
                 $widthCm = max(10, min(500, (int) ($brick['width_cm'] ?? $w * $unitCm)));
                 $heightCm = max(10, min(500, (int) ($brick['height_cm'] ?? $h * $unitCm)));
-                $w = max(1, min(4, (int) ceil($widthCm / $unitCm)));
-                $h = max(1, min(4, (int) ceil($heightCm / $unitCm)));
+                $w = max(1, min(self::MAX_BRICK_GRID_SPAN, (int) ceil($widthCm / $unitCm)));
+                $h = max(1, min(self::MAX_BRICK_GRID_SPAN, (int) ceil($heightCm / $unitCm)));
 
                 return [
                     'x' => (int) ($brick['x'] ?? 0),
@@ -231,8 +234,8 @@ class BedController extends Controller
                 return [
                     'x' => (int) ($cell['x'] ?? 0),
                     'y' => (int) ($cell['y'] ?? 0),
-                    'w' => max(1, min(4, (int) ($cell['w'] ?? 1))),
-                    'h' => max(1, min(4, (int) ($cell['h'] ?? 1))),
+                    'w' => max(1, min(self::MAX_BRICK_GRID_SPAN, (int) ($cell['w'] ?? 1))),
+                    'h' => max(1, min(self::MAX_BRICK_GRID_SPAN, (int) ($cell['h'] ?? 1))),
                     'kind' => $this->normalizeBrickKind($cell['kind'] ?? 'plantable'),
                     'plants' => $this->normalizeCellPlants($cell['plants'] ?? []),
                 ];
@@ -409,11 +412,11 @@ class BedController extends Controller
             'cell_bricks' => ['nullable', 'array'],
             'cell_bricks.*.x' => ['required_with:cell_bricks', 'integer', 'min:0'],
             'cell_bricks.*.y' => ['required_with:cell_bricks', 'integer', 'min:0'],
-            'cell_bricks.*.w' => ['required_with:cell_bricks', 'integer', 'min:1', 'max:4'],
-            'cell_bricks.*.h' => ['required_with:cell_bricks', 'integer', 'min:1', 'max:4'],
+            'cell_bricks.*.w' => ['required_with:cell_bricks', 'integer', 'min:1', 'max:'.self::MAX_BRICK_GRID_SPAN],
+            'cell_bricks.*.h' => ['required_with:cell_bricks', 'integer', 'min:1', 'max:'.self::MAX_BRICK_GRID_SPAN],
             'cell_bricks.*.kind' => ['nullable', 'string', 'in:plantable,walkway,empty'],
-            'cells.*.w' => ['nullable', 'integer', 'min:1', 'max:4'],
-            'cells.*.h' => ['nullable', 'integer', 'min:1', 'max:4'],
+            'cells.*.w' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_BRICK_GRID_SPAN],
+            'cells.*.h' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_BRICK_GRID_SPAN],
             'cells.*.kind' => ['nullable', 'string', 'in:plantable,walkway,empty'],
         ]);
 
@@ -509,11 +512,11 @@ class BedController extends Controller
             'cell_bricks' => ['nullable', 'array'],
             'cell_bricks.*.x' => ['required_with:cell_bricks', 'integer', 'min:0'],
             'cell_bricks.*.y' => ['required_with:cell_bricks', 'integer', 'min:0'],
-            'cell_bricks.*.w' => ['required_with:cell_bricks', 'integer', 'min:1', 'max:4'],
-            'cell_bricks.*.h' => ['required_with:cell_bricks', 'integer', 'min:1', 'max:4'],
+            'cell_bricks.*.w' => ['required_with:cell_bricks', 'integer', 'min:1', 'max:'.self::MAX_BRICK_GRID_SPAN],
+            'cell_bricks.*.h' => ['required_with:cell_bricks', 'integer', 'min:1', 'max:'.self::MAX_BRICK_GRID_SPAN],
             'cell_bricks.*.kind' => ['nullable', 'string', 'in:plantable,walkway,empty'],
-            'cells.*.w' => ['nullable', 'integer', 'min:1', 'max:4'],
-            'cells.*.h' => ['nullable', 'integer', 'min:1', 'max:4'],
+            'cells.*.w' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_BRICK_GRID_SPAN],
+            'cells.*.h' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_BRICK_GRID_SPAN],
             'cells.*.kind' => ['nullable', 'string', 'in:plantable,walkway,empty'],
         ]);
 
