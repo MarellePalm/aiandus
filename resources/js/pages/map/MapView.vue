@@ -146,6 +146,7 @@ type MapPageProps = AppPageProps<{
     flash?: {
         success?: string | null;
         error?: string | null;
+        created_bed_id?: number | null;
     };
     errors?: Record<string, string>;
 }>;
@@ -209,13 +210,8 @@ function toggleBedFavorite(bedId: number) {
 const GARDEN_PADDING = 24;
 const CM_TO_PX = 0.5;
 const GARDEN_GRID_CELL_CM = 30;
-/** Maa-ameti ortofoto GMC kuni Leaflet zoom 18. */
-const MAX_ORTOPHOTO_NATIVE_ZOOM = 18;
-const DEFAULT_NEW_BED_LAYOUT: number[][] = [
-    [1, 1, 1],
-    [1, 1, 1],
-    [1, 1, 1],
-];
+/** Uus peenar algab ühe ruuduga; kuju täpsustatakse redigeerimises. */
+const DEFAULT_NEW_BED_LAYOUT: number[][] = [[1]];
 /** Shape mask grid cell size on the plan (10 m × 10 m). */
 const GARDEN_SHAPE_CELL_CM = 1000;
 const MIN_ZOOM = 0.1;
@@ -294,22 +290,13 @@ function onPlannerLeafletZoomChange(zoom: number) {
     plannerLeafletZoom.value = zoom;
 }
 
-const ortophotoIsSharp = computed(
-    () =>
-        plannerLeafletZoom.value === null ||
-        plannerLeafletZoom.value <= MAX_ORTOPHOTO_NATIVE_ZOOM,
-);
-/** Ortofoto kiht: alles pärast plaani vaate esimest paigutust (vältib vale suumi). */
-const showOrtophotoLayer = computed(
+/** Ortofoto nähtav kui aial on koordinaadid; üle zoom 18 skaleerib Leaflet viimast kachi. */
+const showMapBackground = computed(
     () =>
         hasGardenCoordinates.value &&
         viewportSize.value.width > 0 &&
-        viewportSize.value.height > 0 &&
-        plannerInitialViewportFitDone.value,
+        viewportSize.value.height > 0,
 );
-
-/** Ortofoto nähtav; üle zoom 18 skaleerib Leaflet viimast kachi (mitte hall 404). */
-const showMapBackground = computed(() => showOrtophotoLayer.value);
 const confirmDialogTitle = ref('');
 const confirmDialogMessage = ref('');
 const confirmDialogConfirmLabel = ref('Kinnita');
@@ -1085,7 +1072,8 @@ function onGardenPlanSelect(event: Event) {
     router.visit(`/map/${id}`);
 }
 
-function openCreateBed() {
+/** Lisa peenar: esmalt asukoht kaardil, siis kuju ruutude kaupa. */
+function startNewBedOnMap() {
     if (!canPlaceBedsOnMap.value) {
         return;
     }
@@ -1180,6 +1168,12 @@ function submitPlaceBed() {
         {
             preserveScroll: true,
             preserveState: true,
+            onSuccess: () => {
+                const createdId = page.props.flash?.created_bed_id;
+                if (createdId) {
+                    router.visit(`/beds/${createdId}/edit?step=2`);
+                }
+            },
             onFinish: () => {
                 placeBedSubmitting.value = false;
                 isPlacingBed.value = false;
@@ -1732,9 +1726,10 @@ const canPanPlannerViewport = computed(() => {
         return false;
     }
 
+    const fitZoom = getFitGardenZoom();
+
     return (
-        plannerCanvasExceedsViewport() ||
-        zoom.value > getFitGardenZoom() + 0.001
+        plannerCanvasExceedsViewport() || Math.abs(zoom.value - fitZoom) > 0.001
     );
 });
 const plannerViewportCursorClass = computed(() => {
@@ -1796,7 +1791,7 @@ const gardenLooksOversized = computed(() => {
     const w = props.gardenPlan.width / 100;
     const h = props.gardenPlan.height / 100;
 
-    return Math.max(w, h) > 80;
+    return Math.max(w, h) > 300;
 });
 const plannerOrtophotoFocusSpanMeters = computed(() => {
     if (!hasGardenCoordinates.value) {
@@ -2112,8 +2107,28 @@ function bedCardFixedStyle(bed: Bed): Record<string, string> {
     const padTop = parseFloat(cs.paddingTop) || 0;
     const canvasScale = plannerCanvasScale();
     const tip = pinTipPosition(bed);
-    const pinTipX = vpRect.left + padLeft + tip.x * canvasScale + panX.value;
-    const pinTipY = vpRect.top + padTop + tip.y * canvasScale + panY.value;
+    let pinTipX: number;
+    let pinTipY: number;
+
+    if (usesOrtophotoSharpZoom.value) {
+        const surfaceW = gardenSurfaceSize.value.width;
+        const surfaceH = gardenSurfaceSize.value.height;
+        pinTipX =
+            vpRect.left +
+            padLeft +
+            panX.value +
+            (tip.x - surfaceW / 2) * canvasScale +
+            surfaceW / 2;
+        pinTipY =
+            vpRect.top +
+            padTop +
+            panY.value +
+            (tip.y - surfaceH / 2) * canvasScale +
+            surfaceH / 2;
+    } else {
+        pinTipX = vpRect.left + padLeft + tip.x * canvasScale + panX.value;
+        pinTipY = vpRect.top + padTop + tip.y * canvasScale + panY.value;
+    }
     const pinHeightPx = 42;
     const gap = 8;
 
@@ -2499,10 +2514,7 @@ function handleViewportPointerDown(event: PointerEvent) {
 }
 
 function beginPanGesture(event: PointerEvent, vp: HTMLElement) {
-    if (
-        !plannerCanvasExceedsViewport() &&
-        zoom.value <= getFitGardenZoom() + 0.001
-    ) {
+    if (!canPanPlannerViewport.value) {
         return;
     }
 
@@ -2663,9 +2675,10 @@ function clampPlannerPan() {
 
     const canvas = getPlannerCanvasSize();
     const fitZoom = getFitGardenZoom();
+    const atFitZoom = Math.abs(zoom.value - fitZoom) <= 0.001;
 
-    if (!plannerCanvasExceedsViewport() && zoom.value <= fitZoom + 0.001) {
-        const pan = getFitGardenPan(fitZoom);
+    if (!plannerCanvasExceedsViewport() && atFitZoom) {
+        const pan = getFitGardenPan(zoom.value);
         panX.value = pan.x;
         panY.value = pan.y;
         return;
@@ -2733,7 +2746,7 @@ function plannerContentLayerStyle(): Record<string, string> {
     }
     return {
         transform: `scale(${plannerVisualScale()})`,
-        transformOrigin: 'top left',
+        transformOrigin: '50% 50%',
     };
 }
 
@@ -2743,11 +2756,7 @@ function plannerGardenSurfaceStyle() {
         height: `${gardenSurfaceHeight.value}px`,
     };
 
-    if (
-        hasGardenCoordinates.value &&
-        ortophotoIsSharp.value &&
-        plannerLeafletZoom.value !== null
-    ) {
+    if (hasGardenCoordinates.value && showMapBackground.value) {
         return {
             ...size,
             backgroundColor: 'transparent',
@@ -3133,7 +3142,7 @@ function saveGardenPlan(options?: {
                                             v-if="canPlaceBedsOnMap"
                                             type="button"
                                             class="inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
-                                            @click="openCreateBed"
+                                            @click="startNewBedOnMap"
                                         >
                                             Lisa peenar kaardile
                                         </button>
@@ -3423,7 +3432,7 @@ function saveGardenPlan(options?: {
                                             </button>
                                             <button
                                                 type="button"
-                                                class="mr-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-rose-50 hover:text-rose-700"
+                                                class="mr-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
                                                 :aria-label="`Kustuta ${bed.name}`"
                                                 @click.stop="
                                                     deleteBed(bed.id, bed.name)
@@ -4914,8 +4923,7 @@ function saveGardenPlan(options?: {
                                                 <div
                                                     class="relative overflow-hidden rounded-[1.45rem] border border-emerald-900/10 dark:border-emerald-200/15"
                                                     :class="
-                                                        ortophotoIsSharp &&
-                                                        hasGardenCoordinates
+                                                        showMapBackground
                                                             ? 'bg-transparent'
                                                             : 'bg-emerald-50/80 dark:bg-emerald-950/35'
                                                     "
@@ -5146,7 +5154,7 @@ function saveGardenPlan(options?: {
                                                                             )
                                                                         "
                                                                         data-no-drag="true"
-                                                                        class="pointer-events-auto w-44 rounded-xl border border-border/70 bg-card/95 p-2.5 text-left shadow-lg backdrop-blur-sm"
+                                                                        class="pointer-events-auto w-52 rounded-xl border border-border/70 bg-card/95 p-2.5 text-left shadow-lg backdrop-blur-sm"
                                                                         :style="
                                                                             bedCardFixedStyle(
                                                                                 bed,
@@ -5189,18 +5197,38 @@ function saveGardenPlan(options?: {
                                                                                 )
                                                                             }}
                                                                         </p>
-                                                                        <button
-                                                                            type="button"
-                                                                            class="mt-2 inline-flex w-full items-center justify-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/15"
-                                                                            @click.stop="
-                                                                                openBedPage(
-                                                                                    bed.id,
-                                                                                )
-                                                                            "
+                                                                        <div
+                                                                            class="mt-2 flex gap-1.5"
                                                                         >
-                                                                            Ava
-                                                                            peenar
-                                                                        </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                class="inline-flex min-h-9 flex-1 items-center justify-center rounded-full border border-primary/20 bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/15"
+                                                                                @click.stop="
+                                                                                    openBedPage(
+                                                                                        bed.id,
+                                                                                    )
+                                                                                "
+                                                                            >
+                                                                                Ava
+                                                                                peenar
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                class="inline-flex min-h-9 flex-1 items-center justify-center gap-1 rounded-full border border-border/70 bg-background px-2 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted"
+                                                                                @click.stop="
+                                                                                    deleteBed(
+                                                                                        bed.id,
+                                                                                        bed.name,
+                                                                                    )
+                                                                                "
+                                                                            >
+                                                                                <span
+                                                                                    class="material-symbols-outlined text-sm text-muted-foreground"
+                                                                                    >delete</span
+                                                                                >
+                                                                                Kustuta
+                                                                            </button>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             </Teleport>
@@ -5234,7 +5262,7 @@ function saveGardenPlan(options?: {
                                 ? undefined
                                 : 'Joonista kõigepealt aia piir kaardil'
                         "
-                        @click="openCreateBed"
+                        @click="startNewBedOnMap"
                     >
                         <span
                             class="material-symbols-outlined text-base text-primary"
@@ -5278,7 +5306,8 @@ function saveGardenPlan(options?: {
                             Uus peenar
                         </p>
                         <p class="mt-1 text-sm text-muted-foreground">
-                            Anna peenrale nimi.
+                            Asukoht on valitud. Anna peenrale nimi — seejärel
+                            joonistad kuju ruutude kaupa.
                         </p>
                         <label
                             class="mt-4 block text-xs font-semibold tracking-wide text-muted-foreground uppercase"

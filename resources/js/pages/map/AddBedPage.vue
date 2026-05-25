@@ -44,8 +44,8 @@ const breadcrumbs = [
                     v-if="props.showGuide"
                     class="rounded-xl bg-primary/8 px-4 py-3 text-sm leading-6 text-muted-foreground ring-1 ring-primary/15"
                 >
-                    Alusta nimest ja asukohast. Peenra kuju saad kohe allpool
-                    ruutudest kokku puudutada.
+                    Alusta nimest. Kuju lood sammul „Peenra kuju“ — lohista „Uus
+                    ruut“ tühjale kohale ja korda, kuni peenar valmis.
                 </p>
 
                 <AddBed :garden-plan-id="props.gardenPlanId" />

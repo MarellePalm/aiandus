@@ -212,6 +212,8 @@ test('authenticated user can create a bed from coordinate cells payload', functi
         ],
     ]);
 
+    $response->assertRedirect()->assertSessionHasNoErrors();
+
     $bed = Bed::query()->where('user_id', $user->id)->latest('id')->first();
 
     expect($bed)->not()->toBeNull();
@@ -219,7 +221,7 @@ test('authenticated user can create a bed from coordinate cells payload', functi
     expect($bed->columns)->toBe(2);
     expect($bed->layout)->toBe([
         [1, 1],
-        [1, -1],
+        [1, 0],
     ]);
 
     $response->assertRedirect(

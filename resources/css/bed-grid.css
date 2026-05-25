@@ -102,6 +102,26 @@
         0 10px 24px rgba(25, 122, 70, 0.18);
 }
 
+/* Väike + tühjal pruunil peenraruudul (BedView, AddBed) */
+.bed-cell-slot-icon {
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1;
+    color: rgba(94, 66, 42, 0.58);
+    opacity: 1;
+    transform: none;
+    transition:
+        color 180ms ease,
+        transform 180ms ease;
+    pointer-events: none;
+}
+
+.bed-cell--empty:hover .bed-cell-slot-icon,
+.bed-cell--empty:focus-visible .bed-cell-slot-icon {
+    color: rgba(61, 42, 24, 0.78);
+    transform: scale(1.08);
+}
+
 .sprout-preview {
     opacity: 0;
     transform: translateY(0.45rem) scale(0.72);
@@ -215,14 +235,25 @@
         inset 0 -1px 0 rgba(255, 255, 255, 0.48);
 }
 
-/* AddBed: valitud ruut */
+/* AddBed: valitud ruut — pruun alus, roheline ääris */
 .bed-cell--editor-selected {
     border-style: solid;
-    border-color: rgba(16, 185, 129, 0.42);
-    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.5);
+    background:
+        radial-gradient(
+            circle at 34% 28%,
+            rgba(132, 84, 47, 0.14) 0 2px,
+            transparent 2.5px
+        ),
+        linear-gradient(
+            145deg,
+            rgba(207, 174, 124, 0.38),
+            rgba(101, 71, 44, 0.14)
+        ),
+        rgb(228, 210, 178);
     box-shadow:
-        0 0 0 2px rgba(16, 185, 129, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 0.45);
+        0 0 0 2px rgba(16, 185, 129, 0.22),
+        inset 0 3px 8px rgba(61, 42, 24, 0.12);
 }
 
 @keyframes bed-grid-plant-grow-in {

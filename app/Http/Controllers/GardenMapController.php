@@ -82,6 +82,7 @@ class GardenMapController extends Controller
                 'garden_y' => (int) ($b->garden_y ?? 0),
                 'cell_size_cm' => (int) ($b->cell_size_cm ?? 30),
                 'layout' => $b->layout,
+                'cell_bricks' => $b->cell_bricks,
                 'plants' => $b->plants->map(fn ($p) => [
                     'id' => $p->id,
                     'name' => $p->name,

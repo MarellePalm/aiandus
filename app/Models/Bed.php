@@ -17,6 +17,7 @@ class Bed extends Model
         'rows',
         'columns',
         'layout',
+        'cell_bricks',
         'sort_order',
         'garden_x',
         'garden_y',
@@ -26,6 +27,7 @@ class Bed extends Model
 
     protected $casts = [
         'layout' => 'array',
+        'cell_bricks' => 'array',
         'garden_x' => 'integer',
         'garden_y' => 'integer',
         'cell_size_cm' => 'integer',

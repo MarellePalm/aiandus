@@ -68,14 +68,172 @@ class BedController extends Controller
         }, $plants);
     }
 
-    private function convertCellsToLayout(array $cells): array
+    private function normalizeBrickKind(?string $kind): string
     {
+        return in_array($kind, ['plantable', 'walkway', 'empty'], true) ? $kind : 'plantable';
+    }
+
+    private function normalizeCellBricks(array $bricks, int $unitCm = self::DEFAULT_CELL_SIZE_CM): array
+    {
+        $unitCm = max(10, min(200, $unitCm));
+
+        return collect($bricks)
+            ->filter(fn ($brick) => is_array($brick))
+            ->map(function ($brick) use ($unitCm) {
+                $w = max(1, min(4, (int) ($brick['w'] ?? 1)));
+                $h = max(1, min(4, (int) ($brick['h'] ?? 1)));
+                $widthCm = max(10, min(500, (int) ($brick['width_cm'] ?? $w * $unitCm)));
+                $heightCm = max(10, min(500, (int) ($brick['height_cm'] ?? $h * $unitCm)));
+                $w = max(1, min(4, (int) ceil($widthCm / $unitCm)));
+                $h = max(1, min(4, (int) ceil($heightCm / $unitCm)));
+
+                return [
+                    'x' => (int) ($brick['x'] ?? 0),
+                    'y' => (int) ($brick['y'] ?? 0),
+                    'w' => $w,
+                    'h' => $h,
+                    'width_cm' => $widthCm,
+                    'height_cm' => $heightCm,
+                    'kind' => $this->normalizeBrickKind($brick['kind'] ?? null),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function layoutValueForBrick(array $brick): int
+    {
+        if (($brick['kind'] ?? 'plantable') === 'walkway') {
+            return -1;
+        }
+
+        if (($brick['kind'] ?? 'plantable') === 'empty') {
+            return 0;
+        }
+
+        return 1;
+    }
+
+    private function validateCellBricks(array $bricks): void
+    {
+        $occupied = [];
+
+        foreach ($bricks as $index => $brick) {
+            for ($dy = 0; $dy < $brick['h']; $dy++) {
+                for ($dx = 0; $dx < $brick['w']; $dx++) {
+                    $key = ($brick['y'] + $dy).','.($brick['x'] + $dx);
+                    if (isset($occupied[$key])) {
+                        throw ValidationException::withMessages([
+                            'cell_bricks' => 'Peenra plokid ei tohi üksteist katma.',
+                        ]);
+                    }
+                    $occupied[$key] = $index;
+                }
+            }
+        }
+    }
+
+    private function buildLayoutFromCellBricks(
+        array $bricks,
+        int $unitCm = self::DEFAULT_CELL_SIZE_CM,
+    ): array {
+        $bricks = $this->normalizeCellBricks($bricks, $unitCm);
+
+        if (empty($bricks)) {
+            throw ValidationException::withMessages([
+                'cell_bricks' => 'Peenras peab olema vähemalt üks plokk.',
+            ]);
+        }
+
+        $this->validateCellBricks($bricks);
+
+        $minX = min(array_column($bricks, 'x'));
+        $maxX = max(array_map(fn ($brick) => $brick['x'] + $brick['w'] - 1, $bricks));
+        $minY = min(array_column($bricks, 'y'));
+        $maxY = max(array_map(fn ($brick) => $brick['y'] + $brick['h'] - 1, $bricks));
+
+        $rows = ($maxY - $minY) + 1;
+        $columns = ($maxX - $minX) + 1;
+        $layout = array_fill(0, $rows, array_fill(0, $columns, 0));
+
+        foreach ($bricks as $brick) {
+            $value = $this->layoutValueForBrick($brick);
+            for ($dy = 0; $dy < $brick['h']; $dy++) {
+                for ($dx = 0; $dx < $brick['w']; $dx++) {
+                    $layout[$brick['y'] - $minY + $dy][$brick['x'] - $minX + $dx] = $value;
+                }
+            }
+        }
+
+        return [
+            'layout' => $layout,
+            'rows' => $rows,
+            'columns' => $columns,
+            'cell_bricks' => array_map(function ($brick) use ($minX, $minY) {
+                return [
+                    'x' => $brick['x'] - $minX,
+                    'y' => $brick['y'] - $minY,
+                    'w' => $brick['w'],
+                    'h' => $brick['h'],
+                    'width_cm' => $brick['width_cm'],
+                    'height_cm' => $brick['height_cm'],
+                    'kind' => $brick['kind'],
+                ];
+            }, $bricks),
+        ];
+    }
+
+    private function cellBricksFromLayout(array $layout): array
+    {
+        $bricks = [];
+
+        foreach ($layout as $y => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            foreach ($row as $x => $cell) {
+                $value = (int) $cell;
+                if ($value === 1) {
+                    $bricks[] = [
+                        'x' => $x,
+                        'y' => $y,
+                        'w' => 1,
+                        'h' => 1,
+                        'width_cm' => self::DEFAULT_CELL_SIZE_CM,
+                        'height_cm' => self::DEFAULT_CELL_SIZE_CM,
+                        'kind' => 'plantable',
+                    ];
+                } elseif ($value === -1) {
+                    $bricks[] = [
+                        'x' => $x,
+                        'y' => $y,
+                        'w' => 1,
+                        'h' => 1,
+                        'width_cm' => self::DEFAULT_CELL_SIZE_CM,
+                        'height_cm' => self::DEFAULT_CELL_SIZE_CM,
+                        'kind' => 'walkway',
+                    ];
+                }
+            }
+        }
+
+        return $bricks;
+    }
+
+    private function convertCellsToLayout(
+        array $cells,
+        int $unitCm = self::DEFAULT_CELL_SIZE_CM,
+    ): array {
         $normalized = collect($cells)
             ->filter(fn ($cell) => is_array($cell))
             ->map(function ($cell) {
                 return [
                     'x' => (int) ($cell['x'] ?? 0),
                     'y' => (int) ($cell['y'] ?? 0),
+                    'w' => max(1, min(4, (int) ($cell['w'] ?? 1))),
+                    'h' => max(1, min(4, (int) ($cell['h'] ?? 1))),
+                    'kind' => $this->normalizeBrickKind($cell['kind'] ?? 'plantable'),
                     'plants' => $this->normalizeCellPlants($cell['plants'] ?? []),
                 ];
             })
@@ -87,21 +245,25 @@ class BedController extends Controller
             ]);
         }
 
-        $minX = $normalized->min('x');
-        $maxX = $normalized->max('x');
-        $minY = $normalized->min('y');
-        $maxY = $normalized->max('y');
+        $bricks = $normalized
+            ->map(fn ($cell) => [
+                'x' => $cell['x'],
+                'y' => $cell['y'],
+                'w' => $cell['w'],
+                'h' => $cell['h'],
+                'kind' => $cell['kind'],
+            ])
+            ->all();
 
-        $rows = ($maxY - $minY) + 1;
-        $columns = ($maxX - $minX) + 1;
-
-        $layout = array_fill(0, $rows, array_fill(0, $columns, -1));
+        $geometry = $this->buildLayoutFromCellBricks($bricks, $unitCm);
         $plantPositions = [];
+
+        $minX = min(array_column($bricks, 'x'));
+        $minY = min(array_column($bricks, 'y'));
 
         foreach ($normalized as $cell) {
             $row = $cell['y'] - $minY;
             $column = $cell['x'] - $minX;
-            $layout[$row][$column] = 1;
 
             foreach ($cell['plants'] as $plant) {
                 if (($plant['plant_id'] ?? 0) > 0) {
@@ -111,11 +273,67 @@ class BedController extends Controller
         }
 
         return [
-            'layout' => $layout,
-            'rows' => $rows,
-            'columns' => $columns,
+            'layout' => $geometry['layout'],
+            'rows' => $geometry['rows'],
+            'columns' => $geometry['columns'],
+            'cell_bricks' => $geometry['cell_bricks'],
             'plant_positions' => $plantPositions,
         ];
+    }
+
+    /**
+     * @return array{layout: array, rows: int, columns: int, cell_bricks: array, plant_positions?: array}
+     */
+    private function resolveBedGeometry(array $data): array
+    {
+        if (! empty($data['cell_bricks']) && is_array($data['cell_bricks'])) {
+            $unitCm = max(10, min(200, (int) ($data['cell_size_cm'] ?? self::DEFAULT_CELL_SIZE_CM)));
+            $geometry = $this->buildLayoutFromCellBricks($data['cell_bricks'], $unitCm);
+            $plantPositions = ! empty($data['cells']) && is_array($data['cells'])
+                ? $this->collectPlantPositions($data['cells'])
+                : null;
+
+            if (is_array($plantPositions)) {
+                $this->validatePlantPositionsInLayout($plantPositions, $geometry['layout']);
+            }
+
+            return [
+                ...$geometry,
+                'plant_positions' => $plantPositions,
+            ];
+        }
+
+        if (isset($data['layout']) && is_array($data['layout']) && ! empty($data['layout'])) {
+            $layout = $this->normalizeLayout($data['layout']);
+            $this->validateNormalizedLayout($layout);
+            $cellBricks = $this->cellBricksFromLayout($layout);
+
+            $plantPositions = ! empty($data['cells']) && is_array($data['cells'])
+                ? $this->collectPlantPositions($data['cells'])
+                : null;
+
+            if (is_array($plantPositions)) {
+                $this->validatePlantPositionsInLayout($plantPositions, $layout);
+            }
+
+            return [
+                'layout' => $layout,
+                'rows' => count($layout),
+                'columns' => count($layout) > 0 ? max(array_map('count', $layout)) : 1,
+                'cell_bricks' => $cellBricks,
+                'plant_positions' => $plantPositions,
+            ];
+        }
+
+        if (! empty($data['cells']) && is_array($data['cells'])) {
+            $unitCm = max(10, min(200, (int) ($data['cell_size_cm'] ?? self::DEFAULT_CELL_SIZE_CM)));
+
+            return $this->convertCellsToLayout($data['cells'], $unitCm);
+        }
+
+        throw ValidationException::withMessages([
+            'layout' => 'Peenra kuju on kohustuslik.',
+        ]);
     }
 
     private function collectPlantPositions(array $cells): array
@@ -188,23 +406,23 @@ class BedController extends Controller
             'layout.*' => ['array'],
             // -1 = vahekäik / tee / kivi, 0 = tühi, 1 = peenraruut
             'layout.*.*' => ['integer', 'in:-1,0,1'],
+            'cell_bricks' => ['nullable', 'array'],
+            'cell_bricks.*.x' => ['required_with:cell_bricks', 'integer', 'min:0'],
+            'cell_bricks.*.y' => ['required_with:cell_bricks', 'integer', 'min:0'],
+            'cell_bricks.*.w' => ['required_with:cell_bricks', 'integer', 'min:1', 'max:4'],
+            'cell_bricks.*.h' => ['required_with:cell_bricks', 'integer', 'min:1', 'max:4'],
+            'cell_bricks.*.kind' => ['nullable', 'string', 'in:plantable,walkway,empty'],
+            'cells.*.w' => ['nullable', 'integer', 'min:1', 'max:4'],
+            'cells.*.h' => ['nullable', 'integer', 'min:1', 'max:4'],
+            'cells.*.kind' => ['nullable', 'string', 'in:plantable,walkway,empty'],
         ]);
 
-        $layout = null;
-        $rows = 1;
-        $columns = 1;
-
-        if (isset($data['layout']) && is_array($data['layout'])) {
-            $layout = $this->normalizeLayout($data['layout']);
-            $this->validateNormalizedLayout($layout);
-            $rows = count($layout);
-            $columns = $rows > 0 ? max(array_map('count', $layout)) : 1;
-        } elseif (! empty($data['cells']) && is_array($data['cells'])) {
-            $converted = $this->convertCellsToLayout($data['cells']);
-            $layout = $converted['layout'];
-            $rows = $converted['rows'];
-            $columns = $converted['columns'];
-        }
+        $geometry = $this->resolveBedGeometry($data);
+        $layout = $geometry['layout'];
+        $rows = $geometry['rows'];
+        $columns = $geometry['columns'];
+        $cellBricks = $geometry['cell_bricks'];
+        $plantPositions = $geometry['plant_positions'] ?? null;
 
         $canStoreBedImage = Schema::hasColumn('beds', 'image_url');
         $imagePath = null;
@@ -222,6 +440,7 @@ class BedController extends Controller
             'rows' => $rows,
             'columns' => $columns,
             'layout' => $layout,
+            'cell_bricks' => $cellBricks,
             'sort_order' => (Bed::query()->where('garden_plan_id', $gardenPlanId)->max('sort_order') ?? 0) + 1,
         ];
 
@@ -238,14 +457,21 @@ class BedController extends Controller
 
         $bed = Bed::create($payload);
 
+        if (is_array($plantPositions)) {
+            foreach ($plantPositions as $plantId => $position) {
+                $bed->plants()->where('id', $plantId)->update(['position_in_bed' => $position]);
+            }
+        }
+
         $placedOnMap = $request->has('garden_x') && $request->has('garden_y');
 
         Session::flash(
             'success',
             $placedOnMap
-                ? 'Peenar lisatud.'
+                ? 'Peenar lisatud. Joonista kuju ruutude kaupa.'
                 : 'Peenar lisatud. Lohista see aiaplaanil õigesse kohta.',
         );
+        Session::flash('created_bed_id', $bed->id);
 
         $redirectParams = ['gardenPlan' => $gardenPlanId];
         if (! $placedOnMap) {
@@ -280,6 +506,15 @@ class BedController extends Controller
             'layout.*' => ['array'],
             // -1 = vahekäik / tee / kivi, 0 = tühi, 1 = peenraruut
             'layout.*.*' => ['integer', 'in:-1,0,1'],
+            'cell_bricks' => ['nullable', 'array'],
+            'cell_bricks.*.x' => ['required_with:cell_bricks', 'integer', 'min:0'],
+            'cell_bricks.*.y' => ['required_with:cell_bricks', 'integer', 'min:0'],
+            'cell_bricks.*.w' => ['required_with:cell_bricks', 'integer', 'min:1', 'max:4'],
+            'cell_bricks.*.h' => ['required_with:cell_bricks', 'integer', 'min:1', 'max:4'],
+            'cell_bricks.*.kind' => ['nullable', 'string', 'in:plantable,walkway,empty'],
+            'cells.*.w' => ['nullable', 'integer', 'min:1', 'max:4'],
+            'cells.*.h' => ['nullable', 'integer', 'min:1', 'max:4'],
+            'cells.*.kind' => ['nullable', 'string', 'in:plantable,walkway,empty'],
         ]);
 
         $payload = array_filter($data, fn ($v) => $v !== null);
@@ -290,9 +525,13 @@ class BedController extends Controller
 
         $plantPositions = null;
 
-        if (isset($data['layout']) && is_array($data['layout']) && ! empty($data['layout'])) {
-            $normalizedLayout = $this->normalizeLayout($data['layout']);
-            $this->validateNormalizedLayout($normalizedLayout);
+        if (
+            (isset($data['layout']) && is_array($data['layout']) && ! empty($data['layout']))
+            || (! empty($data['cell_bricks']) && is_array($data['cell_bricks']))
+            || (! empty($data['cells']) && is_array($data['cells']))
+        ) {
+            $geometry = $this->resolveBedGeometry($data);
+            $normalizedLayout = $geometry['layout'];
             $rowCount = count($normalizedLayout);
             $colCount = $rowCount > 0 ? max(array_map('count', $normalizedLayout)) : 0;
 
@@ -317,20 +556,11 @@ class BedController extends Controller
                 }
             }
 
-            $payload['rows'] = count($normalizedLayout);
-            $payload['columns'] = max(array_map('count', $normalizedLayout));
+            $payload['rows'] = $geometry['rows'];
+            $payload['columns'] = $geometry['columns'];
             $payload['layout'] = $normalizedLayout;
-
-            if (! empty($data['cells']) && is_array($data['cells'])) {
-                $plantPositions = $this->collectPlantPositions($data['cells']);
-                $this->validatePlantPositionsInLayout($plantPositions, $normalizedLayout);
-            }
-        } elseif (! empty($data['cells']) && is_array($data['cells'])) {
-            $converted = $this->convertCellsToLayout($data['cells']);
-            $payload['rows'] = $converted['rows'];
-            $payload['columns'] = $converted['columns'];
-            $payload['layout'] = $converted['layout'];
-            $plantPositions = $converted['plant_positions'];
+            $payload['cell_bricks'] = $geometry['cell_bricks'];
+            $plantPositions = $geometry['plant_positions'] ?? null;
         }
 
         $bed->update($payload);
