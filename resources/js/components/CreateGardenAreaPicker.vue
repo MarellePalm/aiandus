@@ -17,12 +17,19 @@ import {
     latLngRingToGardenBounds,
 } from '@/lib/gardenAreaSelection';
 
-const props = defineProps<{
-    mapFrame: ParcelBounds;
-    polygonLatLng: LatLngPoint[];
-    focusAnchorLat?: number | null;
-    focusAnchorLng?: number | null;
-}>();
+const props = withDefaults(
+    defineProps<{
+        mapFrame: ParcelBounds;
+        polygonLatLng: LatLngPoint[];
+        focusAnchorLat?: number | null;
+        focusAnchorLng?: number | null;
+        /** Miinimum nurkade arv enne kehtivat piirjoont (vaikimisi 3). */
+        minVertices?: number;
+    }>(),
+    {
+        minVertices: 3,
+    },
+);
 
 const emit = defineEmits<{
     'update:polygonLatLng': [LatLngPoint[]];
@@ -85,8 +92,8 @@ const areaLabel = computed(() => {
             : r.toFixed(2).replace(/\.?0+$/, '');
     };
 
-    if (props.polygonLatLng.length < 3) {
-        return `${props.polygonLatLng.length} nurka (vaja vähemalt 3)`;
+    if (props.polygonLatLng.length < props.minVertices) {
+        return `${props.polygonLatLng.length} nurka (vaja vähemalt ${props.minVertices})`;
     }
 
     const b = latLngRingToGardenBounds(props.polygonLatLng);
@@ -134,6 +141,10 @@ function pointerToLatLng(clientX: number, clientY: number): LatLngPoint {
 
 function emitPolygon(points: LatLngPoint[]) {
     emit('update:polygonLatLng', points);
+    if (points.length < props.minVertices) {
+        return;
+    }
+
     const result = latLngPolygonToApplyResult(points);
     if (result) {
         emit('apply', result);
@@ -227,7 +238,7 @@ function clearPolygon() {
 watch(
     () => props.mapFrame,
     () => {
-        if (props.polygonLatLng.length >= 3) {
+        if (props.polygonLatLng.length >= props.minVertices) {
             emitPolygon(props.polygonLatLng);
         }
         nextTick(() => mapBgRef.value?.scheduleMapRefresh());
@@ -255,9 +266,9 @@ onBeforeUnmount(() => {
             Joonista aia piir
         </p>
         <p class="mt-1 text-sm leading-6 text-muted-foreground">
-            Alusta tühjalt — iga nurk tekib klõpsuga ortofotol (vähemalt 3).
-            Lohista rohelisi täppe täpsustamiseks. Suumi rullikuga või +/-,
-            liiguta kaarti lohistades.
+            Alusta tühjalt — iga nurk tekib klõpsuga ortofotol (vähemalt
+            {{ minVertices }}). Lohista rohelisi täppe täpsustamiseks. Suumi
+            rullikuga või +/-, liiguta kaarti lohistades.
         </p>
 
         <div class="mt-2 flex flex-wrap gap-2">
