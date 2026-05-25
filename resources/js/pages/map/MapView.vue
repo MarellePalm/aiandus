@@ -16,6 +16,7 @@ import CardActionsMenu from '@/components/CardActionsMenu.vue';
 import DesktopSearchField from '@/components/DesktopSearchField.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
+import GardenMapBackground from '@/components/GardenMapBackground.vue';
 import GardenPlannerBoundaryOverlay from '@/components/GardenPlannerBoundaryOverlay.vue';
 import {
     DropdownMenu,
@@ -43,7 +44,6 @@ import BottomNav from '@/pages/BottomNav.vue';
 import SearchModal from '@/pages/Seeds/SearchModal.vue';
 import type { AppPageProps } from '@/types';
 
-import GardenMapBackground from '@/components/GardenMapBackground.vue';
 const CreateGardenAreaPicker = defineAsyncComponent(
     () => import('@/components/CreateGardenAreaPicker.vue'),
 );
@@ -306,9 +306,6 @@ const showOrtophotoLayer = computed(
         viewportSize.value.width > 0 &&
         viewportSize.value.height > 0 &&
         plannerInitialViewportFitDone.value,
-);
-const ortophotoTilesReady = computed(
-    () => showOrtophotoLayer.value && plannerLeafletZoom.value !== null,
 );
 
 /** Ortofoto nähtav; üle zoom 18 skaleerib Leaflet viimast kachi (mitte hall 404). */
