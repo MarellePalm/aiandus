@@ -247,10 +247,7 @@ watch(
 );
 
 onMounted(() => {
-    const refresh = () => mapBgRef.value?.scheduleMapRefresh();
-    nextTick(refresh);
-    window.setTimeout(refresh, 150);
-    window.setTimeout(refresh, 500);
+    nextTick(() => mapBgRef.value?.scheduleMapRefresh());
 });
 
 onBeforeUnmount(() => {
@@ -305,7 +302,6 @@ onBeforeUnmount(() => {
                 :focus-span-meters="focusSpanMeters"
                 :planner-zoom="1"
                 :fit-zoom="1"
-                free-zoom
                 interactive
                 @view-change="onMapViewChange"
                 @map-click="onMapClick"

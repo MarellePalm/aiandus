@@ -33,17 +33,20 @@ const emit = defineEmits<{
     leafletZoomChange: [zoom: number];
 }>();
 
-const WMS_URL = 'https://kaart.maaamet.ee/wms/alus-geo';
+const ORTOFOTO_TILE_URL =
+    'https://tiles.maaamet.ee/tm/wmts/1.0.0/foto/default/GMC/{z}/{y}/{x}.jpg';
 
-const MAX_MAP_ZOOM = 22;
+const MAX_MAP_ZOOM = 19;
+const MAX_NATIVE_ZOOM = 18;
 
 const containerRef = ref<HTMLElement | null>(null);
 const isLoading = ref(true);
 let map: L.Map | null = null;
-let tileLayer: L.TileLayer.WMS | null = null;
+let tileLayer: L.TileLayer | null = null;
 let resizeObserver: ResizeObserver | null = null;
 let lastBoundsKey = '';
 let anchorBaseZoom: number | null = null;
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 function boundsSyncKey(): string {
     return [
@@ -54,8 +57,6 @@ function boundsSyncKey(): string {
         props.focusAnchorLat,
         props.focusAnchorLng,
         props.focusSpanMeters,
-        props.plannerZoom.toFixed(4),
-        props.fitZoom.toFixed(4),
     ].join('|');
 }
 
@@ -169,6 +170,11 @@ function syncMapView() {
         Math.max(0, (anchorBaseZoom ?? 0) + extraZoom),
     );
 
+    if (props.interactive && !boundsChanged && anchorBaseZoom !== null) {
+        map.setView(center, map.getZoom(), { animate: false });
+        return;
+    }
+
     map.setView(center, targetZoom, { animate: false });
 }
 
@@ -179,30 +185,31 @@ function notifyViewChange() {
     }
 }
 
+function runMapRefresh() {
+    if (!map) {
+        return;
+    }
+
+    map.invalidateSize({ pan: false });
+    syncMapView();
+    notifyViewChange();
+}
+
 function scheduleMapRefresh() {
     if (!map) {
         return;
     }
 
-    requestAnimationFrame(() => {
-        if (!map) {
-            return;
-        }
+    if (refreshTimer !== null) {
+        clearTimeout(refreshTimer);
+    }
 
-        map.invalidateSize({ pan: false });
-        syncMapView();
-        notifyViewChange();
-
+    refreshTimer = setTimeout(() => {
+        refreshTimer = null;
         requestAnimationFrame(() => {
-            if (!map) {
-                return;
-            }
-
-            map.invalidateSize({ pan: false });
-            syncMapView();
-            notifyViewChange();
+            runMapRefresh();
         });
-    });
+    }, 80);
 }
 
 function initMap() {
@@ -234,25 +241,23 @@ function initMap() {
         wheelPxPerZoomLevel: props.interactive ? 60 : 60,
     });
 
-    tileLayer = L.tileLayer.wms(WMS_URL, {
-        layers: 'of10000',
-        format: 'image/jpeg',
-        transparent: false,
-        version: '1.1.1',
+    tileLayer = L.tileLayer(ORTOFOTO_TILE_URL, {
         maxZoom: MAX_MAP_ZOOM,
+        maxNativeZoom: MAX_NATIVE_ZOOM,
         tileSize: 256,
         minZoom: 4,
         keepBuffer: 2,
+        crossOrigin: 'anonymous',
     });
     tileLayer.addTo(map);
 
-    map.once('load', () => {
-        isLoading.value = false;
-    });
     tileLayer.on('loading', () => {
         isLoading.value = true;
     });
     tileLayer.on('load', () => {
+        isLoading.value = false;
+    });
+    tileLayer.on('tileerror', () => {
         isLoading.value = false;
     });
 
@@ -287,6 +292,10 @@ function initMap() {
 }
 
 function destroyMap() {
+    if (refreshTimer !== null) {
+        clearTimeout(refreshTimer);
+        refreshTimer = null;
+    }
     resizeObserver?.disconnect();
     resizeObserver = null;
     tileLayer = null;
@@ -294,6 +303,7 @@ function destroyMap() {
     map = null;
     lastBoundsKey = '';
     anchorBaseZoom = null;
+    isLoading.value = true;
 }
 
 function getMap(): L.Map | null {
@@ -335,12 +345,21 @@ watch(
             props.focusSpanMeters,
         ];
 
-        keys.push(props.plannerZoom, props.fitZoom);
-
         return keys;
     },
     () => {
         scheduleMapRefresh();
+    },
+);
+
+watch(
+    () => [props.plannerZoom, props.fitZoom] as const,
+    () => {
+        if (!map) {
+            return;
+        }
+        syncMapView();
+        notifyViewChange();
     },
 );
 
@@ -355,27 +374,29 @@ defineExpose({
 </script>
 
 <template>
-    <div
-        ref="containerRef"
-        class="absolute inset-0 z-0"
-        :class="interactive ? '' : 'pointer-events-none'"
-        aria-hidden="true"
-    />
-    <transition name="fade">
+    <div class="absolute inset-0">
         <div
-            v-if="isLoading"
-            class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
-        >
+            ref="containerRef"
+            class="absolute inset-0 z-0"
+            :class="interactive ? '' : 'pointer-events-none'"
+            aria-hidden="true"
+        />
+        <transition name="fade">
             <div
-                class="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white/90 drop-shadow"
-            />
-        </div>
-    </transition>
-    <p
-        class="pointer-events-none absolute right-2 bottom-1 z-[1] text-[9px] leading-none text-white/80 drop-shadow-sm"
-    >
-        © Maa- ja Ruumiamet
-    </p>
+                v-if="isLoading"
+                class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#e5e3df]/60"
+            >
+                <div
+                    class="h-8 w-8 animate-spin rounded-full border-2 border-emerald-900/20 border-t-emerald-800/80"
+                />
+            </div>
+        </transition>
+        <p
+            class="pointer-events-none absolute right-2 bottom-1 z-[1] text-[9px] leading-none text-white/80 drop-shadow-sm"
+        >
+            © Maa- ja Ruumiamet
+        </p>
+    </div>
 </template>
 
 <style scoped>

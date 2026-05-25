@@ -91,6 +91,10 @@ const wizardSteps = [
     { id: 2 as const, label: 'Kujunda kuju', icon: 'grid_view' },
     { id: 3 as const, label: 'Viimistlus', icon: 'photo_camera' },
 ];
+
+/** Maks ruute ühes plokis (nt õunapuu ~3 m @ 30 cm ruut). */
+const MAX_BRICK_GRID_SPAN = 12;
+
 function makeCellId(x: number, y: number): string {
     return `cell-${x}-${y}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -107,7 +111,10 @@ function clampBrickCm(value: number): number {
 }
 
 function cmToGridSpan(cm: number, unitCm = gridUnitCm()): number {
-    return Math.max(1, Math.min(4, Math.ceil(cm / unitCm)));
+    return Math.max(
+        1,
+        Math.min(MAX_BRICK_GRID_SPAN, Math.ceil(cm / unitCm)),
+    );
 }
 
 function brickFootprintFromCm(
