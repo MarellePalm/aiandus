@@ -22,6 +22,10 @@ type BedCell = {
     id: string;
     x: number;
     y: number;
+    w: number;
+    h: number;
+    width_cm: number;
+    height_cm: number;
     active: boolean;
     kind: 'plantable' | 'walkway' | 'empty';
     plants: CellPlant[];
@@ -36,6 +40,7 @@ type SubmitCell = {
 const props = withDefaults(
     defineProps<{
         mode?: 'create' | 'edit';
+        initialStep?: WizardStep;
         /** Praegune aiaplaan (ainult looja režiimis). */
         gardenPlanId?: number;
         bed?: {
@@ -46,6 +51,15 @@ const props = withDefaults(
             image_url?: string | null;
             cell_size_cm?: number;
             layout?: number[][] | null;
+            cell_bricks?: Array<{
+                x: number;
+                y: number;
+                w: number;
+                h: number;
+                width_cm?: number;
+                height_cm?: number;
+                kind: 'plantable' | 'walkway' | 'empty';
+            }> | null;
             plants?: BedPlant[];
         };
     }>(),
@@ -66,73 +80,50 @@ const highlightedCellId = ref<string | null>(null);
 let highlightTimeout: ReturnType<typeof setTimeout> | null = null;
 type WizardStep = 1 | 2 | 3;
 type DesignBrush = 'plantable' | 'walkway' | 'empty';
-type BedPreset = {
-    id: string;
-    label: string;
-    description: string;
-    columns: number;
-    rows: number;
-};
 
-const currentStep = ref<WizardStep>(1);
-const designBrush = ref<DesignBrush>('plantable');
+const currentStep = ref<WizardStep>(
+    props.initialStep && [1, 2, 3].includes(props.initialStep)
+        ? props.initialStep
+        : 1,
+);
 const wizardSteps = [
     { id: 1 as const, label: 'Peenar nimeta', icon: 'edit' },
     { id: 2 as const, label: 'Kujunda kuju', icon: 'grid_view' },
     { id: 3 as const, label: 'Viimistlus', icon: 'photo_camera' },
 ];
-const designBrushes: Array<{
-    id: DesignBrush;
-    label: string;
-    icon: string;
-    description: string;
-}> = [
-    {
-        id: 'plantable',
-        label: 'Peenraruut',
-        icon: 'psychiatry',
-        description:
-            'Klõps aktiivsel ruudul lülitab selle välja; teine klõps taastab.',
-    },
-    {
-        id: 'walkway',
-        label: 'Tee / kivi',
-        icon: 'texture',
-        description: 'Kivitee või vahekäik.',
-    },
-    {
-        id: 'empty',
-        label: 'Tühi',
-        icon: 'crop_free',
-        description: 'Auk või vaba ala kujus.',
-    },
-];
-const bedPresets: BedPreset[] = [
-    {
-        id: 'small',
-        label: 'Väike 2×4',
-        description: 'Kompaktne ürdi- või salatipeenar.',
-        columns: 2,
-        rows: 4,
-    },
-    {
-        id: 'medium',
-        label: 'Keskmine 3×6',
-        description: 'Mõnus põhivalik köögiviljadele.',
-        columns: 3,
-        rows: 6,
-    },
-    {
-        id: 'large',
-        label: 'Suur 4×8',
-        description: 'Rohkem ruumi segapeenrale.',
-        columns: 4,
-        rows: 8,
-    },
-];
-
 function makeCellId(x: number, y: number): string {
     return `cell-${x}-${y}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function gridUnitCm(): number {
+    return Math.max(
+        10,
+        Math.min(200, Math.round(Number(form.cell_size_cm) || 30)),
+    );
+}
+
+function clampBrickCm(value: number): number {
+    return Math.max(10, Math.min(500, Math.round(value)));
+}
+
+function cmToGridSpan(cm: number, unitCm = gridUnitCm()): number {
+    return Math.max(1, Math.min(4, Math.ceil(cm / unitCm)));
+}
+
+function brickFootprintFromCm(
+    width_cm: number,
+    height_cm: number,
+    unitCm = gridUnitCm(),
+): Pick<BedCell, 'width_cm' | 'height_cm' | 'w' | 'h'> {
+    const widthCm = clampBrickCm(width_cm);
+    const heightCm = clampBrickCm(height_cm);
+
+    return {
+        width_cm: widthCm,
+        height_cm: heightCm,
+        w: cmToGridSpan(widthCm, unitCm),
+        h: cmToGridSpan(heightCm, unitCm),
+    };
 }
 
 function createInitialCells(): BedCell[] {
@@ -153,14 +144,39 @@ function createInitialCells(): BedCell[] {
         plantMap.set(plant.position_in_bed, entries);
     });
 
+    const bricks = props.bed?.cell_bricks;
+    const unitCm = props.bed?.cell_size_cm ?? 30;
+
+    if (Array.isArray(bricks) && bricks.length > 0) {
+        return bricks.map((brick) => {
+            const w = Math.max(1, brick.w ?? 1);
+            const h = Math.max(1, brick.h ?? 1);
+            const widthCm = brick.width_cm ?? w * unitCm;
+            const heightCm = brick.height_cm ?? h * unitCm;
+            const footprint = brickFootprintFromCm(widthCm, heightCm, unitCm);
+
+            return {
+                id: makeCellId(brick.x, brick.y),
+                x: brick.x,
+                y: brick.y,
+                ...footprint,
+                active: brick.kind === 'plantable',
+                kind: brick.kind ?? 'plantable',
+                plants: [...(plantMap.get(`${brick.y},${brick.x}`) ?? [])],
+            };
+        });
+    }
+
     if (!layout || !Array.isArray(layout) || layout.length === 0) {
+        if (props.mode !== 'edit') return [];
         return [
             {
                 id: makeCellId(0, 0),
                 x: 0,
                 y: 0,
+                ...brickFootprintFromCm(unitCm, unitCm, unitCm),
                 active: true,
-                kind: 'plantable',
+                kind: 'plantable' as const,
                 plants: [],
             },
         ];
@@ -176,6 +192,7 @@ function createInitialCells(): BedCell[] {
                 id: makeCellId(x, y),
                 x,
                 y,
+                ...brickFootprintFromCm(unitCm, unitCm, unitCm),
                 active: cellValue === 1,
                 kind:
                     cellValue === 1
@@ -198,6 +215,7 @@ function createInitialCells(): BedCell[] {
                   id: makeCellId(0, 0),
                   x: 0,
                   y: 0,
+                  ...brickFootprintFromCm(unitCm, unitCm, unitCm),
                   active: true,
                   kind: 'plantable',
                   plants: [],
@@ -215,6 +233,13 @@ const form = useForm<{
     image: File | null;
     cells: SubmitCell[];
     layout: number[][];
+    cell_bricks: Array<{
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+        kind: 'plantable' | 'walkway' | 'empty';
+    }>;
 }>({
     name: props.mode === 'edit' ? (props.bed?.name ?? '') : '',
     location: props.mode === 'edit' ? (props.bed?.location ?? '') : '',
@@ -222,6 +247,7 @@ const form = useForm<{
     image: null,
     cells: [],
     layout: [],
+    cell_bricks: [],
 });
 
 const selectedCell = computed(
@@ -230,71 +256,93 @@ const selectedCell = computed(
 const activeCells = computed(() =>
     cells.value.filter((cell) => cell.active && cell.kind === 'plantable'),
 );
+const activeBricks = computed(() =>
+    cells.value.filter((cell) => cell.active && cell.kind === 'plantable'),
+);
 const layoutCells = computed(() => cells.value);
 
-const selectedPlantCount = computed(
-    () => selectedCell.value?.plants.length ?? 0,
-);
-const walkwayCellCount = computed(
-    () => cells.value.filter((cell) => cell.kind === 'walkway').length,
-);
-const emptyDesignCellCount = computed(
-    () => cells.value.filter((cell) => cell.kind === 'empty').length,
-);
-const inactivePlantableCellCount = computed(
-    () =>
-        cells.value.filter((cell) => cell.kind === 'plantable' && !cell.active)
-            .length,
-);
-const selectedCellLabel = computed(() =>
-    selectedCell.value
-        ? `Veerg ${displayColumnNumber(selectedCell.value.x)}, rida ${displayRowNumber(selectedCell.value.y)}`
-        : 'Vali peenrast ruut',
-);
-
 const bounds = computed(() => {
-    const source = layoutCells.value.length
-        ? layoutCells.value
-        : [{ x: 0, y: 0 }];
-    const xs = source.map((cell) => cell.x);
-    const ys = source.map((cell) => cell.y);
-
+    if (!layoutCells.value.length) {
+        return { minX: 0, maxX: -1, minY: 0, maxY: -1 };
+    }
+    const xs = layoutCells.value.map((c) => c.x);
+    const ys = layoutCells.value.map((c) => c.y);
+    const maxXs = layoutCells.value.map((c) => c.x + c.w - 1);
+    const maxYs = layoutCells.value.map((c) => c.y + c.h - 1);
     return {
         minX: Math.min(...xs),
-        maxX: Math.max(...xs),
+        maxX: Math.max(...maxXs),
         minY: Math.min(...ys),
-        maxY: Math.max(...ys),
+        maxY: Math.max(...maxYs),
     };
 });
 
-const displayBounds = computed(() => ({
-    minX: bounds.value.minX,
-    maxX: bounds.value.maxX,
-    minY: bounds.value.minY,
-    maxY: bounds.value.maxY,
-}));
+const layoutBounds = computed(() => bounds.value);
+
+const bedSummaryLabel = computed(() => {
+    const b = layoutBounds.value;
+    if (b.maxX < b.minX) return '0 × 0 ruutu';
+    const cols = b.maxX - b.minX + 1;
+    const rows = b.maxY - b.minY + 1;
+    return `${cols} × ${rows} ruutu`;
+});
+const bedPhysicalSizeLabel = computed(() => {
+    const b = layoutBounds.value;
+    if (b.maxX < b.minX || !cells.value.length) {
+        return `0 × 0 m`;
+    }
+
+    const unit = gridUnitCm();
+    let maxRight = 0;
+    let maxBottom = 0;
+
+    cells.value.forEach((cell) => {
+        const left = (cell.x - b.minX) * unit;
+        const top = (cell.y - b.minY) * unit;
+        maxRight = Math.max(maxRight, left + cell.width_cm);
+        maxBottom = Math.max(maxBottom, top + cell.height_cm);
+    });
+
+    return `${formatMeters(maxRight / 100)} × ${formatMeters(maxBottom / 100)} m`;
+});
+
+const dragOverCell = ref<{ x: number; y: number } | null>(null);
+const draggingCell = ref<BedCell | null>(null);
+const draggingFromPalette = ref(false);
+const isDraggingLayout = computed(
+    () => draggingFromPalette.value || draggingCell.value !== null,
+);
+
+const displayBounds = computed(() => {
+    const b = bounds.value;
+    if (b.maxX < b.minX) {
+        return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+    }
+    if (isDraggingLayout.value) {
+        return {
+            minX: b.minX - 1,
+            maxX: b.maxX + 1,
+            minY: b.minY - 1,
+            maxY: b.maxY + 1,
+        };
+    }
+
+    return { minX: b.minX, maxX: b.maxX, minY: b.minY, maxY: b.maxY };
+});
 
 const displayRows = computed(() =>
     Array.from(
         { length: displayBounds.value.maxY - displayBounds.value.minY + 1 },
-        (_, index) => displayBounds.value.minY + index,
+        (_, i) => displayBounds.value.minY + i,
     ),
 );
 const displayColumns = computed(() =>
     Array.from(
         { length: displayBounds.value.maxX - displayBounds.value.minX + 1 },
-        (_, index) => displayBounds.value.minX + index,
+        (_, i) => displayBounds.value.minX + i,
     ),
 );
-const bedSummaryLabel = computed(
-    () => `${displayColumns.value.length} × ${displayRows.value.length} ruutu`,
-);
-const bedPhysicalSizeLabel = computed(() => {
-    const cellSize = Math.max(10, Number(form.cell_size_cm || 30));
-    const widthMeters = (displayColumns.value.length * cellSize) / 100;
-    const heightMeters = (displayRows.value.length * cellSize) / 100;
-    return `${formatMeters(widthMeters)} × ${formatMeters(heightMeters)} m`;
-});
+
 const canContinueFromStep = computed(() => {
     if (currentStep.value === 1) return Boolean(form.name.trim());
     if (currentStep.value === 2) return activeCells.value.length > 0;
@@ -321,7 +369,11 @@ function occupiedKey(x: number, y: number): string {
 const occupiedCellMap = computed(() => {
     const map = new Map<string, BedCell>();
     layoutCells.value.forEach((cell) => {
-        map.set(occupiedKey(cell.x, cell.y), cell);
+        for (let dy = 0; dy < cell.h; dy++) {
+            for (let dx = 0; dx < cell.w; dx++) {
+                map.set(occupiedKey(cell.x + dx, cell.y + dy), cell);
+            }
+        }
     });
     return map;
 });
@@ -329,6 +381,65 @@ const occupiedCellMap = computed(() => {
 function getCellAt(x: number, y: number): BedCell | null {
     return occupiedCellMap.value.get(occupiedKey(x, y)) ?? null;
 }
+
+function anchorCellAt(x: number, y: number): BedCell | null {
+    const cell = getCellAt(x, y);
+    if (!cell || cell.x !== x || cell.y !== y) return null;
+    return cell;
+}
+
+const GRID_CELL_SIZE = '3.35rem';
+const GRID_CELL_GAP = '0.625rem';
+
+/** Paiguta ruut täpsele (x,y) koordinaadile — ilma selleta läheb CSS auto-placement sassi. */
+function gridCellPlacement(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+): Record<string, string> {
+    const colStart = x - displayBounds.value.minX + 1;
+    const rowStart = y - displayBounds.value.minY + 1;
+    const style: Record<string, string> = {
+        gridColumnStart: String(colStart),
+        gridRowStart: String(rowStart),
+    };
+
+    if (w > 1) {
+        style.gridColumn = `span ${w}`;
+    }
+    if (h > 1) {
+        style.gridRow = `span ${h}`;
+    }
+    if (w > 1 || h > 1) {
+        style.minWidth = `calc(${w} * ${GRID_CELL_SIZE} + (${w - 1} * ${GRID_CELL_GAP}))`;
+        style.minHeight = `calc(${h} * ${GRID_CELL_SIZE} + (${h - 1} * ${GRID_CELL_GAP}))`;
+    }
+
+    return style;
+}
+
+const gridFrameStyle = computed(() => ({
+    gridTemplateColumns: `repeat(${displayColumns.value.length}, ${GRID_CELL_SIZE})`,
+    gridTemplateRows: `repeat(${displayRows.value.length}, ${GRID_CELL_SIZE})`,
+}));
+
+const dragDropSlots = computed(() => {
+    if (!isDraggingLayout.value) {
+        return [];
+    }
+
+    const slots: { x: number; y: number }[] = [];
+    for (const y of displayRows.value) {
+        for (const x of displayColumns.value) {
+            if (!getCellAt(x, y)) {
+                slots.push({ x, y });
+            }
+        }
+    }
+
+    return slots;
+});
 
 function addBedEditorCellClasses(x: number, y: number): string[] {
     const cell = getCellAt(x, y);
@@ -395,7 +506,11 @@ function cellIcon(cell: BedCell): string {
     if (cell.kind === 'walkway') return 'texture';
     if (cell.kind === 'empty') return 'crop_free';
     if (!cell.active) return 'crop_square';
-    return 'grid_view';
+    return 'add';
+}
+
+function isPlantableEmptySlot(cell: BedCell): boolean {
+    return cell.kind === 'plantable' && cell.active && cell.plants.length === 0;
 }
 
 function cellKindLabel(cell: BedCell): string {
@@ -413,6 +528,22 @@ function selectCell(cell: BedCell) {
     highlightTimeout = setTimeout(() => {
         if (highlightedCellId.value === cell.id) highlightedCellId.value = null;
     }, 900);
+
+    void scrollSelectedCellIntoView();
+}
+
+async function scrollSelectedCellIntoView() {
+    await nextTick();
+    const target = selectedCellElement.value;
+    if (!target) {
+        return;
+    }
+
+    target.scrollIntoView({
+        block: 'nearest',
+        inline: 'nearest',
+        behavior: 'smooth',
+    });
 }
 
 function setSelectedCellElement(el: Element | null, cellId: string) {
@@ -426,108 +557,190 @@ function setSelectedCellRef(el: unknown, cellId: string) {
     setSelectedCellElement(el instanceof HTMLElement ? el : null, cellId);
 }
 
-function addCellAt(x: number, y: number) {
-    const existing = getCellAt(x, y);
-    if (existing) {
-        if (existing.kind !== 'plantable') {
-            cells.value = cells.value.map((cell) =>
-                cell.id === existing.id
-                    ? { ...cell, active: true, kind: 'plantable' }
-                    : cell,
-            );
+function brickFits(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    excludeId?: string,
+): boolean {
+    for (let dy = 0; dy < h; dy += 1) {
+        for (let dx = 0; dx < w; dx += 1) {
+            const occupant = getCellAt(x + dx, y + dy);
+            if (occupant && occupant.id !== excludeId) {
+                return false;
+            }
         }
-        selectCell(existing);
-        return;
     }
 
-    const newCell: BedCell = {
+    return true;
+}
+
+function makeNewCellAt(x: number, y: number): BedCell {
+    const unit = gridUnitCm();
+
+    return {
         id: makeCellId(x, y),
         x,
         y,
+        ...brickFootprintFromCm(unit, unit),
         active: true,
         kind: 'plantable',
         plants: [],
     };
-
-    cells.value = [...cells.value, newCell];
-    selectCell(newCell);
 }
 
-function addRelative(direction: 'up' | 'down' | 'left' | 'right') {
-    if (!selectedCell.value) return;
-    const cell = selectedCell.value;
+function insertCellAt(x: number, y: number, existingCell?: BedCell) {
+    const kind = existingCell?.kind ?? 'plantable';
+    const footprint = existingCell
+        ? brickFootprintFromCm(existingCell.width_cm, existingCell.height_cm)
+        : brickFootprintFromCm(gridUnitCm(), gridUnitCm());
 
-    if (direction === 'up') addCellAt(cell.x, cell.y - 1);
-    if (direction === 'down') addCellAt(cell.x, cell.y + 1);
-    if (direction === 'left') addCellAt(cell.x - 1, cell.y);
-    if (direction === 'right') addCellAt(cell.x + 1, cell.y);
-}
-
-function shiftCells(
-    axis: 'x' | 'y',
-    comparison: (cell: BedCell) => boolean,
-    delta: number,
-) {
-    cells.value = cells.value.map((cell) =>
-        comparison(cell) ? { ...cell, [axis]: cell[axis] + delta } : cell,
-    );
-}
-
-function addBetween(direction: 'up' | 'down' | 'left' | 'right') {
-    if (!selectedCell.value) return;
-    const cell = selectedCell.value;
-
-    if (direction === 'right') {
-        const targetX = cell.x + 1;
-        if (getCellAt(targetX, cell.y)) {
-            shiftCells('x', (item) => item.x > cell.x, 1);
-        }
-        addCellAt(targetX, cell.y);
-    }
-
-    if (direction === 'left') {
-        const targetX = cell.x - 1;
-        if (getCellAt(targetX, cell.y)) {
-            shiftCells('x', (item) => item.x < cell.x, -1);
-        }
-        addCellAt(targetX, cell.y);
-    }
-
-    if (direction === 'down') {
-        const targetY = cell.y + 1;
-        if (getCellAt(cell.x, targetY)) {
-            shiftCells('y', (item) => item.y > cell.y, 1);
-        }
-        addCellAt(cell.x, targetY);
-    }
-
-    if (direction === 'up') {
-        const targetY = cell.y - 1;
-        if (getCellAt(cell.x, targetY)) {
-            shiftCells('y', (item) => item.y < cell.y, -1);
-        }
-        addCellAt(cell.x, targetY);
-    }
-}
-
-function handleDirectionalAdd(direction: 'up' | 'down' | 'left' | 'right') {
-    if (!selectedCell.value) return;
-    const cell = selectedCell.value;
-
-    const target = {
-        up: { x: cell.x, y: cell.y - 1 },
-        down: { x: cell.x, y: cell.y + 1 },
-        left: { x: cell.x - 1, y: cell.y },
-        right: { x: cell.x + 1, y: cell.y },
-    }[direction];
-
-    if (getCellAt(target.x, target.y)) {
-        addBetween(direction);
+    if (!brickFits(x, y, footprint.w, footprint.h, existingCell?.id)) {
+        form.setError(
+            'cells',
+            'Plokk ei mahu siia. Vali teine koht või väiksem suurus.',
+        );
         return;
     }
 
-    addRelative(direction);
+    if (existingCell) {
+        cells.value = cells.value.filter((c) => c.id !== existingCell.id);
+    }
+
+    const newCell: BedCell = existingCell
+        ? { ...existingCell, x, y, ...footprint }
+        : {
+              ...makeNewCellAt(x, y),
+              ...footprint,
+              kind,
+              active: kind === 'plantable',
+          };
+
+    cells.value = [...cells.value, newCell];
+    selectCell(newCell);
+    form.clearErrors('cells');
 }
+
+function onCellDragStart(event: DragEvent, cell: BedCell) {
+    draggingCell.value = cell;
+    if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', cell.id);
+    }
+}
+
+function onCellDragEnd() {
+    draggingCell.value = null;
+    draggingFromPalette.value = false;
+    dragOverCell.value = null;
+}
+
+function onPaletteDragStart(event: DragEvent) {
+    draggingFromPalette.value = true;
+    draggingCell.value = null;
+    if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = 'copy';
+        event.dataTransfer.setData('text/plain', 'palette-cell');
+    }
+}
+
+function onPaletteDragEnd() {
+    draggingFromPalette.value = false;
+    dragOverCell.value = null;
+}
+
+function onCellDragOver(event: DragEvent, x: number, y: number) {
+    if (!draggingCell.value && !draggingFromPalette.value) return;
+    if (getCellAt(x, y)) return;
+
+    const footprint = draggingCell.value
+        ? brickFootprintFromCm(
+              draggingCell.value.width_cm,
+              draggingCell.value.height_cm,
+          )
+        : brickFootprintFromCm(gridUnitCm(), gridUnitCm());
+
+    if (!brickFits(x, y, footprint.w, footprint.h, draggingCell.value?.id)) {
+        return;
+    }
+
+    event.preventDefault();
+    if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = draggingFromPalette.value
+            ? 'copy'
+            : 'move';
+    }
+    dragOverCell.value = { x, y };
+}
+
+function onCellDragLeave() {
+    dragOverCell.value = null;
+}
+
+function onCellDrop(event: DragEvent, x: number, y: number) {
+    event.preventDefault();
+    dragOverCell.value = null;
+
+    if (draggingFromPalette.value) {
+        draggingFromPalette.value = false;
+        if (!getCellAt(x, y)) {
+            insertCellAt(x, y);
+        }
+        return;
+    }
+
+    if (draggingCell.value) {
+        const cell = draggingCell.value;
+        draggingCell.value = null;
+        if (cell.x === x && cell.y === y) return;
+        cells.value = cells.value.filter((c) => c.id !== cell.id);
+        insertCellAt(x, y, cell);
+    }
+}
+
+function onEmptyCanvasDragOver(event: DragEvent) {
+    if (!draggingCell.value && !draggingFromPalette.value) return;
+    event.preventDefault();
+    if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = draggingFromPalette.value
+            ? 'copy'
+            : 'move';
+    }
+}
+
+function onEmptyCanvasDrop(event: DragEvent) {
+    event.preventDefault();
+    const fromPalette = draggingFromPalette.value;
+    draggingCell.value = null;
+    draggingFromPalette.value = false;
+    dragOverCell.value = null;
+    if (fromPalette || cells.value.length === 0) {
+        insertCellAt(0, 0);
+    }
+}
+
+function isDragPreview(x: number, y: number): boolean {
+    if (!dragOverCell.value) return false;
+    if (getCellAt(x, y)) return false;
+    return dragOverCell.value.x === x && dragOverCell.value.y === y;
+}
+
+const dragPreviewValid = computed(() => {
+    if (!dragOverCell.value) {
+        return false;
+    }
+
+    const { x, y } = dragOverCell.value;
+    const footprint = draggingCell.value
+        ? brickFootprintFromCm(
+              draggingCell.value.width_cm,
+              draggingCell.value.height_cm,
+          )
+        : brickFootprintFromCm(gridUnitCm(), gridUnitCm());
+
+    return brickFits(x, y, footprint.w, footprint.h, draggingCell.value?.id);
+});
 
 const selectedHasPlants = computed(() =>
     Boolean(selectedCell.value?.plants.length),
@@ -561,15 +774,71 @@ const formFeedback = computed(() => {
 
 function removeSelectedCell() {
     if (!selectedCell.value || selectedHasPlants.value) return;
-    if (activeCells.value.length <= 1) return;
+    if (activeBricks.value.length <= 1) return;
 
     const current = selectedCell.value;
     cells.value = cells.value.filter((cell) => cell.id !== current.id);
     selectedCellId.value = cells.value[0]?.id ?? '';
 }
 
-function addCellFromPlaceholder(x: number, y: number) {
-    setCellKindAt(x, y, designBrush.value);
+function selectedBrickSizeLabel(cell: BedCell): string {
+    return `${cell.width_cm} × ${cell.height_cm} cm`;
+}
+
+function selectedBrickGridHint(cell: BedCell): string {
+    const unit = gridUnitCm();
+    if (cell.w === 1 && cell.h === 1) {
+        return `1 ruut (${unit} cm ruudustikus)`;
+    }
+
+    return `${cell.w}×${cell.h} ruutu ruudustikus`;
+}
+
+function applySelectedBrickCm(width_cm: number, height_cm: number) {
+    if (!selectedCell.value || selectedHasPlants.value) {
+        return;
+    }
+
+    const cell = selectedCell.value;
+    const footprint = brickFootprintFromCm(width_cm, height_cm);
+
+    if (
+        cell.width_cm === footprint.width_cm &&
+        cell.height_cm === footprint.height_cm &&
+        cell.w === footprint.w &&
+        cell.h === footprint.h
+    ) {
+        return;
+    }
+
+    if (!brickFits(cell.x, cell.y, footprint.w, footprint.h, cell.id)) {
+        const unit = gridUnitCm();
+        form.setError(
+            'cells',
+            footprint.w > cell.w || footprint.h > cell.h
+                ? `Suurem plokk (${footprint.w}×${footprint.h} ruutu, ${unit} cm/ruut) ei mahu — kõrval on teine plokk. Liiguta plokki või eemalda naaber.`
+                : 'Plokk ei mahu siia. Vali teine koht või väiksem suurus.',
+        );
+        return;
+    }
+
+    cells.value = cells.value.map((item) =>
+        item.id === cell.id
+            ? {
+                  ...item,
+                  ...footprint,
+                  active: item.kind === 'plantable',
+              }
+            : item,
+    );
+    form.clearErrors('cells');
+}
+
+function toggleSelectedWalkway() {
+    if (!selectedCell.value || selectedHasPlants.value) return;
+    const cell = selectedCell.value;
+    const next: DesignBrush = cell.kind === 'walkway' ? 'plantable' : 'walkway';
+    setCellKindAt(cell.x, cell.y, next);
 }
 
 function setCellKindAt(x: number, y: number, kind: DesignBrush) {
@@ -600,114 +869,19 @@ function setCellKindAt(x: number, y: number, kind: DesignBrush) {
     }
 
     const newCell: BedCell = {
-        id: makeCellId(x, y),
-        x,
-        y,
-        active: kind === 'plantable',
+        ...makeNewCellAt(x, y),
         kind,
-        plants: [],
+        active: kind === 'plantable',
     };
     cells.value = [...cells.value, newCell];
     selectCell(newCell);
     form.clearErrors('cells');
 }
 
-function togglePlantableCell(cell: BedCell) {
-    if (cell.plants.length) {
-        form.setError(
-            'cells',
-            'Taimedega ruutu ei saa peenrast välja lülitada.',
-        );
-        selectCell(cell);
-        return;
-    }
-
-    if (cell.kind === 'plantable' && cell.active) {
-        if (activeCells.value.length <= 1) {
-            form.setError('cells', 'Peenras peab olema vähemalt üks ruut.');
-            selectCell(cell);
-            return;
-        }
-
-        cells.value = cells.value.map((item) =>
-            item.id === cell.id ? { ...item, active: false } : item,
-        );
-        selectCell(cell);
-        form.clearErrors('cells');
-        return;
-    }
-
-    setCellKindAt(cell.x, cell.y, 'plantable');
-}
-
-function paintCell(cell: BedCell) {
-    if (designBrush.value === 'plantable') {
-        togglePlantableCell(cell);
-        return;
-    }
-
-    setCellKindAt(cell.x, cell.y, designBrush.value);
-}
-
-function cycleCellKind(cell: BedCell) {
-    const nextKind: DesignBrush =
-        cell.kind === 'plantable'
-            ? 'walkway'
-            : cell.kind === 'walkway'
-              ? 'empty'
-              : 'plantable';
-    setCellKindAt(cell.x, cell.y, nextKind);
-}
-
-function applyPreset(preset: BedPreset) {
-    const next: BedCell[] = [];
-    for (let y = 0; y < preset.rows; y += 1) {
-        for (let x = 0; x < preset.columns; x += 1) {
-            next.push({
-                id: makeCellId(x, y),
-                x,
-                y,
-                active: true,
-                kind: 'plantable',
-                plants: [],
-            });
-        }
-    }
-    cells.value = next;
-    selectedCellId.value = next[0]?.id ?? '';
-    form.clearErrors('cells');
-}
-
-function fillVisibleRectangle() {
-    const next: BedCell[] = [];
-    for (
-        let y = displayBounds.value.minY;
-        y <= displayBounds.value.maxY;
-        y += 1
-    ) {
-        for (
-            let x = displayBounds.value.minX;
-            x <= displayBounds.value.maxX;
-            x += 1
-        ) {
-            const existing = getCellAt(x, y);
-            next.push(
-                existing
-                    ? { ...existing, active: true, kind: 'plantable' }
-                    : {
-                          id: makeCellId(x, y),
-                          x,
-                          y,
-                          active: true,
-                          kind: 'plantable',
-                          plants: [],
-                      },
-            );
-        }
-    }
-    cells.value = next;
-    selectedCellId.value = next[0]?.id ?? '';
-    form.clearErrors('cells');
+function onPlacedCellClick(x: number, y: number) {
+    const cell = anchorCellAt(x, y);
+    if (!cell) return;
+    selectCell(cell);
 }
 
 function resetToSingleCell() {
@@ -722,6 +896,7 @@ function resetToSingleCell() {
         id: makeCellId(0, 0),
         x: 0,
         y: 0,
+        ...brickFootprintFromCm(gridUnitCm(), gridUnitCm()),
         active: true,
         kind: 'plantable',
         plants: [],
@@ -740,6 +915,9 @@ function goToStep(step: WizardStep) {
         }
         return;
     }
+    if (step !== 2) {
+        form.clearErrors('cells');
+    }
     currentStep.value = step;
 }
 
@@ -753,21 +931,59 @@ function previousStep() {
     currentStep.value = (currentStep.value - 1) as WizardStep;
 }
 
+function layoutValueForCell(cell: BedCell): number {
+    if (cell.kind === 'walkway') {
+        return -1;
+    }
+    if (cell.kind === 'empty' || !cell.active) {
+        return 0;
+    }
+
+    return 1;
+}
+
 function syncCellsToForm() {
-    form.layout = displayRows.value.map((y) =>
-        displayColumns.value.map((x) => {
-            const cell = getCellAt(x, y);
-            if (!cell) return 0;
-            if (cell.kind === 'walkway') return -1;
-            if (cell.kind === 'empty' || !cell.active) return 0;
-            return 1;
-        }),
-    );
-    form.cells = activeCells.value
+    const b = layoutBounds.value;
+    const layout: number[][] = [];
+    for (let y = b.minY; y <= b.maxY; y += 1) {
+        const row: number[] = [];
+        for (let x = b.minX; x <= b.maxX; x += 1) {
+            row.push(0);
+        }
+        layout.push(row);
+    }
+
+    cells.value.forEach((cell) => {
+        const value = layoutValueForCell(cell);
+        for (let dy = 0; dy < cell.h; dy += 1) {
+            for (let dx = 0; dx < cell.w; dx += 1) {
+                const row = cell.y - b.minY + dy;
+                const col = cell.x - b.minX + dx;
+                if (layout[row]?.[col] !== undefined) {
+                    layout[row][col] = value;
+                }
+            }
+        }
+    });
+
+    form.layout = layout;
+    form.cell_bricks = cells.value.map((cell) => ({
+        x: cell.x - b.minX,
+        y: cell.y - b.minY,
+        w: cell.w,
+        h: cell.h,
+        width_cm: cell.width_cm,
+        height_cm: cell.height_cm,
+        kind: cell.kind,
+    }));
+    form.cells = cells.value
         .filter((cell) => cell.plants.length > 0)
         .map((cell) => ({
-            x: cell.x - displayBounds.value.minX,
-            y: cell.y - displayBounds.value.minY,
+            x: cell.x - b.minX,
+            y: cell.y - b.minY,
+            w: cell.w,
+            h: cell.h,
+            kind: cell.kind,
             plants: cell.plants.map((plant) => ({
                 plant_id: plant.plant_id,
                 quantity: plant.quantity,
@@ -867,13 +1083,8 @@ onBeforeUnmount(() => {
     if (highlightTimeout) clearTimeout(highlightTimeout);
 });
 
-watch(selectedCellId, async () => {
-    await nextTick();
-    selectedCellElement.value?.scrollIntoView({
-        block: 'nearest',
-        inline: 'nearest',
-        behavior: 'smooth',
-    });
+watch(selectedCellId, () => {
+    void scrollSelectedCellIntoView();
 });
 </script>
 
@@ -928,8 +1139,8 @@ watch(selectedCellId, async () => {
                                     Peenar nimeta
                                 </h2>
                                 <p class="mt-0.5 text-sm text-muted-foreground">
-                                    Pane peenrale nimi ja vali kiire suuruse
-                                    algus.
+                                    Pane peenrale nimi ja vali ühe ruudu tegelik
+                                    mõõt.
                                 </p>
                             </div>
                         </div>
@@ -942,7 +1153,7 @@ watch(selectedCellId, async () => {
                 </div>
 
                 <div class="space-y-4 p-4 sm:p-5">
-                    <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+                    <div class="grid gap-4 lg:grid-cols-1">
                         <div>
                             <label class="floating-field">
                                 <input
@@ -961,50 +1172,11 @@ watch(selectedCellId, async () => {
                                 {{ form.errors.name }}
                             </p>
                         </div>
-
-                        <div class="space-y-2">
-                            <p
-                                class="text-xs font-bold tracking-[0.16em] text-muted-foreground uppercase"
-                            >
-                                Suuruse presetid
-                            </p>
-                            <button
-                                v-for="preset in bedPresets"
-                                :key="preset.id"
-                                type="button"
-                                class="preset-card"
-                                @click="applyPreset(preset)"
-                            >
-                                <span class="preset-preview">
-                                    <i
-                                        v-for="index in Math.min(
-                                            preset.rows * preset.columns,
-                                            18,
-                                        )"
-                                        :key="index"
-                                    ></i>
-                                </span>
-                                <span class="min-w-0">
-                                    <span
-                                        class="block text-sm font-semibold text-foreground"
-                                    >
-                                        {{ preset.label }}
-                                    </span>
-                                    <span
-                                        class="mt-0.5 block text-xs leading-5 text-muted-foreground"
-                                        >{{ preset.description }}</span
-                                    >
-                                </span>
-                            </button>
-                        </div>
                     </div>
                 </div>
             </section>
 
-            <section
-                v-show="currentStep === 2"
-                class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_17rem]"
-            >
+            <section v-show="currentStep === 2">
                 <div
                     class="rounded-[1.5rem] bg-card p-4 ring-1 shadow-soft ring-border/70 sm:p-5"
                 >
@@ -1020,537 +1192,368 @@ watch(selectedCellId, async () => {
                             <p
                                 class="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground"
                             >
-                                Vali pintsel ja puuduta ruute. Peenraruudul
-                                klõps lülitab ruudu sisse või välja.
+                                Ülevalt lohista uut plokki, all on sinu peenar.
+                                Klõpsa plokki — sea mõõt paremal cm-des.
                             </p>
                         </div>
-                        <div
-                            class="inline-flex w-fit items-center gap-2 rounded-full bg-primary/8 px-3 py-1.5 text-sm font-medium text-primary"
-                        >
-                            <span class="material-symbols-outlined text-base"
-                                >grid_view</span
-                            >
-                            {{ selectedCellLabel }}
-                        </div>
-                    </div>
-                    <div class="mt-4 grid gap-2 sm:grid-cols-3">
-                        <button
-                            v-for="brush in designBrushes"
-                            :key="brush.id"
-                            type="button"
-                            class="design-brush"
-                            :class="
-                                designBrush === brush.id
-                                    ? 'design-brush--active'
-                                    : ''
-                            "
-                            @click="designBrush = brush.id"
-                        >
-                            <span class="material-symbols-outlined">{{
-                                brush.icon
-                            }}</span>
-                            <span>
-                                <strong>{{ brush.label }}</strong>
-                                <small>{{ brush.description }}</small>
-                            </span>
-                        </button>
-                    </div>
-                    <div
-                        class="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-muted-foreground"
-                    >
-                        <span class="legend-pill legend-pill--plantable"
-                            >{{ activeCells.length }} peenraruutu</span
-                        >
-                        <span class="legend-pill legend-pill--walkway"
-                            >{{ walkwayCellCount }} teed/kivi</span
-                        >
-                        <span class="legend-pill legend-pill--inactive"
-                            >{{ inactivePlantableCellCount }} välja
-                            lülitatud</span
-                        >
-                        <span class="legend-pill legend-pill--empty"
-                            >{{ emptyDesignCellCount }} tühja ala</span
-                        >
-                    </div>
-                    <div class="mt-4 flex flex-wrap gap-2">
-                        <button
-                            type="button"
-                            class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 sm:min-h-0 sm:py-2"
-                            @click="fillVisibleRectangle"
-                        >
-                            <span class="material-symbols-outlined text-base"
-                                >select_all</span
-                            >
-                            Täida kõik
-                        </button>
-                        <button
-                            type="button"
-                            class="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-background px-3 text-sm font-semibold text-foreground transition hover:bg-muted sm:min-h-0 sm:py-2"
-                            @click="resetToSingleCell"
-                        >
-                            <span class="material-symbols-outlined text-base"
-                                >ink_eraser</span
-                            >
-                            Tühjenda
-                        </button>
-                    </div>
-
-                    <div class="mt-4 max-w-sm">
-                        <label class="form-label text-foreground"
-                            >Ühe ruudu mõõt</label
-                        >
-                        <div
-                            class="flex items-center rounded-xl border border-input bg-background px-4 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
-                        >
-                            <input
-                                v-model="form.cell_size_cm"
-                                type="number"
-                                min="10"
-                                max="200"
-                                step="10"
-                                class="h-12 min-w-0 flex-1 border-0 bg-transparent text-base text-foreground outline-none"
-                                placeholder="30"
-                                @input="form.clearErrors('cell_size_cm')"
-                            />
-                            <span
-                                class="text-sm font-medium text-muted-foreground"
-                                >cm</span
-                            >
-                        </div>
-                        <p class="mt-2 text-sm leading-6 text-muted-foreground">
-                            See on ühe peenraruudu suurus päris aias.
-                        </p>
-                        <p
-                            v-if="form.errors.cell_size_cm"
-                            class="mt-2 text-sm text-red-600"
-                        >
-                            {{ form.errors.cell_size_cm }}
-                        </p>
                     </div>
 
                     <div
-                        ref="gridScroller"
-                        class="mt-4 overflow-x-auto rounded-[1.25rem] bg-background p-3 ring-1 ring-border/70 sm:p-4"
+                        class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-start"
                     >
                         <div
-                            class="bed-grid-frame inline-grid gap-2.5 rounded-[1.15rem] p-2 sm:p-2.5"
-                            :style="{
-                                gridTemplateColumns: `repeat(${displayColumns.length}, minmax(0, 3.35rem))`,
-                            }"
+                            class="min-w-0 flex-1 overflow-hidden rounded-[1.25rem] bg-card ring-1 ring-border/70"
                         >
-                            <template
-                                v-for="y in displayRows"
-                                :key="`row-${y}`"
+                            <div
+                                class="border-b border-border/60 bg-muted/50 px-3 py-2.5"
+                                aria-label="Uue ploki lohistamine ja lähtemõõt"
                             >
-                                <template
-                                    v-for="x in displayColumns"
-                                    :key="`cell-${x}-${y}`"
+                                <p
+                                    class="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase"
+                                >
+                                    Uus plokk — lohista peenrale
+                                </p>
+                                <div
+                                    class="mt-2 flex flex-wrap items-end gap-2"
                                 >
                                     <div
-                                        class="relative size-[3.35rem]"
+                                        draggable="true"
+                                        role="button"
+                                        tabindex="0"
+                                        class="bed-cell bed-cell--empty bed-cell--warm ring-dashed relative flex size-[3.35rem] shrink-0 cursor-grab touch-manipulation items-center justify-center ring-2 ring-amber-900/25 active:cursor-grabbing"
+                                        aria-label="Lohista uus peenraruut"
+                                        @dragstart="onPaletteDragStart"
+                                        @dragend="onPaletteDragEnd"
+                                    >
+                                        <span
+                                            class="material-symbols-outlined bed-cell-slot-icon"
+                                            >add</span
+                                        >
+                                    </div>
+                                    <label
+                                        class="flex h-[3.35rem] min-w-[4.5rem] flex-col justify-center rounded-xl border border-input bg-background px-2 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
+                                    >
+                                        <span
+                                            class="text-[9px] font-semibold tracking-wide text-muted-foreground uppercase"
+                                            >Lähtemõõt</span
+                                        >
+                                        <span
+                                            class="mt-0.5 flex items-baseline gap-0.5"
+                                        >
+                                            <input
+                                                v-model="form.cell_size_cm"
+                                                type="number"
+                                                min="10"
+                                                max="200"
+                                                step="5"
+                                                class="w-full min-w-0 border-0 bg-transparent p-0 text-base leading-none font-semibold text-foreground outline-none"
+                                                placeholder="30"
+                                                @input="
+                                                    form.clearErrors(
+                                                        'cell_size_cm',
+                                                    )
+                                                "
+                                            />
+                                            <span
+                                                class="text-xs font-medium text-muted-foreground"
+                                                >cm</span
+                                            >
+                                        </span>
+                                    </label>
+                                    <button
+                                        v-if="cells.length > 0"
+                                        type="button"
+                                        class="mb-1 text-[11px] font-semibold text-muted-foreground underline-offset-2 transition hover:text-foreground hover:underline"
+                                        @click="resetToSingleCell"
+                                    >
+                                        Tühjenda kõik
+                                    </button>
+                                </div>
+                                <p
+                                    v-if="form.errors.cell_size_cm"
+                                    class="mt-1.5 text-[10px] text-red-600"
+                                >
+                                    {{ form.errors.cell_size_cm }}
+                                </p>
+                            </div>
+
+                            <div
+                                class="border-b border-emerald-900/10 bg-emerald-950/5 px-3 py-1"
+                            >
+                                <p
+                                    class="text-[10px] font-semibold tracking-wide text-emerald-950/55 uppercase"
+                                >
+                                    Sinu peenar
+                                </p>
+                            </div>
+
+                            <div
+                                v-if="cells.length === 0"
+                                class="bed-grid-frame flex min-h-40 items-center justify-center p-4 transition"
+                                :class="
+                                    draggingCell || draggingFromPalette
+                                        ? 'bg-primary/5'
+                                        : ''
+                                "
+                                @dragover.prevent="onEmptyCanvasDragOver"
+                                @drop.prevent="onEmptyCanvasDrop"
+                            >
+                                <div
+                                    class="flex min-h-32 w-full max-w-sm items-center justify-center rounded-xl border-2 border-dashed border-emerald-900/25 bg-background/50 px-4 py-6"
+                                >
+                                    <p
+                                        class="pointer-events-none text-center text-sm font-medium text-emerald-950/60 select-none"
+                                    >
+                                        Lohista pruun ruut siia
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div
+                                v-else
+                                ref="gridScroller"
+                                class="bed-grid-frame max-h-[min(42vh,17rem)] overflow-auto overscroll-contain p-3"
+                            >
+                                <div
+                                    class="mx-auto inline-grid w-max min-w-0 gap-2.5"
+                                    :style="gridFrameStyle"
+                                >
+                                    <div
+                                        v-for="cell in cells"
+                                        :key="cell.id"
+                                        class="relative"
+                                        :style="
+                                            gridCellPlacement(
+                                                cell.x,
+                                                cell.y,
+                                                cell.w,
+                                                cell.h,
+                                            )
+                                        "
                                         :ref="
-                                            (el) => {
-                                                const cell = getCellAt(x, y);
-                                                if (cell)
-                                                    setSelectedCellRef(
-                                                        el,
-                                                        cell.id,
-                                                    );
-                                            }
+                                            (el) =>
+                                                setSelectedCellRef(el, cell.id)
                                         "
                                     >
-                                        <template v-if="getCellAt(x, y)">
-                                            <button
-                                                type="button"
-                                                :aria-label="`${cellKindLabel(getCellAt(x, y)!)}: veerg ${displayColumnNumber(x)}, rida ${displayRowNumber(y)}`"
-                                                :class="
-                                                    addBedEditorCellClasses(
-                                                        x,
-                                                        y,
-                                                    )
-                                                "
-                                                @click="
-                                                    getCellAt(x, y) &&
-                                                    paintCell(getCellAt(x, y)!)
-                                                "
-                                                @dblclick="
-                                                    getCellAt(x, y) &&
-                                                    cycleCellKind(
-                                                        getCellAt(x, y)!,
-                                                    )
-                                                "
-                                            >
-                                                <div
-                                                    class="absolute inset-x-0 top-0 h-1/2 bg-linear-to-b from-white/15 to-transparent"
-                                                />
-                                                <div
-                                                    v-if="
-                                                        getCellAt(x, y)?.plants
-                                                            .length
-                                                    "
-                                                    class="absolute inset-0 bg-linear-to-t from-black/45 via-black/15 to-transparent"
-                                                />
-                                                <div
-                                                    class="relative z-10 flex size-full flex-col items-center justify-center px-1 text-center"
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-lg"
-                                                        :class="
-                                                            getCellAt(x, y)
-                                                                ?.plants.length
-                                                                ? 'text-white'
-                                                                : selectedCell?.id ===
-                                                                    getCellAt(
-                                                                        x,
-                                                                        y,
-                                                                    )?.id
-                                                                  ? 'text-primary'
-                                                                  : 'text-emerald-900/45'
-                                                        "
-                                                    >
-                                                        {{
-                                                            cellIcon(
-                                                                getCellAt(
-                                                                    x,
-                                                                    y,
-                                                                )!,
-                                                            )
-                                                        }}
-                                                    </span>
-                                                    <span
-                                                        v-if="
-                                                            getCellAt(x, y)
-                                                                ?.plants.length
-                                                        "
-                                                        class="mt-1 line-clamp-2 text-[9px] leading-tight font-semibold text-white"
-                                                    >
-                                                        {{
-                                                            getPlantNames(
-                                                                getCellAt(
-                                                                    x,
-                                                                    y,
-                                                                )!,
-                                                            ).join(', ')
-                                                        }}
-                                                    </span>
-                                                </div>
-
-                                                <span
-                                                    class="absolute right-1.5 bottom-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-semibold"
-                                                    :class="
-                                                        selectedCell?.id ===
-                                                        getCellAt(x, y)?.id
-                                                            ? 'bg-card/95 text-primary'
-                                                            : 'bg-white/55 text-emerald-950/75'
-                                                    "
-                                                >
-                                                    {{
-                                                        displayColumnNumber(x)
-                                                    }},{{ displayRowNumber(y) }}
-                                                </span>
-                                            </button>
-
-                                            <template
-                                                v-if="
-                                                    selectedCell?.id ===
-                                                    getCellAt(x, y)?.id
-                                                "
-                                            >
-                                                <button
-                                                    type="button"
-                                                    class="absolute -top-3 left-1/2 z-20 hidden size-7 -translate-x-1/2 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 sm:flex"
-                                                    @click.stop="
-                                                        handleDirectionalAdd(
-                                                            'up',
-                                                        )
-                                                    "
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >arrow_upward</span
-                                                    >
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="absolute -bottom-3 left-1/2 z-20 hidden size-7 -translate-x-1/2 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 sm:flex"
-                                                    @click.stop="
-                                                        handleDirectionalAdd(
-                                                            'down',
-                                                        )
-                                                    "
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >arrow_downward</span
-                                                    >
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="absolute top-1/2 -left-3 z-20 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 sm:flex"
-                                                    @click.stop="
-                                                        handleDirectionalAdd(
-                                                            'left',
-                                                        )
-                                                    "
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >arrow_back</span
-                                                    >
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    class="absolute top-1/2 -right-3 z-20 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 sm:flex"
-                                                    @click.stop="
-                                                        handleDirectionalAdd(
-                                                            'right',
-                                                        )
-                                                    "
-                                                >
-                                                    <span
-                                                        class="material-symbols-outlined text-sm"
-                                                        >arrow_forward</span
-                                                    >
-                                                </button>
-                                            </template>
-                                        </template>
-
                                         <button
-                                            v-else
                                             type="button"
-                                            class="size-full rounded-2xl border border-dashed border-primary/20 bg-card/70 text-muted-foreground transition hover:border-primary/35 hover:bg-primary/8 hover:text-primary"
-                                            @click="
-                                                addCellFromPlaceholder(x, y)
+                                            draggable="true"
+                                            class="size-full cursor-grab active:cursor-grabbing"
+                                            :aria-label="`${cellKindLabel(cell)}: veerg ${displayColumnNumber(cell.x)}, rida ${displayRowNumber(cell.y)}`"
+                                            :class="
+                                                addBedEditorCellClasses(
+                                                    cell.x,
+                                                    cell.y,
+                                                )
+                                            "
+                                            @dragstart="
+                                                onCellDragStart($event, cell)
+                                            "
+                                            @dragend="onCellDragEnd"
+                                            @click.stop="
+                                                onPlacedCellClick(
+                                                    cell.x,
+                                                    cell.y,
+                                                )
                                             "
                                         >
-                                            <span
-                                                class="material-symbols-outlined text-lg"
-                                                >add</span
+                                            <div
+                                                class="absolute inset-x-0 top-0 h-1/2 bg-linear-to-b from-white/15 to-transparent"
+                                            />
+                                            <div
+                                                v-if="cell.plants.length"
+                                                class="absolute inset-0 bg-linear-to-t from-black/45 via-black/15 to-transparent"
+                                            />
+                                            <div
+                                                class="relative z-10 flex size-full flex-col items-center justify-center px-1 text-center"
                                             >
+                                                <span
+                                                    class="material-symbols-outlined"
+                                                    :class="
+                                                        cell.plants.length
+                                                            ? 'text-lg text-white'
+                                                            : isPlantableEmptySlot(
+                                                                    cell,
+                                                                )
+                                                              ? 'bed-cell-slot-icon'
+                                                              : selectedCell?.id ===
+                                                                  cell.id
+                                                                ? 'text-lg text-primary'
+                                                                : 'text-lg text-emerald-900/45'
+                                                    "
+                                                >
+                                                    {{ cellIcon(cell) }}
+                                                </span>
+                                                <span
+                                                    v-if="cell.plants.length"
+                                                    class="mt-1 line-clamp-2 text-[9px] leading-tight font-semibold text-white"
+                                                >
+                                                    {{
+                                                        getPlantNames(
+                                                            cell,
+                                                        ).join(', ')
+                                                    }}
+                                                </span>
+                                            </div>
                                         </button>
                                     </div>
-                                </template>
-                            </template>
-                        </div>
-                    </div>
-
-                    <div
-                        class="mt-4 rounded-[1.25rem] bg-secondary/40 p-4 ring-1 ring-border/70 xl:hidden"
-                    >
-                        <div class="flex items-start justify-between gap-3">
-                            <div>
-                                <p
-                                    class="text-sm font-semibold text-foreground"
-                                >
-                                    Valitud ruut
-                                </p>
-                                <p class="mt-1 text-sm text-muted-foreground">
-                                    {{ selectedCellLabel }}
-                                </p>
-                            </div>
-                            <span
-                                class="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
-                            >
-                                {{ selectedPlantCount }} taimekirjet
-                            </span>
-                        </div>
-
-                        <div class="mt-4 grid place-items-center">
-                            <button
-                                type="button"
-                                class="mb-2 flex size-12 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                :disabled="!selectedCell"
-                                @click="handleDirectionalAdd('up')"
-                            >
-                                <span
-                                    class="material-symbols-outlined text-base"
-                                    >arrow_upward</span
-                                >
-                            </button>
-                            <div class="flex items-center gap-2">
-                                <button
-                                    type="button"
-                                    class="flex size-12 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                    :disabled="!selectedCell"
-                                    @click="handleDirectionalAdd('left')"
-                                >
-                                    <span
-                                        class="material-symbols-outlined text-base"
-                                        >arrow_back</span
+                                    <div
+                                        v-for="slot in dragDropSlots"
+                                        :key="`drop-${slot.x}-${slot.y}`"
+                                        class="relative size-[3.35rem]"
+                                        :style="
+                                            gridCellPlacement(
+                                                slot.x,
+                                                slot.y,
+                                                1,
+                                                1,
+                                            )
+                                        "
+                                        @dragover="
+                                            onCellDragOver(
+                                                $event,
+                                                slot.x,
+                                                slot.y,
+                                            )
+                                        "
+                                        @dragleave="onCellDragLeave"
+                                        @drop="
+                                            onCellDrop($event, slot.x, slot.y)
+                                        "
                                     >
-                                </button>
-                                <div
-                                    class="flex size-12 items-center justify-center rounded-2xl bg-primary/12 text-primary"
-                                >
-                                    <span
-                                        class="material-symbols-outlined text-base"
-                                        >grid_view</span
-                                    >
+                                        <div
+                                            class="size-full rounded-2xl transition"
+                                            :class="
+                                                isDragPreview(slot.x, slot.y) &&
+                                                dragPreviewValid
+                                                    ? 'border-2 border-primary bg-primary/15 shadow-md'
+                                                    : 'border-0 bg-transparent'
+                                            "
+                                        />
+                                    </div>
                                 </div>
-                                <button
-                                    type="button"
-                                    class="flex size-12 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                    :disabled="!selectedCell"
-                                    @click="handleDirectionalAdd('right')"
-                                >
-                                    <span
-                                        class="material-symbols-outlined text-base"
-                                        >arrow_forward</span
-                                    >
-                                </button>
                             </div>
-                            <button
-                                type="button"
-                                class="mt-2 flex size-12 items-center justify-center rounded-full bg-card text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                :disabled="!selectedCell"
-                                @click="handleDirectionalAdd('down')"
-                            >
-                                <span
-                                    class="material-symbols-outlined text-base"
-                                    >arrow_downward</span
-                                >
-                            </button>
                         </div>
 
-                        <p
-                            v-if="selectedHasPlants"
-                            class="mt-4 rounded-2xl bg-primary/8 p-3 text-sm leading-6 text-primary ring-1 ring-primary/15"
+                        <aside
+                            v-if="selectedCell && cells.length > 0"
+                            class="w-full shrink-0 rounded-xl border border-border/70 bg-muted/30 p-2.5 lg:sticky lg:top-2 lg:w-[8.75rem]"
+                            aria-label="Valitud ploki seaded"
                         >
-                            Valitud ruudus on taim(ed). Seda ruutu ei saa
-                            eemaldada enne, kui taimed on ümber paigutatud.
-                        </p>
+                            <p
+                                class="text-[11px] leading-tight font-semibold text-foreground"
+                            >
+                                Valitud
+                                <span class="block text-muted-foreground">{{
+                                    selectedBrickSizeLabel(selectedCell)
+                                }}</span>
+                                <span
+                                    class="mt-0.5 block text-[10px] font-normal text-muted-foreground/80"
+                                    >{{
+                                        selectedBrickGridHint(selectedCell)
+                                    }}</span
+                                >
+                            </p>
 
-                        <button
-                            type="button"
-                            class="mt-4 h-12 w-full rounded-full px-4 text-sm font-semibold transition"
-                            :class="
-                                selectedHasPlants || activeCells.length <= 1
-                                    ? 'cursor-not-allowed bg-muted/40 text-muted-foreground'
-                                    : 'bg-card text-foreground shadow-sm ring-1 ring-border hover:bg-secondary/70'
-                            "
-                            :disabled="
-                                selectedHasPlants || activeCells.length <= 1
-                            "
-                            @click="removeSelectedCell"
-                        >
-                            Eemalda valitud ruut
-                        </button>
+                            <p
+                                v-if="selectedHasPlants"
+                                class="mt-2 text-[11px] leading-snug text-primary"
+                            >
+                                Taimed — mõõtu muudad peenra vaates.
+                            </p>
+
+                            <template v-else>
+                                <label
+                                    class="mt-2 flex flex-col rounded-lg border border-input bg-background px-2 py-1.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
+                                >
+                                    <span
+                                        class="text-[9px] font-semibold text-muted-foreground uppercase"
+                                        >Laius</span
+                                    >
+                                    <span class="flex items-baseline gap-0.5">
+                                        <input
+                                            :value="selectedCell.width_cm"
+                                            type="number"
+                                            min="10"
+                                            max="500"
+                                            step="5"
+                                            class="w-full min-w-0 border-0 bg-transparent p-0 text-sm font-semibold text-foreground outline-none"
+                                            @input="
+                                                applySelectedBrickCm(
+                                                    Number(
+                                                        (
+                                                            $event.target as HTMLInputElement
+                                                        ).value,
+                                                    ),
+                                                    selectedCell.height_cm,
+                                                )
+                                            "
+                                        />
+                                        <span
+                                            class="text-[10px] text-muted-foreground"
+                                            >cm</span
+                                        >
+                                    </span>
+                                </label>
+                                <label
+                                    class="mt-1.5 flex flex-col rounded-lg border border-input bg-background px-2 py-1.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
+                                >
+                                    <span
+                                        class="text-[9px] font-semibold text-muted-foreground uppercase"
+                                        >Kõrgus</span
+                                    >
+                                    <span class="flex items-baseline gap-0.5">
+                                        <input
+                                            :value="selectedCell.height_cm"
+                                            type="number"
+                                            min="10"
+                                            max="500"
+                                            step="5"
+                                            class="w-full min-w-0 border-0 bg-transparent p-0 text-sm font-semibold text-foreground outline-none"
+                                            @input="
+                                                applySelectedBrickCm(
+                                                    selectedCell.width_cm,
+                                                    Number(
+                                                        (
+                                                            $event.target as HTMLInputElement
+                                                        ).value,
+                                                    ),
+                                                )
+                                            "
+                                        />
+                                        <span
+                                            class="text-[10px] text-muted-foreground"
+                                            >cm</span
+                                        >
+                                    </span>
+                                </label>
+                                <button
+                                    type="button"
+                                    class="mt-2 w-full text-left text-[10px] font-semibold text-muted-foreground underline-offset-2 hover:underline"
+                                    @click="toggleSelectedWalkway"
+                                >
+                                    {{
+                                        selectedCell.kind === 'walkway'
+                                            ? '→ peenraruut'
+                                            : '→ tee / kivi'
+                                    }}
+                                </button>
+                            </template>
+
+                            <button
+                                type="button"
+                                class="mt-2 w-full text-left text-[10px] font-semibold text-red-700/90 underline-offset-2 hover:underline disabled:opacity-40"
+                                :disabled="
+                                    selectedHasPlants ||
+                                    activeBricks.length <= 1
+                                "
+                                @click="removeSelectedCell"
+                            >
+                                Eemalda
+                            </button>
+                        </aside>
                     </div>
                 </div>
-
-                <aside class="hidden space-y-4 xl:block">
-                    <div
-                        class="rounded-[1.5rem] bg-card p-4 ring-1 shadow-soft ring-border/70"
-                    >
-                        <p class="text-sm font-semibold text-foreground">
-                            Valitud ruut
-                        </p>
-                        <p class="mt-1 text-sm leading-6 text-muted-foreground">
-                            {{ selectedCellLabel }}
-                        </p>
-
-                        <div class="mt-5 grid place-items-center">
-                            <button
-                                type="button"
-                                class="mb-2 flex size-11 items-center justify-center rounded-full bg-background text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                :disabled="!selectedCell"
-                                @click="handleDirectionalAdd('up')"
-                            >
-                                <span
-                                    class="material-symbols-outlined text-base"
-                                    >arrow_upward</span
-                                >
-                            </button>
-                            <div class="flex items-center gap-2">
-                                <button
-                                    type="button"
-                                    class="flex size-11 items-center justify-center rounded-full bg-background text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                    :disabled="!selectedCell"
-                                    @click="handleDirectionalAdd('left')"
-                                >
-                                    <span
-                                        class="material-symbols-outlined text-base"
-                                        >arrow_back</span
-                                    >
-                                </button>
-                                <div
-                                    class="flex size-12 items-center justify-center rounded-2xl bg-primary/12 text-primary"
-                                >
-                                    <span
-                                        class="material-symbols-outlined text-base"
-                                        >grid_view</span
-                                    >
-                                </div>
-                                <button
-                                    type="button"
-                                    class="flex size-11 items-center justify-center rounded-full bg-background text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                    :disabled="!selectedCell"
-                                    @click="handleDirectionalAdd('right')"
-                                >
-                                    <span
-                                        class="material-symbols-outlined text-base"
-                                        >arrow_forward</span
-                                    >
-                                </button>
-                            </div>
-                            <button
-                                type="button"
-                                class="mt-2 flex size-11 items-center justify-center rounded-full bg-background text-primary shadow-sm ring-1 ring-primary/25 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                :disabled="!selectedCell"
-                                @click="handleDirectionalAdd('down')"
-                            >
-                                <span
-                                    class="material-symbols-outlined text-base"
-                                    >arrow_downward</span
-                                >
-                            </button>
-                        </div>
-                    </div>
-
-                    <div
-                        class="rounded-[1.5rem] bg-secondary/40 p-4 ring-1 ring-border/70"
-                    >
-                        <div class="flex items-center justify-between gap-3">
-                            <p class="text-sm font-semibold text-foreground">
-                                Ruudu sisu
-                            </p>
-                            <span
-                                class="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
-                            >
-                                {{ selectedPlantCount }}
-                            </span>
-                        </div>
-                        <p class="mt-3 text-sm leading-6 text-muted-foreground">
-                            {{
-                                selectedHasPlants
-                                    ? 'Valitud ruudus on juba taim(ed).'
-                                    : 'Ruudus ei ole veel taimi.'
-                            }}
-                        </p>
-                        <p
-                            v-if="selectedHasPlants"
-                            class="mt-4 rounded-2xl bg-primary/8 p-3 text-sm leading-6 text-primary ring-1 ring-primary/15"
-                        >
-                            Taimedega ruutu ei saa enne ümberpaigutamist
-                            eemaldada.
-                        </p>
-                        <button
-                            type="button"
-                            class="mt-4 h-12 w-full rounded-full px-4 text-sm font-semibold transition"
-                            :class="
-                                selectedHasPlants || activeCells.length <= 1
-                                    ? 'cursor-not-allowed bg-muted/40 text-muted-foreground'
-                                    : 'bg-card text-foreground shadow-sm ring-1 ring-border hover:bg-secondary/70'
-                            "
-                            :disabled="
-                                selectedHasPlants || activeCells.length <= 1
-                            "
-                            @click="removeSelectedCell"
-                        >
-                            Eemalda ruut
-                        </button>
-                    </div>
-                </aside>
             </section>
 
             <section
@@ -2039,64 +2042,10 @@ watch(selectedCellId, async () => {
     background: rgba(255, 255, 255, 0.52);
 }
 
-.bed-grid-frame {
-    border: 1px solid rgba(70, 95, 57, 0.12);
-    background:
-        linear-gradient(rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.38)),
-        radial-gradient(
-            circle at 20% 0%,
-            color-mix(in srgb, var(--primary), transparent 82%),
-            transparent 36%
-        ),
-        color-mix(in srgb, var(--background), var(--primary) 5%);
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.7),
-        0 16px 34px rgba(44, 70, 46, 0.1);
-}
-
 .bed-cell {
     min-width: 44px;
     min-height: 44px;
     border-radius: 0.9rem;
-}
-
-.bed-cell--empty {
-    border-color: rgba(84, 112, 65, 0.16);
-    color: rgba(34, 78, 44, 0.68);
-    background:
-        radial-gradient(
-            circle at 28% 24%,
-            rgba(255, 255, 255, 0.5),
-            transparent 26%
-        ),
-        linear-gradient(145deg, rgb(190, 220, 159), rgb(143, 185, 122));
-    box-shadow:
-        inset 0 2px 5px rgba(255, 255, 255, 0.28),
-        inset 0 -8px 14px rgba(59, 99, 50, 0.16);
-}
-
-.bed-cell--warm {
-    background:
-        radial-gradient(
-            circle at 28% 24%,
-            rgba(255, 255, 255, 0.52),
-            transparent 26%
-        ),
-        linear-gradient(145deg, rgb(203, 224, 168), rgb(153, 191, 128));
-}
-
-.bed-cell--planted {
-    border-color: rgba(21, 128, 61, 0.32);
-    background:
-        radial-gradient(
-            circle at 50% 28%,
-            rgba(220, 252, 231, 0.9),
-            transparent 44%
-        ),
-        linear-gradient(145deg, rgb(79, 151, 83), rgb(34, 99, 54));
-    box-shadow:
-        0 10px 22px rgba(34, 197, 94, 0.22),
-        inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 .bed-cell--inactive {
@@ -2104,28 +2053,6 @@ watch(selectedCellId, async () => {
     color: rgba(100, 116, 139, 0.45);
     background: transparent;
     box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.18);
-}
-
-.bed-cell--walkway {
-    border-color: rgba(120, 113, 108, 0.22);
-    color: rgb(87, 83, 78);
-    background:
-        radial-gradient(
-            circle at 18% 22%,
-            rgba(255, 255, 255, 0.52) 0 10%,
-            transparent 11%
-        ),
-        radial-gradient(
-            circle at 74% 28%,
-            rgba(120, 113, 108, 0.28) 0 10%,
-            transparent 11%
-        ),
-        radial-gradient(
-            circle at 45% 72%,
-            rgba(87, 83, 78, 0.18) 0 8%,
-            transparent 9%
-        ),
-        linear-gradient(145deg, rgb(231, 229, 228), rgb(196, 190, 184));
 }
 
 .bed-cell--void {
@@ -2139,21 +2066,6 @@ watch(selectedCellId, async () => {
         ),
         rgba(248, 250, 252, 0.84);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.64);
-}
-
-.bed-cell--editor-selected {
-    border-color: color-mix(in srgb, var(--primary), transparent 20%);
-    color: var(--primary);
-    background:
-        radial-gradient(
-            circle at 50% 20%,
-            rgba(255, 255, 255, 0.82),
-            transparent 42%
-        ),
-        color-mix(in srgb, var(--primary), white 84%);
-    box-shadow:
-        0 0 0 3px color-mix(in srgb, var(--primary), transparent 78%),
-        0 14px 26px rgba(44, 70, 46, 0.16);
 }
 
 .photo-drop-zone {

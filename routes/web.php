@@ -90,6 +90,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'columns' => (int) ($bed->columns ?? 3),
                 'cell_size_cm' => (int) ($bed->cell_size_cm ?? 30),
                 'layout' => $bed->layout,
+                'cell_bricks' => $bed->cell_bricks,
                 'plants' => $bed->plants->map(fn ($p) => [
                     'id' => $p->id,
                     'name' => $p->name,
@@ -108,7 +109,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         abort_unless($bed->user_id === $request->user()->id, 403);
         $bed->load(['plants' => fn ($q) => $q->select('id', 'name', 'image_url', 'bed_id', 'position_in_bed')]);
 
+        $startStep = $request->integer('step');
+        if (! in_array($startStep, [1, 2, 3], true)) {
+            $startStep = 1;
+        }
+
         return Inertia::render('map/EditBedPage', [
+            'startStep' => $startStep,
             'bed' => [
                 'id' => $bed->id,
                 'garden_plan_id' => $bed->garden_plan_id,
@@ -120,6 +127,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'columns' => (int) ($bed->columns ?? 3),
                 'cell_size_cm' => (int) ($bed->cell_size_cm ?? 30),
                 'layout' => $bed->layout,
+                'cell_bricks' => $bed->cell_bricks,
                 'plants' => $bed->plants->map(fn ($p) => [
                     'id' => $p->id,
                     'name' => $p->name,

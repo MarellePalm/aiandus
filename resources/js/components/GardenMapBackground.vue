@@ -37,7 +37,7 @@ const emit = defineEmits<{
 const ORTOFOTO_TILE_URL =
     'https://tiles.maaamet.ee/tm/wmts/1.0.0/foto/default/GMC/{z}/{y}/{x}.jpg';
 
-/** Maa-ameti foto GMC kuni tasemeni 18 (19+ kache puuduvad). */
+/** Maa-ameti foto GMC kuni tasemeni 18 (üle 18 skaleerib viimast kachi). */
 const MAX_NATIVE_ZOOM = 18;
 /** Üleskaalatud suum täppide paigutamiseks (interaktiivne eelvaade). */
 const MAX_MAP_ZOOM = 22;

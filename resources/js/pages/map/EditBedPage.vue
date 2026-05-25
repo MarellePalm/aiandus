@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 import BackIconButton from '@/components/BackIconButton.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
@@ -16,6 +17,13 @@ type Bed = {
     is_favorite?: boolean;
     cell_size_cm?: number;
     layout?: number[][] | null;
+    cell_bricks?: Array<{
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+        kind: 'plantable' | 'walkway' | 'empty';
+    }> | null;
     plants?: {
         id: number;
         name: string;
@@ -26,9 +34,15 @@ type Bed = {
 
 const props = defineProps<{
     bed: Bed;
+    startStep?: number;
 }>();
 
 const mapHref = `/map/${props.bed.garden_plan_id}`;
+
+const wizardStartStep = computed(() => {
+    const step = props.startStep ?? 1;
+    return step === 2 || step === 3 ? step : 1;
+});
 
 const breadcrumbs = [
     { title: 'Aiaplaan', href: mapHref },
@@ -56,7 +70,11 @@ const breadcrumbs = [
                     </template>
                 </DiaryHeader>
 
-                <AddBed mode="edit" :bed="bed" />
+                <AddBed
+                    mode="edit"
+                    :bed="bed"
+                    :initial-step="wizardStartStep"
+                />
             </main>
 
             <BottomNav active="map" />

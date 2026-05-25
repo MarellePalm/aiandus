@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import draggable from 'vuedraggable';
 
 import BackIconButton from '@/components/BackIconButton.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
@@ -25,7 +26,15 @@ type Bed = {
     is_favorite?: boolean;
     rows: number;
     columns: number;
+    cell_size_cm?: number;
     layout?: number[][] | null;
+    cell_bricks?: Array<{
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+        kind: 'plantable' | 'walkway' | 'empty';
+    }> | null;
     plants: PlantInBed[];
 };
 type PlantWithoutBed = {
@@ -69,6 +78,10 @@ const breadcrumbs = [
 const cellModal = ref<{ row: number; col: number } | null>(null);
 const selectedPlantQuantity = ref(1);
 const assigningPlantId = ref<number | null>(null);
+const editingCellSize = ref(false);
+const cellSizeInput = ref<number>(props.bed.cell_size_cm ?? 30);
+const savingCellSize = ref(false);
+const editingLayout = ref(false);
 const coverTick = ref(0);
 const inlineFeedback = ref<{
     tone: 'success' | 'error';
@@ -77,7 +90,270 @@ const inlineFeedback = ref<{
 let coverTimer: ReturnType<typeof setInterval> | null = null;
 let inlineFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
 
+type CellBrick = {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    kind: 'plantable' | 'walkway' | 'empty';
+};
+
+type GridCell = {
+    key: string;
+    row: number;
+    col: number;
+    w: number;
+    h: number;
+    plant: PlantInBed | null;
+    active: boolean;
+    walkway: boolean;
+};
+
+const localCells = ref<GridCell[]>([]);
+
+function getBedBricks(): CellBrick[] {
+    const bricks = props.bed.cell_bricks;
+    if (Array.isArray(bricks) && bricks.length > 0) {
+        return bricks.map((brick) => ({
+            x: brick.x,
+            y: brick.y,
+            w: Math.max(1, brick.w ?? 1),
+            h: Math.max(1, brick.h ?? 1),
+            kind: brick.kind ?? 'plantable',
+        }));
+    }
+
+    const layout = getBedLayout();
+    const derived: CellBrick[] = [];
+    layout.forEach((row, y) => {
+        row.forEach((value, x) => {
+            if (value === 1) {
+                derived.push({
+                    x,
+                    y,
+                    w: 1,
+                    h: 1,
+                    kind: 'plantable',
+                });
+            } else if (value === -1) {
+                derived.push({
+                    x,
+                    y,
+                    w: 1,
+                    h: 1,
+                    kind: 'walkway',
+                });
+            }
+        });
+    });
+
+    return derived;
+}
+
+function brickAnchorAt(row: number, col: number): CellBrick | null {
+    return (
+        getBedBricks().find(
+            (brick) =>
+                col >= brick.x &&
+                col < brick.x + brick.w &&
+                row >= brick.y &&
+                row < brick.y + brick.h,
+        ) ?? null
+    );
+}
+
+function bedCellSpanStyle(cell: GridCell): Record<string, string> {
+    const base: Record<string, string> = {
+        gridColumnStart: String(cell.col + 1),
+        gridRowStart: String(cell.row + 1),
+    };
+    if (cell.w > 1) {
+        base.gridColumn = `span ${cell.w}`;
+    }
+    if (cell.h > 1) {
+        base.gridRow = `span ${cell.h}`;
+    }
+    if (cell.w === 1 && cell.h === 1) {
+        base.width = `${bedCellSize.value}px`;
+        base.height = `${bedCellSize.value}px`;
+    }
+
+    return base;
+}
+
+function buildLocalCells() {
+    const layout = getBedLayout();
+    const items: GridCell[] = [];
+
+    layout.forEach((rowArr, row) => {
+        rowArr.forEach((cellValue, col) => {
+            const brick = brickAnchorAt(row, col);
+            if (brick && (brick.x !== col || brick.y !== row)) {
+                return;
+            }
+
+            if (!brick && cellValue === 0) {
+                return;
+            }
+
+            const w = brick?.w ?? 1;
+            const h = brick?.h ?? 1;
+
+            items.push({
+                key: `${row},${col}`,
+                row,
+                col,
+                w,
+                h,
+                plant: plantAt(row, col) ?? null,
+                active: cellValue === 1,
+                walkway: cellValue === -1,
+            });
+        });
+    });
+
+    items.sort((a, b) => a.row - b.row || a.col - b.col);
+    localCells.value = items;
+}
+
+function buildLayoutPayloadFromLocalCells(): {
+    layout: number[][];
+    cell_bricks: CellBrick[];
+} {
+    const rows = getBedLayout().length;
+    const cols = getBedColumns();
+    const layout: number[][] = Array.from({ length: rows }, () =>
+        Array.from({ length: cols }, () => 0),
+    );
+    const cell_bricks: CellBrick[] = [];
+
+    localCells.value.forEach((cell) => {
+        if (!cell.active && !cell.walkway) {
+            return;
+        }
+
+        const kind: CellBrick['kind'] = cell.walkway
+            ? 'walkway'
+            : cell.active
+              ? 'plantable'
+              : 'empty';
+        const value = cell.walkway ? -1 : cell.active ? 1 : 0;
+
+        cell_bricks.push({
+            x: cell.col,
+            y: cell.row,
+            w: cell.w,
+            h: cell.h,
+            kind,
+        });
+
+        for (let dy = 0; dy < cell.h; dy += 1) {
+            for (let dx = 0; dx < cell.w; dx += 1) {
+                const row = cell.row + dy;
+                const col = cell.col + dx;
+                if (layout[row]?.[col] !== undefined) {
+                    layout[row][col] = value;
+                }
+            }
+        }
+    });
+
+    return { layout, cell_bricks };
+}
+
+type DragMoveEvent = {
+    draggedContext: { element: GridCell };
+    relatedContext: { element: GridCell };
+};
+
+function checkMove(evt: DragMoveEvent): boolean {
+    const from = evt.draggedContext.element;
+    const to = evt.relatedContext?.element;
+    if (!to) {
+        return false;
+    }
+
+    if (editingLayout.value) {
+        return !from.plant && from.active && !to.plant;
+    }
+
+    return !!from.plant && to.active && !to.plant;
+}
+
+function onDragEnd() {
+    const cols = getBedColumns();
+
+    if (editingLayout.value) {
+        const { layout: newLayout, cell_bricks: newBricks } =
+            buildLayoutPayloadFromLocalCells();
+        router.put(
+            `/beds/${props.bed.id}`,
+            { layout: newLayout, cell_bricks: newBricks },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => {
+                    buildLocalCells();
+                    setInlineFeedback('success', 'Peenra kuju salvestatud.');
+                },
+                onError: () => {
+                    buildLocalCells();
+                    setInlineFeedback(
+                        'error',
+                        'Kuju salvestamine ebaõnnestus.',
+                    );
+                },
+            },
+        );
+        return;
+    }
+
+    let moved = false;
+
+    localCells.value.forEach((cell, index) => {
+        const newRow = Math.floor(index / cols);
+        const newCol = index % cols;
+        const newKey = `${newRow},${newCol}`;
+        if (cell.plant && cell.key !== newKey) {
+            moved = true;
+            router.put(
+                `/plants/${cell.plant.id}`,
+                { bed_id: props.bed.id, position_in_bed: newKey },
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    onSuccess: () => {
+                        buildLocalCells();
+                        setInlineFeedback('success', 'Taim viidi teise ruutu.');
+                    },
+                    onError: () => {
+                        buildLocalCells();
+                        setInlineFeedback(
+                            'error',
+                            'Taime liigutamine ei õnnestunud. Proovi uuesti.',
+                        );
+                    },
+                },
+            );
+        }
+    });
+
+    if (!moved) {
+        buildLocalCells();
+    }
+}
+
+watch(
+    () => props.bed,
+    () => {
+        buildLocalCells();
+    },
+    { deep: true },
+);
+
 onMounted(() => {
+    buildLocalCells();
+
     coverTimer = setInterval(() => {
         coverTick.value += 1;
     }, 3500);
@@ -129,10 +405,6 @@ function bedCoverImage(): string | null {
     return images[coverTick.value % images.length];
 }
 
-function range(n: number): number[] {
-    return Array.from({ length: n }, (_, i) => i);
-}
-
 function getBedLayout(): number[][] {
     const L = props.bed.layout;
     if (
@@ -153,6 +425,17 @@ function getBedColumns(): number {
     if (layout.length === 0) return 1;
     return Math.max(...layout.map((r) => r.length), 1);
 }
+
+const bedPhysicalSize = computed(() => {
+    const cm = props.bed.cell_size_cm ?? 30;
+    const cols = getBedColumns();
+    const rows = getBedLayout().length || 1;
+    const wCm = cols * cm;
+    const hCm = rows * cm;
+    const fmt = (v: number) =>
+        v >= 100 ? `${(v / 100).toFixed(1)} m` : `${v} cm`;
+    return `${fmt(wCm)} × ${fmt(hCm)}`;
+});
 
 const bedCellSize = computed(() => {
     const cols = getBedColumns();
@@ -451,9 +734,9 @@ const emptyCellCount = computed(() =>
 const bedStatus = computed(() => {
     if (!hasPlantsInBed.value) {
         return {
-            title: 'Alusta esimesest taimest',
+            title: 'Peenar on veel tühi',
             description:
-                'Peenar on valmis. Järgmine hea samm on paigutada esimene taim sobivasse ruutu.',
+                'Lisa esimene taim sobivasse ruutu, et peenar hakkaks päriselt kuju võtma.',
             actionLabel: availablePlantsCount.value
                 ? 'Lisa taim peenrasse'
                 : 'Loo uus taim',
@@ -609,6 +892,40 @@ function setInlineFeedback(tone: 'success' | 'error', message: string) {
     }, 2600);
 }
 
+function beginEditCellSize() {
+    editingCellSize.value = true;
+    cellSizeInput.value = props.bed.cell_size_cm ?? 30;
+}
+
+function saveCellSize() {
+    const value = Math.min(
+        200,
+        Math.max(10, Math.round(cellSizeInput.value || 30)),
+    );
+    savingCellSize.value = true;
+    router.put(
+        `/beds/${props.bed.id}`,
+        { cell_size_cm: value },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                editingCellSize.value = false;
+                setInlineFeedback(
+                    'success',
+                    `Ruudu mõõt uuendatud: ${value} cm.`,
+                );
+            },
+            onError: () => {
+                setInlineFeedback('error', 'Mõõdu salvestamine ei õnnestunud.');
+            },
+            onFinish: () => {
+                savingCellSize.value = false;
+            },
+        },
+    );
+}
+
 function openFirstAvailableCell() {
     const layout = getBedLayout();
 
@@ -647,6 +964,19 @@ function changeSelectedPlantQuantity(delta: number) {
         1,
         Math.min(99, Math.round(selectedPlantQuantity.value + delta)),
     );
+}
+
+function deleteCurrentBed() {
+    const message = `Eemaldada peenar "${props.bed.name}"? Taimed jäävad peenrata.`;
+    if (!window.confirm(message)) {
+        return;
+    }
+
+    router.delete(`/beds/${props.bed.id}`, {
+        onSuccess: () => {
+            router.get(mapHref);
+        },
+    });
 }
 
 function handleBedStatusAction() {
@@ -694,19 +1024,35 @@ function handleBedStatusAction() {
                             />
                         </template>
                         <template #actions>
-                            <Link
-                                :href="`/beds/${bed.id}/edit`"
-                                class="inline-flex min-h-11 max-w-full items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 text-sm font-semibold text-primary transition hover:bg-primary/15 sm:h-10 sm:min-h-0 sm:gap-2 sm:px-4"
-                                aria-label="Muuda peenart"
-                            >
-                                <span
-                                    class="material-symbols-outlined shrink-0 text-xl leading-none"
-                                    >edit</span
+                            <div class="flex max-w-full items-center gap-2">
+                                <Link
+                                    :href="`/beds/${bed.id}/edit`"
+                                    class="inline-flex min-h-11 max-w-full items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 text-sm font-semibold text-primary transition hover:bg-primary/15 sm:h-10 sm:min-h-0 sm:gap-2 sm:px-4"
+                                    aria-label="Muuda peenart"
                                 >
-                                <span class="truncate sm:inline"
-                                    >Muuda peenart</span
+                                    <span
+                                        class="material-symbols-outlined shrink-0 text-xl leading-none"
+                                        >edit</span
+                                    >
+                                    <span class="truncate sm:inline"
+                                        >Muuda peenart</span
+                                    >
+                                </Link>
+                                <button
+                                    type="button"
+                                    class="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-full border border-border/70 bg-card px-3 text-sm font-semibold text-foreground shadow-sm ring-1 ring-border/70 transition hover:bg-muted sm:h-10 sm:min-h-0 sm:px-4"
+                                    aria-label="Kustuta peenar"
+                                    @click="deleteCurrentBed"
                                 >
-                            </Link>
+                                    <span
+                                        class="material-symbols-outlined shrink-0 text-xl leading-none"
+                                        >delete</span
+                                    >
+                                    <span class="hidden truncate sm:inline"
+                                        >Kustuta</span
+                                    >
+                                </button>
+                            </div>
                         </template>
                     </DiaryHeader>
 
@@ -883,44 +1229,6 @@ function handleBedStatusAction() {
                         </section>
 
                         <section
-                            v-if="!hasPlantsInBed"
-                            class="rounded-2xl border border-primary/20 bg-primary/6 p-4 shadow-sm"
-                        >
-                            <div
-                                class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-                            >
-                                <div class="max-w-2xl">
-                                    <h3
-                                        class="text-base font-semibold text-foreground"
-                                    >
-                                        Peenar on veel tühi.
-                                    </h3>
-                                    <p
-                                        class="mt-1 text-sm leading-6 text-muted-foreground"
-                                    >
-                                        Lisa esimene taim sobivasse ruutu, et
-                                        peenar hakkaks päriselt kuju võtma.
-                                    </p>
-                                </div>
-                                <button
-                                    v-if="plantsWithoutBed.length"
-                                    type="button"
-                                    class="inline-flex min-h-11 items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 sm:min-h-0 sm:py-2"
-                                    @click="openFirstAvailableCell"
-                                >
-                                    Lisa esimene taim
-                                </button>
-                                <Link
-                                    v-else
-                                    href="/plants/create"
-                                    class="inline-flex min-h-11 items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 sm:min-h-0 sm:py-2"
-                                >
-                                    Loo uus taim
-                                </Link>
-                            </div>
-                        </section>
-
-                        <section
                             class="rounded-2xl border border-border/70 bg-card/95 p-4 shadow-sm"
                         >
                             <div
@@ -958,6 +1266,7 @@ function handleBedStatusAction() {
                             </div>
 
                             <div
+                                v-if="hasPlantsInBed"
                                 class="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4"
                             >
                                 <div
@@ -1054,20 +1363,124 @@ function handleBedStatusAction() {
                                         Puuduta ruutu, et lisada, muuta või
                                         eemaldada taim.
                                     </p>
+                                    <div
+                                        class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1"
+                                    >
+                                        <span
+                                            class="text-xs text-muted-foreground"
+                                        >
+                                            {{ gridLayout.length }} ×
+                                            {{ getBedColumns() }} ruutu
+                                        </span>
+                                        <button
+                                            v-if="!editingCellSize"
+                                            type="button"
+                                            class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                            title="Muuda ruudu mõõtu"
+                                            @click="beginEditCellSize"
+                                        >
+                                            <span
+                                                class="material-symbols-outlined text-[14px]"
+                                                >straighten</span
+                                            >
+                                            {{ bed.cell_size_cm ?? 30 }}
+                                            cm/ruut
+                                        </button>
+                                        <form
+                                            v-else
+                                            class="inline-flex items-center gap-1"
+                                            @submit.prevent="saveCellSize"
+                                        >
+                                            <input
+                                                v-model.number="cellSizeInput"
+                                                type="number"
+                                                min="10"
+                                                max="200"
+                                                step="5"
+                                                class="h-7 w-16 rounded-lg border border-input bg-background px-2 text-xs text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                                :disabled="savingCellSize"
+                                                @keydown.escape="
+                                                    editingCellSize = false
+                                                "
+                                            />
+                                            <span
+                                                class="text-xs text-muted-foreground"
+                                                >cm</span
+                                            >
+                                            <button
+                                                type="submit"
+                                                :disabled="savingCellSize"
+                                                class="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+                                            >
+                                                {{
+                                                    savingCellSize
+                                                        ? '...'
+                                                        : 'Salvesta'
+                                                }}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="rounded-full px-2 py-0.5 text-xs text-muted-foreground transition hover:text-foreground"
+                                                @click="editingCellSize = false"
+                                            >
+                                                Tühista
+                                            </button>
+                                        </form>
+                                    </div>
                                 </div>
                                 <div
-                                    class="rounded-xl border border-border/70 bg-background/70 px-3 py-2 text-center shadow-xs sm:min-w-[5.5rem] sm:text-right"
+                                    class="flex shrink-0 flex-wrap items-center gap-2"
                                 >
-                                    <p
-                                        class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+                                        :class="
+                                            editingLayout
+                                                ? 'border-primary/40 bg-primary/10 text-primary'
+                                                : 'border-border bg-background text-muted-foreground hover:text-foreground'
+                                        "
+                                        @click="editingLayout = !editingLayout"
                                     >
-                                        Vabu taimi
-                                    </p>
+                                        <span
+                                            class="material-symbols-outlined text-sm"
+                                            >{{
+                                                editingLayout
+                                                    ? 'check'
+                                                    : 'edit_square'
+                                            }}</span
+                                        >
+                                        {{
+                                            editingLayout
+                                                ? 'Valmis'
+                                                : 'Muuda kuju'
+                                        }}
+                                    </button>
                                     <p
-                                        class="mt-1 text-sm font-semibold text-foreground"
+                                        v-if="editingLayout"
+                                        class="max-w-md text-xs leading-relaxed text-muted-foreground"
                                     >
-                                        {{ availablePlantsCount }}
+                                        Lohista ruute ümber. Uue ploki
+                                        lisamiseks ava
+                                        <Link
+                                            :href="`/beds/${bed.id}/edit?step=2`"
+                                            class="font-semibold text-primary underline-offset-2 hover:underline"
+                                            >peenra kuju muutmine</Link
+                                        >.
                                     </p>
+                                    <div
+                                        class="rounded-xl border border-border/70 bg-background/70 px-3 py-2 text-center shadow-xs sm:min-w-[5.5rem] sm:text-right"
+                                    >
+                                        <p
+                                            class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
+                                        >
+                                            Vabu taimi
+                                        </p>
+                                        <p
+                                            class="mt-1 text-sm font-semibold text-foreground"
+                                        >
+                                            {{ availablePlantsCount }}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                             <div
@@ -1178,171 +1591,158 @@ function handleBedStatusAction() {
                                             transform: `scale(${bedGridZoom})`,
                                         }"
                                     >
-                                        <div
+                                        <draggable
+                                            v-model="localCells"
+                                            item-key="key"
                                             class="bed-grid-frame inline-grid w-max min-w-0 gap-2 rounded-[1.35rem] border border-emerald-900/10 bg-card/40 p-3 ring-1 ring-white/70 sm:gap-2.5 sm:p-4"
                                             :style="{
                                                 gridTemplateColumns: `repeat(${getBedColumns()}, ${bedCellSize}px)`,
                                                 gridTemplateRows: `repeat(${gridLayout.length}, ${bedCellSize}px)`,
                                             }"
+                                            :move="checkMove"
+                                            ghost-class="opacity-40"
+                                            drag-class="scale-105 shadow-xl"
+                                            @end="onDragEnd"
                                         >
-                                            <template
-                                                v-for="r in range(
-                                                    gridLayout.length,
-                                                )"
-                                                :key="r"
-                                            >
-                                                <template
-                                                    v-for="c in range(
-                                                        getBedColumns(),
-                                                    )"
-                                                    :key="`${r}-${c}`"
+                                            <template #item="{ element: cell }">
+                                                <div
+                                                    v-if="
+                                                        cell.plant &&
+                                                        cell.active
+                                                    "
+                                                    role="button"
+                                                    tabindex="0"
+                                                    class="group relative cursor-pointer touch-manipulation overflow-hidden text-left outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2"
+                                                    :class="
+                                                        plantedCellClass(
+                                                            cell.row,
+                                                            cell.col,
+                                                        )
+                                                    "
+                                                    :style="
+                                                        bedCellSpanStyle(cell)
+                                                    "
+                                                    :aria-label="`Ruut: ${cell.plant?.name ?? 'taim'}. Ava üksikasjad.`"
+                                                    @click="
+                                                        !editingLayout &&
+                                                        openCellModal(
+                                                            cell.row,
+                                                            cell.col,
+                                                        )
+                                                    "
+                                                    @keydown.enter.prevent="
+                                                        !editingLayout &&
+                                                        openCellModal(
+                                                            cell.row,
+                                                            cell.col,
+                                                        )
+                                                    "
+                                                    @keydown.space.prevent="
+                                                        !editingLayout &&
+                                                        openCellModal(
+                                                            cell.row,
+                                                            cell.col,
+                                                        )
+                                                    "
                                                 >
                                                     <div
-                                                        v-if="plantAt(r, c)"
-                                                        role="button"
-                                                        tabindex="0"
-                                                        class="group relative cursor-pointer touch-manipulation overflow-hidden text-left outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2"
-                                                        :class="
-                                                            plantedCellClass(
-                                                                r,
-                                                                c,
-                                                            )
-                                                        "
-                                                        :style="{
-                                                            width: `${bedCellSize}px`,
-                                                            height: `${bedCellSize}px`,
-                                                        }"
-                                                        :aria-label="`Ruut: ${plantAt(r, c)?.name ?? 'taim'}. Ava üksikasjad.`"
-                                                        @click="
-                                                            openCellModal(r, c)
-                                                        "
-                                                        @keydown.enter.prevent="
-                                                            openCellModal(r, c)
-                                                        "
-                                                        @keydown.space.prevent="
-                                                            openCellModal(r, c)
-                                                        "
-                                                    >
-                                                        <div
-                                                            class="plant-bloom absolute inset-0"
-                                                        ></div>
-                                                        <span
-                                                            class="plant-avatar"
-                                                        >
-                                                            <img
-                                                                v-if="
-                                                                    plantAt(
-                                                                        r,
-                                                                        c,
-                                                                    )?.image_url
-                                                                "
-                                                                :src="
-                                                                    plantAt(
-                                                                        r,
-                                                                        c,
-                                                                    )!
-                                                                        .image_url!
-                                                                "
-                                                                :alt="
-                                                                    plantAt(
-                                                                        r,
-                                                                        c,
-                                                                    )?.name
-                                                                "
-                                                            />
-                                                            <span
-                                                                v-else
-                                                                class="material-symbols-outlined"
-                                                                >psychiatry</span
-                                                            >
-                                                        </span>
-                                                        <span
-                                                            class="absolute right-1.5 bottom-1.5 left-1.5 truncate rounded-full bg-emerald-950/45 px-1.5 py-0.5 text-center text-[10px] font-semibold text-white backdrop-blur-[2px]"
-                                                            >{{
-                                                                plantAt(r, c)
-                                                                    ?.name
-                                                            }}</span
-                                                        >
-                                                        <span
-                                                            class="absolute top-1.5 left-1.5 rounded-full bg-white/92 px-1.5 py-0.5 text-[10px] font-semibold text-foreground shadow-sm dark:bg-card/92"
-                                                        >
-                                                            {{
-                                                                plantAt(r, c)
-                                                                    ?.quantity
-                                                            }}
-                                                            tk
-                                                        </span>
-                                                        <button
-                                                            type="button"
-                                                            class="absolute top-1 right-1 z-20 flex min-h-9 min-w-9 items-center justify-center rounded-full bg-black/60 p-1.5 text-white opacity-100 shadow-sm md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100"
-                                                            aria-label="Eemalda taim ruudust"
-                                                            @click.stop="
-                                                                removePlantFromBed(
-                                                                    plantAt(
-                                                                        r,
-                                                                        c,
-                                                                    )!,
-                                                                )
+                                                        class="plant-bloom absolute inset-0"
+                                                    ></div>
+                                                    <span class="plant-avatar">
+                                                        <img
+                                                            v-if="
+                                                                cell.plant
+                                                                    ?.image_url
                                                             "
-                                                        >
-                                                            <span
-                                                                class="material-symbols-outlined text-base"
-                                                                >close</span
-                                                            >
-                                                        </button>
-                                                    </div>
-                                                    <div
-                                                        v-else-if="
-                                                            (gridLayout[r]?.[
-                                                                c
-                                                            ] ?? 0) === -1
-                                                        "
-                                                        class="bed-cell bed-cell--walkway"
-                                                        :style="{
-                                                            width: `${bedCellSize}px`,
-                                                            height: `${bedCellSize}px`,
-                                                        }"
-                                                    />
-                                                    <div
-                                                        v-else-if="
-                                                            (gridLayout[r]?.[
-                                                                c
-                                                            ] ?? 1) === 0
-                                                        "
-                                                        class="pointer-events-none rounded-xl opacity-0"
-                                                        :style="{
-                                                            width: `${bedCellSize}px`,
-                                                            height: `${bedCellSize}px`,
-                                                        }"
-                                                    />
-                                                    <button
-                                                        v-else
-                                                        type="button"
-                                                        class="group flex touch-manipulation items-center justify-center text-emerald-800/75"
-                                                        :class="
-                                                            emptyCellClass(r, c)
-                                                        "
-                                                        :style="{
-                                                            width: `${bedCellSize}px`,
-                                                            height: `${bedCellSize}px`,
-                                                        }"
-                                                        :title="`Lisa taim ruutu (rida ${r + 1}, veerg ${c + 1})`"
-                                                        :aria-label="`Lisa taim ruutu, rida ${r + 1}, veerg ${c + 1}`"
-                                                        @click="
-                                                            openCellModal(r, c)
-                                                        "
-                                                    >
+                                                            :src="
+                                                                cell.plant
+                                                                    .image_url!
+                                                            "
+                                                            :alt="
+                                                                cell.plant.name
+                                                            "
+                                                        />
                                                         <span
-                                                            class="material-symbols-outlined sprout-preview text-xl"
+                                                            v-else
+                                                            class="material-symbols-outlined"
                                                             >psychiatry</span
                                                         >
+                                                    </span>
+                                                    <span
+                                                        class="absolute right-1.5 bottom-1.5 left-1.5 truncate rounded-full bg-emerald-950/45 px-1.5 py-0.5 text-center text-[10px] font-semibold text-white backdrop-blur-[2px]"
+                                                        >{{
+                                                            cell.plant.name
+                                                        }}</span
+                                                    >
+                                                    <span
+                                                        class="absolute top-1.5 left-1.5 rounded-full bg-white/92 px-1.5 py-0.5 text-[10px] font-semibold text-foreground shadow-sm dark:bg-card/92"
+                                                    >
+                                                        {{
+                                                            cell.plant.quantity
+                                                        }}
+                                                        tk
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        class="absolute top-1 right-1 z-20 flex min-h-9 min-w-9 items-center justify-center rounded-full bg-black/60 p-1.5 text-white opacity-100 shadow-sm md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100"
+                                                        aria-label="Eemalda taim ruudust"
+                                                        @click.stop="
+                                                            removePlantFromBed(
+                                                                cell.plant,
+                                                            )
+                                                        "
+                                                    >
+                                                        <span
+                                                            class="material-symbols-outlined text-base"
+                                                            >close</span
+                                                        >
                                                     </button>
-                                                </template>
+                                                </div>
+                                                <div
+                                                    v-else-if="cell.walkway"
+                                                    class="bed-cell bed-cell--walkway"
+                                                    :style="
+                                                        bedCellSpanStyle(cell)
+                                                    "
+                                                />
+                                                <button
+                                                    v-else-if="cell.active"
+                                                    type="button"
+                                                    class="group flex touch-manipulation items-center justify-center"
+                                                    :class="
+                                                        emptyCellClass(
+                                                            cell.row,
+                                                            cell.col,
+                                                        )
+                                                    "
+                                                    :style="
+                                                        bedCellSpanStyle(cell)
+                                                    "
+                                                    :title="`Lisa taim ruutu (rida ${cell.row + 1}, veerg ${cell.col + 1})`"
+                                                    :aria-label="`Lisa taim ruutu, rida ${cell.row + 1}, veerg ${cell.col + 1}`"
+                                                    @click="
+                                                        !editingLayout &&
+                                                        openCellModal(
+                                                            cell.row,
+                                                            cell.col,
+                                                        )
+                                                    "
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined bed-cell-slot-icon"
+                                                        >add</span
+                                                    >
+                                                </button>
                                             </template>
-                                        </div>
+                                        </draggable>
                                     </div>
                                 </div>
                             </div>
+                            <p
+                                class="mt-2 text-center text-xs text-muted-foreground"
+                            >
+                                {{ bedPhysicalSize }}
+                            </p>
                         </section>
 
                         <section
