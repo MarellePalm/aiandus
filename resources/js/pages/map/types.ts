@@ -40,6 +40,7 @@ export type GardenPlan = {
     height: number;
     unit: string;
     shape_mask: number[][] | null;
+    shape_mask_cell_cm?: number;
     center_lat: number | null;
     center_lng: number | null;
     boundary_polygon: LatLngPoint[] | null;
@@ -57,7 +58,10 @@ export type MapViewProps = {
     plantsWithoutBed: PlantWithoutBed[];
 };
 
-export type DimensionFormErrors = Record<'width' | 'height', string | undefined>;
+export type DimensionFormErrors = Record<
+    'width' | 'height',
+    string | undefined
+>;
 
 export type ViewportPinchState = {
     startDistance: number;

@@ -111,10 +111,7 @@ function clampBrickCm(value: number): number {
 }
 
 function cmToGridSpan(cm: number, unitCm = gridUnitCm()): number {
-    return Math.max(
-        1,
-        Math.min(MAX_BRICK_GRID_SPAN, Math.ceil(cm / unitCm)),
-    );
+    return Math.max(1, Math.min(MAX_BRICK_GRID_SPAN, Math.ceil(cm / unitCm)));
 }
 
 function brickFootprintFromCm(
@@ -1252,7 +1249,7 @@ watch(selectedCellId, () => {
                                                 type="number"
                                                 min="10"
                                                 max="200"
-                                                step="5"
+                                                step="1"
                                                 class="w-full min-w-0 border-0 bg-transparent p-0 text-base leading-none font-semibold text-foreground outline-none"
                                                 placeholder="30"
                                                 @input="
@@ -1614,7 +1611,7 @@ watch(selectedCellId, () => {
                                     type="number"
                                     min="10"
                                     max="200"
-                                    step="10"
+                                    step="1"
                                     class="h-12 min-w-0 flex-1 border-0 bg-transparent text-base text-foreground outline-none"
                                     placeholder="30"
                                     @input="form.clearErrors('cell_size_cm')"
