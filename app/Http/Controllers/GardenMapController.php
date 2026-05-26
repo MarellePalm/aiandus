@@ -133,9 +133,30 @@ class GardenMapController extends Controller
             ->where('garden_plan_id', $gardenPlan->id)
             ->exists();
 
+        $existingBeds = Bed::query()
+            ->where('garden_plan_id', $gardenPlan->id)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['garden_x', 'garden_y', 'cell_size_cm', 'rows', 'columns', 'layout'])
+            ->map(fn ($b) => [
+                'garden_x' => (int) ($b->garden_x ?? 0),
+                'garden_y' => (int) ($b->garden_y ?? 0),
+                'cell_size_cm' => (int) ($b->cell_size_cm ?? 30),
+                'rows' => (int) ($b->rows ?? 1),
+                'columns' => (int) ($b->columns ?? 1),
+                'layout' => $b->layout,
+            ]);
+
         return Inertia::render('map/AddBedPage', [
             'showGuide' => $isFirstBed,
             'gardenPlanId' => $gardenPlan->id,
+            'gardenPlan' => [
+                'width' => (int) $gardenPlan->width,
+                'height' => (int) $gardenPlan->height,
+                'shape_mask' => $gardenPlan->shape_mask,
+                'shape_mask_cell_cm' => (int) ($gardenPlan->shape_mask_cell_cm ?? 1000),
+            ],
+            'existingBeds' => $existingBeds,
         ]);
     }
 }

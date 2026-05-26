@@ -21,7 +21,6 @@ import GardenPlannerBoundaryOverlay from '@/components/GardenPlannerBoundaryOver
 import GardenShapeEditor from '@/components/GardenShapeEditor.vue';
 import MapConfirmDialog from '@/components/map/MapConfirmDialog.vue';
 import MapGardenSetupSection from '@/components/map/MapGardenSetupSection.vue';
-import MapPlaceBedDialog from '@/components/map/MapPlaceBedDialog.vue';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -46,6 +45,12 @@ import {
 } from '@/lib/gardenAreaSelection';
 import BottomNav from '@/pages/BottomNav.vue';
 import {
+    bedBoundsCmFromBricks,
+    bedFootprintRectsPx,
+    resolveBedBricksCm,
+    type BedCellBrick,
+} from '@/pages/map/bedBrickFootprint';
+import {
     getInitialFocusedBedId,
     sortBedsForPlanner,
 } from '@/pages/map/bedPlannerUtils';
@@ -53,7 +58,6 @@ import {
     CM_TO_PX,
     DEFAULT_CREATE_GARDEN_HEIGHT_M,
     DEFAULT_CREATE_GARDEN_WIDTH_M,
-    DEFAULT_NEW_BED_LAYOUT,
     FIT_VIEW_MIN_ZOOM,
     FOCUSED_BED_MIN_ZOOM,
     GARDEN_BOUNDARY_MIN_VERTICES,
@@ -180,11 +184,6 @@ const dragMoved = ref(false);
 const dragOffset = ref({ x: 0, y: 0 });
 const dragPointerId = ref<number | null>(null);
 const dragCaptureTarget = ref<HTMLElement | null>(null);
-const isPlacingBed = ref(false);
-const placeBedDialogOpen = ref(false);
-const placeBedPosition = ref<{ x: number; y: number } | null>(null);
-const placeBedName = ref('');
-const placeBedSubmitting = ref(false);
 const activeBedCardId = ref<number | null>(null);
 const panPointerId = ref<number | null>(null);
 const pinchState = ref<ViewportPinchState | null>(null);
@@ -982,130 +981,26 @@ function onGardenPlanSelect(event: Event) {
     router.visit(`/map/${id}`);
 }
 
-/** Lisa peenar: esmalt asukoht kaardil, siis kuju ruutude kaupa. */
+/** Lisa peenar: ava loomise viisard (nimi → kuju → aiaplaan). */
 function startNewBedOnMap() {
     if (!canPlaceBedsOnMap.value) {
         return;
     }
 
     createMenuOpen.value = false;
-    isLayoutEditing.value = true;
-    isPlacingBed.value = true;
-    placeBedDialogOpen.value = false;
-    placeBedPosition.value = null;
-    activeBedCardId.value = null;
-    nextTick(() =>
-        plannerViewport.value?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center',
-        }),
-    );
+    router.get(`/map/${props.gardenPlan.id}/beds/new`);
 }
 
-function defaultNewBedSizePx() {
-    const cols = DEFAULT_NEW_BED_LAYOUT[0]?.length ?? 3;
-    const rows = DEFAULT_NEW_BED_LAYOUT.length;
-    const cellPx = Math.round(GARDEN_GRID_CELL_CM * CM_TO_PX);
-
-    return {
-        width: Math.max(MIN_BED_VISUAL_SIZE, cols * cellPx),
-        height: Math.max(MIN_BED_VISUAL_SIZE, rows * cellPx),
-    };
-}
-
-/** Ortofoto: salvesta peenra ülemine vasak nurk nii, et tihvi ots jääb klõpsu kohta. */
-function gardenPositionForPinTip(tipX: number, tipY: number) {
-    const size = defaultNewBedSizePx();
-
-    return {
-        x: snapToGardenGrid(tipX - size.width / 2),
-        y: snapToGardenGrid(tipY - size.height),
-    };
-}
-
-/** Käsitsi vaade: paiguta peenar klõpsu kohale (keskel), ruudustikule kinnitatud. */
-function gardenPositionForPlannerClick(x: number, y: number) {
-    if (usesOrtophotoSharpZoom.value) {
-        return gardenPositionForPinTip(x, y);
-    }
-
-    const size = defaultNewBedSizePx();
-
-    return {
-        x: snapToGardenGrid(x - size.width / 2),
-        y: snapToGardenGrid(y - size.height / 2),
-    };
-}
-
-function clampNewBedPosition(x: number, y: number) {
-    const size = defaultNewBedSizePx();
-
-    return {
-        x: Math.max(
-            GARDEN_PADDING,
-            Math.min(x, gardenSurfaceWidth.value - size.width - GARDEN_PADDING),
-        ),
-        y: Math.max(
-            GARDEN_PADDING,
-            Math.min(
-                y,
-                gardenSurfaceHeight.value - size.height - GARDEN_PADDING,
-            ),
-        ),
-    };
-}
-
-function openPlaceBedDialog(x: number, y: number) {
-    const origin = gardenPositionForPlannerClick(x, y);
-    placeBedPosition.value = clampNewBedPosition(origin.x, origin.y);
-    placeBedName.value = `Peenras ${props.beds.length + 1}`;
-    placeBedDialogOpen.value = true;
-    activeBedCardId.value = null;
-}
-
-function cancelPlaceBed() {
-    isPlacingBed.value = false;
-    placeBedDialogOpen.value = false;
-    placeBedPosition.value = null;
-    placeBedSubmitting.value = false;
-}
-
-function submitPlaceBed() {
-    if (!placeBedPosition.value || placeBedSubmitting.value) {
+function highlightCreatedBedFromFlash() {
+    const createdId = page.props.flash?.created_bed_id;
+    if (!createdId || !props.beds.some((bed) => bed.id === createdId)) {
         return;
     }
 
-    const name =
-        placeBedName.value.trim() || `Peenras ${props.beds.length + 1}`;
-    placeBedSubmitting.value = true;
-
-    router.post(
-        '/beds',
-        {
-            garden_plan_id: props.gardenPlan.id,
-            name,
-            garden_x: Math.round(placeBedPosition.value.x),
-            garden_y: Math.round(placeBedPosition.value.y),
-            cell_size_cm: GARDEN_GRID_CELL_CM,
-            layout: DEFAULT_NEW_BED_LAYOUT,
-        },
-        {
-            preserveScroll: true,
-            preserveState: true,
-            onSuccess: () => {
-                const createdId = page.props.flash?.created_bed_id;
-                if (createdId) {
-                    router.visit(`/beds/${createdId}/edit?step=2`);
-                }
-            },
-            onFinish: () => {
-                placeBedSubmitting.value = false;
-                isPlacingBed.value = false;
-                placeBedDialogOpen.value = false;
-                placeBedPosition.value = null;
-            },
-        },
-    );
+    isLayoutEditing.value = true;
+    showBedsLayer.value = true;
+    activeBedCardId.value = createdId;
+    selectedBedId.value = createdId;
 }
 
 function onPlannerCanvasClick(event: MouseEvent) {
@@ -1119,12 +1014,6 @@ function onPlannerCanvasClick(event: MouseEvent) {
             '[data-bed-pin], [data-bed-footprint], [data-place-bed-dialog], [data-ui-overlay], button, a, input, select, textarea, label',
         )
     ) {
-        return;
-    }
-
-    if (isPlacingBed.value && !placeBedDialogOpen.value) {
-        const pt = getPlannerLocalPoint(event);
-        openPlaceBedDialog(pt.x, pt.y);
         return;
     }
 
@@ -1474,6 +1363,7 @@ onMounted(() => {
 
     syncGardenInitialSetupUi();
     syncPositionsFromProps();
+    highlightCreatedBedFromFlash();
     nextTick(() => {
         syncPlannerViewportSize();
         runPlannerInitialViewportFit();
@@ -1798,10 +1688,6 @@ const plannerViewportCursorClass = computed(() => {
         return 'cursor-grabbing';
     }
 
-    if (isPlacingBed.value) {
-        return 'cursor-crosshair';
-    }
-
     if (canPanPlannerViewport.value) {
         return 'cursor-grab';
     }
@@ -1921,6 +1807,15 @@ watch(plannerBeds, (beds) => {
         selectedBedId.value = beds[0]?.id ?? null;
     }
 });
+
+watch(
+    () => page.props.flash?.created_bed_id,
+    (createdId) => {
+        if (createdId) {
+            highlightCreatedBedFromFlash();
+        }
+    },
+);
 
 watch(
     () =>
@@ -2043,11 +1938,63 @@ function getBedPreviewImage(bed: Bed): string | null {
     return bed.plants.find((plant) => plant.image_url)?.image_url ?? null;
 }
 
+function getBedCellBricks(bed: Bed): BedCellBrick[] {
+    if (Array.isArray(bed.cell_bricks) && bed.cell_bricks.length > 0) {
+        return bed.cell_bricks;
+    }
+
+    const layout = getBedLayout(bed);
+    const unit = getBedCellSizeCm(bed);
+    const bricks: BedCellBrick[] = [];
+
+    layout.forEach((row, y) => {
+        row.forEach((value, x) => {
+            if (value === 1) {
+                bricks.push({
+                    x,
+                    y,
+                    w: 1,
+                    h: 1,
+                    width_cm: unit,
+                    height_cm: unit,
+                    kind: 'plantable',
+                });
+            } else if (value === -1) {
+                bricks.push({
+                    x,
+                    y,
+                    w: 1,
+                    h: 1,
+                    width_cm: unit,
+                    height_cm: unit,
+                    kind: 'walkway',
+                });
+            }
+        });
+    });
+
+    return bricks;
+}
+
 function getBedPhysicalWidthCm(bed: Bed): number {
+    const bricks = getBedCellBricks(bed);
+    if (bricks.length > 0) {
+        return bedBoundsCmFromBricks(
+            resolveBedBricksCm(bricks, getBedCellSizeCm(bed)),
+        ).widthCm;
+    }
+
     return getBedWidthInCells(bed) * getBedCellSizeCm(bed);
 }
 
 function getBedPhysicalHeightCm(bed: Bed): number {
+    const bricks = getBedCellBricks(bed);
+    if (bricks.length > 0) {
+        return bedBoundsCmFromBricks(
+            resolveBedBricksCm(bricks, getBedCellSizeCm(bed)),
+        ).heightCm;
+    }
+
     return getBedHeightInCells(bed) * getBedCellSizeCm(bed);
 }
 
@@ -2079,15 +2026,19 @@ function isBedCardVisible(bedId: number): boolean {
 }
 
 function bedCardSize(bed: Bed) {
+    const width = Math.round(getBedPhysicalWidthCm(bed) * CM_TO_PX);
+    const height = Math.round(getBedPhysicalHeightCm(bed) * CM_TO_PX);
+
+    if (showBedsAsPlannerFootprints.value) {
+        return {
+            width: Math.max(8, width),
+            height: Math.max(8, height),
+        };
+    }
+
     return {
-        width: Math.max(
-            MIN_BED_VISUAL_SIZE,
-            Math.round(getBedPhysicalWidthCm(bed) * CM_TO_PX),
-        ),
-        height: Math.max(
-            MIN_BED_VISUAL_SIZE,
-            Math.round(getBedPhysicalHeightCm(bed) * CM_TO_PX),
-        ),
+        width: Math.max(MIN_BED_VISUAL_SIZE, width),
+        height: Math.max(MIN_BED_VISUAL_SIZE, height),
     };
 }
 
@@ -2194,24 +2145,20 @@ function bedFootprintWrapperStyle(bed: Bed): Record<string, string> {
     };
 }
 
-function placeBedPreviewStyle(): Record<string, string> | null {
-    if (!placeBedPosition.value) {
-        return null;
-    }
-
-    const size = defaultNewBedSizePx();
-
-    return {
-        left: `${placeBedPosition.value.x}px`,
-        top: `${placeBedPosition.value.y}px`,
-        width: `${size.width}px`,
-        height: `${size.height}px`,
-    };
-}
-
-type BedFootprintCell = { left: number; top: number; size: number };
+type BedFootprintCell = {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    kind: 'plantable' | 'walkway' | 'empty';
+};
 
 function getBedFootprintCells(bed: Bed): BedFootprintCell[] {
+    const bricks = getBedCellBricks(bed);
+    if (bricks.length > 0) {
+        return bedFootprintRectsPx(bricks, getBedCellSizeCm(bed));
+    }
+
     const layout = getBedLayout(bed);
     const bounds = getBedActiveBounds(bed);
     const cellPx = Math.round(getBedCellSizeCm(bed) * CM_TO_PX);
@@ -2226,7 +2173,9 @@ function getBedFootprintCells(bed: Bed): BedFootprintCell[] {
             cells.push({
                 left: (c - bounds.minCol) * cellPx,
                 top: (r - bounds.minRow) * cellPx,
-                size: cellPx,
+                width: cellPx,
+                height: cellPx,
+                kind: 'plantable',
             });
         }
     }
@@ -2288,12 +2237,16 @@ function getPlannerLocalPoint(event: PointerEvent | WheelEvent | MouseEvent) {
     }
 
     const rect = viewport.getBoundingClientRect();
-
-    const scale = plannerVisualScale();
+    const cs = window.getComputedStyle(viewport);
+    const padLeft = parseFloat(cs.paddingLeft) || 0;
+    const padTop = parseFloat(cs.paddingTop) || 0;
+    const scale = usesOrtophotoSharpZoom.value
+        ? plannerVisualScale()
+        : Math.max(zoom.value, 0.001);
 
     return {
-        x: (event.clientX - rect.left - panX.value) / scale,
-        y: (event.clientY - rect.top - panY.value) / scale,
+        x: (event.clientX - rect.left - padLeft - panX.value) / scale,
+        y: (event.clientY - rect.top - padTop - panY.value) / scale,
     };
 }
 
@@ -2637,17 +2590,6 @@ function handleViewportPointerDown(event: PointerEvent) {
 
     if (viewportPointerMap.size !== 1) {
         return;
-    }
-
-    if (isPlacingBed.value) {
-        const target = event.target as HTMLElement | null;
-        const onPlacedItem = target?.closest(
-            '[data-bed-pin], [data-bed-footprint], button, a, input, [data-ui-overlay], [data-place-bed-dialog]',
-        );
-
-        if (!onPlacedItem) {
-            return;
-        }
     }
 
     beginPanGesture(event, vp);
@@ -3388,9 +3330,9 @@ function saveGardenPlan(options?: {
                                             <p
                                                 class="mt-1 text-sm leading-6 text-muted-foreground"
                                             >
-                                                Sinu aia piir on kaardil. Klõpsa
-                                                kaardil, et paigutada esimene
-                                                peenar.
+                                                Lisa esimene peenar: nimeta,
+                                                joonista kuju ja paiguta see
+                                                aiaplaanile.
                                             </p>
                                         </div>
                                         <button
@@ -5265,22 +5207,11 @@ function saveGardenPlan(options?: {
                                                                         >
                                                                     </button>
                                                                 </div>
-                                                                <div
-                                                                    v-if="
-                                                                        isPlacingBed
-                                                                    "
-                                                                    class="pointer-events-none absolute top-3 left-1/2 z-30 max-w-[min(92%,20rem)] -translate-x-1/2 rounded-full border border-emerald-600/25 bg-white/92 px-3 py-1.5 text-center text-[11px] font-semibold text-emerald-900 shadow-sm backdrop-blur-sm dark:bg-card/92 dark:text-emerald-50"
-                                                                >
-                                                                    {{
-                                                                        showBedsAsPlannerFootprints
-                                                                            ? 'Kliki aeda, kuhu soovid peenra paigutada'
-                                                                            : 'Kliki kaardile, kuhu soovid peenra paigutada'
-                                                                    }}
-                                                                </div>
 
                                                                 <div
                                                                     v-if="
-                                                                        showMapBackground
+                                                                        showMapBackground ||
+                                                                        showBedsAsPlannerFootprints
                                                                     "
                                                                     class="pointer-events-none absolute bottom-4 left-4 z-20 rounded-2xl border border-emerald-900/10 bg-white/78 px-3 py-2 text-[11px] font-medium text-emerald-950/75 shadow-sm backdrop-blur-sm dark:border-emerald-200/20 dark:bg-card/78 dark:text-emerald-100/80"
                                                                 >
@@ -5318,16 +5249,6 @@ function saveGardenPlan(options?: {
                                                                         showBedsAsPlannerFootprints
                                                                     "
                                                                 >
-                                                                    <div
-                                                                        v-if="
-                                                                            placeBedPreviewStyle()
-                                                                        "
-                                                                        class="pointer-events-none absolute z-[8] rounded-sm border-2 border-dashed border-primary/55 bg-primary/10"
-                                                                        :style="
-                                                                            placeBedPreviewStyle()!
-                                                                        "
-                                                                        aria-hidden="true"
-                                                                    />
                                                                     <div
                                                                         v-for="bed in plannerBeds"
                                                                         :key="
@@ -5380,12 +5301,18 @@ function saveGardenPlan(options?: {
                                                                                 bed,
                                                                             )"
                                                                             :key="`${bed.id}-cell-${cellIndex}`"
-                                                                            class="absolute border border-amber-900/12 bg-amber-100/75 dark:border-amber-100/15 dark:bg-amber-900/40"
+                                                                            class="absolute border border-amber-900/12"
+                                                                            :class="
+                                                                                cell.kind ===
+                                                                                'walkway'
+                                                                                    ? 'bg-stone-300/80 dark:bg-stone-600/50'
+                                                                                    : 'bg-amber-100/75 dark:bg-amber-900/40'
+                                                                            "
                                                                             :style="{
                                                                                 left: `${cell.left}px`,
                                                                                 top: `${cell.top}px`,
-                                                                                width: `${cell.size}px`,
-                                                                                height: `${cell.size}px`,
+                                                                                width: `${cell.width}px`,
+                                                                                height: `${cell.height}px`,
                                                                             }"
                                                                             aria-hidden="true"
                                                                         />
@@ -5618,15 +5545,6 @@ function saveGardenPlan(options?: {
                     :icon-size-px="30"
                     :bottom-px="112"
                     @click="onFloatingPlusClick"
-                />
-
-                <MapPlaceBedDialog
-                    :open="placeBedDialogOpen"
-                    :name="placeBedName"
-                    :submitting="placeBedSubmitting"
-                    @update:name="placeBedName = $event"
-                    @cancel="cancelPlaceBed"
-                    @submit="submitPlaceBed"
                 />
 
                 <BottomNav active="map" />

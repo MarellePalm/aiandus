@@ -7,6 +7,18 @@ export type PlantInBed = {
     position_in_bed: string | null;
 };
 
+export type BedCellBrick = {
+    x: number;
+    y: number;
+    w?: number;
+    h?: number;
+    width_cm?: number;
+    height_cm?: number;
+    left_cm?: number;
+    top_cm?: number;
+    kind?: 'plantable' | 'walkway' | 'empty';
+};
+
 export type Bed = {
     id: number;
     name: string;
@@ -21,6 +33,7 @@ export type Bed = {
     garden_y: number;
     cell_size_cm: number;
     layout?: number[][] | null;
+    cell_bricks?: BedCellBrick[] | null;
     plants: PlantInBed[];
 };
 
