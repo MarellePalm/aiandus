@@ -155,6 +155,8 @@ class GardenMapController extends Controller
                 'height' => (int) $gardenPlan->height,
                 'shape_mask' => $gardenPlan->shape_mask,
                 'shape_mask_cell_cm' => (int) ($gardenPlan->shape_mask_cell_cm ?? 1000),
+                'center_lat' => $gardenPlan->center_lat,
+                'center_lng' => $gardenPlan->center_lng,
             ],
             'existingBeds' => $existingBeds,
         ]);
