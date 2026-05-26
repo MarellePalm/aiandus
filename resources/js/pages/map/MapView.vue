@@ -82,7 +82,6 @@ import {
     gardenSetupChoiceClass,
 } from '@/pages/map/gardenAddressSearch';
 import {
-    gardenShapeMaskCellLabel,
     gardenShapeMaskCmFromForm,
     gardenShapeMaskCols,
     gardenShapeMaskRows,
@@ -276,9 +275,7 @@ const gardenLocationAnchor = ref<{ lat: number; lng: number } | null>(null);
 const gardenPolygonLatLng = ref<LatLngPoint[]>([]);
 const gardenManualShapeMask = ref<number[][]>([]);
 const gardenManualCellSizeCm = ref(50);
-const gardenPlannerShapeCellCm = ref(
-    planShapeMaskCellCm(props.gardenPlan),
-);
+const gardenPlannerShapeCellCm = ref(planShapeMaskCellCm(props.gardenPlan));
 const skipShapeMaskResizeFromDimensions = ref(false);
 
 function planShapeMaskCellCm(plan: GardenPlan): number {
@@ -1616,16 +1613,10 @@ const gardenSurfaceSize = computed(() =>
 const gardenSurfaceWidth = computed(() => gardenSurfaceSize.value.width);
 const gardenSurfaceHeight = computed(() => gardenSurfaceSize.value.height);
 const gardenShapeMaskEditorCols = computed(() =>
-    gardenShapeMaskCols(
-        gardenWidthCm.value,
-        plannerShapeEditorCellCm.value,
-    ),
+    gardenShapeMaskCols(gardenWidthCm.value, plannerShapeEditorCellCm.value),
 );
 const gardenShapeMaskEditorRows = computed(() =>
-    gardenShapeMaskRows(
-        gardenHeightCm.value,
-        plannerShapeEditorCellCm.value,
-    ),
+    gardenShapeMaskRows(gardenHeightCm.value, plannerShapeEditorCellCm.value),
 );
 const gardenShapeClipPathId = computed(
     () => `garden-shape-clip-${props.gardenPlan.id}`,
@@ -3599,7 +3590,9 @@ function saveGardenPlan(options?: {
                                                     type="button"
                                                     class="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 text-sm font-semibold text-primary transition hover:bg-primary/15 sm:h-10 sm:px-4"
                                                     aria-label="Muuda aeda"
-                                                    @click="openGardenPlanEditor"
+                                                    @click="
+                                                        openGardenPlanEditor
+                                                    "
                                                 >
                                                     <span
                                                         class="material-symbols-outlined shrink-0 text-xl leading-none"
@@ -4080,9 +4073,9 @@ function saveGardenPlan(options?: {
                                                     </template>
                                                     <template v-else>
                                                         Otsi aadressi või kasuta
-                                                        geolokatsiooni. Koordinaadid
-                                                        ilmuvad pärast asukoha
-                                                        valimist.
+                                                        geolokatsiooni.
+                                                        Koordinaadid ilmuvad
+                                                        pärast asukoha valimist.
                                                     </template>
                                                 </p>
                                                 <div
@@ -4458,9 +4451,7 @@ function saveGardenPlan(options?: {
                                                     serva.
                                                 </p>
                                                 <div
-                                                    v-if="
-                                                        !hasGardenCoordinates
-                                                    "
+                                                    v-if="!hasGardenCoordinates"
                                                     class="mt-3"
                                                 >
                                                     <p
