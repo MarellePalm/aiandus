@@ -13,7 +13,6 @@ import {
 } from 'vue';
 
 import BackIconButton from '@/components/BackIconButton.vue';
-import CardActionsMenu from '@/components/CardActionsMenu.vue';
 import DesktopSearchField from '@/components/DesktopSearchField.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
@@ -277,6 +276,10 @@ const gardenLocationAnchor = ref<{ lat: number; lng: number } | null>(null);
 const gardenPolygonLatLng = ref<LatLngPoint[]>([]);
 const gardenManualShapeMask = ref<number[][]>([]);
 const gardenManualCellSizeCm = ref(50);
+const gardenPlannerShapeCellCm = ref(
+    planShapeMaskCellCm(props.gardenPlan),
+);
+const skipShapeMaskResizeFromDimensions = ref(false);
 
 function planShapeMaskCellCm(plan: GardenPlan): number {
     const stored = plan.shape_mask_cell_cm;
@@ -355,6 +358,7 @@ async function applyGardenLocationDimensions(
     const anchorLng = roundGardenCoordinate(lng);
     gardenForm.center_lat = anchorLat;
     gardenForm.center_lng = anchorLng;
+    gardenFormLocationChosen.value = true;
     gardenForm.clearErrors('center_lat');
     gardenForm.clearErrors('center_lng');
 
@@ -584,6 +588,13 @@ function writeManualLayoutActive(planId: number, active: boolean): void {
 }
 
 const manualLayoutActive = ref(readManualLayoutActive(props.gardenPlan.id));
+const gardenLocationEditorOpen = ref(false);
+const gardenFormLocationChosen = ref(
+    props.gardenPlan.center_lat != null &&
+        props.gardenPlan.center_lng != null &&
+        Number.isFinite(Number(props.gardenPlan.center_lat)) &&
+        Number.isFinite(Number(props.gardenPlan.center_lng)),
+);
 
 /** Plaan on seadistatud ilma geo-koordinaatideta (nt modaalist käsitsi kuju). */
 const gardenPlanConfiguredWithoutGeo = computed(() => {
@@ -600,6 +611,33 @@ const gardenPlanConfiguredWithoutGeo = computed(() => {
 
     return props.gardenPlan.width !== 1200 || props.gardenPlan.height !== 800;
 });
+
+/** Käsitsi plaan ilma salvestatud asukohata (nt rõdu, terrass). */
+const isManualGardenWithoutGeo = computed(
+    () =>
+        !hasGardenCoordinates.value &&
+        (manualLayoutActive.value || gardenPlanConfiguredWithoutGeo.value),
+);
+
+const showGardenLocationSection = computed(() => {
+    if (hasGardenCoordinates.value) {
+        return true;
+    }
+
+    if (gardenSetupMode.value === 'manual') {
+        return false;
+    }
+
+    if (gardenOrtophotoSetupActive.value) {
+        return true;
+    }
+
+    return gardenLocationEditorOpen.value;
+});
+
+const showGardenCoordinateInputs = computed(
+    () => hasGardenCoordinates.value || gardenFormLocationChosen.value,
+);
 
 /** Tühi aiaplaan: pole koordinaate, piird, peenraid ega salvestatud käsitsi paigutust. */
 const needsGardenInitialSetup = computed(
@@ -902,7 +940,30 @@ function clearCreateGardenAddressFeedback() {
     createGeolocationFailed.value = false;
     createGardenDimensionsMessage.value = null;
 }
+function resetGardenFormLocationDraft() {
+    if (hasGardenCoordinates.value) {
+        return;
+    }
+
+    gardenForm.center_lat = null;
+    gardenForm.center_lng = null;
+    gardenFormLocationChosen.value = false;
+    gardenLocationEditorOpen.value = false;
+    selectedGardenAddressLabel.value = null;
+    addressSearchQuery.value = '';
+    gardenDimensionsMessage.value = null;
+}
+
+function openGardenLocationEditor() {
+    gardenLocationEditorOpen.value = true;
+}
+
+function dismissGardenLocationEditor() {
+    resetGardenFormLocationDraft();
+}
+
 function openGardenPlanEditor() {
+    resetGardenFormLocationDraft();
     plannerControlsOpen.value = true;
 }
 
@@ -1253,9 +1314,18 @@ watch(
         gardenManualCellSizeCm.value = planShapeMaskCellCm(plan as GardenPlan);
         gardenForm.center_lat = plan.center_lat;
         gardenForm.center_lng = plan.center_lng;
+        gardenLocationEditorOpen.value = false;
+        gardenFormLocationChosen.value = hasGardenCoordinates.value;
     },
     { deep: true },
 );
+
+watch(hasGardenCoordinates, (has) => {
+    if (has) {
+        gardenFormLocationChosen.value = true;
+        gardenLocationEditorOpen.value = true;
+    }
+});
 
 watch(needsGardenInitialSetup, (needs) => {
     if (needs) {
@@ -1337,17 +1407,29 @@ function getPlannerMap() {
 }
 
 watch(
+    () => props.gardenPlan.id,
+    () => {
+        gardenPlannerShapeCellCm.value = planShapeMaskCellCm(props.gardenPlan);
+    },
+);
+
+watch(
     () => [gardenForm.widthMeters, gardenForm.heightMeters] as const,
     ([widthMeters, heightMeters]) => {
+        if (skipShapeMaskResizeFromDimensions.value) {
+            return;
+        }
+
         const { widthCm, heightCm } = gardenShapeMaskCmFromForm(
             widthMeters,
             heightMeters,
         );
+        const cellCm = plannerShapeEditorCellCm.value;
         const resized = resizeGardenShapeMask(
             gardenForm.shape_mask,
             widthCm,
             heightCm,
-            shapeMaskCellCm.value,
+            cellCm,
         );
         const unchanged =
             resized.length === gardenForm.shape_mask.length &&
@@ -1534,10 +1616,16 @@ const gardenSurfaceSize = computed(() =>
 const gardenSurfaceWidth = computed(() => gardenSurfaceSize.value.width);
 const gardenSurfaceHeight = computed(() => gardenSurfaceSize.value.height);
 const gardenShapeMaskEditorCols = computed(() =>
-    gardenShapeMaskCols(gardenWidthCm.value, shapeMaskCellCm.value),
+    gardenShapeMaskCols(
+        gardenWidthCm.value,
+        plannerShapeEditorCellCm.value,
+    ),
 );
 const gardenShapeMaskEditorRows = computed(() =>
-    gardenShapeMaskRows(gardenHeightCm.value, shapeMaskCellCm.value),
+    gardenShapeMaskRows(
+        gardenHeightCm.value,
+        plannerShapeEditorCellCm.value,
+    ),
 );
 const gardenShapeClipPathId = computed(
     () => `garden-shape-clip-${props.gardenPlan.id}`,
@@ -1649,6 +1737,11 @@ const showBedsAsPlannerFootprints = computed(
     () => !usesOrtophotoSharpZoom.value,
 );
 const shapeMaskCellCm = computed(() => planShapeMaskCellCm(props.gardenPlan));
+const plannerShapeEditorCellCm = computed(() =>
+    !hasGardenCoordinates.value
+        ? gardenPlannerShapeCellCm.value
+        : shapeMaskCellCm.value,
+);
 const plannerShapeCellCm = computed(() =>
     usesOrtophotoSharpZoom.value ? GARDEN_GRID_CELL_CM : shapeMaskCellCm.value,
 );
@@ -3007,27 +3100,48 @@ function onPlannerWheel(event: WheelEvent) {
     );
 }
 
-function toggleGardenShapeMaskCell(row: number, col: number) {
-    const next = gardenForm.shape_mask.map((maskRow, y) =>
-        maskRow.map((value, x) => {
-            if (y !== row || x !== col) {
-                return value;
-            }
+function onPlannerGardenShapeMaskUpdate(mask: number[][]) {
+    gardenForm.shape_mask = mask;
+    gardenForm.clearErrors('shape_mask');
 
-            return value === 1 ? 0 : 1;
-        }),
-    );
-    const activeCount = next.reduce(
-        (sum, maskRow) => sum + maskRow.filter((value) => value === 1).length,
-        0,
-    );
-
-    if (activeCount < 1) {
+    const bounds = getShapeMaskActiveCellBounds(mask);
+    if (!bounds) {
         return;
     }
 
-    gardenForm.shape_mask = next;
-    gardenForm.clearErrors('shape_mask');
+    const cell = plannerShapeEditorCellCm.value;
+    const wCm = (bounds.maxCol - bounds.minCol + 1) * cell;
+    const hCm = (bounds.maxRow - bounds.minRow + 1) * cell;
+
+    skipShapeMaskResizeFromDimensions.value = true;
+    gardenForm.widthMeters = wCm / 100;
+    gardenForm.heightMeters = hCm / 100;
+    nextTick(() => {
+        skipShapeMaskResizeFromDimensions.value = false;
+    });
+}
+
+function setGardenPlannerShapeCellSize(cm: number) {
+    if (gardenPlannerShapeCellCm.value === cm) {
+        return;
+    }
+
+    gardenPlannerShapeCellCm.value = cm;
+    const { widthCm, heightCm } = gardenShapeMaskCmFromForm(
+        gardenForm.widthMeters,
+        gardenForm.heightMeters,
+    );
+
+    skipShapeMaskResizeFromDimensions.value = true;
+    gardenForm.shape_mask = resizeGardenShapeMask(
+        gardenForm.shape_mask,
+        widthCm,
+        heightCm,
+        cm,
+    );
+    nextTick(() => {
+        skipShapeMaskResizeFromDimensions.value = false;
+    });
 }
 
 function saveGardenPlan(options?: {
@@ -3110,9 +3224,21 @@ function saveGardenPlan(options?: {
             shape_mask: data.shape_mask,
             shape_mask_cell_cm: options?.requireManualDimensions
                 ? gardenManualCellSizeCm.value
-                : shapeMaskCellCm.value,
-            center_lat: data.center_lat,
-            center_lng: data.center_lng,
+                : !hasGardenCoordinates.value
+                  ? gardenPlannerShapeCellCm.value
+                  : shapeMaskCellCm.value,
+            center_lat:
+                !hasGardenCoordinates.value &&
+                isManualGardenWithoutGeo.value &&
+                !gardenFormLocationChosen.value
+                    ? null
+                    : data.center_lat,
+            center_lng:
+                !hasGardenCoordinates.value &&
+                isManualGardenWithoutGeo.value &&
+                !gardenFormLocationChosen.value
+                    ? null
+                    : data.center_lng,
             boundary_polygon: boundaryPolygon,
         }))
         .put(`/garden-plans/${props.gardenPlan.id}`, {
@@ -3121,6 +3247,7 @@ function saveGardenPlan(options?: {
             onSuccess: (page) => {
                 const plan = page.props.gardenPlan as GardenPlan | undefined;
                 if (!plan) return;
+                gardenPlannerShapeCellCm.value = planShapeMaskCellCm(plan);
                 gardenForm.defaults({
                     name: plan.name,
                     widthMeters: plan.width / 100,
@@ -3424,60 +3551,80 @@ function saveGardenPlan(options?: {
                                                 </div>
                                             </div>
                                             <div
-                                                class="flex shrink-0 items-center gap-1"
+                                                class="flex shrink-0 flex-wrap items-center justify-end gap-2"
                                             >
-                                                <div class="flex items-center">
-                                                    <div
-                                                        class="inline-flex items-center gap-0.5 rounded-full bg-muted/45 p-1 ring-1 ring-border/70"
+                                                <div
+                                                    v-if="!plannerControlsOpen"
+                                                    class="inline-flex items-center gap-0.5 rounded-full bg-muted/45 p-1 ring-1 ring-border/70"
+                                                >
+                                                    <button
+                                                        type="button"
+                                                        class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-background"
+                                                        @click="
+                                                            changeZoom(
+                                                                -plannerZoomStepDelta(),
+                                                            )
+                                                        "
                                                     >
-                                                        <button
-                                                            type="button"
-                                                            class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-background"
-                                                            @click="
-                                                                changeZoom(
-                                                                    -plannerZoomStepDelta(),
-                                                                )
-                                                            "
+                                                        <span
+                                                            class="material-symbols-outlined text-base"
+                                                            >remove</span
                                                         >
-                                                            <span
-                                                                class="material-symbols-outlined text-base"
-                                                                >remove</span
-                                                            >
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            class="inline-flex h-8 min-w-11 items-center justify-center rounded-full bg-background px-2 text-xs font-semibold text-foreground shadow-xs"
-                                                            @click="
-                                                                applyFitGardenZoom
-                                                            "
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        class="inline-flex h-8 min-w-11 items-center justify-center rounded-full bg-background px-2 text-xs font-semibold text-foreground shadow-xs"
+                                                        @click="
+                                                            applyFitGardenZoom
+                                                        "
+                                                    >
+                                                        {{ zoomPercent }}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-background"
+                                                        @click="
+                                                            changeZoom(
+                                                                plannerZoomStepDelta(),
+                                                            )
+                                                        "
+                                                    >
+                                                        <span
+                                                            class="material-symbols-outlined text-base"
+                                                            >add</span
                                                         >
-                                                            {{ zoomPercent }}
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-background"
-                                                            @click="
-                                                                changeZoom(
-                                                                    plannerZoomStepDelta(),
-                                                                )
-                                                            "
-                                                        >
-                                                            <span
-                                                                class="material-symbols-outlined text-base"
-                                                                >add</span
-                                                            >
-                                                        </button>
-                                                    </div>
+                                                    </button>
                                                 </div>
-                                            </div>
-                                            <div
-                                                class="hidden shrink-0 md:flex"
-                                            >
-                                                <CardActionsMenu
-                                                    placement="inline"
-                                                    @edit="openGardenPlanEditor"
-                                                    @delete="deleteGardenPlan"
-                                                />
+                                                <button
+                                                    type="button"
+                                                    class="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 text-sm font-semibold text-primary transition hover:bg-primary/15 sm:h-10 sm:px-4"
+                                                    aria-label="Muuda aeda"
+                                                    @click="openGardenPlanEditor"
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined shrink-0 text-xl leading-none"
+                                                        >edit</span
+                                                    >
+                                                    <span
+                                                        class="hidden sm:inline"
+                                                        >Muuda</span
+                                                    >
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    class="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border border-border/70 bg-card px-3 text-sm font-semibold text-foreground shadow-sm ring-1 ring-border/70 transition hover:bg-muted sm:h-10 sm:px-4"
+                                                    aria-label="Kustuta aiaplaan"
+                                                    @click="deleteGardenPlan"
+                                                >
+                                                    <span
+                                                        class="material-symbols-outlined shrink-0 text-xl leading-none"
+                                                        >delete</span
+                                                    >
+                                                    <span
+                                                        class="hidden sm:inline"
+                                                        >Kustuta</span
+                                                    >
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -3586,7 +3733,7 @@ function saveGardenPlan(options?: {
                                         plannerControlsOpen &&
                                         !needsGardenInitialSetup
                                     "
-                                    class="mb-4 space-y-3"
+                                    class="mb-4 max-h-[min(50vh,28rem)] space-y-3 overflow-y-auto overscroll-y-contain rounded-[1.5rem] border border-border/70 bg-background/95 p-3 shadow-sm md:max-h-[min(55vh,32rem)]"
                                 >
                                     <div class="flex justify-end">
                                         <button
@@ -3604,7 +3751,10 @@ function saveGardenPlan(options?: {
                                             class="rounded-[1.5rem] border border-border/70 bg-background/75 p-3"
                                         >
                                             <div
-                                                v-if="!hasGardenCoordinates"
+                                                v-if="
+                                                    !hasGardenCoordinates &&
+                                                    !isManualGardenWithoutGeo
+                                                "
                                                 class="mb-4 space-y-3"
                                             >
                                                 <p
@@ -3670,7 +3820,10 @@ function saveGardenPlan(options?: {
                                             </div>
 
                                             <div
-                                                v-if="!hideGardenQuickPresets"
+                                                v-if="
+                                                    !hideGardenQuickPresets &&
+                                                    !plannerControlsOpen
+                                                "
                                                 class="mb-3"
                                             >
                                                 <p
@@ -3849,17 +4002,59 @@ function saveGardenPlan(options?: {
 
                                             <div
                                                 v-if="
-                                                    gardenSetupMode !==
-                                                        'manual' ||
-                                                    hasGardenCoordinates
+                                                    isManualGardenWithoutGeo &&
+                                                    !showGardenLocationSection
                                                 "
                                                 class="mt-4"
                                             >
-                                                <p
-                                                    class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                <button
+                                                    type="button"
+                                                    class="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/85 px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+                                                    @click="
+                                                        openGardenLocationEditor
+                                                    "
                                                 >
-                                                    Aia asukoht
+                                                    <span
+                                                        class="material-symbols-outlined text-base text-primary"
+                                                        >location_on</span
+                                                    >
+                                                    Lisa asukoht (valikuline)
+                                                </button>
+                                                <p
+                                                    class="mt-2 text-xs leading-5 text-muted-foreground"
+                                                >
+                                                    Käsitsi sisestatud aial pole
+                                                    asukohta vaja. Saad lisada
+                                                    hiljem ortofoto jaoks.
                                                 </p>
+                                            </div>
+
+                                            <div
+                                                v-if="showGardenLocationSection"
+                                                class="mt-4"
+                                            >
+                                                <div
+                                                    class="flex flex-wrap items-center justify-between gap-2"
+                                                >
+                                                    <p
+                                                        class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                    >
+                                                        Aia asukoht
+                                                    </p>
+                                                    <button
+                                                        v-if="
+                                                            isManualGardenWithoutGeo &&
+                                                            !hasGardenCoordinates
+                                                        "
+                                                        type="button"
+                                                        class="text-xs font-semibold text-muted-foreground underline-offset-2 transition hover:text-foreground hover:underline"
+                                                        @click="
+                                                            dismissGardenLocationEditor
+                                                        "
+                                                    >
+                                                        Eemalda
+                                                    </button>
+                                                </div>
                                                 <p
                                                     class="mt-1 text-sm leading-6 text-muted-foreground"
                                                 >
@@ -3873,13 +4068,21 @@ function saveGardenPlan(options?: {
                                                         märgi aia piir
                                                         ortofotol.
                                                     </template>
-                                                    <template v-else>
+                                                    <template
+                                                        v-else-if="
+                                                            showGardenCoordinateInputs
+                                                        "
+                                                    >
                                                         Otsi aadressi või kasuta
                                                         geolokatsiooni — krundi
                                                         mõõdud ja koordinaadid
                                                         täituvad automaatselt.
-                                                        Vajadusel saad käsitsi
-                                                        muuta.
+                                                    </template>
+                                                    <template v-else>
+                                                        Otsi aadressi või kasuta
+                                                        geolokatsiooni. Koordinaadid
+                                                        ilmuvad pärast asukoha
+                                                        valimist.
                                                     </template>
                                                 </p>
                                                 <div
@@ -4102,11 +4305,7 @@ function saveGardenPlan(options?: {
                                                 <div
                                                     v-if="
                                                         !gardenOrtophotoSetupActive &&
-                                                        !(
-                                                            gardenSetupMode ===
-                                                                'manual' &&
-                                                            !hasGardenCoordinates
-                                                        )
+                                                        showGardenCoordinateInputs
                                                     "
                                                     class="mt-3 grid gap-3 sm:grid-cols-2"
                                                 >
@@ -4126,7 +4325,7 @@ function saveGardenPlan(options?: {
                                                             type="number"
                                                             step="any"
                                                             class="w-full bg-transparent text-sm font-medium text-foreground outline-none"
-                                                            placeholder="59.437"
+                                                            placeholder="—"
                                                             @input="
                                                                 clearGardenAddressSelectionFeedback();
                                                                 gardenForm.center_lat =
@@ -4135,6 +4334,7 @@ function saveGardenPlan(options?: {
                                                                             $event.target as HTMLInputElement
                                                                         ).value,
                                                                     );
+                                                                gardenFormLocationChosen.value = true;
                                                                 gardenForm.clearErrors(
                                                                     'center_lat',
                                                                 );
@@ -4160,7 +4360,7 @@ function saveGardenPlan(options?: {
                                                             type="number"
                                                             step="any"
                                                             class="w-full bg-transparent text-sm font-medium text-foreground outline-none"
-                                                            placeholder="24.753"
+                                                            placeholder="—"
                                                             @input="
                                                                 clearGardenAddressSelectionFeedback();
                                                                 gardenForm.center_lng =
@@ -4169,6 +4369,7 @@ function saveGardenPlan(options?: {
                                                                             $event.target as HTMLInputElement
                                                                         ).value,
                                                                     );
+                                                                gardenFormLocationChosen.value = true;
                                                                 gardenForm.clearErrors(
                                                                     'center_lat',
                                                                 );
@@ -4251,50 +4452,70 @@ function saveGardenPlan(options?: {
                                                 <p
                                                     class="mt-1 text-sm leading-6 text-muted-foreground"
                                                 >
-                                                    Iga ruut on
-                                                    {{
-                                                        gardenShapeMaskCellLabel(
-                                                            shapeMaskCellCm,
-                                                        )
-                                                    }}. Klõps lülitab aiaosa
-                                                    sisse või välja.
+                                                    Klõpsa või lohista ruute.
+                                                    Ruudustik laieneb
+                                                    automaatselt, kui joonistad
+                                                    serva.
                                                 </p>
+                                                <div
+                                                    v-if="
+                                                        !hasGardenCoordinates
+                                                    "
+                                                    class="mt-3"
+                                                >
+                                                    <p
+                                                        class="mb-2 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                                    >
+                                                        Ruudu suurus
+                                                    </p>
+                                                    <div
+                                                        class="flex flex-wrap gap-1"
+                                                    >
+                                                        <button
+                                                            v-for="size in [
+                                                                25, 50, 100,
+                                                                200, 500, 1000,
+                                                            ]"
+                                                            :key="size"
+                                                            type="button"
+                                                            class="rounded-full border px-2.5 py-1 text-xs font-medium transition"
+                                                            :class="
+                                                                gardenPlannerShapeCellCm ===
+                                                                size
+                                                                    ? 'border-primary/30 bg-primary/10 text-primary'
+                                                                    : 'border-border/70 bg-card text-foreground hover:bg-muted'
+                                                            "
+                                                            @click="
+                                                                setGardenPlannerShapeCellSize(
+                                                                    size,
+                                                                )
+                                                            "
+                                                        >
+                                                            {{
+                                                                size >= 100
+                                                                    ? size /
+                                                                          100 +
+                                                                      ' m'
+                                                                    : size +
+                                                                      ' cm'
+                                                            }}
+                                                        </button>
+                                                    </div>
+                                                </div>
                                                 <div
                                                     class="mt-3 overflow-x-auto rounded-[1.15rem] bg-background/80 p-3 ring-1 ring-border/70"
                                                 >
-                                                    <div
-                                                        class="inline-flex flex-col gap-1"
-                                                    >
-                                                        <div
-                                                            v-for="(
-                                                                row, rowIndex
-                                                            ) in gardenForm.shape_mask"
-                                                            :key="`shape-mask-row-${rowIndex}`"
-                                                            class="flex gap-1"
-                                                        >
-                                                            <button
-                                                                v-for="(
-                                                                    cell,
-                                                                    colIndex
-                                                                ) in row"
-                                                                :key="`shape-mask-${rowIndex}-${colIndex}`"
-                                                                type="button"
-                                                                class="size-7 shrink-0 rounded-md border transition"
-                                                                :class="
-                                                                    cell === 1
-                                                                        ? 'border-emerald-600/45 bg-emerald-500/90 shadow-sm'
-                                                                        : 'border-border/55 bg-muted/25'
-                                                                "
-                                                                :aria-label="`Ruut ${colIndex + 1}, ${rowIndex + 1}: ${cell === 1 ? 'aed' : 'väljas'}`"
-                                                                @click="
-                                                                    toggleGardenShapeMaskCell(
-                                                                        rowIndex,
-                                                                        colIndex,
-                                                                    )
-                                                                "
-                                                            />
-                                                        </div>
-                                                    </div>
+                                                    <GardenShapeEditor
+                                                        :model-value="
+                                                            gardenForm.shape_mask
+                                                        "
+                                                        :cell-size-cm="
+                                                            plannerShapeEditorCellCm
+                                                        "
+                                                        @update:model-value="
+                                                            onPlannerGardenShapeMaskUpdate
+                                                        "
+                                                    />
                                                 </div>
                                                 <p
                                                     class="mt-2 text-xs text-muted-foreground"
@@ -4834,7 +5055,7 @@ function saveGardenPlan(options?: {
                                     >
                                         <div
                                             ref="plannerViewport"
-                                            class="relative h-[min(62vh,620px)] w-full max-w-full min-w-0 touch-none overflow-hidden rounded-[1.5rem] border bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(241,247,235,0.98))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_14px_34px_rgba(47,67,44,0.10)] transition sm:p-3 md:h-[min(72vh,920px)] dark:bg-[linear-gradient(180deg,rgba(30,38,32,0.98),rgba(22,29,24,0.98))]"
+                                            class="relative h-[min(62vh,620px)] w-full max-w-full min-w-0 touch-none overflow-hidden rounded-[1.5rem] border bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(241,247,235,0.98))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_14px_34px_rgba(47,67,44,0.10)] transition sm:p-3 md:h-[min(72vh,920px)] lg:h-[min(calc(100dvh-11rem),920px)] dark:bg-[linear-gradient(180deg,rgba(30,38,32,0.98),rgba(22,29,24,0.98))]"
                                             :class="[
                                                 plannerViewportCursorClass,
                                                 isLayoutEditing
@@ -5005,6 +5226,54 @@ function saveGardenPlan(options?: {
                                                                     onPlannerCanvasClick
                                                                 "
                                                             >
+                                                                <div
+                                                                    v-if="
+                                                                        plannerControlsOpen
+                                                                    "
+                                                                    class="absolute top-3 right-3 z-30 inline-flex items-center gap-0.5 rounded-full bg-muted/80 p-1 shadow-sm ring-1 ring-border/70 backdrop-blur-sm"
+                                                                >
+                                                                    <button
+                                                                        type="button"
+                                                                        class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-background"
+                                                                        aria-label="Vähenda suumi"
+                                                                        @click.stop="
+                                                                            changeZoom(
+                                                                                -plannerZoomStepDelta(),
+                                                                            )
+                                                                        "
+                                                                    >
+                                                                        <span
+                                                                            class="material-symbols-outlined text-base"
+                                                                            >remove</span
+                                                                        >
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        class="inline-flex h-8 min-w-11 items-center justify-center rounded-full bg-background px-2 text-xs font-semibold text-foreground"
+                                                                        @click.stop="
+                                                                            applyFitGardenZoom
+                                                                        "
+                                                                    >
+                                                                        {{
+                                                                            zoomPercent
+                                                                        }}
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-background"
+                                                                        aria-label="Suurenda suumi"
+                                                                        @click.stop="
+                                                                            changeZoom(
+                                                                                plannerZoomStepDelta(),
+                                                                            )
+                                                                        "
+                                                                    >
+                                                                        <span
+                                                                            class="material-symbols-outlined text-base"
+                                                                            >add</span
+                                                                        >
+                                                                    </button>
+                                                                </div>
                                                                 <div
                                                                     v-if="
                                                                         isPlacingBed

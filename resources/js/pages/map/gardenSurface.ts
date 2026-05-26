@@ -11,8 +11,9 @@ export function computeGardenSurfacePx(
     width: number;
     height: number;
 } {
-    let width = Math.max(320, Math.round(widthCm * CM_TO_PX));
-    let height = Math.max(240, Math.round(heightCm * CM_TO_PX));
+    /** Väike rõduaed: tegelik proportsioon, mitte suurte plaanide miinimum 320×240. */
+    let width = Math.max(80, Math.round(widthCm * CM_TO_PX));
+    let height = Math.max(60, Math.round(heightCm * CM_TO_PX));
     const scale = Math.min(
         1,
         MAX_GARDEN_SURFACE_WIDTH / width,
@@ -20,8 +21,8 @@ export function computeGardenSurfacePx(
     );
 
     if (scale < 1) {
-        width = Math.max(320, Math.round(width * scale));
-        height = Math.max(240, Math.round(height * scale));
+        width = Math.max(80, Math.round(width * scale));
+        height = Math.max(60, Math.round(height * scale));
     }
 
     return { width, height };
