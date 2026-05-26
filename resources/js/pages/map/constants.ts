@@ -20,6 +20,9 @@ export const FOCUSED_BED_MIN_ZOOM = 0.75;
 export const ORTOPHOTO_MIN_ZOOM_FACTOR = 0.25;
 export const ORTOPHOTO_MAX_ZOOM_FACTOR = 4;
 
+/** Vahe aia ja plaanivaate serva vahel „mahuta vaatesse“ juures. */
+export const PLANNER_FIT_VIEW_PADDING_PX = 40;
+
 export const MIN_PINCH_DISTANCE_PX = 10;
 export const MIN_BED_VISUAL_SIZE = 44;
 export const MAX_GARDEN_SURFACE_WIDTH = 3200;

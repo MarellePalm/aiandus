@@ -19,6 +19,7 @@ class GardenPlanController extends Controller
             'shape_mask' => ['nullable', 'array'],
             'shape_mask.*' => ['array'],
             'shape_mask.*.*' => ['integer', 'in:0,1'],
+            'shape_mask_cell_cm' => ['nullable', 'integer', 'min:10', 'max:1000'],
             'boundary_polygon' => ['nullable', 'array', 'min:3'],
             'boundary_polygon.*.lat' => ['required_with:boundary_polygon', 'numeric', 'between:-90,90'],
             'boundary_polygon.*.lng' => ['required_with:boundary_polygon', 'numeric', 'between:-180,180'],
@@ -33,12 +34,14 @@ class GardenPlanController extends Controller
             'height.max' => 'Sisestatud kõrgus on liiga suur. Maksimaalne suurus on 1 km.',
         ]);
 
+        $shapeMaskCellCm = (int) ($data['shape_mask_cell_cm'] ?? 1000);
         $shapeMask = null;
         if (array_key_exists('shape_mask', $data)) {
             $shapeMask = $this->normalizeShapeMask(
                 $data['shape_mask'],
                 $data['width'],
                 $data['height'],
+                $shapeMaskCellCm,
             );
         }
 
@@ -49,6 +52,7 @@ class GardenPlanController extends Controller
             'height' => $data['height'],
             'unit' => 'cm',
             'shape_mask' => $shapeMask,
+            'shape_mask_cell_cm' => $shapeMaskCellCm,
             'center_lat' => $this->nullableCoordinate($data['center_lat'] ?? null),
             'center_lng' => $this->nullableCoordinate($data['center_lng'] ?? null),
             'boundary_polygon' => $this->normalizeBoundaryPolygon($data['boundary_polygon'] ?? null),
@@ -70,6 +74,7 @@ class GardenPlanController extends Controller
             'shape_mask' => ['nullable', 'array'],
             'shape_mask.*' => ['array'],
             'shape_mask.*.*' => ['integer', 'in:0,1'],
+            'shape_mask_cell_cm' => ['nullable', 'integer', 'min:10', 'max:1000'],
             'center_lat' => ['nullable', 'numeric', 'between:-90,90'],
             'center_lng' => ['nullable', 'numeric', 'between:-180,180'],
             'boundary_polygon' => ['nullable', 'array', 'min:3'],
@@ -95,11 +100,14 @@ class GardenPlanController extends Controller
         ];
 
         if (array_key_exists('shape_mask', $data)) {
+            $shapeMaskCellCm = (int) ($data['shape_mask_cell_cm'] ?? $gardenPlan->shape_mask_cell_cm ?? 1000);
             $updates['shape_mask'] = $this->normalizeShapeMask(
                 $data['shape_mask'],
                 $data['width'],
                 $data['height'],
+                $shapeMaskCellCm,
             );
+            $updates['shape_mask_cell_cm'] = $shapeMaskCellCm;
         }
 
         if (array_key_exists('boundary_polygon', $data)) {
@@ -156,20 +164,66 @@ class GardenPlanController extends Controller
      * @param  array<int, array<int, int>>|null  $shapeMask
      * @return array<int, array<int, int>>|null
      */
-    private function normalizeShapeMask(?array $shapeMask, int $widthCm, int $heightCm): ?array
-    {
+    private function normalizeShapeMask(
+        ?array $shapeMask,
+        int $widthCm,
+        int $heightCm,
+        int $cellCm = 1000,
+    ): ?array {
         if ($shapeMask === null) {
             return null;
         }
 
-        $rows = max(1, (int) ceil($heightCm / 1000));
-        $cols = max(1, (int) ceil($widthCm / 1000));
-        $normalized = [];
+        $cellCm = max(10, min(1000, $cellCm));
+        $inRows = count($shapeMask);
+        $inCols = count($shapeMask[0] ?? []);
+        $expectedCols = max(1, (int) round($widthCm / $cellCm));
+        $expectedRows = max(1, (int) round($heightCm / $cellCm));
 
-        for ($y = 0; $y < $rows; $y++) {
-            $normalized[$y] = [];
-            for ($x = 0; $x < $cols; $x++) {
-                $normalized[$y][$x] = (int) (($shapeMask[$y][$x] ?? 1) === 1 ? 1 : 0);
+        if ($inRows < 1 || $inCols < 1) {
+            throw ValidationException::withMessages([
+                'shape_mask' => 'Aiaplaanil peab olema vähemalt üks aktiivne ruut.',
+            ]);
+        }
+
+        if (
+            $cellCm < 1000
+            && abs($inCols - $expectedCols) <= 1
+            && abs($inRows - $expectedRows) <= 1
+        ) {
+            $normalized = [];
+            for ($y = 0; $y < $inRows; $y++) {
+                $normalized[$y] = [];
+                for ($x = 0; $x < $inCols; $x++) {
+                    $normalized[$y][$x] = (int) (($shapeMask[$y][$x] ?? 0) === 1 ? 1 : 0);
+                }
+            }
+        } else {
+            $rows = $expectedRows;
+            $cols = $expectedCols;
+            $normalized = [];
+
+            for ($y = 0; $y < $rows; $y++) {
+                $normalized[$y] = [];
+                $y0 = (int) floor(($y * $inRows) / $rows);
+                $y1 = min($inRows, (int) ceil((($y + 1) * $inRows) / $rows));
+
+                for ($x = 0; $x < $cols; $x++) {
+                    $x0 = (int) floor(($x * $inCols) / $cols);
+                    $x1 = min($inCols, (int) ceil((($x + 1) * $inCols) / $cols));
+                    $active = false;
+
+                    for ($sy = $y0; $sy < $y1; $sy++) {
+                        for ($sx = $x0; $sx < $x1; $sx++) {
+                            if (($shapeMask[$sy][$sx] ?? 0) === 1) {
+                                $active = true;
+                                break 2;
+                            }
+                        }
+                    }
+
+                    $normalized[$y][$x] = $active ? 1 : 0;
+                }
             }
         }
 
