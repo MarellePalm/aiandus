@@ -90,7 +90,7 @@ class BedController extends Controller
                 $w = max(1, min(self::MAX_BRICK_GRID_SPAN, (int) ceil($widthCm / $unitCm)));
                 $h = max(1, min(self::MAX_BRICK_GRID_SPAN, (int) ceil($heightCm / $unitCm)));
 
-                return [
+                $normalized = [
                     'x' => (int) ($brick['x'] ?? 0),
                     'y' => (int) ($brick['y'] ?? 0),
                     'w' => $w,
@@ -99,6 +99,16 @@ class BedController extends Controller
                     'height_cm' => $heightCm,
                     'kind' => $this->normalizeBrickKind($brick['kind'] ?? null),
                 ];
+
+                if (isset($brick['left_cm'])) {
+                    $normalized['left_cm'] = max(0, (int) $brick['left_cm']);
+                }
+
+                if (isset($brick['top_cm'])) {
+                    $normalized['top_cm'] = max(0, (int) $brick['top_cm']);
+                }
+
+                return $normalized;
             })
             ->values()
             ->all();
@@ -173,7 +183,7 @@ class BedController extends Controller
             'rows' => $rows,
             'columns' => $columns,
             'cell_bricks' => array_map(function ($brick) use ($minX, $minY) {
-                return [
+                $payload = [
                     'x' => $brick['x'] - $minX,
                     'y' => $brick['y'] - $minY,
                     'w' => $brick['w'],
@@ -182,6 +192,16 @@ class BedController extends Controller
                     'height_cm' => $brick['height_cm'],
                     'kind' => $brick['kind'],
                 ];
+
+                if (isset($brick['left_cm'])) {
+                    $payload['left_cm'] = $brick['left_cm'];
+                }
+
+                if (isset($brick['top_cm'])) {
+                    $payload['top_cm'] = $brick['top_cm'];
+                }
+
+                return $payload;
             }, $bricks),
         ];
     }
@@ -471,7 +491,7 @@ class BedController extends Controller
         Session::flash(
             'success',
             $placedOnMap
-                ? 'Peenar lisatud. Joonista kuju ruutude kaupa.'
+                ? 'Peenar lisatud aiaplaanile. Muuda kuju või lohista paika.'
                 : 'Peenar lisatud. Lohista see aiaplaanil õigesse kohta.',
         );
         Session::flash('created_bed_id', $bed->id);

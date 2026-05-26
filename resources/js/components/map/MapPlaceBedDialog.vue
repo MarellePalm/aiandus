@@ -1,5 +1,7 @@
 <script setup lang="ts">
-defineProps<{
+import { nextTick, ref, watch } from 'vue';
+
+const props = defineProps<{
     open: boolean;
     name: string;
     submitting: boolean;
@@ -10,13 +12,29 @@ const emit = defineEmits<{
     cancel: [];
     submit: [];
 }>();
+
+const nameInputRef = ref<HTMLInputElement | null>(null);
+
+watch(
+    () => props.open,
+    (open) => {
+        if (!open) {
+            return;
+        }
+
+        nextTick(() => {
+            nameInputRef.value?.focus();
+            nameInputRef.value?.select();
+        });
+    },
+);
 </script>
 
 <template>
     <div
         v-if="open"
         data-place-bed-dialog
-        class="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-4 sm:items-center"
+        class="fixed inset-0 z-[11000] flex items-end justify-center bg-black/35 p-4 sm:items-center"
         @click.self="emit('cancel')"
     >
         <div
@@ -26,8 +44,8 @@ const emit = defineEmits<{
         >
             <p class="text-base font-semibold text-foreground">Uus peenar</p>
             <p class="mt-1 text-sm text-muted-foreground">
-                Asukoht on valitud. Anna peenrale nimi — seejärel joonistad kuju
-                ruutude kaupa.
+                Asukoht on valitud aiaplaanil. Anna peenrale nimi — kuju saad
+                hiljem muuta.
             </p>
             <label
                 class="mt-4 block text-xs font-semibold tracking-wide text-muted-foreground uppercase"
@@ -37,6 +55,7 @@ const emit = defineEmits<{
             </label>
             <input
                 id="place-bed-name"
+                ref="nameInputRef"
                 :value="name"
                 type="text"
                 maxlength="120"
