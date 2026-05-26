@@ -2442,8 +2442,20 @@ watch(selectedCellId, () => {
                                 Paiguta aiaplaanile
                             </h2>
                             <p class="mt-0.5 text-sm text-muted-foreground">
-                                Kanna valmis peenar aia joonisele — ruudustik on
-                                mõõtkavas.
+                                <template
+                                    v-if="
+                                        gardenPlan &&
+                                        gardenPlan.center_lat != null &&
+                                        gardenPlan.center_lng != null
+                                    "
+                                >
+                                    Klõpsa kaardil, kuhu peenar tuleb — ortofotol
+                                    märgitakse täpiga.
+                                </template>
+                                <template v-else>
+                                    Kanna valmis peenar aia joonisele — ruudustik
+                                    on mõõtkavas.
+                                </template>
                             </p>
                         </div>
                     </div>

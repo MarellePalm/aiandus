@@ -10,7 +10,21 @@ export type GardenPlacementPlan = {
     height: number;
     shape_mask: number[][] | null;
     shape_mask_cell_cm?: number;
+    center_lat?: number | null;
+    center_lng?: number | null;
 };
+
+export function planUsesPinPlacement(plan: GardenPlacementPlan): boolean {
+    const lat = plan.center_lat;
+    const lng = plan.center_lng;
+
+    return (
+        lat != null &&
+        lng != null &&
+        Number.isFinite(Number(lat)) &&
+        Number.isFinite(Number(lng))
+    );
+}
 
 export type GardenPlacementBed = {
     garden_x: number;
@@ -142,12 +156,42 @@ export function gardenPositionFromClick(
     bedSize: { width: number; height: number },
     plan: GardenPlacementPlan,
 ): { x: number; y: number } {
+    if (planUsesPinPlacement(plan)) {
+        return gardenPositionFromPinClick(clickX, clickY, bedSize, plan);
+    }
+
     const snapped = {
         x: snapGardenPx(clickX - bedSize.width / 2, plan),
         y: snapGardenPx(clickY - bedSize.height / 2, plan),
     };
 
     return clampBedOnGarden(snapped.x, snapped.y, bedSize, plan);
+}
+
+/** Ortofoto: klõps = tihvi ots (sama loogika mis MapView peenratihv). */
+export function gardenPositionFromPinClick(
+    clickX: number,
+    clickY: number,
+    bedSize: { width: number; height: number },
+    plan: GardenPlacementPlan,
+): { x: number; y: number } {
+    return clampBedOnGarden(
+        clickX - bedSize.width / 2,
+        clickY - bedSize.height,
+        bedSize,
+        plan,
+    );
+}
+
+export function bedPinTipPx(
+    gardenX: number,
+    gardenY: number,
+    bedSize: { width: number; height: number },
+): { x: number; y: number } {
+    return {
+        x: gardenX + bedSize.width / 2,
+        y: gardenY + bedSize.height,
+    };
 }
 
 export function shapeMaskClipRects(

@@ -62,7 +62,6 @@ import {
     FOCUSED_BED_MIN_ZOOM,
     GARDEN_BOUNDARY_MIN_VERTICES,
     GARDEN_GRID_CELL_CM,
-    GARDEN_PADDING,
     GARDEN_SHAPE_CELL_CM,
     MAX_ZOOM,
     MIN_BED_VISUAL_SIZE,
@@ -1414,8 +1413,8 @@ function syncPositionsFromProps() {
     const next: Record<number, { x: number; y: number }> = {};
     props.beds.forEach((bed) => {
         next[bed.id] = {
-            x: bed.garden_x ?? GARDEN_PADDING,
-            y: bed.garden_y ?? GARDEN_PADDING,
+            x: bed.garden_x ?? 0,
+            y: bed.garden_y ?? 0,
         };
     });
     localPositions.value = next;
@@ -1705,10 +1704,29 @@ const gardenDimensionLabel = computed(() => {
     const h = Number(gardenForm.heightMeters || 0);
     return `${fmt(w)} m × ${fmt(h)} m`;
 });
+/** Tegelik px/cm aia pinnal (võib erineda CM_TO_PX-st kui pind on kokku surutud). */
+const plannerCmToPx = computed(() => {
+    const wCm = gardenWidthCm.value;
+    if (wCm <= 0) {
+        return CM_TO_PX;
+    }
+
+    return gardenSurfaceWidth.value / wCm;
+});
 const plannerGridSizePx = computed(() =>
-    Math.max(10, Math.round(plannerShapeCellCm.value * CM_TO_PX)),
+    Math.max(10, Math.round(plannerShapeCellCm.value * plannerCmToPx.value)),
 );
-const scaleBarWidthPx = computed(() => Math.round(100 * CM_TO_PX));
+
+const scaleBarWidthPx = computed(() => {
+    const meterPx = 100 * plannerCmToPx.value;
+
+    if (usesOrtophotoSharpZoom.value) {
+        return Math.round(meterPx * plannerVisualScale(zoom.value));
+    }
+
+    // Käsivaade: mõõtkava on pan/zoom konteineris, mis juba rakendab scale(zoom).
+    return Math.round(meterPx);
+});
 const plannerBeds = computed(() => (showBedsLayer.value ? props.beds : []));
 const plannerMapBgRef = ref<{
     scheduleMapRefresh: () => void;
@@ -1821,8 +1839,8 @@ watch(
     () =>
         props.beds.map((bed) => [
             bed.id,
-            bed.garden_x ?? GARDEN_PADDING,
-            bed.garden_y ?? GARDEN_PADDING,
+            bed.garden_x ?? 0,
+            bed.garden_y ?? 0,
         ]),
     () => {
         const current = localPositions.value;
@@ -1830,8 +1848,8 @@ watch(
 
         props.beds.forEach((bed) => {
             next[bed.id] = current[bed.id] ?? {
-                x: bed.garden_x ?? GARDEN_PADDING,
-                y: bed.garden_y ?? GARDEN_PADDING,
+                x: bed.garden_x ?? 0,
+                y: bed.garden_y ?? 0,
             };
         });
 
@@ -2026,8 +2044,11 @@ function isBedCardVisible(bedId: number): boolean {
 }
 
 function bedCardSize(bed: Bed) {
-    const width = Math.round(getBedPhysicalWidthCm(bed) * CM_TO_PX);
-    const height = Math.round(getBedPhysicalHeightCm(bed) * CM_TO_PX);
+    const pxPerCm = showBedsAsPlannerFootprints.value
+        ? plannerCmToPx.value
+        : CM_TO_PX;
+    const width = Math.round(getBedPhysicalWidthCm(bed) * pxPerCm);
+    const height = Math.round(getBedPhysicalHeightCm(bed) * pxPerCm);
 
     if (showBedsAsPlannerFootprints.value) {
         return {
@@ -2064,23 +2085,20 @@ function clampBedPosition(bed: Bed, x: number, y: number) {
     const size = bedCardSize(bed);
     return {
         x: Math.max(
-            GARDEN_PADDING,
-            Math.min(x, gardenSurfaceWidth.value - size.width - GARDEN_PADDING),
+            0,
+            Math.min(x, gardenSurfaceWidth.value - size.width),
         ),
         y: Math.max(
-            GARDEN_PADDING,
-            Math.min(
-                y,
-                gardenSurfaceHeight.value - size.height - GARDEN_PADDING,
-            ),
+            0,
+            Math.min(y, gardenSurfaceHeight.value - size.height),
         ),
     };
 }
 
 function getBedPosition(bed: Bed) {
     const stored = localPositions.value[bed.id] ?? {
-        x: bed.garden_x ?? GARDEN_PADDING,
-        y: bed.garden_y ?? GARDEN_PADDING,
+        x: bed.garden_x ?? 0,
+        y: bed.garden_y ?? 0,
     };
     return clampBedPosition(bed, stored.x, stored.y);
 }
@@ -2345,10 +2363,16 @@ function onPointerMove(event: PointerEvent) {
 
     dragMoved.value = true;
     const pointer = getPlannerLocalPoint(event);
+    const rawX = pointer.x - dragOffset.value.x;
+    const rawY = pointer.y - dragOffset.value.y;
     const next = clampBedPosition(
         bed,
-        snapToGardenGrid(pointer.x - dragOffset.value.x),
-        snapToGardenGrid(pointer.y - dragOffset.value.y),
+        showBedsAsPlannerFootprints.value
+            ? snapToGardenGrid(rawX)
+            : rawX,
+        showBedsAsPlannerFootprints.value
+            ? snapToGardenGrid(rawY)
+            : rawY,
     );
 
     localPositions.value = {
@@ -2872,7 +2896,7 @@ function plannerGardenSurfaceInnerStyle(): Record<string, string> {
     const minorPx = plannerGridSizePx.value;
     const majorPx = Math.max(
         minorPx,
-        Math.round(plannerMajorGridCm.value * CM_TO_PX),
+        Math.round(plannerMajorGridCm.value * plannerCmToPx.value),
     );
     const minorLine = 'rgba(34, 98, 58, 0.12)';
     const majorLine = 'rgba(34, 98, 58, 0.24)';
@@ -3487,7 +3511,7 @@ function saveGardenPlan(options?: {
                                                 class="flex shrink-0 flex-wrap items-center justify-end gap-2"
                                             >
                                                 <div
-                                                    v-if="!plannerControlsOpen"
+                                                    v-if="showPlannerMapCanvas"
                                                     class="inline-flex items-center gap-0.5 rounded-full bg-muted/45 p-1 ring-1 ring-border/70"
                                                 >
                                                     <button
@@ -5009,6 +5033,9 @@ function saveGardenPlan(options?: {
                                                 :style="plannerPanZoomStyle()"
                                             >
                                                 <div
+                                                    class="flex flex-col items-start"
+                                                >
+                                                <div
                                                     class="relative overflow-hidden rounded-none"
                                                     :class="
                                                         showMapBackground
@@ -5159,91 +5186,6 @@ function saveGardenPlan(options?: {
                                                                     onPlannerCanvasClick
                                                                 "
                                                             >
-                                                                <div
-                                                                    v-if="
-                                                                        plannerControlsOpen
-                                                                    "
-                                                                    class="absolute top-3 right-3 z-30 inline-flex items-center gap-0.5 rounded-full bg-muted/80 p-1 shadow-sm ring-1 ring-border/70 backdrop-blur-sm"
-                                                                >
-                                                                    <button
-                                                                        type="button"
-                                                                        class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-background"
-                                                                        aria-label="Vähenda suumi"
-                                                                        @click.stop="
-                                                                            changeZoom(
-                                                                                -plannerZoomStepDelta(),
-                                                                            )
-                                                                        "
-                                                                    >
-                                                                        <span
-                                                                            class="material-symbols-outlined text-base"
-                                                                            >remove</span
-                                                                        >
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        class="inline-flex h-8 min-w-11 items-center justify-center rounded-full bg-background px-2 text-xs font-semibold text-foreground"
-                                                                        @click.stop="
-                                                                            applyFitGardenZoom
-                                                                        "
-                                                                    >
-                                                                        {{
-                                                                            zoomPercent
-                                                                        }}
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        class="inline-flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-background"
-                                                                        aria-label="Suurenda suumi"
-                                                                        @click.stop="
-                                                                            changeZoom(
-                                                                                plannerZoomStepDelta(),
-                                                                            )
-                                                                        "
-                                                                    >
-                                                                        <span
-                                                                            class="material-symbols-outlined text-base"
-                                                                            >add</span
-                                                                        >
-                                                                    </button>
-                                                                </div>
-
-                                                                <div
-                                                                    v-if="
-                                                                        showMapBackground ||
-                                                                        showBedsAsPlannerFootprints
-                                                                    "
-                                                                    class="pointer-events-none absolute bottom-4 left-4 z-20 rounded-2xl border border-emerald-900/10 bg-white/78 px-3 py-2 text-[11px] font-medium text-emerald-950/75 shadow-sm backdrop-blur-sm dark:border-emerald-200/20 dark:bg-card/78 dark:text-emerald-100/80"
-                                                                >
-                                                                    <div
-                                                                        class="mb-1 tracking-[0.16em] text-emerald-900/55 uppercase"
-                                                                    >
-                                                                        Mõõtkava
-                                                                    </div>
-                                                                    <div
-                                                                        class="flex items-center gap-2"
-                                                                    >
-                                                                        <div
-                                                                            class="relative h-2 rounded-full bg-emerald-700/75"
-                                                                            :style="{
-                                                                                width: `${scaleBarWidthPx}px`,
-                                                                            }"
-                                                                        >
-                                                                            <span
-                                                                                class="absolute -top-1.5 -left-px h-5 w-px bg-emerald-900/55"
-                                                                            ></span>
-                                                                            <span
-                                                                                class="absolute -top-1.5 -right-px h-5 w-px bg-emerald-900/55"
-                                                                            ></span>
-                                                                        </div>
-                                                                        <span
-                                                                            class="font-semibold text-foreground"
-                                                                            >1
-                                                                            m</span
-                                                                        >
-                                                                    </div>
-                                                                </div>
-
                                                                 <template
                                                                     v-if="
                                                                         showBedsAsPlannerFootprints
@@ -5316,13 +5258,6 @@ function saveGardenPlan(options?: {
                                                                             }"
                                                                             aria-hidden="true"
                                                                         />
-                                                                        <p
-                                                                            class="pointer-events-none absolute top-0 left-0 max-w-full truncate px-1 py-0.5 text-[10px] leading-tight font-semibold text-amber-950/85 dark:text-amber-50/90"
-                                                                        >
-                                                                            {{
-                                                                                bed.name
-                                                                            }}
-                                                                        </p>
                                                                     </div>
                                                                 </template>
                                                                 <template
@@ -5490,6 +5425,37 @@ function saveGardenPlan(options?: {
                                                             </div>
                                                         </div>
                                                     </div>
+                                                </div>
+                                                <div
+                                                    v-if="
+                                                        showMapBackground ||
+                                                        showBedsAsPlannerFootprints
+                                                    "
+                                                    class="mt-2"
+                                                >
+                                                    <div
+                                                        class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-900/10 bg-white/88 px-2 py-1 text-[10px] text-emerald-950/70 shadow-sm backdrop-blur-sm dark:border-emerald-200/15 dark:bg-card/90 dark:text-emerald-100/75"
+                                                        aria-label="Mõõtkava: 1 meetri pikkune joon"
+                                                    >
+                                                        <div
+                                                            class="relative h-1.5 shrink-0 rounded-full bg-emerald-700/80"
+                                                            :style="{
+                                                                width: `${scaleBarWidthPx}px`,
+                                                            }"
+                                                        >
+                                                            <span
+                                                                class="absolute -top-1 -left-px h-3 w-px bg-emerald-900/50"
+                                                            ></span>
+                                                            <span
+                                                                class="absolute -top-1 -right-px h-3 w-px bg-emerald-900/50"
+                                                            ></span>
+                                                        </div>
+                                                        <span
+                                                            class="font-medium whitespace-nowrap tabular-nums text-foreground/80"
+                                                            >1 m</span
+                                                        >
+                                                    </div>
+                                                </div>
                                                 </div>
                                             </div>
                                         </div>
