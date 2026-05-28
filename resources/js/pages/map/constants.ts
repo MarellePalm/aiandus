@@ -7,6 +7,9 @@ export const GARDEN_PADDING = 24;
 export const CM_TO_PX = 0.5;
 export const GARDEN_GRID_CELL_CM = 30;
 
+/** Ühe peenraruudu vaikimisi mõõt (cm) uue peenra loomisel. */
+export const DEFAULT_BED_CELL_SIZE_CM = 30;
+
 /** Uus peenar algab ühe ruuduga; kuju täpsustatakse redigeerimises. */
 export const DEFAULT_NEW_BED_LAYOUT: number[][] = [[1]];
 

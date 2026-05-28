@@ -1,22 +1,15 @@
 <script setup lang="ts">
 import { router, useForm } from '@inertiajs/vue3';
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { GridItem, GridLayout } from 'grid-layout-plus';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import AddBedGardenPlacement from '@/components/map/AddBedGardenPlacement.vue';
 import { normalizeImageForUpload } from '@/lib/imageUpload';
-import {
-    brickCmRectsOverlap,
-    brickFitsCm,
-    buildBedEditorCmLayout,
-    cmToPx,
-    EDITOR_PX_PER_CM,
-    inferCmPositionsFromGrid,
-    packGridIndicesFromCm,
-} from '@/pages/map/bedEditorCmLayout';
 import type {
     GardenPlacementBed,
     GardenPlacementPlan,
 } from '@/pages/map/bedGardenPlacement';
+import { DEFAULT_BED_CELL_SIZE_CM } from '@/pages/map/constants';
 
 type BedPlant = {
     id: number;
@@ -50,6 +43,9 @@ type BedCell = {
 type SubmitCell = {
     x: number;
     y: number;
+    w: number;
+    h: number;
+    kind: 'plantable' | 'walkway' | 'empty';
     plants: CellPlant[];
 };
 
@@ -96,12 +92,90 @@ const existingImageUrl = ref(
     props.mode === 'edit' ? (props.bed?.image_url ?? null) : null,
 );
 const newBedImagePreview = ref<string | null>(null);
-const gridScroller = ref<HTMLElement | null>(null);
-const selectedCellElement = ref<HTMLElement | null>(null);
 const highlightedCellId = ref<string | null>(null);
 let highlightTimeout: ReturnType<typeof setTimeout> | null = null;
 type WizardStep = 1 | 2 | 3 | 4;
 type DesignBrush = 'plantable' | 'walkway' | 'empty';
+const RESIZE_SUBGRID_UNITS = 3;
+const DEFAULT_BLOCK_UNITS = RESIZE_SUBGRID_UNITS;
+const CELL_PX = 26;
+const GRID_MARGIN: [number, number] = [2, 2];
+const DEFAULT_BLOCK_PX =
+    DEFAULT_BLOCK_UNITS * CELL_PX + (DEFAULT_BLOCK_UNITS - 1) * GRID_MARGIN[0];
+const containerWidth = ref(0);
+
+const bedShapeGridHost = ref<HTMLElement | null>(null);
+let bedShapeResizeObserver: ResizeObserver | null = null;
+
+function syncContainerWidth() {
+    containerWidth.value = bedShapeGridHost.value?.clientWidth ?? 0;
+}
+
+const activeBrush = ref<DesignBrush>('plantable');
+const externalDragKind = ref<'plantable' | 'walkway' | null>(null);
+const dragPreviewGridPos = ref<{ x: number; y: number } | null>(null);
+
+function onChipDragStart(kind: 'plantable' | 'walkway', event: DragEvent) {
+    activeBrush.value = kind;
+    externalDragKind.value = kind;
+    if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = 'copy';
+        event.dataTransfer.setData('text/plain', kind);
+    }
+}
+
+function onChipDragEnd() {
+    externalDragKind.value = null;
+    dragPreviewGridPos.value = null;
+}
+
+function gridPosFromMouse(
+    mouseX: number,
+    mouseY: number,
+    rect: DOMRect,
+): { x: number; y: number } {
+    const relX = mouseX - rect.left;
+    const relY = mouseY - rect.top;
+    const pad = 16;
+    const slotW = CELL_PX + GRID_MARGIN[0];
+    const slotH = CELL_PX + GRID_MARGIN[1];
+    const x = Math.floor((relX - pad) / slotW);
+    const y = Math.floor((relY - pad) / slotH);
+    return { x, y };
+}
+
+function onCanvasDragOver(event: DragEvent) {
+    if (!externalDragKind.value) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+    const rect = target.getBoundingClientRect();
+    dragPreviewGridPos.value = gridPosFromMouse(event.clientX, event.clientY, rect);
+}
+
+function onCanvasDragLeave(event: DragEvent) {
+    const target = event.currentTarget as HTMLElement | null;
+    const related = event.relatedTarget as Node | null;
+    if (target && related && target.contains(related)) return;
+    dragPreviewGridPos.value = null;
+}
+
+function onCanvasDrop(event: DragEvent) {
+    event.preventDefault();
+    // Ignore drops from grid item dragging; only accept palette kinds.
+    const rawKind = event.dataTransfer?.getData('text/plain') ?? externalDragKind.value;
+    const kind =
+        rawKind === 'plantable' || rawKind === 'walkway' ? rawKind : null;
+    externalDragKind.value = null;
+    dragPreviewGridPos.value = null;
+    if (!kind) return;
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) return;
+    const rect = target.getBoundingClientRect();
+    const { x, y } = gridPosFromMouse(event.clientX, event.clientY, rect);
+    addCellAt(x, y, kind);
+}
 
 const hasGardenPlacement = computed(
     () => props.mode === 'create' && props.gardenPlan != null,
@@ -157,25 +231,16 @@ function makeCellId(x: number, y: number): string {
 function gridUnitCm(): number {
     return Math.max(
         10,
-        Math.min(200, Math.round(Number(form.cell_size_cm) || 30)),
+        Math.min(200, Math.round(Number(form.cell_size_cm) || DEFAULT_BED_CELL_SIZE_CM)),
     );
+}
+
+function editorUnitCm(baseUnitCm = gridUnitCm()): number {
+    return Math.max(1, Math.round(baseUnitCm / RESIZE_SUBGRID_UNITS));
 }
 
 function clampBrickCm(value: number): number {
     return Math.max(10, Math.min(500, Math.round(value)));
-}
-
-/** Igal plokil on oma mõõt (cm); ruudustiku indeks on 1×1. */
-function brickFootprintFromCm(
-    width_cm: number,
-    height_cm: number,
-): Pick<BedCell, 'width_cm' | 'height_cm' | 'w' | 'h'> {
-    return {
-        width_cm: clampBrickCm(width_cm),
-        height_cm: clampBrickCm(height_cm),
-        w: 1,
-        h: 1,
-    };
 }
 
 function createInitialCells(): BedCell[] {
@@ -197,23 +262,30 @@ function createInitialCells(): BedCell[] {
     });
 
     const bricks = props.bed?.cell_bricks;
-    const unitCm = props.bed?.cell_size_cm ?? 30;
+    const baseUnitCm = props.bed?.cell_size_cm ?? DEFAULT_BED_CELL_SIZE_CM;
+    const unitCm = editorUnitCm(baseUnitCm);
 
     if (Array.isArray(bricks) && bricks.length > 0) {
         return bricks.map((brick) => {
-            const w = Math.max(1, brick.w ?? 1);
-            const h = Math.max(1, brick.h ?? 1);
-            const widthCm = brick.width_cm ?? w * unitCm;
-            const heightCm = brick.height_cm ?? h * unitCm;
-            const footprint = brickFootprintFromCm(widthCm, heightCm);
+            const leftCm = brick.left_cm ?? brick.x * baseUnitCm;
+            const topCm = brick.top_cm ?? brick.y * baseUnitCm;
+            const widthCm = brick.width_cm ?? (brick.w ?? 1) * baseUnitCm;
+            const heightCm = brick.height_cm ?? (brick.h ?? 1) * baseUnitCm;
+            const w = Math.max(1, Math.round(widthCm / unitCm));
+            const h = Math.max(1, Math.round(heightCm / unitCm));
+            const x = Math.max(0, Math.round(leftCm / unitCm));
+            const y = Math.max(0, Math.round(topCm / unitCm));
 
             return {
-                id: makeCellId(brick.x, brick.y),
-                x: brick.x,
-                y: brick.y,
-                ...footprint,
-                left_cm: brick.left_cm,
-                top_cm: brick.top_cm,
+                id: makeCellId(x, y),
+                x,
+                y,
+                w,
+                h,
+                width_cm: clampBrickCm(widthCm),
+                height_cm: clampBrickCm(heightCm),
+                left_cm: leftCm,
+                top_cm: topCm,
                 active: brick.kind === 'plantable',
                 kind: brick.kind ?? 'plantable',
                 plants: [...(plantMap.get(`${brick.y},${brick.x}`) ?? [])],
@@ -222,13 +294,20 @@ function createInitialCells(): BedCell[] {
     }
 
     if (!layout || !Array.isArray(layout) || layout.length === 0) {
-        if (props.mode !== 'edit') return [];
+        if (props.mode !== 'edit') {
+            return [];
+        }
         return [
             {
                 id: makeCellId(0, 0),
                 x: 0,
                 y: 0,
-                ...brickFootprintFromCm(unitCm, unitCm),
+                w: DEFAULT_BLOCK_UNITS,
+                h: DEFAULT_BLOCK_UNITS,
+                width_cm: baseUnitCm,
+                height_cm: baseUnitCm,
+                left_cm: 0,
+                top_cm: 0,
                 active: true,
                 kind: 'plantable' as const,
                 plants: [],
@@ -242,11 +321,18 @@ function createInitialCells(): BedCell[] {
         row.forEach((rawCell, x) => {
             const cellValue = Number(rawCell);
             if (![1, 0, -1].includes(cellValue)) return;
+            const gx = x * DEFAULT_BLOCK_UNITS;
+            const gy = y * DEFAULT_BLOCK_UNITS;
             cells.push({
-                id: makeCellId(x, y),
-                x,
-                y,
-                ...brickFootprintFromCm(unitCm, unitCm),
+                id: makeCellId(gx, gy),
+                x: gx,
+                y: gy,
+                w: DEFAULT_BLOCK_UNITS,
+                h: DEFAULT_BLOCK_UNITS,
+                width_cm: baseUnitCm,
+                height_cm: baseUnitCm,
+                left_cm: x * baseUnitCm,
+                top_cm: y * baseUnitCm,
                 active: cellValue === 1,
                 kind:
                     cellValue === 1
@@ -269,7 +355,12 @@ function createInitialCells(): BedCell[] {
                   id: makeCellId(0, 0),
                   x: 0,
                   y: 0,
-                  ...brickFootprintFromCm(unitCm, unitCm),
+                  w: DEFAULT_BLOCK_UNITS,
+                  h: DEFAULT_BLOCK_UNITS,
+                  width_cm: baseUnitCm,
+                  height_cm: baseUnitCm,
+                  left_cm: 0,
+                  top_cm: 0,
                   active: true,
                   kind: 'plantable',
                   plants: [],
@@ -277,21 +368,71 @@ function createInitialCells(): BedCell[] {
           ];
 }
 
-function withCmPositions(
-    raw: (Omit<BedCell, 'left_cm' | 'top_cm'> &
-        Partial<Pick<BedCell, 'left_cm' | 'top_cm'>>)[],
-): BedCell[] {
-    const list = raw.map((cell) => ({
-        ...cell,
-        left_cm: cell.left_cm,
-        top_cm: cell.top_cm,
-    }));
-    inferCmPositionsFromGrid(list);
-    return list as BedCell[];
+const cells = ref<BedCell[]>(createInitialCells());
+const selectedCellId = ref<string>(cells.value[0]?.id ?? '');
+
+type LayoutItem = { i: string; x: number; y: number; w: number; h: number };
+
+/** grid-layout-plus paigutus — v-model:layout allikas (vt docs). */
+const gridLayout = ref<LayoutItem[]>(
+    cells.value.map((c) => ({
+        i: c.id,
+        x: c.x,
+        y: c.y,
+        w: c.w,
+        h: c.h,
+    })),
+);
+
+const dynamicColNum = computed(() => {
+    const maxCellX = gridLayout.value.length
+        ? Math.max(...gridLayout.value.map((i) => i.x + i.w))
+        : 1;
+    const cols = containerWidth.value
+        ? Math.floor((containerWidth.value - GRID_MARGIN[0]) / (CELL_PX + GRID_MARGIN[0]))
+        : 6;
+    return Math.max(maxCellX + 3, cols, 4);
+});
+
+const cellMap = computed(() => new Map(cells.value.map((c) => [c.id, c])));
+
+function layoutItemForCell(cell: BedCell): LayoutItem {
+    return { i: cell.id, x: cell.x, y: cell.y, w: cell.w, h: cell.h };
 }
 
-const cells = ref<BedCell[]>(withCmPositions(createInitialCells()));
-const selectedCellId = ref<string>(cells.value[0]?.id ?? '');
+function pushLayoutItem(item: LayoutItem) {
+    gridLayout.value.push(item);
+}
+
+function removeLayoutItem(id: string) {
+    const index = gridLayout.value.findIndex((item) => item.i === id);
+    if (index >= 0) {
+        gridLayout.value.splice(index, 1);
+    }
+}
+
+function replaceGridLayout(items: LayoutItem[]) {
+    gridLayout.value.splice(0, gridLayout.value.length, ...items);
+}
+
+function applyGridLayoutToCells(layout: LayoutItem[]) {
+    const unit = editorUnitCm();
+    cells.value = cells.value.map((cell) => {
+        const item = layout.find((l) => l.i === cell.id);
+        if (!item) return cell;
+        return {
+            ...cell,
+            x: item.x,
+            y: item.y,
+            w: item.w,
+            h: item.h,
+            left_cm: item.x * unit,
+            top_cm: item.y * unit,
+            width_cm: item.w * unit,
+            height_cm: item.h * unit,
+        };
+    });
+}
 
 const form = useForm<{
     name: string;
@@ -310,7 +451,9 @@ const form = useForm<{
 }>({
     name: props.mode === 'edit' ? (props.bed?.name ?? '') : '',
     location: props.mode === 'edit' ? (props.bed?.location ?? '') : '',
-    cell_size_cm: props.mode === 'edit' ? (props.bed?.cell_size_cm ?? 30) : 30,
+    cell_size_cm: props.mode === 'edit'
+        ? (props.bed?.cell_size_cm ?? DEFAULT_BED_CELL_SIZE_CM)
+        : DEFAULT_BED_CELL_SIZE_CM,
     image: null,
     cells: [],
     layout: [],
@@ -320,10 +463,28 @@ const form = useForm<{
 const selectedCell = computed(
     () => cells.value.find((cell) => cell.id === selectedCellId.value) ?? null,
 );
-const activeCells = computed(() =>
-    cells.value.filter((cell) => cell.active && cell.kind === 'plantable'),
+const selectedLayoutItem = computed(
+    () => gridLayout.value.find((item) => item.i === selectedCellId.value) ?? null,
 );
-const activeBricks = computed(() =>
+const selectedCellLive = computed(() => {
+    const cell = selectedCell.value;
+    if (!cell) return null;
+    const item = selectedLayoutItem.value;
+    if (!item) return cell;
+    const unit = editorUnitCm();
+    return {
+        ...cell,
+        x: item.x,
+        y: item.y,
+        w: item.w,
+        h: item.h,
+        left_cm: item.x * unit,
+        top_cm: item.y * unit,
+        width_cm: item.w * unit,
+        height_cm: item.h * unit,
+    };
+});
+const activeCells = computed(() =>
     cells.value.filter((cell) => cell.active && cell.kind === 'plantable'),
 );
 const layoutCells = computed(() => cells.value);
@@ -354,61 +515,35 @@ const bedSummaryLabel = computed(() => {
     return `${cols} × ${rows} ruutu`;
 });
 const bedPhysicalSizeLabel = computed(() => {
-    if (!cells.value.length) {
-        return `0 × 0 m`;
-    }
-
-    const layout = buildBedEditorCmLayout(cells.value);
-    return `${formatMeters(layout.totalWidthCm / 100)} × ${formatMeters(layout.totalHeightCm / 100)} m`;
+    const b = layoutBounds.value;
+    if (b.maxX < b.minX || !cells.value.length) return '0 × 0 m';
+    const unit = gridUnitCm();
+    const widthCm = (b.maxX - b.minX + 1) * unit;
+    const heightCm = (b.maxY - b.minY + 1) * unit;
+    return `${formatMeters(widthCm / 100)} × ${formatMeters(heightCm / 100)} m`;
 });
 
-const dragOverCm = ref<{ left_cm: number; top_cm: number } | null>(null);
-/** Tühi koht vs lohistamine kahe ruudu vahele (teised nihkuvad). */
-const dragInsertNeedsShift = ref(false);
-type CmShiftMode = 'down' | 'right' | 'both';
-const dragShiftMode = ref<CmShiftMode>('both');
-const draggingCell = ref<BedCell | null>(null);
-const draggingFromPalette = ref(false);
-const paletteDragKind = ref<DesignBrush>('plantable');
-const POINTER_DRAG_THRESHOLD_PX = 6;
-const pointerDragSession = ref<{
-    cellId: string;
-    pointerId: number;
-    startX: number;
-    startY: number;
-    originLeft: number;
-    originTop: number;
-    started: boolean;
-} | null>(null);
-const suppressCellClick = ref(false);
-const isDraggingLayout = computed(
-    () => draggingFromPalette.value || draggingCell.value !== null,
-);
+const cellSizeCmLabel = computed(() => gridUnitCm());
 
-/** Üks rea/võrra äärt ümber — stabiilne suurus lohistamise ajal (ei laiene dragstart'il). */
-const GRID_EDGE_PAD = 1;
-
-const displayBounds = computed(() => {
-    const b = bounds.value;
-    if (b.maxX < b.minX || cells.value.length === 0) {
-        return {
-            minX: -GRID_EDGE_PAD,
-            maxX: GRID_EDGE_PAD,
-            minY: -GRID_EDGE_PAD,
-            maxY: GRID_EDGE_PAD,
-        };
-    }
-
-    return {
-        minX: b.minX - GRID_EDGE_PAD,
-        maxX: b.maxX + GRID_EDGE_PAD,
-        minY: b.minY - GRID_EDGE_PAD,
-        maxY: b.maxY + GRID_EDGE_PAD,
-    };
-});
+function recalcCellsCmFromGridUnit() {
+    const unit = editorUnitCm();
+    cells.value = cells.value.map((cell) => ({
+        ...cell,
+        left_cm: cell.x * unit,
+        top_cm: cell.y * unit,
+        width_cm: cell.w * unit,
+        height_cm: cell.h * unit,
+    }));
+}
 
 const canContinueFromStep = computed(() => {
-    if (currentStep.value === 1) return Boolean(form.name.trim());
+    if (currentStep.value === 1) {
+        return (
+            Boolean(form.name.trim()) &&
+            cellSizeCmLabel.value >= 10 &&
+            cellSizeCmLabel.value <= 200
+        );
+    }
     if (currentStep.value === 2) return activeCells.value.length > 0;
     if (placementStep.value !== null && currentStep.value === placementStep.value) {
         return gardenX.value != null && gardenY.value != null;
@@ -421,173 +556,22 @@ const draftBedForPlacement = computed<GardenPlacementBed>(() => ({
     garden_y: 0,
     cell_size_cm: Math.max(
         10,
-        Math.min(200, Math.round(Number(form.cell_size_cm) || 30)),
+        Math.min(200, Math.round(Number(form.cell_size_cm) || DEFAULT_BED_CELL_SIZE_CM)),
     ),
     layout: form.layout?.length ? form.layout : [[1]],
-    cell_bricks: form.cell_bricks?.length ? form.cell_bricks : null,
     rows: form.layout?.length ?? 1,
     columns: form.layout[0]?.length ?? 1,
 }));
-
-function displayColumnNumber(x: number): number {
-    return x - displayBounds.value.minX + 1;
-}
-
-function displayRowNumber(y: number): number {
-    return y - displayBounds.value.minY + 1;
-}
 
 function formatMeters(value: number): string {
     const rounded = Math.round(value * 10) / 10;
     return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(1);
 }
 
-function occupiedKey(x: number, y: number): string {
-    return `${x}:${y}`;
-}
-
-const occupiedCellMap = computed(() => {
-    const map = new Map<string, BedCell>();
-    layoutCells.value.forEach((cell) => {
-        for (let dy = 0; dy < cell.h; dy++) {
-            for (let dx = 0; dx < cell.w; dx++) {
-                map.set(occupiedKey(cell.x + dx, cell.y + dy), cell);
-            }
-        }
-    });
-    return map;
-});
-
-function getCellAt(x: number, y: number): BedCell | null {
-    return occupiedCellMap.value.get(occupiedKey(x, y)) ?? null;
-}
-
-const editorCmLayout = computed(() => buildBedEditorCmLayout(cells.value));
-
-const layoutSurfaceStyle = computed(() => {
-    const layout = editorCmLayout.value;
-    let widthPx = Math.max(cmToPx(layout.totalWidthCm), cmToPx(80));
-    let heightPx = Math.max(cmToPx(layout.totalHeightCm), cmToPx(60));
-
-    for (const cell of cells.value) {
-        widthPx = Math.max(
-            widthPx,
-            cmToPx(cell.left_cm + cell.width_cm) + 4,
-        );
-        heightPx = Math.max(
-            heightPx,
-            cmToPx(cell.top_cm + cell.height_cm) + 4,
-        );
-    }
-
-    return {
-        position: 'relative',
-        width: `${widthPx}px`,
-        height: `${heightPx}px`,
-        minWidth: '100%',
-    } as const;
-});
-
-function cmEditorStyle(
-    leftCm: number,
-    topCm: number,
-    widthCm: number,
-    heightCm: number,
-): Record<string, string> {
-    return {
-        position: 'absolute',
-        left: `${cmToPx(leftCm)}px`,
-        top: `${cmToPx(topCm)}px`,
-        width: `${cmToPx(widthCm)}px`,
-        height: `${cmToPx(heightCm)}px`,
-    };
-}
-
-function cellEditorStyle(cell: BedCell): Record<string, string> {
-    return cmEditorStyle(cell.left_cm, cell.top_cm, cell.width_cm, cell.height_cm);
-}
-
-const layoutSurfaceRef = ref<HTMLElement | null>(null);
-/** Vältib dragleave valepositiivset puhastamist laste vahel. */
-const layoutDragDepth = ref(0);
-
-const SNAP_CM = 6;
-
-function snapDragCm(
-    leftCm: number,
-    topCm: number,
-    widthCm: number,
-    heightCm: number,
-    excludeId?: string,
-): { left_cm: number; top_cm: number } {
-    let bestLeft = Math.max(0, leftCm);
-    let bestTop = Math.max(0, topCm);
-    let bestDist = SNAP_CM + 1;
-
-    const trySnap = (
-        candidateLeft: number,
-        candidateTop: number,
-        mode: CmShiftMode,
-    ) => {
-        const top = Math.max(0, candidateTop);
-        const left = Math.max(0, candidateLeft);
-        const dist = Math.hypot(left - leftCm, top - topCm);
-        if (dist > SNAP_CM) {
-            return;
-        }
-
-        const shifted = cellsAfterCmShift(
-            left,
-            top,
-            widthCm,
-            heightCm,
-            excludeId,
-            mode,
-        );
-        const fits =
-            brickFitsAt(left, top, widthCm, heightCm, excludeId) ||
-            brickFitsOnCellList(
-                shifted,
-                left,
-                top,
-                widthCm,
-                heightCm,
-                excludeId,
-            );
-
-        if (!fits) {
-            return;
-        }
-
-        if (dist < bestDist) {
-            bestDist = dist;
-            bestLeft = left;
-            bestTop = top;
-        }
-    };
-
-    for (const cell of cells.value) {
-        if (excludeId && cell.id === excludeId) {
-            continue;
-        }
-
-        trySnap(cell.left_cm + cell.width_cm, cell.top_cm, 'right');
-        trySnap(cell.left_cm - widthCm, cell.top_cm, 'right');
-        trySnap(cell.left_cm, cell.top_cm + cell.height_cm, 'down');
-        trySnap(cell.left_cm, cell.top_cm - heightCm, 'down');
-    }
-
-    return { left_cm: bestLeft, top_cm: bestTop };
-}
-
-function addBedEditorCellClasses(x: number, y: number): string[] {
-    const cell = getCellAt(x, y);
-    if (!cell) {
-        return [];
-    }
+function cellClasses(cell: BedCell): string[] {
     const isSelected = selectedCell.value?.id === cell.id;
     const hasPlants = cell.plants.length > 0;
-    const warm = (x + y) % 2 === 0;
+    const warm = (cell.x + cell.y) % 2 === 0;
     const classes: string[] = [
         'bed-cell',
         'relative',
@@ -601,7 +585,13 @@ function addBedEditorCellClasses(x: number, y: number): string[] {
         classes.push('scale-[1.04]', 'shadow-lg', 'shadow-primary/20');
     }
     if (isSelected) {
-        classes.push('bed-cell--editor-selected');
+        classes.push(
+            'bed-cell--editor-selected',
+            'ring-2',
+            'ring-primary',
+            'ring-offset-1',
+            'z-10',
+        );
         return classes;
     }
     if (cell.kind === 'plantable' && !cell.active) {
@@ -652,6 +642,24 @@ function isPlantableEmptySlot(cell: BedCell): boolean {
     return cell.kind === 'plantable' && cell.active && cell.plants.length === 0;
 }
 
+function brushPaletteCellClasses(kind: 'plantable' | 'walkway'): string[] {
+    if (kind === 'walkway') {
+        return [
+            'bed-cell',
+            'bed-cell--walkway',
+            'bed-brush-palette-cell',
+            'relative',
+        ];
+    }
+    return [
+        'bed-cell',
+        'bed-cell--empty',
+        'bed-cell--warm',
+        'bed-brush-palette-cell',
+        'relative',
+    ];
+}
+
 function cellKindLabel(cell: BedCell): string {
     if (cell.kind === 'walkway') return 'tee või kivi';
     if (cell.kind === 'empty') return 'tühi ala';
@@ -668,459 +676,44 @@ function selectCell(cell: BedCell) {
         if (highlightedCellId.value === cell.id) highlightedCellId.value = null;
     }, 900);
 
-    if (!isDraggingLayout.value) {
-        void scrollSelectedCellIntoView();
-    }
-}
-
-async function scrollSelectedCellIntoView() {
-    await nextTick();
-    const target = selectedCellElement.value;
-    if (!target) {
-        return;
-    }
-
-    target.scrollIntoView({
-        block: 'nearest',
-        inline: 'nearest',
-        behavior: 'smooth',
-    });
-}
-
-function setSelectedCellElement(el: Element | null, cellId: string) {
-    if (!(el instanceof HTMLElement)) return;
-    if (cellId === selectedCellId.value) {
-        selectedCellElement.value = el;
-    }
-}
-
-function setSelectedCellRef(el: unknown, cellId: string) {
-    setSelectedCellElement(el instanceof HTMLElement ? el : null, cellId);
-}
-
-function brickFitsAt(
-    leftCm: number,
-    topCm: number,
-    widthCm: number,
-    heightCm: number,
-    excludeId?: string,
-): boolean {
-    return brickFitsCm(
-        cells.value,
-        leftCm,
-        topCm,
-        widthCm,
-        heightCm,
-        excludeId,
-    );
-}
-
-function makeNewCellAt(
-    leftCm: number,
-    topCm: number,
-    footprint = brickFootprintFromCm(gridUnitCm(), gridUnitCm()),
-): BedCell {
-    return {
-        id: makeCellId(leftCm, topCm),
-        x: 0,
-        y: 0,
-        left_cm: leftCm,
-        top_cm: topCm,
-        ...footprint,
-        active: true,
-        kind: 'plantable',
-        plants: [],
-    };
-}
-
-function insertCellAtCm(
-    leftCm: number,
-    topCm: number,
-    existingCell?: BedCell,
-    paletteKind: DesignBrush = 'plantable',
-) {
-    const kind = existingCell?.kind ?? paletteKind;
-    const footprint = existingCell
-        ? brickFootprintFromCm(existingCell.width_cm, existingCell.height_cm)
-        : brickFootprintFromCm(gridUnitCm(), gridUnitCm());
-
-    if (
-        !brickFitsAt(
-            leftCm,
-            topCm,
-            footprint.width_cm,
-            footprint.height_cm,
-            existingCell?.id,
-        )
-    ) {
-        form.setError(
-            'cells',
-            'Plokk ei mahu siia. Vali teine koht või väiksem suurus.',
-        );
-        return;
-    }
-
-    if (existingCell) {
-        cells.value = cells.value.filter((c) => c.id !== existingCell.id);
-    }
-
-    const newCell: BedCell = existingCell
-        ? {
-              ...existingCell,
-              left_cm: leftCm,
-              top_cm: topCm,
-              ...footprint,
-          }
-        : {
-              ...makeNewCellAt(leftCm, topCm, footprint),
-              kind,
-              active: kind === 'plantable',
-          };
-
-    cells.value = [...cells.value, newCell];
-    packGridIndicesFromCm(cells.value);
-    selectCell(newCell);
-    form.clearErrors('cells');
-}
-
-function dragFootprint(): Pick<
-    BedCell,
-    'width_cm' | 'height_cm' | 'w' | 'h'
-> {
-    if (draggingCell.value) {
-        return brickFootprintFromCm(
-            draggingCell.value.width_cm,
-            draggingCell.value.height_cm,
-        );
-    }
-
-    const unit = gridUnitCm();
-    return brickFootprintFromCm(unit, unit);
-}
-
-function cellsAfterCmShift(
-    insertLeft: number,
-    insertTop: number,
-    widthCm: number,
-    heightCm: number,
-    excludeId?: string,
-    mode: CmShiftMode = 'both',
-): BedCell[] {
-    return cells.value.map((cell) => {
-        if (excludeId && cell.id === excludeId) {
-            return { ...cell };
-        }
-
-        let left_cm = cell.left_cm;
-        let top_cm = cell.top_cm;
-
-        const overlaps = brickCmRectsOverlap(
-            insertLeft,
-            insertTop,
-            widthCm,
-            heightCm,
-            cell.left_cm,
-            cell.top_cm,
-            cell.width_cm,
-            cell.height_cm,
-        );
-
-        if (!overlaps) {
-            return { ...cell, left_cm, top_cm };
-        }
-
-        if (mode === 'right' || mode === 'both') {
-            left_cm += widthCm;
-        }
-        if (mode === 'down' || mode === 'both') {
-            top_cm += heightCm;
-        }
-
-        return { ...cell, left_cm, top_cm };
-    });
-}
-
-function brickFitsOnCellList(
-    cellList: BedCell[],
-    leftCm: number,
-    topCm: number,
-    widthCm: number,
-    heightCm: number,
-    excludeId?: string,
-): boolean {
-    return brickFitsCm(
-        cellList,
-        leftCm,
-        topCm,
-        widthCm,
-        heightCm,
-        excludeId,
-    );
-}
-
-function shiftCellsForInsert(
-    insertLeft: number,
-    insertTop: number,
-    widthCm: number,
-    heightCm: number,
-    excludeId?: string,
-    mode: CmShiftMode = 'both',
-) {
-    cells.value = cellsAfterCmShift(
-        insertLeft,
-        insertTop,
-        widthCm,
-        heightCm,
-        excludeId,
-        mode,
-    );
-    packGridIndicesFromCm(cells.value);
-}
-
-function shiftModesToTry(preferred: CmShiftMode): CmShiftMode[] {
-    if (preferred === 'right') {
-        return ['right'];
-    }
-    if (preferred === 'down') {
-        return ['down'];
-    }
-
-    return ['right', 'down', 'both'];
-}
-
-function setDragTargetCm(
-    leftCm: number,
-    topCm: number,
-    excludeId?: string,
-    shiftMode: CmShiftMode = 'both',
-): boolean {
-    const footprint = dragFootprint();
-    const top = Math.max(0, topCm);
-    const left = Math.max(0, leftCm);
-
-    if (
-        brickFitsAt(
-            left,
-            top,
-            footprint.width_cm,
-            footprint.height_cm,
-            excludeId,
-        )
-    ) {
-        dragInsertNeedsShift.value = false;
-        dragShiftMode.value = shiftMode;
-        dragOverCm.value = { left_cm: left, top_cm: top };
-        return true;
-    }
-
-    for (const mode of shiftModesToTry(shiftMode)) {
-        const shifted = cellsAfterCmShift(
-            left,
-            top,
-            footprint.width_cm,
-            footprint.height_cm,
-            excludeId,
-            mode,
-        );
-        if (
-            brickFitsOnCellList(
-                shifted,
-                left,
-                top,
-                footprint.width_cm,
-                footprint.height_cm,
-                excludeId,
-            )
-        ) {
-            dragInsertNeedsShift.value = true;
-            dragShiftMode.value = mode;
-            dragOverCm.value = { left_cm: left, top_cm: top };
-            return true;
-        }
-    }
-
-    dragInsertNeedsShift.value = false;
-    return false;
-}
-
-function columnCellsAt(leftCm: number, excludeId?: string): BedCell[] {
-    return cells.value.filter(
-        (cell) =>
-            Math.abs(cell.left_cm - leftCm) < 0.5 &&
-            (!excludeId || cell.id !== excludeId),
-    );
-}
-
-function rowCellsAt(topCm: number, excludeId?: string): BedCell[] {
-    return cells.value.filter(
-        (cell) =>
-            Math.abs(cell.top_cm - topCm) < 0.5 &&
-            (!excludeId || cell.id !== excludeId),
-    );
-}
-
-function commitDragTarget(
-    paletteKind: DesignBrush = 'plantable',
-    existingCell?: BedCell,
-) {
-    const target = dragOverCm.value;
-    if (!target) {
-        return;
-    }
-
-    const excludeId = existingCell?.id ?? draggingCell.value?.id;
-    const footprint = existingCell
-        ? brickFootprintFromCm(existingCell.width_cm, existingCell.height_cm)
-        : dragFootprint();
-
-    if (dragInsertNeedsShift.value) {
-        shiftCellsForInsert(
-            target.left_cm,
-            target.top_cm,
-            footprint.width_cm,
-            footprint.height_cm,
-            excludeId,
-            dragShiftMode.value,
-        );
-    }
-
-    insertCellAtCm(
-        target.left_cm,
-        target.top_cm,
-        existingCell,
-        paletteKind,
-    );
-    dragInsertNeedsShift.value = false;
-    dragOverCm.value = null;
-}
-
-function setDragDropEffect(event: DragEvent) {
-    if (!event.dataTransfer) {
-        return;
-    }
-
-    event.dataTransfer.dropEffect = draggingFromPalette.value ? 'copy' : 'move';
-}
-
-function cleanupPointerDragListeners() {
-    window.removeEventListener('pointermove', onWindowPointerMove);
-    window.removeEventListener('pointerup', onWindowPointerUp);
-    window.removeEventListener('pointercancel', onWindowPointerUp);
-}
-
-function buildEdgeDragTargets(
-    cell: BedCell,
-    relX: number,
-    relY: number,
-    excludeId?: string,
-): { left_cm: number; top_cm: number; mode: CmShiftMode }[] {
-    const footprint = dragFootprint();
-    const edge = 0.38;
-    const tryEdges: {
-        left_cm: number;
-        top_cm: number;
-        mode: CmShiftMode;
-    }[] = [];
-
-    if (relY < edge) {
-        const column = columnCellsAt(cell.left_cm, excludeId);
-        const topmost = column.length
-            ? Math.min(...column.map((item) => item.top_cm))
-            : cell.top_cm;
-
-        tryEdges.push({
-            left_cm: cell.left_cm,
-            top_cm: topmost - footprint.height_cm,
-            mode: 'down',
-        });
-        tryEdges.push({
-            left_cm: cell.left_cm,
-            top_cm: cell.top_cm - footprint.height_cm,
-            mode: 'down',
-        });
-    }
-    if (relY > 1 - edge) {
-        tryEdges.push({
-            left_cm: cell.left_cm,
-            top_cm: cell.top_cm + cell.height_cm,
-            mode: 'down',
-        });
-    }
-    if (relX > 1 - edge) {
-        tryEdges.push({
-            left_cm: cell.left_cm + cell.width_cm,
-            top_cm: cell.top_cm,
-            mode: 'right',
-        });
-    }
-    if (relX < edge) {
-        const row = rowCellsAt(cell.top_cm, excludeId);
-        const leftmost = row.length
-            ? Math.min(...row.map((item) => item.left_cm))
-            : cell.left_cm;
-
-        tryEdges.push({
-            left_cm: leftmost - footprint.width_cm,
-            top_cm: cell.top_cm,
-            mode: 'right',
-        });
-        tryEdges.push({
-            left_cm: cell.left_cm - footprint.width_cm,
-            top_cm: cell.top_cm,
-            mode: 'right',
-        });
-    }
-
-    return tryEdges;
-}
-
-function trySetDragTargetAtClient(
-    clientX: number,
-    clientY: number,
-    excludeId?: string,
-): boolean {
-    const surface = layoutSurfaceRef.value;
-    if (!surface) {
-        return false;
-    }
-
-    for (const cell of cells.value) {
-        if (excludeId && cell.id === excludeId) {
-            continue;
-        }
-
-        const el = surface.querySelector(
+    void nextTick(() => {
+        const target = document.querySelector<HTMLElement>(
             `[data-bed-cell-id="${cell.id}"]`,
         );
-        if (!(el instanceof HTMLElement)) {
-            continue;
-        }
+        target?.scrollIntoView({
+            block: 'nearest',
+            inline: 'nearest',
+            behavior: 'smooth',
+        });
+    });
+}
 
-        const rect = el.getBoundingClientRect();
-        if (
-            clientX < rect.left ||
-            clientX > rect.right ||
-            clientY < rect.top ||
-            clientY > rect.bottom
-        ) {
-            continue;
-        }
+function cellsOverlapGrid(
+    ax: number,
+    ay: number,
+    aw: number,
+    ah: number,
+    bx: number,
+    by: number,
+    bw: number,
+    bh: number,
+): boolean {
+    return !(ax + aw <= bx || bx + bw <= ax || ay + ah <= by || by + bh <= ay);
+}
 
-        const relX = (clientX - rect.left) / rect.width;
-        const relY = (clientY - rect.top) / rect.height;
-
-        for (const point of buildEdgeDragTargets(
-            cell,
-            relX,
-            relY,
-            excludeId,
-        )) {
+function hasLayoutOverlaps(layout: LayoutItem[]): boolean {
+    for (let i = 0; i < layout.length; i += 1) {
+        for (let j = i + 1; j < layout.length; j += 1) {
             if (
-                setDragTargetCm(
-                    point.left_cm,
-                    point.top_cm,
-                    excludeId,
-                    point.mode,
+                cellsOverlapGrid(
+                    layout[i].x,
+                    layout[i].y,
+                    layout[i].w,
+                    layout[i].h,
+                    layout[j].x,
+                    layout[j].y,
+                    layout[j].w,
+                    layout[j].h,
                 )
             ) {
                 return true;
@@ -1128,391 +721,160 @@ function trySetDragTargetAtClient(
         }
     }
 
-    const footprint = dragFootprint();
-    const rect = surface.getBoundingClientRect();
-    const left = Math.max(
-        0,
-        (clientX - rect.left) / EDITOR_PX_PER_CM - footprint.width_cm / 2,
-    );
-    const top = Math.max(
-        0,
-        (clientY - rect.top) / EDITOR_PX_PER_CM - footprint.height_cm / 2,
-    );
-    const snapped = snapDragCm(
-        left,
-        top,
-        footprint.width_cm,
-        footprint.height_cm,
-        excludeId,
-    );
-
-    for (const mode of ['right', 'down', 'both'] as CmShiftMode[]) {
-        if (setDragTargetCm(snapped.left_cm, snapped.top_cm, excludeId, mode)) {
-            return true;
-        }
-    }
-
     return false;
 }
 
-function commitCellMove(cell: BedCell) {
-    const target = dragOverCm.value;
-    if (!target) {
-        return;
-    }
-
-    const footprint = brickFootprintFromCm(cell.width_cm, cell.height_cm);
-
-    if (dragInsertNeedsShift.value) {
-        shiftCellsForInsert(
-            target.left_cm,
-            target.top_cm,
-            footprint.width_cm,
-            footprint.height_cm,
-            cell.id,
-            dragShiftMode.value,
-        );
-    }
-
-    cells.value = cells.value.map((item) =>
-        item.id === cell.id
-            ? {
-                  ...item,
-                  left_cm: target.left_cm,
-                  top_cm: target.top_cm,
-              }
-            : item,
+/** Paigutab plokid rea kaupa kõrvuti — ei jää üksteise taha. */
+function spreadLayoutApart(layout: LayoutItem[]): LayoutItem[] {
+    const order = new Map(
+        cells.value.map((cell, index) => [cell.id, index]),
     );
-    packGridIndicesFromCm(cells.value);
-    dragOverCm.value = null;
-    dragInsertNeedsShift.value = false;
-}
+    const items = [...layout].sort(
+        (a, b) =>
+            (order.get(String(a.i)) ?? Number.MAX_SAFE_INTEGER) -
+            (order.get(String(b.i)) ?? Number.MAX_SAFE_INTEGER),
+    );
+    let x = 0;
+    let y = 0;
+    let rowH = 0;
 
-function onWindowPointerMove(event: PointerEvent) {
-    const session = pointerDragSession.value;
-    if (!session || event.pointerId !== session.pointerId) {
-        return;
-    }
-
-    if (!session.started) {
-        const distance = Math.hypot(
-            event.clientX - session.startX,
-            event.clientY - session.startY,
-        );
-        if (distance < POINTER_DRAG_THRESHOLD_PX) {
-            return;
+    return items.map((item) => {
+        if (x + item.w > dynamicColNum.value) {
+            x = 0;
+            y += rowH;
+            rowH = 0;
         }
 
-        session.started = true;
-        draggingCell.value =
-            cells.value.find((item) => item.id === session.cellId) ?? null;
-    }
+        const placed = { ...item, x, y };
+        x += item.w;
+        rowH = Math.max(rowH, item.h);
+        return placed;
+    });
+}
 
-    if (
-        !trySetDragTargetAtClient(
-            event.clientX,
-            event.clientY,
-            session.cellId,
-        )
-    ) {
-        dragOverCm.value = null;
-        dragInsertNeedsShift.value = false;
+function applyPackedLayoutToGrid(packed: LayoutItem[]) {
+    gridLayout.value = packed.map((item) => ({ ...item }));
+    applyGridLayoutToCells(gridLayout.value);
+}
+
+function repackGridLayoutNow() {
+    if (gridLayout.value.length === 0) return;
+    applyPackedLayoutToGrid(spreadLayoutApart(gridLayout.value));
+}
+
+let pendingLayoutRepack = false;
+
+function mergeLayoutMetricsFromLibrary(newLayout: LayoutItem[]) {
+    for (const item of newLayout) {
+        const target = gridLayout.value.find((entry) => entry.i === item.i);
+        if (!target) continue;
+        target.w = item.w;
+        target.h = item.h;
     }
 }
 
-function onWindowPointerUp(event: PointerEvent) {
-    const session = pointerDragSession.value;
-    if (!session || event.pointerId !== session.pointerId) {
+function applyLayoutPositionsFromLibrary(newLayout: LayoutItem[]) {
+    for (const item of newLayout) {
+        const target = gridLayout.value.find((entry) => entry.i === item.i);
+        if (!target) continue;
+        target.x = item.x;
+        target.y = item.y;
+        target.w = item.w;
+        target.h = item.h;
+    }
+    applyGridLayoutToCells(gridLayout.value);
+}
+
+function normalizeGridLayoutFromLibrary(newLayout: LayoutItem[]) {
+    const libraryOverlaps = hasLayoutOverlaps(newLayout);
+    const shouldRepack =
+        pendingLayoutRepack ||
+        libraryOverlaps ||
+        hasLayoutOverlaps(gridLayout.value);
+
+    if (shouldRepack) {
+        pendingLayoutRepack = false;
+        mergeLayoutMetricsFromLibrary(newLayout);
+        repackGridLayoutNow();
         return;
     }
 
-    cleanupPointerDragListeners();
+    applyLayoutPositionsFromLibrary(newLayout);
+}
 
-    if (session.started) {
-        const cell = cells.value.find((item) => item.id === session.cellId);
-        if (cell && dragOverCm.value) {
-            suppressCellClick.value = true;
-            commitCellMove(cell);
+function addCellAt(x: number, y: number, kind: DesignBrush = activeBrush.value) {
+    if (x < 0 || y < 0) {
+        const shiftX = x < 0 ? -x : 0;
+        const shiftY = y < 0 ? -y : 0;
+        if (shiftX || shiftY) {
+            cells.value = cells.value.map((cell) => ({
+                ...cell,
+                x: cell.x + shiftX,
+                y: cell.y + shiftY,
+            }));
+            gridLayout.value = gridLayout.value.map((item) => ({
+                ...item,
+                x: item.x + shiftX,
+                y: item.y + shiftY,
+            }));
+            x += shiftX;
+            y += shiftY;
+            applyGridLayoutToCells(gridLayout.value);
         }
     }
-
-    pointerDragSession.value = null;
-    draggingCell.value = null;
-    dragOverCm.value = null;
-    dragInsertNeedsShift.value = false;
-    layoutDragDepth.value = 0;
-}
-
-function onCellPointerDown(event: PointerEvent, cell: BedCell) {
-    if (event.button !== 0) {
-        return;
-    }
-
-    pointerDragSession.value = {
-        cellId: cell.id,
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        originLeft: cell.left_cm,
-        originTop: cell.top_cm,
-        started: false,
+    const occupied = gridLayout.value.some((item) =>
+        cellsOverlapGrid(
+            x,
+            y,
+            DEFAULT_BLOCK_UNITS,
+            DEFAULT_BLOCK_UNITS,
+            item.x,
+            item.y,
+            item.w,
+            item.h,
+        ),
+    );
+    if (occupied) return;
+    const unit = editorUnitCm();
+    const cell: BedCell = {
+        id: makeCellId(x, y),
+        x,
+        y,
+        w: DEFAULT_BLOCK_UNITS,
+        h: DEFAULT_BLOCK_UNITS,
+        left_cm: x * unit,
+        top_cm: y * unit,
+        width_cm: DEFAULT_BLOCK_UNITS * unit,
+        height_cm: DEFAULT_BLOCK_UNITS * unit,
+        active: kind === 'plantable',
+        kind,
+        plants: [],
     };
-
-    window.addEventListener('pointermove', onWindowPointerMove);
-    window.addEventListener('pointerup', onWindowPointerUp);
-    window.addEventListener('pointercancel', onWindowPointerUp);
-}
-
-function onCellClick(cell: BedCell) {
-    if (suppressCellClick.value) {
-        suppressCellClick.value = false;
-        return;
-    }
-
+    cells.value.push(cell);
+    pushLayoutItem(layoutItemForCell(cell));
     selectCell(cell);
+    form.clearErrors('cells');
 }
 
-function onPaletteDragStart(event: DragEvent, kind: DesignBrush = 'plantable') {
-    paletteDragKind.value = kind;
-    draggingFromPalette.value = true;
-    draggingCell.value = null;
-    if (event.dataTransfer) {
-        event.dataTransfer.effectAllowed = 'copy';
-        event.dataTransfer.setData('text/plain', `palette-${kind}`);
-    }
+function onLayoutUpdated(newLayout: LayoutItem[]) {
+    normalizeGridLayoutFromLibrary(newLayout);
 }
 
-function onPaletteDragEnd() {
-    draggingFromPalette.value = false;
-    paletteDragKind.value = 'plantable';
-    dragOverCm.value = null;
-    dragInsertNeedsShift.value = false;
-    layoutDragDepth.value = 0;
-}
-
-function pointerToCm(event: DragEvent): { left_cm: number; top_cm: number } {
-    const surface = layoutSurfaceRef.value;
-    if (!surface) {
-        return { left_cm: 0, top_cm: 0 };
-    }
-
-    const rect = surface.getBoundingClientRect();
-    const footprint = dragFootprint();
-
-    return {
-        left_cm: Math.max(
-            0,
-            (event.clientX - rect.left) / EDITOR_PX_PER_CM - footprint.width_cm / 2,
-        ),
-        top_cm: Math.max(
-            0,
-            (event.clientY - rect.top) / EDITOR_PX_PER_CM - footprint.height_cm / 2,
-        ),
-    };
-}
-
-function onLayoutDragOver(event: DragEvent) {
-    if (!draggingFromPalette.value) {
-        return;
-    }
-
-    const excludeId = undefined;
-    const footprint = dragFootprint();
-    const pointer = pointerToCm(event);
-    const snapped = snapDragCm(
-        pointer.left_cm,
-        pointer.top_cm,
-        footprint.width_cm,
-        footprint.height_cm,
-        excludeId,
+async function scrollSelectedCellIntoView() {
+    await nextTick();
+    const id = selectedCellId.value;
+    if (!id) return;
+    const target = document.querySelector<HTMLElement>(
+        `[data-bed-cell-id="${id}"]`,
     );
-
-    const layoutModes: CmShiftMode[] = ['right', 'down', 'both'];
-    let placed = false;
-    for (const mode of layoutModes) {
-        if (setDragTargetCm(snapped.left_cm, snapped.top_cm, excludeId, mode)) {
-            placed = true;
-            break;
-        }
-    }
-    if (!placed) {
-        return;
-    }
-
-    event.preventDefault();
-    setDragDropEffect(event);
+    target?.scrollIntoView({
+        block: 'nearest',
+        inline: 'nearest',
+        behavior: 'smooth',
+    });
 }
 
-function onLayoutDrop(event: DragEvent) {
-    event.preventDefault();
-
-    if (!dragOverCm.value) {
-        return;
-    }
-
-    if (draggingFromPalette.value) {
-        const kind = paletteDragKind.value;
-        draggingFromPalette.value = false;
-        paletteDragKind.value = 'plantable';
-        commitDragTarget(kind);
-        return;
-    }
-
-}
-
-function onLayoutDragEnter(event: DragEvent) {
-    if (!draggingFromPalette.value) {
-        return;
-    }
-
-    layoutDragDepth.value += 1;
-    event.preventDefault();
-}
-
-function onLayoutDragLeave() {
-    if (layoutDragDepth.value > 0) {
-        layoutDragDepth.value -= 1;
-    }
-
-    if (layoutDragDepth.value <= 0) {
-        layoutDragDepth.value = 0;
-        dragOverCm.value = null;
-        dragInsertNeedsShift.value = false;
-    }
-}
-
-function onPlacedCellDragOver(event: DragEvent, cell: BedCell) {
-    if (!draggingFromPalette.value) {
-        return;
-    }
-
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    const relX = (event.clientX - rect.left) / rect.width;
-    const relY = (event.clientY - rect.top) / rect.height;
-
-    for (const point of buildEdgeDragTargets(cell, relX, relY)) {
-        if (setDragTargetCm(point.left_cm, point.top_cm, undefined, point.mode)) {
-            event.preventDefault();
-            event.stopPropagation();
-            setDragDropEffect(event);
-            return;
-        }
-    }
-}
-
-function onPlacedCellDrop(event: DragEvent) {
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (!dragOverCm.value) {
-        return;
-    }
-
-    if (draggingFromPalette.value) {
-        const kind = paletteDragKind.value;
-        draggingFromPalette.value = false;
-        paletteDragKind.value = 'plantable';
-        commitDragTarget(kind);
-        return;
-    }
-
-}
-
-function isCellDragTarget(cell: BedCell): boolean {
-    if (!dragOverCm.value) {
-        return false;
-    }
-
-    const footprint = dragFootprint();
-    const target = dragOverCm.value;
-
-    return (
-        Math.abs(target.left_cm - cell.left_cm) < 0.5 &&
-        Math.abs(target.top_cm - cell.top_cm) < 0.5 &&
-        Math.abs(footprint.width_cm - cell.width_cm) < 0.5 &&
-        Math.abs(footprint.height_cm - cell.height_cm) < 0.5
-    );
-}
-
-const dragPreviewFootprint = computed(() => dragFootprint());
-
-const dragShiftPreviewStyle = computed((): Record<string, string> | null => {
-    if (!dragInsertNeedsShift.value || !dragOverCm.value) {
-        return null;
-    }
-
-    const footprint = dragPreviewFootprint.value;
-    const target = dragOverCm.value;
-
-    return cmEditorStyle(
-        target.left_cm,
-        target.top_cm,
-        footprint.width_cm,
-        footprint.height_cm,
-    );
-});
-
-const dragGhostPreviewStyle = computed((): Record<string, string> | null => {
-    if (!dragOverCm.value || dragInsertNeedsShift.value) {
-        return null;
-    }
-
-    const footprint = dragPreviewFootprint.value;
-    const target = dragOverCm.value;
-
-    return cmEditorStyle(
-        target.left_cm,
-        target.top_cm,
-        footprint.width_cm,
-        footprint.height_cm,
-    );
-});
-
-const dragPreviewValid = computed(() => {
-    if (!dragOverCm.value) {
-        return false;
-    }
-
-    const { left_cm, top_cm } = dragOverCm.value;
-    const excludeId = draggingCell.value?.id;
-    const footprint = dragFootprint();
-
-    if (
-        brickFitsAt(
-            left_cm,
-            top_cm,
-            footprint.width_cm,
-            footprint.height_cm,
-            excludeId,
-        )
-    ) {
-        return true;
-    }
-
-    if (!dragInsertNeedsShift.value) {
-        return false;
-    }
-
-    return brickFitsOnCellList(
-        cellsAfterCmShift(
-            left_cm,
-            top_cm,
-            footprint.width_cm,
-            footprint.height_cm,
-            excludeId,
-            dragShiftMode.value,
-        ),
-        left_cm,
-        top_cm,
-        footprint.width_cm,
-        footprint.height_cm,
-        excludeId,
-    );
-});
-
-const selectedHasPlants = computed(() =>
-    Boolean(selectedCell.value?.plants.length),
-);
+const selectedHasPlants = computed(() => Boolean(selectedCellLive.value?.plants.length));
 const formFeedback = computed(() => {
     const layoutError = (form.errors as Record<string, string | undefined>)
         .layout;
@@ -1542,10 +904,11 @@ const formFeedback = computed(() => {
 
 function removeSelectedCell() {
     if (!selectedCell.value || selectedHasPlants.value) return;
-    if (activeBricks.value.length <= 1) return;
+    if (selectedCell.value.kind === 'plantable' && activeCells.value.length <= 1) return;
 
     const current = selectedCell.value;
     cells.value = cells.value.filter((cell) => cell.id !== current.id);
+    removeLayoutItem(current.id);
     selectedCellId.value = cells.value[0]?.id ?? '';
 }
 
@@ -1553,71 +916,18 @@ function selectedBrickSizeLabel(cell: BedCell): string {
     return `${cell.width_cm} × ${cell.height_cm} cm`;
 }
 
-function selectedBrickGridHint(cell: BedCell): string {
-    return `Asukoht: ${Math.round(cell.left_cm)} cm vasakult, ${Math.round(cell.top_cm)} cm ülevalt`;
-}
-
-function applySelectedBrickCm(width_cm: number, height_cm: number) {
-    if (!selectedCell.value || selectedHasPlants.value) {
-        return;
-    }
-
-    const cell = selectedCell.value;
-    const footprint = brickFootprintFromCm(width_cm, height_cm);
-
-    if (
-        cell.width_cm === footprint.width_cm &&
-        cell.height_cm === footprint.height_cm &&
-        cell.w === footprint.w &&
-        cell.h === footprint.h
-    ) {
-        return;
-    }
-
-    if (
-        !brickFitsAt(
-            cell.left_cm,
-            cell.top_cm,
-            footprint.width_cm,
-            footprint.height_cm,
-            cell.id,
-        )
-    ) {
-        form.setError(
-            'cells',
-            footprint.width_cm > cell.width_cm ||
-                footprint.height_cm > cell.height_cm
-                ? `Suurem plokk (${footprint.width_cm}×${footprint.height_cm} cm) ei mahu — kõrval on teine plokk. Liiguta plokki või eemalda naaber.`
-                : 'Plokk ei mahu siia. Vali teine koht või väiksem suurus.',
-        );
-        return;
-    }
-
-    cells.value = cells.value.map((item) =>
-        item.id === cell.id
-            ? {
-                  ...item,
-                  ...footprint,
-                  active: item.kind === 'plantable',
-              }
-            : item,
-    );
-    packGridIndicesFromCm(cells.value);
-    form.clearErrors('cells');
-}
-
 function toggleSelectedWalkway() {
     if (!selectedCell.value || selectedHasPlants.value) return;
     const cell = selectedCell.value;
     const next: DesignBrush = cell.kind === 'walkway' ? 'plantable' : 'walkway';
-    setCellKindAt(cell.left_cm, cell.top_cm, next);
+    setCellKindAt(cell.x, cell.y, next);
 }
 
-function setCellKindAt(leftCm: number, topCm: number, kind: DesignBrush) {
+function setCellKindAt(x: number, y: number, kind: DesignBrush) {
     const existing = cells.value.find(
         (cell) =>
-            Math.abs(cell.left_cm - leftCm) < 0.5 &&
-            Math.abs(cell.top_cm - topCm) < 0.5,
+            cell.x === x &&
+            cell.y === y,
     );
     if (existing?.plants.length && kind !== 'plantable') {
         form.setError(
@@ -1644,15 +954,7 @@ function setCellKindAt(leftCm: number, topCm: number, kind: DesignBrush) {
         return;
     }
 
-    const newCell: BedCell = {
-        ...makeNewCellAt(leftCm, topCm),
-        kind,
-        active: kind === 'plantable',
-    };
-    cells.value = [...cells.value, newCell];
-    packGridIndicesFromCm(cells.value);
-    selectCell(newCell);
-    form.clearErrors('cells');
+    addCellAt(x, y, kind);
 }
 
 function resetToSingleCell() {
@@ -1663,15 +965,24 @@ function resetToSingleCell() {
         );
         return;
     }
-    const unit = gridUnitCm();
+    const unit = editorUnitCm();
     const cell: BedCell = {
-        ...makeNewCellAt(0, 0, brickFootprintFromCm(unit, unit)),
+        id: makeCellId(0, 0),
+        x: 0,
+        y: 0,
+        w: DEFAULT_BLOCK_UNITS,
+        h: DEFAULT_BLOCK_UNITS,
+        left_cm: 0,
+        top_cm: 0,
+        width_cm: DEFAULT_BLOCK_UNITS * unit,
+        height_cm: DEFAULT_BLOCK_UNITS * unit,
         active: true,
         kind: 'plantable',
         plants: [],
     };
     cells.value = [cell];
     selectedCellId.value = cell.id;
+    replaceGridLayout([layoutItemForCell(cell)]);
 }
 
 function fillFromGardenPlan() {
@@ -1687,28 +998,43 @@ function fillFromGardenPlan() {
     const cols = Math.max(1, Math.round(widthCm / cellCm));
     const rows = Math.max(1, Math.round(heightCm / cellCm));
     cells.value = [];
+    gridLayout.value.splice(0, gridLayout.value.length);
     for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
-            cells.value.push({
-                ...makeNewCellAt(x * cellCm, y * cellCm, {
-                    width_cm: cellCm,
-                    height_cm: cellCm,
-                    w: 1,
-                    h: 1,
-                }),
+            const gx = x * DEFAULT_BLOCK_UNITS;
+            const gy = y * DEFAULT_BLOCK_UNITS;
+            const cell: BedCell = {
+                id: makeCellId(gx, gy),
+                x: gx,
+                y: gy,
+                w: DEFAULT_BLOCK_UNITS,
+                h: DEFAULT_BLOCK_UNITS,
+                left_cm: x * cellCm,
+                top_cm: y * cellCm,
+                width_cm: cellCm,
+                height_cm: cellCm,
                 kind: 'plantable' as const,
                 active: true,
-            });
+                plants: [],
+            };
+            cells.value.push(cell);
+            pushLayoutItem(layoutItemForCell(cell));
         }
     }
-    packGridIndicesFromCm(cells.value);
     form.clearErrors('cells');
 }
 
 function goToStep(step: WizardStep) {
     if (step > currentStep.value && !canContinueFromStep.value) {
         if (currentStep.value === 1) {
-            form.setError('name', 'Pane peenrale nimi, siis liigume edasi.');
+            if (!form.name.trim()) {
+                form.setError('name', 'Pane peenrale nimi, siis liigume edasi.');
+            } else {
+                form.setError(
+                    'cell_size_cm',
+                    'Ühe ruudu mõõt peab olema 10–200 cm.',
+                );
+            }
         }
         if (currentStep.value === 2) {
             form.setError('cells', 'Peenras peab olema vähemalt üks ruut.');
@@ -1762,8 +1088,6 @@ function layoutValueForCell(cell: BedCell): number {
 }
 
 function syncCellsToForm() {
-    packGridIndicesFromCm(cells.value);
-
     const b = layoutBounds.value;
     const layout: number[][] = [];
     for (let y = b.minY; y <= b.maxY; y += 1) {
@@ -1876,7 +1200,7 @@ function submit() {
             location: data.location.trim(),
             cell_size_cm: Math.max(
                 10,
-                Math.min(200, Math.round(Number(data.cell_size_cm || 30))),
+                Math.min(200, Math.round(Number(data.cell_size_cm || DEFAULT_BED_CELL_SIZE_CM))),
             ),
             cells: form.cells,
         };
@@ -1924,7 +1248,10 @@ async function onImageChange(event: Event) {
 }
 
 onBeforeUnmount(() => {
-    cleanupPointerDragListeners();
+    if (bedShapeResizeObserver) {
+        bedShapeResizeObserver.disconnect();
+        bedShapeResizeObserver = null;
+    }
     if (newBedImagePreview.value) {
         URL.revokeObjectURL(newBedImagePreview.value);
     }
@@ -1933,9 +1260,39 @@ onBeforeUnmount(() => {
     }
 });
 
+onMounted(() => {
+    syncContainerWidth();
+});
+
+watch(
+    bedShapeGridHost,
+    (host) => {
+        if (bedShapeResizeObserver) {
+            bedShapeResizeObserver.disconnect();
+            bedShapeResizeObserver = null;
+        }
+        if (!host) return;
+        syncContainerWidth();
+        bedShapeResizeObserver = new ResizeObserver(() => {
+            syncContainerWidth();
+        });
+        bedShapeResizeObserver.observe(host);
+    },
+    { immediate: true },
+);
+
 watch(selectedCellId, () => {
     void scrollSelectedCellIntoView();
 });
+
+watch(
+    () => form.cell_size_cm,
+    () => {
+        if (cells.value.length > 0) {
+            recalcCellsCmFromGridUnit();
+        }
+    },
+);
 </script>
 
 <template>
@@ -2002,6 +1359,7 @@ watch(selectedCellId, () => {
                             </div>
                         </div>
                         <div
+                            v-if="currentStep !== 1"
                             class="rounded-full bg-background/80 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-border/70"
                         >
                             {{ activeCells.length }} ruutu
@@ -2009,25 +1367,50 @@ watch(selectedCellId, () => {
                     </div>
                 </div>
 
-                <div class="space-y-4 p-4 sm:p-5">
-                    <div class="grid gap-4 lg:grid-cols-1">
-                        <div>
-                            <label class="floating-field">
-                                <input
-                                    v-model="form.name"
-                                    type="text"
-                                    placeholder=" "
-                                    maxlength="120"
-                                    @input="form.clearErrors('name')"
-                                />
-                                <span>Peenra nimi</span>
-                            </label>
-                            <p
-                                v-if="form.errors.name"
-                                class="mt-2 text-sm text-red-600"
-                            >
-                                {{ form.errors.name }}
-                            </p>
+                <div class="p-4 sm:p-6">
+                    <div class="bed-step1-fields mx-auto max-w-xl">
+                        <div
+                            class="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_7.5rem] sm:items-start sm:gap-3"
+                        >
+                            <div class="min-w-0">
+                                <label class="floating-field floating-field--compact">
+                                    <input
+                                        v-model="form.name"
+                                        type="text"
+                                        placeholder=" "
+                                        maxlength="120"
+                                        @input="form.clearErrors('name')"
+                                    />
+                                    <span>Peenra nimi</span>
+                                </label>
+                                <p
+                                    v-if="form.errors.name"
+                                    class="mt-1.5 text-sm text-red-600"
+                                >
+                                    {{ form.errors.name }}
+                                </p>
+                            </div>
+                            <div class="sm:max-w-[7.5rem]">
+                                <label class="floating-field floating-field--compact">
+                                    <input
+                                        v-model="form.cell_size_cm"
+                                        type="number"
+                                        min="10"
+                                        max="200"
+                                        step="5"
+                                        placeholder=" "
+                                        class="text-center sm:text-left"
+                                        @input="form.clearErrors('cell_size_cm')"
+                                    />
+                                    <span>Ruut (cm)</span>
+                                </label>
+                                <p
+                                    v-if="form.errors.cell_size_cm"
+                                    class="mt-1.5 text-sm text-red-600"
+                                >
+                                    {{ form.errors.cell_size_cm }}
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2049,8 +1432,8 @@ watch(selectedCellId, () => {
                             <p
                                 class="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground"
                             >
-                                Lohista ülevalt peenraruutu või tee/kivi plokki.
-                                Klõpsa plokki — sea mõõt paremal cm-des.
+                                Lohista peenraruutu või käiguteed allpool olevasse kujundusalasse, et luua ruute.
+                                Ruutusid saab lohistada, suurust muuta nurgast ja eemaldada paremal paneelil.
                             </p>
                         </div>
                     </div>
@@ -2058,365 +1441,282 @@ watch(selectedCellId, () => {
                     <div
                         class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-start"
                     >
-                        <div
-                            class="min-w-0 flex-1 overflow-hidden rounded-[1.25rem] bg-card ring-1 ring-border/70"
-                        >
-                            <div
-                                class="border-b border-border/60 bg-muted/50 px-3 py-2.5"
-                                aria-label="Uue ploki lohistamine ja lähtemõõt"
-                            >
-                                <p
-                                    class="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase"
-                                >
-                                    Uus plokk — lohista peenrale
-                                </p>
-                                <div
-                                    class="mt-2 flex flex-wrap items-end gap-2"
-                                >
+                        <div class="min-w-0 flex-1 overflow-hidden rounded-[1.25rem] bg-card ring-1 ring-border/70">
+                            <div class="border-b border-border/60 bg-muted/30 px-4 py-3">
+                                <div class="flex flex-wrap items-center gap-2">
                                     <div
                                         draggable="true"
                                         role="button"
                                         tabindex="0"
-                                        class="bed-cell bed-cell--empty bed-cell--warm ring-dashed relative flex size-[3.35rem] shrink-0 cursor-grab touch-manipulation items-center justify-center ring-2 ring-amber-900/25 active:cursor-grabbing"
-                                        aria-label="Lohista uus peenraruut"
-                                        @dragstart="
-                                            onPaletteDragStart(
-                                                $event,
-                                                'plantable',
-                                            )
-                                        "
-                                        @dragend="onPaletteDragEnd"
+                                        class="bed-brush-palette-item"
+                                        :class="{
+                                            'bed-brush-palette-item--active': activeBrush === 'plantable',
+                                            'bed-brush-palette-item--dragging': externalDragKind === 'plantable',
+                                        }"
+                                        aria-label="Peenraruut — lohista kujundusalasse"
+                                        @click="activeBrush = 'plantable'"
+                                        @dragstart="onChipDragStart('plantable', $event)"
+                                        @dragend="onChipDragEnd"
                                     >
-                                        <span
-                                            class="material-symbols-outlined bed-cell-slot-icon"
-                                            >add</span
+                                        <div
+                                            :class="brushPaletteCellClasses('plantable')"
                                         >
-                                    </div>
-                                    <div
-                                        draggable="true"
-                                        role="button"
-                                        tabindex="0"
-                                        class="bed-cell bed-cell--walkway relative flex size-[3.35rem] shrink-0 cursor-grab touch-manipulation items-center justify-center rounded-2xl border border-stone-500/35 ring-2 ring-stone-600/20 active:cursor-grabbing"
-                                        aria-label="Lohista tee või kivi"
-                                        @dragstart="
-                                            onPaletteDragStart(
-                                                $event,
-                                                'walkway',
-                                            )
-                                        "
-                                        @dragend="onPaletteDragEnd"
-                                    >
-                                        <span
-                                            class="material-symbols-outlined text-lg text-stone-700/75"
-                                            >texture</span
-                                        >
-                                    </div>
-                                    <label
-                                        class="flex h-[3.35rem] min-w-[4.5rem] flex-col justify-center rounded-xl border border-input bg-background px-2 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
-                                    >
-                                        <span
-                                            class="text-[9px] font-semibold tracking-wide text-muted-foreground uppercase"
-                                            >Lähtemõõt</span
-                                        >
-                                        <span
-                                            class="mt-0.5 flex items-baseline gap-0.5"
-                                        >
-                                            <input
-                                                v-model="form.cell_size_cm"
-                                                type="number"
-                                                min="10"
-                                                max="200"
-                                                step="1"
-                                                class="w-full min-w-0 border-0 bg-transparent p-0 text-base leading-none font-semibold text-foreground outline-none"
-                                                placeholder="30"
-                                                @input="
-                                                    form.clearErrors(
-                                                        'cell_size_cm',
-                                                    )
-                                                "
+                                            <div
+                                                class="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-linear-to-b from-white/15 to-transparent"
+                                                aria-hidden="true"
                                             />
                                             <span
-                                                class="text-xs font-medium text-muted-foreground"
-                                                >cm</span
+                                                class="material-symbols-outlined bed-cell-slot-icon relative z-10"
+                                                aria-hidden="true"
+                                            >add</span>
+                                            <div
+                                                class="bed-brush-palette-handle pointer-events-none"
+                                                aria-hidden="true"
                                             >
-                                        </span>
-                                    </label>
+                                                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                                                    <circle cx="2" cy="2" r="1.2" />
+                                                    <circle cx="8" cy="2" r="1.2" />
+                                                    <circle cx="2" cy="5" r="1.2" />
+                                                    <circle cx="8" cy="5" r="1.2" />
+                                                    <circle cx="2" cy="8" r="1.2" />
+                                                    <circle cx="8" cy="8" r="1.2" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div
+                                        draggable="true"
+                                        role="button"
+                                        tabindex="0"
+                                        class="bed-brush-palette-item"
+                                        :class="{
+                                            'bed-brush-palette-item--active': activeBrush === 'walkway',
+                                            'bed-brush-palette-item--dragging': externalDragKind === 'walkway',
+                                        }"
+                                        aria-label="Käigutee — lohista kujundusalasse"
+                                        @click="activeBrush = 'walkway'"
+                                        @dragstart="onChipDragStart('walkway', $event)"
+                                        @dragend="onChipDragEnd"
+                                    >
+                                        <div :class="brushPaletteCellClasses('walkway')">
+                                            <div
+                                                class="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-linear-to-b from-white/15 to-transparent"
+                                                aria-hidden="true"
+                                            />
+                                            <span
+                                                class="material-symbols-outlined relative z-10 text-lg text-stone-700/55"
+                                                aria-hidden="true"
+                                            >texture</span>
+                                            <div
+                                                class="bed-brush-palette-handle pointer-events-none"
+                                                aria-hidden="true"
+                                            >
+                                                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                                                    <circle cx="2" cy="2" r="1.2" />
+                                                    <circle cx="8" cy="2" r="1.2" />
+                                                    <circle cx="2" cy="5" r="1.2" />
+                                                    <circle cx="8" cy="5" r="1.2" />
+                                                    <circle cx="2" cy="8" r="1.2" />
+                                                    <circle cx="8" cy="8" r="1.2" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="h-5 w-px bg-border/60" aria-hidden="true" />
+                                    <button
+                                        type="button"
+                                        class="inline-flex h-9 items-center gap-1.5 rounded-full border border-border/60 bg-background/80 px-3 text-xs text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
+                                        title="Muuda sammul „Peenar nimeta“"
+                                        @click="goToStep(1)"
+                                    >
+                                        <span class="material-symbols-outlined text-sm">straighten</span>
+                                        1 ruut =
+                                        <strong class="font-semibold text-foreground">{{ cellSizeCmLabel }}</strong>
+                                        cm
+                                    </button>
+                                    <span class="flex-1" />
                                     <button
                                         v-if="cells.length > 0"
                                         type="button"
-                                        class="mb-1 text-[11px] font-semibold text-muted-foreground underline-offset-2 transition hover:text-foreground hover:underline"
+                                        class="text-[11px] font-semibold text-muted-foreground underline-offset-2 transition hover:text-foreground hover:underline"
                                         @click="resetToSingleCell"
                                     >
-                                        Tühjenda kõik
+                                        Tühjenda
                                     </button>
                                     <button
                                         v-if="gardenPlan && cells.length === 0"
                                         type="button"
-                                        class="mb-1 text-[11px] font-semibold text-primary underline-offset-2 transition hover:text-primary/80 hover:underline"
+                                        class="text-[11px] font-semibold text-primary underline-offset-2 transition hover:underline"
                                         @click="fillFromGardenPlan"
                                     >
                                         Täida kogu ala
                                     </button>
                                 </div>
-                                <p
-                                    v-if="form.errors.cell_size_cm"
-                                    class="mt-1.5 text-[10px] text-red-600"
-                                >
-                                    {{ form.errors.cell_size_cm }}
-                                </p>
                             </div>
-
                             <div
-                                class="border-b border-emerald-900/10 bg-emerald-950/5 px-3 py-1"
+                                v-if="cells.length === 0"
+                                class="bed-canvas flex min-h-[26rem] items-center justify-center p-4"
+                                :class="{ 'bed-canvas--drag-over': externalDragKind }"
+                                @dragover.prevent="onCanvasDragOver"
+                                @dragleave="onCanvasDragLeave"
+                                @drop.prevent="onCanvasDrop"
                             >
-                                <p
-                                    class="text-[10px] font-semibold tracking-wide text-emerald-950/55 uppercase"
-                                >
-                                    Sinu peenar
-                                </p>
+                                <div class="pointer-events-none flex min-h-32 w-full max-w-sm flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-emerald-900/25 bg-background/50 px-4 py-6">
+                                    <span class="material-symbols-outlined text-2xl text-emerald-700/50">drag_indicator</span>
+                                    <p class="text-center text-sm font-medium text-emerald-950/60 select-none">
+                                        Lohista ruut siia, et alustada kuju loomist.
+                                    </p>
+                                </div>
                             </div>
-
                             <div
-                                ref="gridScroller"
-                                class="bed-grid-frame relative max-h-[min(42vh,17rem)] min-h-40 overflow-auto overscroll-contain p-3 transition"
-                                :class="
-                                    cells.length === 0 &&
-                                    (draggingCell || draggingFromPalette)
-                                        ? 'bg-primary/5'
-                                        : ''
-                                "
+                                v-else
+                                ref="bedShapeGridHost"
+                                class="bed-canvas bed-shape-grid relative min-h-[26rem] max-h-[clamp(26rem,84vh,68rem)] overflow-auto overscroll-contain p-4"
+                                :class="{ 'bed-canvas--drag-over': externalDragKind }"
+                                @dragover.prevent="onCanvasDragOver"
+                                @dragleave="onCanvasDragLeave"
+                                @drop.prevent="onCanvasDrop"
                             >
                                 <div
-                                    ref="layoutSurfaceRef"
-                                    class="mx-auto w-max min-w-0"
-                                    :style="layoutSurfaceStyle"
-                                    @dragenter.prevent="onLayoutDragEnter"
-                                    @dragover.prevent="onLayoutDragOver"
-                                    @dragleave="onLayoutDragLeave"
-                                    @drop.prevent="onLayoutDrop"
+                                    v-if="dragPreviewGridPos && externalDragKind"
+                                    class="pointer-events-none absolute z-50"
+                                    :style="{
+                                        left: `${16 + dragPreviewGridPos.x * (CELL_PX + GRID_MARGIN[0])}px`,
+                                        top: `${16 + dragPreviewGridPos.y * (CELL_PX + GRID_MARGIN[1])}px`,
+                                        width: `${DEFAULT_BLOCK_PX}px`,
+                                        height: `${DEFAULT_BLOCK_PX}px`,
+                                    }"
+                                    aria-hidden="true"
                                 >
                                     <div
-                                        v-for="cell in cells"
-                                        :key="cell.id"
-                                        :data-bed-cell-id="cell.id"
-                                        role="button"
-                                        tabindex="0"
-                                        class="relative cursor-grab touch-none select-none active:cursor-grabbing"
-                                        :style="cellEditorStyle(cell)"
-                                        :ref="
-                                            (el) =>
-                                                setSelectedCellRef(el, cell.id)
-                                        "
-                                        :aria-label="`${cellKindLabel(cell)}: veerg ${displayColumnNumber(cell.x)}, rida ${displayRowNumber(cell.y)}`"
                                         :class="[
-                                            ...addBedEditorCellClasses(
-                                                cell.x,
-                                                cell.y,
-                                            ),
-                                            dragInsertNeedsShift &&
-                                            isCellDragTarget(cell)
-                                                ? 'ring-2 ring-primary/40'
-                                                : '',
-                                            pointerDragSession?.cellId ===
-                                                cell.id && pointerDragSession.started
-                                                ? 'z-20 opacity-40'
-                                                : '',
+                                            ...brushPaletteCellClasses(externalDragKind),
+                                            'size-full opacity-75 ring-2 ring-primary/40 ring-offset-1',
                                         ]"
-                                        @pointerdown="
-                                            onCellPointerDown($event, cell)
-                                        "
-                                        @dragover.prevent="
-                                            onPlacedCellDragOver(
-                                                $event,
-                                                cell,
-                                            )
-                                        "
-                                        @drop.prevent="onPlacedCellDrop($event)"
-                                        @click.stop="onCellClick(cell)"
-                                        @keydown.enter.prevent="onCellClick(cell)"
-                                        @keydown.space.prevent="onCellClick(cell)"
                                     >
-                                            <div
-                                                class="absolute inset-x-0 top-0 h-1/2 bg-linear-to-b from-white/15 to-transparent"
-                                            />
-                                            <div
-                                                v-if="cell.plants.length"
-                                                class="absolute inset-0 bg-linear-to-t from-black/45 via-black/15 to-transparent"
-                                            />
-                                            <div
-                                                class="relative z-10 flex size-full flex-col items-center justify-center px-1 text-center"
-                                            >
-                                                <span
-                                                    class="material-symbols-outlined"
-                                                    :class="
-                                                        cell.plants.length
-                                                            ? 'text-lg text-white'
-                                                            : isPlantableEmptySlot(
-                                                                    cell,
-                                                                )
-                                                              ? 'bed-cell-slot-icon'
-                                                              : selectedCell?.id ===
-                                                                  cell.id
-                                                                ? 'text-lg text-primary'
-                                                                : 'text-lg text-emerald-900/45'
-                                                    "
-                                                >
-                                                    {{ cellIcon(cell) }}
-                                                </span>
-                                                <span
-                                                    v-if="cell.plants.length"
-                                                    class="mt-1 line-clamp-2 text-[9px] leading-tight font-semibold text-white"
-                                                >
-                                                    {{
-                                                        getPlantNames(
-                                                            cell,
-                                                        ).join(', ')
-                                                    }}
-                                                </span>
-                                                <span
-                                                    v-else
-                                                    class="mt-0.5 text-[8px] leading-tight font-medium tabular-nums text-emerald-950/50"
-                                                >
-                                                    {{ cell.width_cm }}×{{
-                                                        cell.height_cm
-                                                    }}
-                                                </span>
-                                            </div>
+                                        <span
+                                            class="material-symbols-outlined absolute inset-0 z-10 m-auto flex size-8 items-center justify-center"
+                                            :class="externalDragKind === 'walkway'
+                                                ? 'text-stone-700/55'
+                                                : 'bed-cell-slot-icon'"
+                                            aria-hidden="true"
+                                        >{{ externalDragKind === 'walkway' ? 'texture' : 'add' }}</span>
                                     </div>
-                                    <div
-                                        v-if="dragShiftPreviewStyle"
-                                        class="pointer-events-none absolute z-30 rounded-sm border-2 border-dashed border-primary bg-primary/20 shadow-md ring-4 ring-primary/25"
-                                        :style="dragShiftPreviewStyle"
-                                        aria-hidden="true"
-                                    />
-                                    <div
-                                        v-if="
-                                            dragGhostPreviewStyle &&
-                                            dragPreviewValid
-                                        "
-                                        class="pointer-events-none absolute z-25 rounded-sm border-2 border-primary bg-primary/15 shadow-md"
-                                        :style="dragGhostPreviewStyle"
-                                        aria-hidden="true"
-                                    />
                                 </div>
+                                <GridLayout
+                                    v-model:layout="gridLayout"
+                                    :col-num="dynamicColNum"
+                                    :row-height="CELL_PX"
+                                    :margin="GRID_MARGIN"
+                                    is-draggable
+                                    is-resizable
+                                    :vertical-compact="false"
+                                    :prevent-collision="false"
+                                    auto-size
+                                    use-css-transforms
+                                    @layout-updated="onLayoutUpdated"
+                                >
+                                    <GridItem
+                                        v-for="item in gridLayout"
+                                        :key="item.i"
+                                        :i="item.i"
+                                        :x="item.x"
+                                        :y="item.y"
+                                        :w="item.w"
+                                        :h="item.h"
+                                        :min-w="1"
+                                        :min-h="1"
+                                        drag-allow-from=".bed-shape-drag-handle"
+                                        drag-ignore-from=".no-drag"
+                                    >
+                                        <div v-if="cellMap.get(item.i)" class="bed-shape-cell-shell relative size-full">
+                                            <div
+                                                class="no-drag bed-shape-cell size-full"
+                                                :class="cellClasses(cellMap.get(item.i)!)"
+                                                role="button"
+                                                tabindex="0"
+                                                :aria-label="cellKindLabel(cellMap.get(item.i)!)"
+                                                :data-bed-cell-id="cellMap.get(item.i)!.id"
+                                                @click.stop="selectCell(cellMap.get(item.i)!)"
+                                                @keydown.enter.prevent="selectCell(cellMap.get(item.i)!)"
+                                                @keydown.space.prevent="selectCell(cellMap.get(item.i)!)"
+                                            >
+                                                <div class="absolute inset-x-0 top-0 h-1/2 bg-linear-to-b from-white/15 to-transparent" />
+                                                <div v-if="cellMap.get(item.i)!.plants.length" class="absolute inset-0 bg-linear-to-t from-black/45 via-black/15 to-transparent" />
+                                                <div class="relative z-10 flex size-full flex-col items-center justify-center px-1 text-center">
+                                                    <span
+                                                        class="material-symbols-outlined"
+                                                        :class="
+                                                            cellMap.get(item.i)!.plants.length ? 'text-lg text-white'
+                                                            : isPlantableEmptySlot(cellMap.get(item.i)!) ? 'bed-cell-slot-icon'
+                                                            : selectedCell?.id === cellMap.get(item.i)!.id ? 'text-lg text-primary'
+                                                            : 'text-lg text-emerald-900/45'
+                                                        "
+                                                    >{{ cellIcon(cellMap.get(item.i)!) }}</span>
+                                                    <span v-if="cellMap.get(item.i)!.plants.length" class="mt-1 line-clamp-2 text-[9px] font-semibold leading-tight text-white">
+                                                        {{ getPlantNames(cellMap.get(item.i)!).join(', ') }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="bed-shape-drag-handle" title="Lohista" aria-label="Lohista ruutu">
+                                                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true">
+                                                    <circle cx="2" cy="2" r="1.2" />
+                                                    <circle cx="8" cy="2" r="1.2" />
+                                                    <circle cx="2" cy="5" r="1.2" />
+                                                    <circle cx="8" cy="5" r="1.2" />
+                                                    <circle cx="2" cy="8" r="1.2" />
+                                                    <circle cx="8" cy="8" r="1.2" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </GridItem>
+                                </GridLayout>
                             </div>
                         </div>
 
                         <aside
-                            v-if="selectedCell && cells.length > 0"
-                            class="w-full shrink-0 rounded-xl border border-border/70 bg-muted/30 p-2.5 lg:sticky lg:top-2 lg:w-[8.75rem]"
+                            v-if="selectedCellLive && cells.length > 0"
+                            class="w-full shrink-0 space-y-2 rounded-xl border border-border/60 bg-card p-3 shadow-sm lg:sticky lg:top-2 lg:w-36"
                             aria-label="Valitud ploki seaded"
                         >
-                            <p
-                                class="text-[11px] leading-tight font-semibold text-foreground"
-                            >
-                                Valitud
-                                <span class="block text-muted-foreground">{{
-                                    selectedBrickSizeLabel(selectedCell)
-                                }}</span>
+                            <div class="flex items-center gap-1.5">
                                 <span
-                                    class="mt-0.5 block text-[10px] font-normal text-muted-foreground/80"
-                                    >{{
-                                        selectedBrickGridHint(selectedCell)
-                                    }}</span
-                                >
-                            </p>
-
-                            <p
-                                v-if="selectedHasPlants"
-                                class="mt-2 text-[11px] leading-snug text-primary"
+                                    class="size-2.5 rounded-full"
+                                    :class="selectedCellLive.kind === 'walkway' ? 'bg-stone-400' : 'bg-emerald-500'"
+                                />
+                                <span class="text-xs font-semibold capitalize text-foreground">
+                                    {{ cellKindLabel(selectedCellLive) }}
+                                </span>
+                            </div>
+                            <div class="rounded-lg bg-muted/50 px-2.5 py-2 text-center">
+                                <p class="text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+                                    Mõõt
+                                </p>
+                                <p class="mt-0.5 text-sm font-bold text-foreground">
+                                    {{ selectedBrickSizeLabel(selectedCellLive) }}
+                                </p>
+                                <p class="mt-0.5 text-[9px] leading-snug text-muted-foreground">
+                                    Muuda suurust<br />nurgas lohistades
+                                </p>
+                            </div>
+                            <button
+                                v-if="!selectedHasPlants"
+                                type="button"
+                                class="w-full rounded-lg border border-border/60 bg-muted/40 px-2 py-1.5 text-left text-[11px] font-semibold text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                @click="toggleSelectedWalkway"
                             >
+                                → {{ selectedCellLive.kind === 'walkway' ? 'peenraruut' : 'käigutee' }}
+                            </button>
+                            <p v-if="selectedHasPlants" class="text-[10px] leading-snug text-primary">
                                 Taimed — mõõtu muudad peenra vaates.
                             </p>
-
-                            <template v-else>
-                                <label
-                                    class="mt-2 flex flex-col rounded-lg border border-input bg-background px-2 py-1.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
-                                >
-                                    <span
-                                        class="text-[9px] font-semibold text-muted-foreground uppercase"
-                                        >Laius</span
-                                    >
-                                    <span class="flex items-baseline gap-0.5">
-                                        <input
-                                            :value="selectedCell.width_cm"
-                                            type="number"
-                                            min="10"
-                                            max="500"
-                                            step="5"
-                                            class="w-full min-w-0 border-0 bg-transparent p-0 text-sm font-semibold text-foreground outline-none"
-                                            @input="
-                                                applySelectedBrickCm(
-                                                    Number(
-                                                        (
-                                                            $event.target as HTMLInputElement
-                                                        ).value,
-                                                    ),
-                                                    selectedCell.height_cm,
-                                                )
-                                            "
-                                        />
-                                        <span
-                                            class="text-[10px] text-muted-foreground"
-                                            >cm</span
-                                        >
-                                    </span>
-                                </label>
-                                <label
-                                    class="mt-1.5 flex flex-col rounded-lg border border-input bg-background px-2 py-1.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
-                                >
-                                    <span
-                                        class="text-[9px] font-semibold text-muted-foreground uppercase"
-                                        >Kõrgus</span
-                                    >
-                                    <span class="flex items-baseline gap-0.5">
-                                        <input
-                                            :value="selectedCell.height_cm"
-                                            type="number"
-                                            min="10"
-                                            max="500"
-                                            step="5"
-                                            class="w-full min-w-0 border-0 bg-transparent p-0 text-sm font-semibold text-foreground outline-none"
-                                            @input="
-                                                applySelectedBrickCm(
-                                                    selectedCell.width_cm,
-                                                    Number(
-                                                        (
-                                                            $event.target as HTMLInputElement
-                                                        ).value,
-                                                    ),
-                                                )
-                                            "
-                                        />
-                                        <span
-                                            class="text-[10px] text-muted-foreground"
-                                            >cm</span
-                                        >
-                                    </span>
-                                </label>
-                                <button
-                                    type="button"
-                                    class="mt-2 w-full text-left text-[10px] font-semibold text-muted-foreground underline-offset-2 hover:underline"
-                                    @click="toggleSelectedWalkway"
-                                >
-                                    {{
-                                        selectedCell.kind === 'walkway'
-                                            ? '→ peenraruut'
-                                            : '→ tee / kivi'
-                                    }}
-                                </button>
-                            </template>
-
                             <button
                                 type="button"
-                                class="mt-2 w-full text-left text-[10px] font-semibold text-red-700/90 underline-offset-2 hover:underline disabled:opacity-40"
-                                :disabled="
-                                    selectedHasPlants ||
-                                    activeBricks.length <= 1
-                                "
+                                class="w-full rounded-lg border border-red-200/60 bg-red-50/40 px-2 py-1.5 text-left text-[11px] font-semibold text-red-700/80 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-35"
+                                :disabled="selectedHasPlants || (selectedCellLive?.kind === 'plantable' && activeCells.length <= 1)"
                                 @click="removeSelectedCell"
                             >
-                                Eemalda
+                                Eemalda ruut
                             </button>
                         </aside>
                     </div>
@@ -2520,36 +1820,17 @@ watch(selectedCellId, () => {
                         </label>
 
                         <div>
-                            <label class="form-label text-foreground"
-                                >Ühe ruudu mõõt</label
-                            >
-                            <div
-                                class="flex items-center rounded-xl border border-input bg-background px-4 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20"
-                            >
-                                <input
-                                    v-model="form.cell_size_cm"
-                                    type="number"
-                                    min="10"
-                                    max="200"
-                                    step="1"
-                                    class="h-12 min-w-0 flex-1 border-0 bg-transparent text-base text-foreground outline-none"
-                                    placeholder="30"
-                                    @input="form.clearErrors('cell_size_cm')"
-                                />
-                                <span
-                                    class="text-sm font-medium text-muted-foreground"
-                                    >cm</span
-                                >
-                            </div>
-                            <p
-                                class="mt-2 inline-flex items-center gap-2 rounded-full bg-primary/8 px-3 py-1.5 text-sm font-semibold text-primary"
-                            >
-                                <span
-                                    class="material-symbols-outlined text-base"
-                                    >straighten</span
-                                >
-                                1 ruut = {{ form.cell_size_cm || 30 }} cm
+                            <p class="form-label text-foreground">Ühe ruudu mõõt</p>
+                            <p class="mt-2 text-sm font-semibold text-foreground">
+                                1 ruut = {{ cellSizeCmLabel }} cm
                             </p>
+                            <button
+                                type="button"
+                                class="mt-1.5 text-xs font-semibold text-primary underline-offset-2 hover:underline"
+                                @click="goToStep(1)"
+                            >
+                                Muuda sammul 1
+                            </button>
                         </div>
 
                         <label class="photo-drop-zone">
@@ -2597,6 +1878,12 @@ watch(selectedCellId, () => {
                         </h3>
                         <dl class="mt-3 grid gap-2 text-sm">
                             <div class="flex justify-between gap-3">
+                                <dt class="text-muted-foreground">Ruudu mõõt</dt>
+                                <dd class="font-semibold text-foreground">
+                                    1 ruut = {{ cellSizeCmLabel }} cm
+                                </dd>
+                            </div>
+                            <div class="flex justify-between gap-3">
                                 <dt class="text-muted-foreground">Kuju</dt>
                                 <dd class="font-semibold text-foreground">
                                     {{ bedSummaryLabel }}
@@ -2636,7 +1923,9 @@ watch(selectedCellId, () => {
             <div
                 class="fixed right-4 bottom-[4.85rem] left-4 z-40 rounded-[1.25rem] bg-card/95 p-3 shadow-lg ring-1 ring-border/80 backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:p-0 sm:shadow-none sm:ring-0"
             >
-                <div class="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+                <div
+                    class="flex flex-col-reverse gap-2 sm:ml-auto sm:flex-row sm:justify-end sm:gap-3"
+                >
                     <button
                         type="button"
                         class="btn-primary-outline bg-background/80 sm:order-1"
@@ -2775,6 +2064,25 @@ watch(selectedCellId, () => {
     color: var(--primary);
     font-size: 0.72rem;
     transform: translateY(-0.85rem);
+}
+
+.floating-field--compact input {
+    height: 3.25rem;
+    border-radius: 1rem;
+    padding: 1.05rem 0.875rem 0.4rem;
+    font-size: 1rem;
+}
+
+.floating-field--compact span {
+    top: 1rem;
+    left: 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.floating-field--compact input:focus + span,
+.floating-field--compact input:not(:placeholder-shown) + span {
+    transform: translateY(-0.7rem);
 }
 
 .preset-card {
@@ -2971,6 +2279,222 @@ watch(selectedCellId, () => {
     min-height: 44px;
     border-radius: 0.9rem;
     touch-action: none;
+}
+
+.bed-canvas {
+    background-color: color-mix(in srgb, var(--card), rgb(240, 235, 220) 18%);
+    background-image: radial-gradient(
+        circle,
+        rgba(120, 100, 60, 0.18) 1px,
+        transparent 1px
+    );
+    background-size: 82px 82px; /* 3 * CELL_PX + 2 * GRID_MARGIN */
+    border-radius: 0 0 1.25rem 1.25rem;
+}
+
+.bed-canvas.bed-shape-grid :deep(.vgl-item) .bed-cell {
+    border-width: 1.5px;
+    box-shadow:
+        0 4px 14px rgba(49, 79, 55, 0.16),
+        0 1px 0 rgba(255, 255, 255, 0.5) inset;
+}
+
+.bed-cell--editor-selected {
+    border-color: var(--primary) !important;
+    box-shadow:
+        0 0 0 3px color-mix(in srgb, var(--primary), transparent 72%),
+        0 6px 16px color-mix(in srgb, var(--primary), transparent 78%) !important;
+    transform: translateY(-1px);
+}
+
+.bed-canvas--drag-over {
+    outline: 2px dashed rgba(34, 197, 94, 0.45);
+    outline-offset: -4px;
+}
+
+.bed-brush-palette-item {
+    cursor: grab;
+    padding: 3px;
+    border: 2px solid transparent;
+    border-radius: 1rem;
+    touch-action: none;
+    user-select: none;
+    transition:
+        border-color 160ms ease,
+        box-shadow 160ms ease,
+        opacity 160ms ease,
+        transform 160ms ease;
+}
+
+.bed-brush-palette-item:hover {
+    transform: translateY(-1px);
+}
+
+.bed-brush-palette-item:active {
+    cursor: grabbing;
+}
+
+.bed-brush-palette-item--active {
+    border-color: color-mix(in srgb, var(--primary), transparent 35%);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary), transparent 78%);
+}
+
+.bed-brush-palette-item--dragging {
+    opacity: 0.45;
+}
+
+.bed-brush-palette-cell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    min-width: 56px;
+    min-height: 56px;
+    border-width: 1.5px;
+    box-shadow:
+        0 4px 14px rgba(49, 79, 55, 0.16),
+        0 1px 0 rgba(255, 255, 255, 0.5) inset;
+}
+
+.bed-brush-palette-handle {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.92);
+    color: rgba(60, 80, 50, 0.72);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.bed-shape-cell-shell {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+}
+
+/* grid-layout-plus funktsionaalsus; visuaal tuleb .bed-cell klassidest */
+.bed-shape-grid :deep(.vgl-item:not(.vgl-item--placeholder)) {
+    background: transparent;
+    border: none;
+}
+
+.bed-shape-grid .no-drag {
+    width: 100%;
+    height: 100%;
+}
+
+.bed-shape-drag-handle {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.92);
+    color: rgba(60, 80, 50, 0.72);
+    cursor: grab;
+    touch-action: none;
+    pointer-events: auto;
+    opacity: 1;
+    transition:
+        opacity 120ms ease,
+        transform 120ms ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.bed-shape-cell-shell:hover .bed-shape-drag-handle,
+.bed-shape-grid :deep(.vgl-item--dragging) .bed-shape-drag-handle,
+.bed-shape-grid :deep(.vgl-item:has(.bed-cell--editor-selected)) .bed-shape-drag-handle {
+    opacity: 1;
+    transform: scale(1.03);
+}
+
+.bed-shape-drag-handle:active {
+    cursor: grabbing;
+}
+
+/* grid-layout-plus: muutujad peavad olema .vgl-layout peal (teek defineerib seal vaikimisi punase placeholderi) */
+.bed-shape-grid :deep(.vgl-layout) {
+    --vgl-placeholder-bg: rgba(34, 197, 94, 0.16);
+    --vgl-placeholder-opacity: 100%;
+    --vgl-placeholder-z-index: 1;
+    --vgl-resizer-size: 18px;
+    --vgl-resizer-border-color: rgba(22, 101, 52, 0.55);
+    --vgl-resizer-border-width: 2.5px;
+    --vgl-item-dragging-opacity: 100%;
+    --vgl-item-resizing-opacity: 95%;
+    min-height: 10rem;
+}
+
+.bed-shape-grid :deep(.vgl-item) {
+    overflow: visible;
+    transition:
+        left 180ms ease,
+        top 180ms ease,
+        width 180ms ease,
+        height 180ms ease;
+}
+
+/* Lohistamise sihtkoht — roheline kriipsjoon, mitte punane täit */
+.bed-shape-grid :deep(.vgl-item--placeholder) {
+    background-color: rgba(34, 197, 94, 0.12) !important;
+    border: 2px dashed rgba(16, 185, 129, 0.55);
+    outline: none;
+    border-radius: 0.9rem;
+    opacity: 1 !important;
+}
+
+.bed-shape-grid :deep(.vgl-item--dragging) {
+    filter: drop-shadow(0 10px 22px rgba(49, 79, 55, 0.28));
+}
+
+.bed-shape-grid :deep(.vgl-item--dragging .bed-cell),
+.bed-shape-grid :deep(.vgl-item--resizing .bed-cell) {
+    transform: none;
+}
+
+.bed-shape-grid :deep(.vgl-item--resizing) {
+    opacity: 95%;
+}
+
+.bed-shape-grid :deep(.vgl-item__resizer) {
+    z-index: 30;
+    width: 18px !important;
+    height: 18px !important;
+    opacity: 0.45;
+    background: transparent;
+    transition: opacity 120ms ease;
+}
+
+.bed-shape-grid :deep(.vgl-item:hover .vgl-item__resizer),
+.bed-shape-grid :deep(.vgl-item--resizing .vgl-item__resizer),
+.bed-shape-grid :deep(.vgl-item:has(.bed-cell--editor-selected) .vgl-item__resizer) {
+    opacity: 1;
+}
+
+.bed-shape-grid :deep(.vgl-item__resizer::before) {
+    inset: 0 3px 3px 0;
+    border-color: rgba(22, 101, 52, 0.55);
+}
+
+.bed-shape-grid :deep(.vgl-item:hover .vgl-item__resizer::before),
+.bed-shape-grid :deep(.vgl-item--resizing .vgl-item__resizer::before),
+.bed-shape-grid :deep(.vgl-item:has(.bed-cell--editor-selected) .vgl-item__resizer::before) {
+    border-color: rgba(22, 101, 52, 0.9);
 }
 
 .bed-cell--inactive {

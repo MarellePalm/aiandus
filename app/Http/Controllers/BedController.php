@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 
 class BedController extends Controller
 {
-    private const DEFAULT_CELL_SIZE_CM = 30;
+    private const DEFAULT_CELL_SIZE_CM = 10;
 
     /** Maks ruute ühes plokis (nt õunapuu ~3 m laius @ 30 cm ruut ≈ 10 ruutu). */
     private const MAX_BRICK_GRID_SPAN = 12;

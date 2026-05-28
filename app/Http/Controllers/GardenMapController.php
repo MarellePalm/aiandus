@@ -80,7 +80,7 @@ class GardenMapController extends Controller
                 'columns' => (int) ($b->columns ?? 3),
                 'garden_x' => (int) ($b->garden_x ?? 0),
                 'garden_y' => (int) ($b->garden_y ?? 0),
-                'cell_size_cm' => (int) ($b->cell_size_cm ?? 30),
+                'cell_size_cm' => (int) ($b->cell_size_cm ?? 10),
                 'layout' => $b->layout,
                 'cell_bricks' => $b->cell_bricks,
                 'plants' => $b->plants->map(fn ($p) => [
@@ -141,7 +141,7 @@ class GardenMapController extends Controller
             ->map(fn ($b) => [
                 'garden_x' => (int) ($b->garden_x ?? 0),
                 'garden_y' => (int) ($b->garden_y ?? 0),
-                'cell_size_cm' => (int) ($b->cell_size_cm ?? 30),
+                'cell_size_cm' => (int) ($b->cell_size_cm ?? 10),
                 'rows' => (int) ($b->rows ?? 1),
                 'columns' => (int) ($b->columns ?? 1),
                 'layout' => $b->layout,

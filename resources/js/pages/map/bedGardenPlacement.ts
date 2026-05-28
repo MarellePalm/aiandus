@@ -2,7 +2,11 @@ import {
     bedFootprintSizePx,
     type BedCellBrick,
 } from '@/pages/map/bedBrickFootprint';
-import { CM_TO_PX, GARDEN_PADDING } from '@/pages/map/constants';
+import {
+    CM_TO_PX,
+    DEFAULT_BED_CELL_SIZE_CM,
+    GARDEN_PADDING,
+} from '@/pages/map/constants';
 import { computeGardenSurfacePx } from '@/pages/map/gardenSurface';
 
 export type GardenPlacementPlan = {
@@ -120,7 +124,7 @@ export function bedFootprintPx(
 
     const layout = getBedLayout(bed);
     const bounds = getBedActiveBounds(layout);
-    const cellCm = Math.max(10, bed.cell_size_cm || 30);
+    const cellCm = Math.max(10, bed.cell_size_cm || DEFAULT_BED_CELL_SIZE_CM);
     const cols = Math.max(1, bounds.maxCol - bounds.minCol + 1);
     const rows = Math.max(1, bounds.maxRow - bounds.minRow + 1);
 

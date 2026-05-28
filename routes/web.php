@@ -88,7 +88,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'is_favorite' => (bool) ($bed->is_favorite ?? false),
                 'rows' => (int) ($bed->rows ?? 3),
                 'columns' => (int) ($bed->columns ?? 3),
-                'cell_size_cm' => (int) ($bed->cell_size_cm ?? 30),
+                'cell_size_cm' => (int) ($bed->cell_size_cm ?? 10),
                 'layout' => $bed->layout,
                 'cell_bricks' => $bed->cell_bricks,
                 'plants' => $bed->plants->map(fn ($p) => [
@@ -125,7 +125,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 'is_favorite' => (bool) ($bed->is_favorite ?? false),
                 'rows' => (int) ($bed->rows ?? 3),
                 'columns' => (int) ($bed->columns ?? 3),
-                'cell_size_cm' => (int) ($bed->cell_size_cm ?? 30),
+                'cell_size_cm' => (int) ($bed->cell_size_cm ?? 10),
                 'layout' => $bed->layout,
                 'cell_bricks' => $bed->cell_bricks,
                 'plants' => $bed->plants->map(fn ($p) => [

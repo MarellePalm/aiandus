@@ -54,7 +54,7 @@ const breadcrumbs = [
     <Head title="Muuda peenart" />
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="page page-with-bottomnav">
-            <main class="mx-auto w-full max-w-5xl space-y-4 px-4 pb-6">
+            <main class="mx-auto w-full max-w-6xl space-y-4 px-4 pb-6">
                 <DiaryHeader
                     title="Muuda peenart"
                     title-class="text-foreground text-2xl font-semibold tracking-tight"
