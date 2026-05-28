@@ -4,7 +4,6 @@ import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import { useDebounceFn } from '@vueuse/core';
 import {
     computed,
-    defineAsyncComponent,
     nextTick,
     onBeforeUnmount,
     onMounted,
@@ -17,7 +16,6 @@ import DesktopSearchField from '@/components/DesktopSearchField.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import FloatingPlusButton from '@/components/FloatingPlusButton.vue';
 import GardenMapBackground from '@/components/GardenMapBackground.vue';
-import GardenPlannerBoundaryOverlay from '@/components/GardenPlannerBoundaryOverlay.vue';
 import GardenShapeEditor from '@/components/GardenShapeEditor.vue';
 import MapConfirmDialog from '@/components/map/MapConfirmDialog.vue';
 import MapGardenSetupSection from '@/components/map/MapGardenSetupSection.vue';
@@ -27,22 +25,10 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-    dimensionsFromAddressBoundingBox,
-    fetchCadastralGardenDimensions,
-} from '@/composables/useGardenParcelDimensions';
+import { dimensionsFromAddressBoundingBox } from '@/composables/useGardenParcelDimensions';
 import { useGeolocation } from '@/composables/useGeolocation';
 import AppLayout from '@/layouts/AppLayout.vue';
-import {
-    type GardenAreaApplyResult,
-    type LatLngPoint,
-    type ParcelBounds,
-    gardenBoundsToLatLngRing,
-    latLngPolygonToApplyResult,
-    latLngRingToGardenBounds,
-    localMapFrameAroundAnchor,
-    ortophotoFocusSpanMeters,
-} from '@/lib/gardenAreaSelection';
+import { ortophotoFocusSpanMeters } from '@/lib/gardenAreaSelection';
 import BottomNav from '@/pages/BottomNav.vue';
 import {
     bedBoundsCmFromBricks,
@@ -56,11 +42,11 @@ import {
 } from '@/pages/map/bedPlannerUtils';
 import {
     CM_TO_PX,
+    DEFAULT_BED_CELL_SIZE_CM,
     DEFAULT_CREATE_GARDEN_HEIGHT_M,
     DEFAULT_CREATE_GARDEN_WIDTH_M,
     FIT_VIEW_MIN_ZOOM,
     FOCUSED_BED_MIN_ZOOM,
-    GARDEN_BOUNDARY_MIN_VERTICES,
     GARDEN_GRID_CELL_CM,
     GARDEN_SHAPE_CELL_CM,
     MAX_ZOOM,
@@ -106,9 +92,6 @@ import type {
 import SearchModal from '@/pages/Seeds/SearchModal.vue';
 import type { AppPageProps } from '@/types';
 
-const CreateGardenAreaPicker = defineAsyncComponent(
-    () => import('@/components/CreateGardenAreaPicker.vue'),
-);
 
 const props = defineProps<MapViewProps>();
 
@@ -260,17 +243,11 @@ const createGeolocationRequested = ref(false);
 const createGeolocationFailed = ref(false);
 const createGardenDimensionsLoading = ref(false);
 const createGardenDimensionsMessage = ref<string | null>(null);
-const createMapFrame = ref<ParcelBounds | null>(null);
-const createLocationAnchor = ref<{ lat: number; lng: number } | null>(null);
-const createPolygonLatLng = ref<LatLngPoint[]>([]);
 const createGardenShapeMask = ref<number[][] | null>(null);
 const createSetupMode = ref<'ortophoto' | 'manual'>('ortophoto');
 const createManualShapeMask = ref<number[][]>([]);
 const createManualCellSizeCm = ref(50);
 const gardenSetupMode = ref<GardenSetupMode | null>(null);
-const gardenMapFrame = ref<ParcelBounds | null>(null);
-const gardenLocationAnchor = ref<{ lat: number; lng: number } | null>(null);
-const gardenPolygonLatLng = ref<LatLngPoint[]>([]);
 const gardenManualShapeMask = ref<number[][]>([]);
 const gardenManualCellSizeCm = ref(50);
 const gardenPlannerShapeCellCm = ref(planShapeMaskCellCm(props.gardenPlan));
@@ -358,55 +335,34 @@ async function applyGardenLocationDimensions(
     gardenForm.clearErrors('center_lng');
 
     try {
-        let dims = await fetchCadastralGardenDimensions(lat, lng);
+        const dims = addressBoundingBox
+            ? dimensionsFromAddressBoundingBox(addressBoundingBox)
+            : null;
 
-        if (!dims && addressBoundingBox) {
-            dims = dimensionsFromAddressBoundingBox(addressBoundingBox);
-        }
-
-        if (
-            !hasGardenCoordinates.value &&
-            gardenSetupMode.value === 'ortophoto'
-        ) {
-            syncGardenBoundaryDrawMapFrame(anchorLat, anchorLng);
-            gardenPolygonLatLng.value = [];
-        }
-
-        if (!dims) {
-            gardenDimensionsMessage.value = hasGardenCoordinates.value
-                ? 'Asukoht on määratud; krundi mõõte ei leitud — sisesta laius ja kõrgus käsitsi.'
-                : gardenSetupMode.value === 'ortophoto'
-                  ? `Asukoht on määratud. Klõpsa ortofotol aia nurki (vähemalt ${GARDEN_BOUNDARY_MIN_VERTICES}).`
-                  : 'Asukoht on määratud. Sisesta laius ja sügavus meetrites.';
-            return;
-        }
-
-        const hasCustomBounds =
-            (props.gardenPlan.shape_mask?.length ?? 0) > 0 ||
-            (props.gardenPlan.boundary_polygon?.length ?? 0) >= 3;
-        const currentW = Number(gardenForm.widthMeters || 0);
-        const currentH = Number(gardenForm.heightMeters || 0);
-        const dimsLookLikeWholeParcel =
-            dims.widthMeters > 150 || dims.heightMeters > 150;
-
-        if (
-            !hasCustomBounds &&
-            (!currentW || !currentH || dimsLookLikeWholeParcel)
-        ) {
+        if (dims) {
             gardenForm.widthMeters = dims.widthMeters;
             gardenForm.heightMeters = dims.heightMeters;
             gardenForm.clearErrors('widthMeters');
             gardenForm.clearErrors('heightMeters');
+            gardenDimensionsMessage.value =
+                gardenSetupMode.value === 'ortophoto'
+                    ? `Aadressi piirkond: ${dims.widthMeters} × ${dims.heightMeters} m. Võid mõõte enne salvestamist muuta.`
+                    : `Aadressi piirkond: ${dims.widthMeters} × ${dims.heightMeters} m. Võid mõõte käsitsi muuta.`;
+            return;
         }
 
-        const dimsSuffix = dims.detail ? ` — ${dims.detail}` : '';
-        const sourceLabel =
-            dims.source === 'cadastral' ? 'Krundi piir' : 'Hoone piir';
-        gardenDimensionsMessage.value = hasGardenCoordinates.value
-            ? `${sourceLabel}: ${dims.widthMeters} × ${dims.heightMeters} m${dimsSuffix}. Kaardi keskpunkt: valitud asukoht.`
-            : gardenSetupMode.value === 'ortophoto'
-              ? `${sourceLabel}: ${dims.widthMeters} × ${dims.heightMeters} m${dimsSuffix}. Täpsusta piirjoont nelja või enama nurga abil.`
-              : `${sourceLabel}: ${dims.widthMeters} × ${dims.heightMeters} m${dimsSuffix}. Võid mõõte käsitsi muuta.`;
+        if (
+            !Number(gardenForm.widthMeters) ||
+            !Number(gardenForm.heightMeters)
+        ) {
+            gardenForm.widthMeters = gardenForm.widthMeters || 12;
+            gardenForm.heightMeters = gardenForm.heightMeters || 8;
+        }
+
+        gardenDimensionsMessage.value =
+            gardenSetupMode.value === 'ortophoto'
+                ? 'Asukoht on määratud. Sisesta aia laius ja sügavus meetrites.'
+                : 'Asukoht on määratud. Sisesta laius ja sügavus meetrites.';
     } catch {
         gardenDimensionsMessage.value =
             'Asukoht on määratud; mõõtete automaatne päring ebaõnnestus.';
@@ -518,19 +474,33 @@ const hasGardenCoordinates = computed(
         Number.isFinite(Number(props.gardenPlan.center_lat)) &&
         Number.isFinite(Number(props.gardenPlan.center_lng)),
 );
-/** Ortofotolt piirjoone joonistamisel pole vaja käsitsi mõõte, kiirvalikuid ega kuju ruute. */
+/** Ortofoto esmase seadistuse ajal pole vaja käsitsi koordinaate, kiirvalikuid ega kuju ruute. */
 const gardenOrtophotoSetupActive = computed(
     () => !hasGardenCoordinates.value && gardenSetupMode.value === 'ortophoto',
 );
 const hideGardenQuickPresets = computed(
     () =>
         gardenSetupMode.value === 'ortophoto' ||
-        (gardenSetupMode.value === 'manual' && !hasGardenCoordinates.value) ||
-        (props.gardenPlan.boundary_polygon?.length ?? 0) >= 3,
+        (gardenSetupMode.value === 'manual' && !hasGardenCoordinates.value),
 );
-const gardenBoundaryDrawReady = computed(
-    () => gardenPolygonLatLng.value.length >= GARDEN_BOUNDARY_MIN_VERTICES,
-);
+const gardenOrtophotoSetupReady = computed(() => {
+    const lat = gardenForm.center_lat;
+    const lng = gardenForm.center_lng;
+    const w = Number(gardenForm.widthMeters);
+    const h = Number(gardenForm.heightMeters);
+
+    return (
+        gardenFormLocationChosen.value &&
+        lat != null &&
+        lng != null &&
+        Number.isFinite(Number(lat)) &&
+        Number.isFinite(Number(lng)) &&
+        Number.isFinite(w) &&
+        w > 0 &&
+        Number.isFinite(h) &&
+        h > 0
+    );
+});
 const gardenManualSetupReady = computed(() => {
     const hasShape = gardenManualShapeMask.value.some((row) => row.includes(1));
     if (hasShape) {
@@ -634,55 +604,19 @@ const showGardenCoordinateInputs = computed(
     () => hasGardenCoordinates.value || gardenFormLocationChosen.value,
 );
 
-/** Tühi aiaplaan: pole koordinaate, piird, peenraid ega salvestatud käsitsi paigutust. */
+/** Tühi aiaplaan: pole koordinaate, peenraid ega salvestatud käsitsi paigutust. */
 const needsGardenInitialSetup = computed(
     () =>
         !hasGardenCoordinates.value &&
         props.beds.length === 0 &&
         !manualLayoutActive.value &&
-        !gardenPlanConfiguredWithoutGeo.value &&
-        (props.gardenPlan.boundary_polygon?.length ?? 0) <
-            GARDEN_BOUNDARY_MIN_VERTICES,
+        !gardenPlanConfiguredWithoutGeo.value,
 );
 
 function syncGardenInitialSetupUi(): void {
     if (needsGardenInitialSetup.value) {
         plannerControlsOpen.value = false;
     }
-}
-
-function gardenDrawSpanMeters(): number {
-    const w = Number(gardenForm.widthMeters) || 12;
-    const h = Number(gardenForm.heightMeters) || 8;
-
-    return Math.max(w, h, 4) * 4;
-}
-
-function syncGardenBoundaryDrawMapFrame(
-    anchorLat: number,
-    anchorLng: number,
-): void {
-    gardenLocationAnchor.value = { lat: anchorLat, lng: anchorLng };
-    gardenMapFrame.value = localMapFrameAroundAnchor(
-        anchorLat,
-        anchorLng,
-        gardenDrawSpanMeters(),
-    );
-}
-
-function applyGardenAreaSelectionToForm(result: GardenAreaApplyResult) {
-    const { bounds, shapeMask } = result;
-    gardenForm.center_lat = roundGardenCoordinate(bounds.centerLat);
-    gardenForm.center_lng = roundGardenCoordinate(bounds.centerLng);
-    gardenForm.widthMeters = bounds.widthMeters;
-    gardenForm.heightMeters = bounds.heightMeters;
-    if (shapeMask) {
-        gardenForm.shape_mask = shapeMask;
-    }
-    gardenForm.clearErrors('center_lat');
-    gardenForm.clearErrors('center_lng');
-    gardenForm.clearErrors('widthMeters');
-    gardenForm.clearErrors('heightMeters');
 }
 
 function isGardenPresetActive(widthMeters: number, heightMeters: number) {
@@ -709,14 +643,6 @@ function applyGardenPreset(
     gardenForm.heightMeters = heightMeters;
     gardenForm.clearErrors('widthMeters');
     gardenForm.clearErrors('heightMeters');
-
-    if (gardenMapFrame.value && gardenLocationAnchor.value) {
-        gardenMapFrame.value = localMapFrameAroundAnchor(
-            gardenLocationAnchor.value.lat,
-            gardenLocationAnchor.value.lng,
-            gardenDrawSpanMeters(),
-        );
-    }
 }
 
 function chooseGardenSetupMode(mode: GardenSetupMode) {
@@ -724,8 +650,6 @@ function chooseGardenSetupMode(mode: GardenSetupMode) {
     gardenDimensionsMessage.value = null;
 
     if (mode === 'manual') {
-        gardenMapFrame.value = null;
-        gardenPolygonLatLng.value = [];
         gardenManualShapeMask.value = [];
         gardenManualCellSizeCm.value = planShapeMaskCellCm(props.gardenPlan);
         gardenForm.center_lat = null;
@@ -734,34 +658,8 @@ function chooseGardenSetupMode(mode: GardenSetupMode) {
         return;
     }
 
-    startGardenBoundaryDraw();
-}
-
-function startGardenBoundaryDraw() {
-    gardenSetupMode.value = 'ortophoto';
-    if (!needsGardenInitialSetup.value) {
-        plannerControlsOpen.value = true;
-    }
-    const lat = gardenForm.center_lat;
-    const lng = gardenForm.center_lng;
-
-    if (
-        lat != null &&
-        lng != null &&
-        Number.isFinite(Number(lat)) &&
-        Number.isFinite(Number(lng))
-    ) {
-        syncGardenBoundaryDrawMapFrame(
-            roundGardenCoordinate(Number(lat)),
-            roundGardenCoordinate(Number(lng)),
-        );
-        gardenPolygonLatLng.value = [];
-        gardenDimensionsMessage.value = `Klõpsa ortofotol aia nurki (vähemalt ${GARDEN_BOUNDARY_MIN_VERTICES}).`;
-        return;
-    }
-
     gardenDimensionsMessage.value =
-        'Otsi aia aadress või kasuta geolokatsiooni, seejärel märgi 4 nurka ortofotol.';
+        'Otsi aia aadress või kasuta geolokatsiooni, seejärel sisesta mõõdud meetrites.';
 }
 const gardenFormDimensionErrors = computed(
     () => gardenForm.errors as typeof gardenForm.errors & DimensionFormErrors,
@@ -784,6 +682,24 @@ const createGardenPlanForm = useForm<CreateGardenPlanForm>({
     shape_mask: null,
 });
 
+const createOrtophotoSetupReady = computed(() => {
+    const lat = createGardenPlanForm.center_lat;
+    const lng = createGardenPlanForm.center_lng;
+    const w = Number(createGardenPlanForm.widthMeters);
+    const h = Number(createGardenPlanForm.heightMeters);
+
+    return (
+        lat != null &&
+        lng != null &&
+        Number.isFinite(Number(lat)) &&
+        Number.isFinite(Number(lng)) &&
+        Number.isFinite(w) &&
+        w > 0 &&
+        Number.isFinite(h) &&
+        h > 0
+    );
+});
+
 function resetCreateGardenPlanModalState() {
     createGardenPlanForm.reset();
     createGardenPlanForm.clearErrors();
@@ -797,27 +713,10 @@ function resetCreateGardenPlanModalState() {
     createGeolocationFailed.value = false;
     createGardenDimensionsLoading.value = false;
     createGardenDimensionsMessage.value = null;
-    createMapFrame.value = null;
-    createLocationAnchor.value = null;
-    createPolygonLatLng.value = [];
     createGardenShapeMask.value = null;
     createSetupMode.value = 'ortophoto';
     createManualShapeMask.value = [];
     createManualCellSizeCm.value = 50;
-}
-
-function applyCreateAreaSelectionToForm(result: GardenAreaApplyResult) {
-    const { bounds, shapeMask } = result;
-    createGardenPlanForm.center_lat = roundGardenCoordinate(bounds.centerLat);
-    createGardenPlanForm.center_lng = roundGardenCoordinate(bounds.centerLng);
-    createGardenPlanForm.widthMeters = bounds.widthMeters;
-    createGardenPlanForm.heightMeters = bounds.heightMeters;
-    createGardenPlanForm.shape_mask = shapeMask;
-    createGardenShapeMask.value = shapeMask;
-    createGardenPlanForm.clearErrors('center_lat');
-    createGardenPlanForm.clearErrors('center_lng');
-    createGardenPlanForm.clearErrors('widthMeters');
-    createGardenPlanForm.clearErrors('heightMeters');
 }
 
 const runCreateGardenAddressSearch = useDebounceFn(async (query: string) => {
@@ -861,39 +760,34 @@ async function applyCreateGardenLocationDimensions(
 ) {
     createGardenDimensionsLoading.value = true;
     createGardenDimensionsMessage.value = null;
-    createMapFrame.value = null;
 
     const anchorLat = roundGardenCoordinate(lat);
     const anchorLng = roundGardenCoordinate(lng);
-    createLocationAnchor.value = { lat: anchorLat, lng: anchorLng };
     createGardenPlanForm.center_lat = anchorLat;
     createGardenPlanForm.center_lng = anchorLng;
     createGardenPlanForm.clearErrors('center_lat');
     createGardenPlanForm.clearErrors('center_lng');
 
     try {
-        let dims = await fetchCadastralGardenDimensions(lat, lng);
+        const dims = addressBoundingBox
+            ? dimensionsFromAddressBoundingBox(addressBoundingBox)
+            : null;
 
-        if (!dims && addressBoundingBox) {
-            dims = dimensionsFromAddressBoundingBox(addressBoundingBox);
-        }
-
-        createMapFrame.value = localMapFrameAroundAnchor(anchorLat, anchorLng);
-        createPolygonLatLng.value = [];
-        createGardenPlanForm.widthMeters = null;
-        createGardenPlanForm.heightMeters = null;
         createGardenPlanForm.shape_mask = null;
 
-        if (!dims) {
-            createGardenDimensionsMessage.value =
-                'Asukoht on määratud. Klõpsa ortofotol aia nurki (vähemalt 3).';
+        if (dims) {
+            createGardenPlanForm.widthMeters = dims.widthMeters;
+            createGardenPlanForm.heightMeters = dims.heightMeters;
+            createGardenDimensionsMessage.value = `Aadressi piirkond: ${dims.widthMeters} × ${dims.heightMeters} m. Võid mõõte enne salvestamist muuta.`;
             return;
         }
 
-        const dimsSuffix = dims.detail ? ` — ${dims.detail}` : '';
-        const sourceLabel =
-            dims.source === 'cadastral' ? 'Krundi piir' : 'Hoone piir';
-        createGardenDimensionsMessage.value = `${sourceLabel}: ${dims.widthMeters} × ${dims.heightMeters} m${dimsSuffix}. Klõpsa ortofotol aia nurki (vähemalt 3).`;
+        createGardenPlanForm.widthMeters =
+            createGardenPlanForm.widthMeters ?? DEFAULT_CREATE_GARDEN_WIDTH_M;
+        createGardenPlanForm.heightMeters =
+            createGardenPlanForm.heightMeters ?? DEFAULT_CREATE_GARDEN_HEIGHT_M;
+        createGardenDimensionsMessage.value =
+            'Asukoht on määratud. Sisesta aia laius ja sügavus meetrites.';
     } catch {
         createGardenDimensionsMessage.value =
             'Asukoht on määratud; mõõtete automaatne päring ebaõnnestus.';
@@ -1039,16 +933,27 @@ function closeCreateGardenPlanModal() {
 
 function submitCreateGardenPlan() {
     if (createSetupMode.value === 'ortophoto') {
-        const polygonResult = latLngPolygonToApplyResult(
-            createPolygonLatLng.value,
-        );
-        if (!polygonResult) {
+        const lat = createGardenPlanForm.center_lat;
+        const lng = createGardenPlanForm.center_lng;
+        const w = Number(createGardenPlanForm.widthMeters);
+        const h = Number(createGardenPlanForm.heightMeters);
+
+        if (
+            lat == null ||
+            lng == null ||
+            !Number.isFinite(Number(lat)) ||
+            !Number.isFinite(Number(lng))
+        ) {
             createGardenDimensionsMessage.value =
-                'Joonista aia piir: klõpsa ortofotol vähemalt 3 nurka.';
+                'Vali aia asukoht (aadress või geolokatsioon).';
             return;
         }
 
-        applyCreateAreaSelectionToForm(polygonResult);
+        if (!Number.isFinite(w) || w <= 0 || !Number.isFinite(h) || h <= 0) {
+            createGardenDimensionsMessage.value =
+                'Sisesta aia laius ja sügavus meetrites.';
+            return;
+        }
     } else {
         const mask = createManualShapeMask.value;
         const hasActive = mask.some((row) => row.includes(1));
@@ -1113,11 +1018,7 @@ function submitCreateGardenPlan() {
                     createSetupMode.value === 'manual'
                         ? createManualCellSizeCm.value
                         : GARDEN_SHAPE_CELL_CM,
-                boundary_polygon:
-                    createSetupMode.value === 'ortophoto' &&
-                    createPolygonLatLng.value.length >= 3
-                        ? createPolygonLatLng.value
-                        : undefined,
+                boundary_polygon: null,
             };
         })
         .post('/garden-plans', {
@@ -1281,14 +1182,6 @@ function wheelZoomDelta(event: WheelEvent): number {
     const magnitude = plannerZoomOnePercentDelta() * (event.ctrlKey ? 3 : 1);
 
     return direction * magnitude;
-}
-
-function onPlannerMapViewChange() {
-    plannerBoundaryOverlayRef.value?.bump();
-}
-
-function getPlannerMap() {
-    return plannerMapBgRef.value?.getMap() ?? null;
 }
 
 watch(
@@ -1732,26 +1625,6 @@ const plannerMapBgRef = ref<{
     scheduleMapRefresh: () => void;
     getMap: () => import('leaflet').Map | null;
 } | null>(null);
-const plannerBoundaryOverlayRef = ref<InstanceType<
-    typeof GardenPlannerBoundaryOverlay
-> | null>(null);
-const plannerBoundaryRing = computed((): LatLngPoint[] => {
-    const stored = props.gardenPlan.boundary_polygon;
-    if (stored && stored.length >= 3) {
-        return stored;
-    }
-
-    if (!hasGardenCoordinates.value) {
-        return [];
-    }
-
-    return gardenBoundsToLatLngRing(
-        Number(props.gardenPlan.center_lat),
-        Number(props.gardenPlan.center_lng),
-        props.gardenPlan.width / 100,
-        props.gardenPlan.height / 100,
-    );
-});
 const gardenLooksOversized = computed(() => {
     const w = props.gardenPlan.width / 100;
     const h = props.gardenPlan.height / 100;
@@ -1761,13 +1634,6 @@ const gardenLooksOversized = computed(() => {
 const plannerOrtophotoFocusSpanMeters = computed(() => {
     if (!hasGardenCoordinates.value) {
         return 0;
-    }
-
-    const ring = props.gardenPlan.boundary_polygon;
-    if (ring && ring.length >= 3) {
-        const geo = latLngRingToGardenBounds(ring);
-
-        return ortophotoFocusSpanMeters(geo.widthMeters, geo.heightMeters);
     }
 
     return ortophotoFocusSpanMeters(
@@ -1948,7 +1814,7 @@ function getBedHeightInCells(bed: Bed): number {
 }
 
 function getBedCellSizeCm(bed: Bed): number {
-    return Math.max(10, bed.cell_size_cm || 30);
+    return Math.max(10, bed.cell_size_cm || DEFAULT_BED_CELL_SIZE_CM);
 }
 
 function getBedPreviewImage(bed: Bed): string | null {
@@ -3102,7 +2968,7 @@ function setGardenPlannerShapeCellSize(cm: number) {
 }
 
 function saveGardenPlan(options?: {
-    requireBoundaryPolygon?: boolean;
+    requireOrtophotoSetup?: boolean;
     requireManualDimensions?: boolean;
 }) {
     if (options?.requireManualDimensions) {
@@ -3151,27 +3017,11 @@ function saveGardenPlan(options?: {
         gardenForm.center_lng = null;
     }
 
-    if (options?.requireBoundaryPolygon) {
-        if (gardenPolygonLatLng.value.length < GARDEN_BOUNDARY_MIN_VERTICES) {
-            gardenDimensionsMessage.value = `Joonista piir: märgi ortofotol vähemalt ${GARDEN_BOUNDARY_MIN_VERTICES} nurka.`;
-            return;
-        }
-
-        const polygonResult = latLngPolygonToApplyResult(
-            gardenPolygonLatLng.value,
-        );
-        if (!polygonResult) {
-            gardenDimensionsMessage.value = `Joonista piir: märgi ortofotol vähemalt ${GARDEN_BOUNDARY_MIN_VERTICES} nurka.`;
-            return;
-        }
-
-        applyGardenAreaSelectionToForm(polygonResult);
+    if (options?.requireOrtophotoSetup && !gardenOrtophotoSetupReady.value) {
+        gardenDimensionsMessage.value =
+            'Vali asukoht ja sisesta aia laius ning sügavus meetrites.';
+        return;
     }
-
-    const boundaryPolygon =
-        gardenPolygonLatLng.value.length >= GARDEN_BOUNDARY_MIN_VERTICES
-            ? gardenPolygonLatLng.value
-            : undefined;
 
     gardenForm
         .transform((data) => ({
@@ -3196,7 +3046,7 @@ function saveGardenPlan(options?: {
                 !gardenFormLocationChosen.value
                     ? null
                     : data.center_lng,
-            boundary_polygon: boundaryPolygon,
+            boundary_polygon: null,
         }))
         .put(`/garden-plans/${props.gardenPlan.id}`, {
             preserveScroll: true,
@@ -3218,9 +3068,6 @@ function saveGardenPlan(options?: {
                     center_lat: plan.center_lat,
                     center_lng: plan.center_lng,
                 });
-                gardenMapFrame.value = null;
-                gardenLocationAnchor.value = null;
-                gardenPolygonLatLng.value = [];
                 gardenSetupMode.value = null;
                 if (
                     options?.requireManualDimensions &&
@@ -3377,13 +3224,13 @@ function saveGardenPlan(options?: {
                                     class="rounded-xl border border-amber-300/80 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm dark:border-amber-500/40 dark:bg-amber-950/40 dark:text-amber-100"
                                 >
                                     <p class="font-semibold">
-                                        Aia piir võib olla vale
+                                        Aia mõõdud võivad olla valed
                                     </p>
                                     <p class="mt-1 leading-6">
                                         Salvestatud mõõdud (
                                         {{ gardenDimensionLabel }}) on liiga
-                                        suured. Loo uus aiaplaan ja joonista
-                                        piir uuesti täppidega.
+                                        suured. Muuda mõõte või loo uus aiaplaan
+                                        õige asukoha ja suurusega.
                                     </p>
                                 </div>
 
@@ -3744,10 +3591,9 @@ function saveGardenPlan(options?: {
                                                         >
                                                         <span
                                                             class="text-xs leading-5 text-muted-foreground"
-                                                            >Joonista piir 4
-                                                            nurga abil — sobib
-                                                            keerukale
-                                                            kujule.</span
+                                                            >Aadress või asukoht
+                                                            + mõõdud
+                                                            meetrites.</span
                                                         >
                                                     </button>
                                                     <button
@@ -4024,8 +3870,8 @@ function saveGardenPlan(options?: {
                                                     >
                                                         Otsi aadress või kasuta
                                                         geolokatsiooni, seejärel
-                                                        märgi aia piir
-                                                        ortofotol.
+                                                        sisesta aia mõõdud
+                                                        meetrites.
                                                     </template>
                                                     <template
                                                         v-else-if="
@@ -4033,9 +3879,9 @@ function saveGardenPlan(options?: {
                                                         "
                                                     >
                                                         Otsi aadressi või kasuta
-                                                        geolokatsiooni — krundi
-                                                        mõõdud ja koordinaadid
-                                                        täituvad automaatselt.
+                                                        geolokatsiooni — mõõdud
+                                                        ja koordinaadid täituvad
+                                                        automaatselt.
                                                     </template>
                                                     <template v-else>
                                                         Otsi aadressi või kasuta
@@ -4192,7 +4038,7 @@ function saveGardenPlan(options?: {
                                                     "
                                                     class="mt-2 text-xs text-muted-foreground"
                                                 >
-                                                    Laen krundi mõõte…
+                                                    Laen andmeid…
                                                 </p>
                                                 <p
                                                     v-else-if="
@@ -4204,63 +4050,6 @@ function saveGardenPlan(options?: {
                                                         gardenDimensionsMessage
                                                     }}
                                                 </p>
-                                                <CreateGardenAreaPicker
-                                                    v-if="
-                                                        !hasGardenCoordinates &&
-                                                        gardenSetupMode ===
-                                                            'ortophoto' &&
-                                                        gardenMapFrame
-                                                    "
-                                                    class="mt-4"
-                                                    :map-frame="gardenMapFrame"
-                                                    :polygon-lat-lng="
-                                                        gardenPolygonLatLng
-                                                    "
-                                                    :min-vertices="
-                                                        GARDEN_BOUNDARY_MIN_VERTICES
-                                                    "
-                                                    :focus-anchor-lat="
-                                                        gardenLocationAnchor?.lat ??
-                                                        null
-                                                    "
-                                                    :focus-anchor-lng="
-                                                        gardenLocationAnchor?.lng ??
-                                                        null
-                                                    "
-                                                    @update:polygon-lat-lng="
-                                                        gardenPolygonLatLng =
-                                                            $event
-                                                    "
-                                                    @apply="
-                                                        applyGardenAreaSelectionToForm
-                                                    "
-                                                />
-                                                <div
-                                                    v-if="
-                                                        !hasGardenCoordinates &&
-                                                        gardenSetupMode ===
-                                                            'ortophoto' &&
-                                                        gardenMapFrame
-                                                    "
-                                                    class="mt-3 flex flex-wrap items-center gap-2"
-                                                >
-                                                    <button
-                                                        type="button"
-                                                        class="inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                                                        :disabled="
-                                                            gardenForm.processing ||
-                                                            !gardenBoundaryDrawReady
-                                                        "
-                                                        @click="
-                                                            saveGardenPlan({
-                                                                requireBoundaryPolygon: true,
-                                                            })
-                                                        "
-                                                    >
-                                                        Salvesta piir ja ava
-                                                        kaart
-                                                    </button>
-                                                </div>
                                                 <div
                                                     v-if="
                                                         !gardenOrtophotoSetupActive &&
@@ -4619,11 +4408,8 @@ function saveGardenPlan(options?: {
                                     :width-meters="gardenForm.widthMeters"
                                     :height-meters="gardenForm.heightMeters"
                                     :form-processing="gardenForm.processing"
-                                    :garden-map-frame="gardenMapFrame"
-                                    :polygon-lat-lng="gardenPolygonLatLng"
-                                    :location-anchor="gardenLocationAnchor"
-                                    :boundary-draw-ready="
-                                        gardenBoundaryDrawReady
+                                    :ortophoto-setup-ready="
+                                        gardenOrtophotoSetupReady
                                     "
                                     :manual-setup-ready="gardenManualSetupReady"
                                     :manual-shape-mask="gardenManualShapeMask"
@@ -4659,13 +4445,9 @@ function saveGardenPlan(options?: {
                                     @update:height-meters="
                                         gardenForm.heightMeters = $event
                                     "
-                                    @update:polygon-lat-lng="
-                                        gardenPolygonLatLng = $event
-                                    "
-                                    @apply-area="applyGardenAreaSelectionToForm"
-                                    @save-boundary="
+                                    @save-ortophoto="
                                         saveGardenPlan({
-                                            requireBoundaryPolygon: true,
+                                            requireOrtophotoSetup: true,
                                         })
                                     "
                                     @save-manual="
@@ -5148,33 +4930,8 @@ function saveGardenPlan(options?: {
                                                                 :fit-zoom="
                                                                     fitGardenZoom
                                                                 "
-                                                                @view-change="
-                                                                    onPlannerMapViewChange
-                                                                "
                                                                 @leaflet-zoom-change="
                                                                     onPlannerLeafletZoomChange
-                                                                "
-                                                            />
-                                                            <GardenPlannerBoundaryOverlay
-                                                                v-if="
-                                                                    showMapBackground &&
-                                                                    hasGardenCoordinates &&
-                                                                    plannerBoundaryRing.length >=
-                                                                        3
-                                                                "
-                                                                ref="plannerBoundaryOverlayRef"
-                                                                :ring="
-                                                                    plannerBoundaryRing
-                                                                "
-                                                                :get-map="
-                                                                    getPlannerMap
-                                                                "
-                                                                :show-fill="
-                                                                    (
-                                                                        gardenPlan.boundary_polygon ??
-                                                                        []
-                                                                    ).length >=
-                                                                    3
                                                                 "
                                                             />
                                                             <div
@@ -5197,7 +4954,7 @@ function saveGardenPlan(options?: {
                                                                             bed.id
                                                                         "
                                                                         data-bed-footprint="true"
-                                                                        class="absolute touch-none overflow-hidden rounded-sm border-2 border-amber-800/35 bg-amber-50/88 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)] transition dark:border-amber-200/30 dark:bg-amber-950/35"
+                                                                        class="absolute touch-none overflow-hidden rounded-none border-2 border-amber-800/35 bg-amber-50/88 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)] transition dark:border-amber-200/30 dark:bg-amber-950/35"
                                                                         :class="[
                                                                             draggingBedId ===
                                                                             bed.id
@@ -5236,6 +4993,24 @@ function saveGardenPlan(options?: {
                                                                         "
                                                                     >
                                                                         <div
+                                                                            v-if="
+                                                                                getBedPreviewImage(
+                                                                                    bed,
+                                                                                )
+                                                                            "
+                                                                            class="pointer-events-none absolute inset-0 bg-cover bg-center opacity-80"
+                                                                            :style="{
+                                                                                backgroundImage: `url('${getBedPreviewImage(
+                                                                                    bed,
+                                                                                )}')`,
+                                                                            }"
+                                                                            aria-hidden="true"
+                                                                        />
+                                                                        <div
+                                                                            class="pointer-events-none absolute inset-0 bg-amber-900/10 dark:bg-amber-950/10"
+                                                                            aria-hidden="true"
+                                                                        />
+                                                                        <div
                                                                             v-for="(
                                                                                 cell,
                                                                                 cellIndex
@@ -5247,8 +5022,8 @@ function saveGardenPlan(options?: {
                                                                             :class="
                                                                                 cell.kind ===
                                                                                 'walkway'
-                                                                                    ? 'bg-stone-300/80 dark:bg-stone-600/50'
-                                                                                    : 'bg-amber-100/75 dark:bg-amber-900/40'
+                                                                                    ? 'bg-stone-300/35 dark:bg-stone-600/28'
+                                                                                    : 'bg-amber-100/18 dark:bg-amber-900/14'
                                                                             "
                                                                             :style="{
                                                                                 left: `${cell.left}px`,
@@ -5482,7 +5257,7 @@ function saveGardenPlan(options?: {
                         :title="
                             canPlaceBedsOnMap
                                 ? undefined
-                                : 'Seadista kõigepealt aia suurus või piir'
+                                : 'Seadista kõigepealt aia suurus või asukoht'
                         "
                         @click="startNewBedOnMap"
                     >
@@ -5593,8 +5368,7 @@ function saveGardenPlan(options?: {
                         >
                         <span
                             class="block text-xs leading-5 text-muted-foreground"
-                            >Joonista piir kaardil — täpne asukoht ja
-                            kuju.</span
+                            >Aadress või asukoht + mõõdud meetrites.</span
                         >
                     </button>
                     <button
@@ -5622,9 +5396,9 @@ function saveGardenPlan(options?: {
                         Aia asukoht
                     </p>
                     <p class="mt-1 text-sm leading-6 text-muted-foreground">
-                        Otsi aadressi või kasuta geolokatsiooni — krundi mõõdud
-                        ja koordinaadid täituvad automaatselt. Vajadusel saad
-                        käsitsi muuta.
+                        Otsi aadressi või kasuta geolokatsiooni, seejärel sisesta
+                        aia laius ja sügavus meetrites. Aadressi korral täituvad
+                        mõõdud automaatselt.
                     </p>
                     <div
                         class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start"
@@ -5736,7 +5510,7 @@ function saveGardenPlan(options?: {
                         v-if="createGardenDimensionsLoading"
                         class="mt-2 text-xs text-muted-foreground"
                     >
-                        Laen krundi mõõte…
+                        Laen andmeid…
                     </p>
                     <p
                         v-else-if="createGardenDimensionsMessage"
@@ -5747,16 +5521,6 @@ function saveGardenPlan(options?: {
                 </div>
 
                 <template v-if="createSetupMode === 'ortophoto'">
-                    <CreateGardenAreaPicker
-                        v-if="createMapFrame"
-                        :map-frame="createMapFrame"
-                        :polygon-lat-lng="createPolygonLatLng"
-                        :focus-anchor-lat="createLocationAnchor?.lat ?? null"
-                        :focus-anchor-lng="createLocationAnchor?.lng ?? null"
-                        @update:polygon-lat-lng="createPolygonLatLng = $event"
-                        @apply="applyCreateAreaSelectionToForm"
-                    />
-
                     <div class="mt-4 grid gap-3 sm:grid-cols-2">
                         <label
                             class="rounded-2xl border border-border/70 bg-card/85 px-3 py-3 text-sm"
@@ -5868,7 +5632,7 @@ function saveGardenPlan(options?: {
                         :disabled="
                             createGardenPlanForm.processing ||
                             (createSetupMode === 'ortophoto' &&
-                                createPolygonLatLng.length < 3) ||
+                                !createOrtophotoSetupReady) ||
                             (createSetupMode === 'manual' &&
                                 !createManualShapeMask.some((row) =>
                                     row.includes(1),
@@ -5879,8 +5643,8 @@ function saveGardenPlan(options?: {
                             createGardenPlanForm.processing
                                 ? 'Loon aiaplaani...'
                                 : createSetupMode === 'ortophoto' &&
-                                    createPolygonLatLng.length < 3
-                                  ? `Lisa veel ${3 - createPolygonLatLng.length} nurka`
+                                    !createOrtophotoSetupReady
+                                  ? 'Vali asukoht ja mõõdud'
                                   : createSetupMode === 'manual' &&
                                       !createManualShapeMask.some((row) =>
                                           row.includes(1),

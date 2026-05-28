@@ -1,18 +1,7 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue';
-
 import GardenShapeEditor from '@/components/GardenShapeEditor.vue';
-import type { LatLngPoint, ParcelBounds } from '@/lib/gardenAreaSelection';
-import { GARDEN_BOUNDARY_MIN_VERTICES } from '@/pages/map/constants';
 import { gardenSetupChoiceClass } from '@/pages/map/gardenAddressSearch';
-import type {
-    GardenAddressSearchResult,
-    GardenSetupMode,
-} from '@/pages/map/types';
-
-const CreateGardenAreaPicker = defineAsyncComponent(
-    () => import('@/components/CreateGardenAreaPicker.vue'),
-);
+import type { GardenAddressSearchResult, GardenSetupMode } from '@/pages/map/types';
 
 defineProps<{
     setupMode: GardenSetupMode | null;
@@ -26,10 +15,7 @@ defineProps<{
     widthMeters: number;
     heightMeters: number;
     formProcessing: boolean;
-    gardenMapFrame: ParcelBounds | null;
-    polygonLatLng: LatLngPoint[];
-    locationAnchor: { lat: number; lng: number } | null;
-    boundaryDrawReady: boolean;
+    ortophotoSetupReady: boolean;
     manualSetupReady: boolean;
     manualShapeMask: number[][];
     manualCellSizeCm: number;
@@ -43,9 +29,7 @@ const emit = defineEmits<{
     'address-search-focus': [];
     'select-address': [GardenAddressSearchResult];
     'request-geolocation': [];
-    'update:polygonLatLng': [LatLngPoint[]];
-    'apply-area': [];
-    'save-boundary': [];
+    'save-ortophoto': [];
     'save-manual': [];
     'update:widthMeters': [number];
     'update:heightMeters': [number];
@@ -64,8 +48,8 @@ const emit = defineEmits<{
         <p
             class="mx-auto mt-2 max-w-xl text-center text-sm leading-6 text-muted-foreground"
         >
-            Vali, kuidas alustad. Ortofoto abil saad piirjoone nelja või enama
-            nurga järgi; käsitsi saad sisestada mõõdud (nt rõdu või terrass).
+            Vali, kuidas alustad. Ortofoto puhul määra asukoht ja aia mõõdud;
+            käsitsi saad joonistada kuju ruudustikul (nt rõdu või terrass).
         </p>
 
         <div
@@ -87,7 +71,7 @@ const emit = defineEmits<{
                     Ortofoto
                 </span>
                 <span class="text-xs leading-5 text-muted-foreground"
-                    >Märgi 4 nurka — sobib aeda ja krundile.</span
+                    >Aadress või asukoht + mõõdud meetrites.</span
                 >
             </button>
             <button
@@ -175,7 +159,7 @@ const emit = defineEmits<{
 
         <div
             v-else-if="setupMode === 'ortophoto'"
-            class="mx-auto mt-5 max-w-xl space-y-3"
+            class="mx-auto mt-5 max-w-xl space-y-4"
         >
             <div>
                 <p
@@ -184,8 +168,8 @@ const emit = defineEmits<{
                     Aia asukoht
                 </p>
                 <p class="mt-1 text-sm leading-6 text-muted-foreground">
-                    Otsi aadress või kasuta geolokatsiooni, seejärel märgi aia
-                    piir ortofotol.
+                    Otsi aadress või kasuta geolokatsiooni, seejärel sisesta aia
+                    laius ja sügavus meetrites.
                 </p>
             </div>
             <div class="flex flex-col gap-2 sm:flex-row sm:items-start">
@@ -268,34 +252,67 @@ const emit = defineEmits<{
                 {{ gardenDimensionsMessage }}
             </p>
 
-            <CreateGardenAreaPicker
-                v-if="gardenMapFrame"
-                :map-frame="gardenMapFrame"
-                :polygon-lat-lng="polygonLatLng"
-                :min-vertices="GARDEN_BOUNDARY_MIN_VERTICES"
-                :focus-anchor-lat="locationAnchor?.lat ?? null"
-                :focus-anchor-lng="locationAnchor?.lng ?? null"
-                @update:polygon-lat-lng="emit('update:polygonLatLng', $event)"
-                @apply="emit('apply-area')"
-            />
+            <div class="grid gap-3 sm:grid-cols-2">
+                <label
+                    class="rounded-2xl border border-border/70 bg-card/85 px-3 py-3 text-sm"
+                >
+                    <span
+                        class="mb-1 block text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                        >Laius (m)</span
+                    >
+                    <input
+                        :value="widthMeters"
+                        type="number"
+                        min="0.01"
+                        max="1000"
+                        step="0.01"
+                        class="w-full bg-transparent text-sm font-medium text-foreground outline-none"
+                        placeholder="12"
+                        @input="
+                            emit(
+                                'update:widthMeters',
+                                Number(
+                                    ($event.target as HTMLInputElement).value,
+                                ),
+                            )
+                        "
+                    />
+                </label>
+                <label
+                    class="rounded-2xl border border-border/70 bg-card/85 px-3 py-3 text-sm"
+                >
+                    <span
+                        class="mb-1 block text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                        >Sügavus (m)</span
+                    >
+                    <input
+                        :value="heightMeters"
+                        type="number"
+                        min="0.01"
+                        max="1000"
+                        step="0.01"
+                        class="w-full bg-transparent text-sm font-medium text-foreground outline-none"
+                        placeholder="8"
+                        @input="
+                            emit(
+                                'update:heightMeters',
+                                Number(
+                                    ($event.target as HTMLInputElement).value,
+                                ),
+                            )
+                        "
+                    />
+                </label>
+            </div>
 
             <div class="flex flex-wrap justify-center gap-2 pt-1">
                 <button
-                    v-if="!gardenMapFrame"
-                    type="button"
-                    class="inline-flex items-center justify-center rounded-full border border-border/70 bg-card px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
-                    disabled
-                >
-                    Vali kõigepealt asukoht
-                </button>
-                <button
-                    v-else
                     type="button"
                     class="inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                    :disabled="formProcessing || !boundaryDrawReady"
-                    @click="emit('save-boundary')"
+                    :disabled="formProcessing || !ortophotoSetupReady"
+                    @click="emit('save-ortophoto')"
                 >
-                    Salvesta piir ja ava kaart
+                    Salvesta ja ava kaart
                 </button>
             </div>
         </div>

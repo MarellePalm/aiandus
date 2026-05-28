@@ -7,6 +7,7 @@ import BackIconButton from '@/components/BackIconButton.vue';
 import DiaryHeader from '@/components/DiaryHeader.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
+import { DEFAULT_BED_CELL_SIZE_CM } from '@/pages/map/constants';
 import type { AppPageProps } from '@/types';
 
 type PlantInBed = {
@@ -79,7 +80,9 @@ const cellModal = ref<{ row: number; col: number } | null>(null);
 const selectedPlantQuantity = ref(1);
 const assigningPlantId = ref<number | null>(null);
 const editingCellSize = ref(false);
-const cellSizeInput = ref<number>(props.bed.cell_size_cm ?? 30);
+const cellSizeInput = ref<number>(
+    props.bed.cell_size_cm ?? DEFAULT_BED_CELL_SIZE_CM,
+);
 const savingCellSize = ref(false);
 const editingLayout = ref(false);
 const coverTick = ref(0);
@@ -427,7 +430,7 @@ function getBedColumns(): number {
 }
 
 const bedPhysicalSize = computed(() => {
-    const cm = props.bed.cell_size_cm ?? 30;
+    const cm = props.bed.cell_size_cm ?? DEFAULT_BED_CELL_SIZE_CM;
     const cols = getBedColumns();
     const rows = getBedLayout().length || 1;
     const wCm = cols * cm;
@@ -894,7 +897,7 @@ function setInlineFeedback(tone: 'success' | 'error', message: string) {
 
 function beginEditCellSize() {
     editingCellSize.value = true;
-    cellSizeInput.value = props.bed.cell_size_cm ?? 30;
+    cellSizeInput.value = props.bed.cell_size_cm ?? DEFAULT_BED_CELL_SIZE_CM;
 }
 
 function saveCellSize() {
@@ -1383,7 +1386,7 @@ function handleBedStatusAction() {
                                                 class="material-symbols-outlined text-[14px]"
                                                 >straighten</span
                                             >
-                                            {{ bed.cell_size_cm ?? 30 }}
+                                            {{ bed.cell_size_cm ?? DEFAULT_BED_CELL_SIZE_CM }}
                                             cm/ruut
                                         </button>
                                         <form

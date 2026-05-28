@@ -67,10 +67,15 @@ const placementFitZoom = computed(() => {
 
 const fitScale = computed(() => {
     const w = viewportWidth.value;
-    if (!w) {
+    const h = viewportHeight.value;
+    if (!w || !h) {
         return 1;
     }
-    return Math.min(1, (w - 16) / surface.value.width);
+    const fitW = Math.max(1, w - 16) / surface.value.width;
+    const fitH = Math.max(1, h - 16) / surface.value.height;
+    const fitToViewport = Math.min(fitW, fitH);
+    const preferredMinScale = 760 / surface.value.width;
+    return Math.max(0.35, Math.min(2.75, Math.max(fitToViewport, preferredMinScale)));
 });
 
 const displayWidth = computed(() =>
@@ -292,7 +297,7 @@ onBeforeUnmount(() => {
                     ? 'overflow-hidden bg-[#e5e3df]'
                     : 'overflow-auto bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(241,247,235,0.98))]'
             "
-            style="max-height: min(58vh, 520px)"
+            style="max-height: min(72vh, 620px)"
         >
             <div
                 class="relative mx-auto"

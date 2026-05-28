@@ -1,5 +1,5 @@
 import { inferCmPositionsFromGrid } from '@/pages/map/bedEditorCmLayout';
-import { CM_TO_PX } from '@/pages/map/constants';
+import { CM_TO_PX, DEFAULT_BED_CELL_SIZE_CM } from '@/pages/map/constants';
 
 export type BedCellBrick = {
     x: number;
@@ -30,7 +30,7 @@ export type BedFootprintRectPx = {
 };
 
 function clampUnitCm(unitCm: number): number {
-    return Math.max(10, Math.min(200, Math.round(unitCm) || 30));
+    return Math.max(10, Math.min(200, Math.round(unitCm) || DEFAULT_BED_CELL_SIZE_CM));
 }
 
 export function resolveBedBricksCm(
@@ -87,7 +87,12 @@ export function bedBoundsCmFromBricks(
     bricks: ResolvedBedBrick[],
 ): { widthCm: number; heightCm: number; minLeft: number; minTop: number } {
     if (!bricks.length) {
-        return { widthCm: 30, heightCm: 30, minLeft: 0, minTop: 0 };
+        return {
+            widthCm: DEFAULT_BED_CELL_SIZE_CM,
+            heightCm: DEFAULT_BED_CELL_SIZE_CM,
+            minLeft: 0,
+            minTop: 0,
+        };
     }
 
     let minLeft = Number.POSITIVE_INFINITY;
@@ -112,7 +117,7 @@ export function bedBoundsCmFromBricks(
 
 export function bedFootprintRectsPx(
     bricks: BedCellBrick[],
-    unitCm = 30,
+    unitCm = DEFAULT_BED_CELL_SIZE_CM,
 ): BedFootprintRectPx[] {
     const resolved = resolveBedBricksCm(bricks, unitCm);
     const { minLeft, minTop } = bedBoundsCmFromBricks(resolved);
@@ -128,7 +133,7 @@ export function bedFootprintRectsPx(
 
 export function bedFootprintSizePx(
     bricks: BedCellBrick[],
-    unitCm = 30,
+    unitCm = DEFAULT_BED_CELL_SIZE_CM,
 ): { width: number; height: number } {
     const { widthCm, heightCm } = bedBoundsCmFromBricks(
         resolveBedBricksCm(bricks, unitCm),

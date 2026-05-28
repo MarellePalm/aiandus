@@ -83,6 +83,39 @@ export function buildBedEditorCmLayout(cells: BedEditorCell[]): BedEditorCmLayou
     };
 }
 
+export function cellsListHasOverlaps(
+    cells: BedEditorCell[],
+    excludeId?: string,
+): boolean {
+    const list = excludeId
+        ? cells.filter((cell) => cell.id !== excludeId)
+        : cells;
+
+    for (let i = 0; i < list.length; i += 1) {
+        for (let j = i + 1; j < list.length; j += 1) {
+            const a = list[i];
+            const b = list[j];
+
+            if (
+                brickCmRectsOverlap(
+                    a.left_cm,
+                    a.top_cm,
+                    a.width_cm,
+                    a.height_cm,
+                    b.left_cm,
+                    b.top_cm,
+                    b.width_cm,
+                    b.height_cm,
+                )
+            ) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 export function brickFitsCm(
     cells: BedEditorCell[],
     leftCm: number,

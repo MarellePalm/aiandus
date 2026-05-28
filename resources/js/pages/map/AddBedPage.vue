@@ -31,7 +31,7 @@ const breadcrumbs = [
     <Head title="Lisa peenar" />
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="page page-with-bottomnav">
-            <main class="mx-auto w-full max-w-5xl space-y-4 px-4 pb-6">
+            <main class="mx-auto w-full max-w-6xl space-y-4 px-4 pb-6">
                 <DiaryHeader
                     title="Lisa peenar"
                     title-class="text-foreground text-2xl font-semibold tracking-tight"
