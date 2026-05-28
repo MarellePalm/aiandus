@@ -139,9 +139,9 @@ const tabClass = (key: TabKey) => {
     const base =
         'flex h-8 shrink-0 items-center justify-center rounded-full px-3 text-xs font-semibold transition-colors';
     if (activeTab.value === key) {
-        return `${base} bg-primary text-white`;
+        return `${base} ui-tab-active`;
     }
-    return `${base} bg-primary/10 text-primary hover:bg-primary/15`;
+    return `${base} ui-tab-inactive`;
 };
 
 const resetToAll = () => {

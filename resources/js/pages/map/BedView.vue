@@ -1072,7 +1072,7 @@ function handleBedStatusAction() {
                         </div>
 
                         <section
-                            class="bed-hero relative overflow-hidden rounded-[1.75rem] border border-emerald-900/10 bg-card shadow-[0_18px_55px_rgba(49,79,55,0.18)]"
+                            class="bed-hero relative overflow-hidden rounded-[1.75rem] border border-emerald-900/10 bg-card shadow-[0_18px_55px_rgba(49,79,55,0.18)] dark:border-emerald-800/40 dark:bg-card/95 dark:shadow-[0_20px_60px_rgba(0,0,0,0.45)]"
                         >
                             <div
                                 v-if="bed.image_url"
@@ -1346,7 +1346,7 @@ function handleBedStatusAction() {
                         </section>
 
                         <section
-                            class="rounded-[1.75rem] border border-emerald-900/10 bg-card p-3 shadow-[0_18px_45px_rgba(49,79,55,0.12)] sm:p-4"
+                            class="rounded-[1.75rem] border border-emerald-900/10 bg-card p-3 shadow-[0_18px_45px_rgba(49,79,55,0.12)] dark:border-emerald-800/40 dark:bg-card/95 dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] sm:p-4"
                         >
                             <div
                                 class="mb-3 flex flex-col gap-3 px-1 sm:flex-row sm:items-start sm:justify-between"
@@ -1484,7 +1484,7 @@ function handleBedStatusAction() {
                                 </div>
                             </div>
                             <div
-                                class="mb-4 rounded-2xl border border-emerald-900/10 bg-[linear-gradient(135deg,rgba(236,253,245,0.92),rgba(254,243,199,0.45))] p-3"
+                                class="mb-4 rounded-2xl border border-emerald-900/10 bg-[linear-gradient(135deg,rgba(236,253,245,0.92),rgba(254,243,199,0.45))] p-3 dark:border-emerald-800/35 dark:bg-[linear-gradient(135deg,rgba(20,45,31,0.92),rgba(48,41,25,0.65))]"
                             >
                                 <div
                                     v-if="fillPercent === 100"
@@ -1498,7 +1498,7 @@ function handleBedStatusAction() {
                                 >
                                     <div>
                                         <p
-                                            class="text-xs font-bold tracking-[0.16em] text-emerald-950/55 uppercase"
+                                            class="text-xs font-bold tracking-[0.16em] text-emerald-950/55 dark:text-emerald-200/70 uppercase"
                                         >
                                             Peenar täitub
                                         </p>
@@ -1509,7 +1509,7 @@ function handleBedStatusAction() {
                                         </p>
                                     </div>
                                     <span
-                                        class="rounded-full border border-white/70 bg-white/70 px-2.5 py-1 text-xs font-bold text-emerald-900 shadow-sm backdrop-blur"
+                                        class="rounded-full border border-white/70 bg-white/70 px-2.5 py-1 text-xs font-bold text-emerald-900 shadow-sm backdrop-blur dark:border-white/15 dark:bg-black/25 dark:text-emerald-100"
                                     >
                                         {{ plantedCellCount }} /
                                         {{ totalBedCells }}
@@ -1524,7 +1524,7 @@ function handleBedStatusAction() {
                             </div>
                             <div
                                 ref="bedGridViewportRef"
-                                class="bed-grid-viewport relative -mx-1 min-h-[min(52vw,22rem)] rounded-[1.35rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,253,245,0.35),rgba(255,251,235,0.2))] px-1 pb-1"
+                                class="bed-grid-viewport relative -mx-1 min-h-[min(52vw,22rem)] rounded-[1.35rem] border border-emerald-900/10 bg-[linear-gradient(180deg,rgba(236,253,245,0.35),rgba(255,251,235,0.2))] px-1 pb-1 dark:border-emerald-800/35 dark:bg-[linear-gradient(180deg,rgba(12,31,21,0.6),rgba(33,30,20,0.45))]"
                                 @wheel.prevent="onBedGridWheel"
                                 @pointerdown="onBedGridPointerDown"
                                 @pointermove="onBedGridPointerMove"
@@ -1533,7 +1533,7 @@ function handleBedStatusAction() {
                                 @pointerleave="onBedGridPointerUp"
                             >
                                 <div
-                                    class="pointer-events-none absolute top-2 right-2 z-10 flex items-center gap-1 rounded-full border border-white/70 bg-white/90 p-0.5 shadow-sm backdrop-blur"
+                                    class="pointer-events-none absolute top-2 right-2 z-10 flex items-center gap-1 rounded-full border border-white/70 bg-white/90 p-0.5 shadow-sm backdrop-blur dark:border-white/15 dark:bg-black/45"
                                 >
                                     <button
                                         type="button"
@@ -1594,7 +1594,7 @@ function handleBedStatusAction() {
                                         <draggable
                                             v-model="localCells"
                                             item-key="key"
-                                            class="bed-grid-frame inline-grid w-max min-w-0 gap-2 rounded-[1.35rem] border border-emerald-900/10 bg-card/40 p-3 ring-1 ring-white/70 sm:gap-2.5 sm:p-4"
+                                            class="bed-grid-frame inline-grid w-max min-w-0 gap-2 rounded-[1.35rem] border border-emerald-900/10 bg-card/40 p-3 ring-1 ring-white/70 dark:border-emerald-800/35 dark:bg-card/65 dark:ring-white/10 sm:gap-2.5 sm:p-4"
                                             :style="{
                                                 gridTemplateColumns: `repeat(${getBedColumns()}, ${bedCellSize}px)`,
                                                 gridTemplateRows: `repeat(${gridLayout.length}, ${bedCellSize}px)`,

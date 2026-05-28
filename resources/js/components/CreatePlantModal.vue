@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { useForm } from '@inertiajs/vue3';
+import { router, useForm } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
+import CreateCategoryModal from '@/components/CreateCategoryModal.vue';
 import LocalDatePicker from '@/components/LocalDatePicker.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import { normalizeImageForUpload } from '@/lib/imageUpload';
@@ -49,6 +50,7 @@ const form = useForm<PlantForm>({
 /** --- PILT --- */
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const categorySelectRef = ref<HTMLSelectElement | null>(null);
+const categoryModalOpen = ref(false);
 
 const previewUrl = ref<string | null>(null);
 const isDragging = ref(false);
@@ -66,6 +68,18 @@ const setFile = (file: File | null) => {
 };
 
 const openPicker = () => fileInputRef.value?.click();
+
+const openCategoryModal = () => {
+    categoryModalOpen.value = true;
+};
+
+const refreshCategoriesAfterCreate = () => {
+    router.reload({
+        only: ['categories'],
+        preserveState: true,
+        preserveScroll: true,
+    });
+};
 
 const onFileChange = async (e: Event) => {
     const input = e.target as HTMLInputElement;
@@ -254,6 +268,16 @@ onBeforeUnmount(() => {
                                 >
                                     {{ form.errors.category_id }}
                                 </p>
+                                <button
+                                    type="button"
+                                    class="mt-3 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary transition hover:bg-primary/20"
+                                    @click="openCategoryModal"
+                                >
+                                    <span class="material-symbols-outlined text-base"
+                                        >add</span
+                                    >
+                                    Lisa kategooria
+                                </button>
                             </div>
 
                             <!-- ISTUTAMISE KUUPÄEV -->
@@ -542,6 +566,11 @@ onBeforeUnmount(() => {
             </div>
         </transition>
     </Teleport>
+    <CreateCategoryModal
+        :open="categoryModalOpen"
+        @update:open="categoryModalOpen = $event"
+        @created="refreshCategoriesAfterCreate"
+    />
 </template>
 
 <style scoped>
