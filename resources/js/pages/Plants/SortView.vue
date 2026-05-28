@@ -62,7 +62,7 @@ const tabClass = (key: TabKey) => {
         'px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition';
 
     return activeTab.value === key
-        ? `${base} bg-primary text-white`
+        ? `${base} ui-tab-active`
         : `${base} bg-primary/10 text-primary`;
 };
 

@@ -181,8 +181,8 @@ const filteredSeeds = computed(() => {
 const tabClass = (key: TabKey) => {
     const base =
         'flex h-9 shrink-0 items-center justify-center rounded-full px-4 text-sm font-medium transition-colors';
-    if (activeTab.value === key) return `${base} bg-primary text-white`;
-    return `${base} bg-primary/10 text-primary hover:bg-primary/15`;
+    if (activeTab.value === key) return `${base} ui-tab-active`;
+    return `${base} ui-tab-inactive`;
 };
 
 const toggleFavorite = (id: number) => {

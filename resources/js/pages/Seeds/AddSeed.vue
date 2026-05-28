@@ -2,6 +2,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
+import CreateCategoryModal from '@/components/CreateCategoryModal.vue';
 import LocalDatePicker from '@/components/LocalDatePicker.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import { normalizeImageForUpload } from '@/lib/imageUpload';
@@ -52,6 +53,7 @@ const nameInputRef = ref<HTMLInputElement | null>(null);
 const categorySelectRef = ref<HTMLSelectElement | null>(null);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const previewUrl = ref<string | null>(null);
+const categoryModalOpen = ref(false);
 
 const hasImage = computed(() => !!form.image);
 
@@ -76,6 +78,23 @@ const onFileChange = async (e: Event) => {
 };
 
 const openPicker = () => fileInputRef.value?.click();
+
+const openCategoryModal = () => {
+    categoryModalOpen.value = true;
+};
+
+const refreshCategoriesAfterCreate = () => {
+    router.reload({
+        only: ['categories'],
+        preserveState: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            if (!form.category_id && props.categories?.length) {
+                form.category_id = props.categories[0].id;
+            }
+        },
+    });
+};
 
 const emptyOnFocus = ref<Record<'year', boolean>>({
     year: false,
@@ -264,6 +283,16 @@ onBeforeUnmount(() => {
                             >
                                 {{ form.errors.category_id }}
                             </p>
+                            <button
+                                type="button"
+                                class="mt-3 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary transition hover:bg-primary/20"
+                                @click="openCategoryModal"
+                            >
+                                <span class="material-symbols-outlined text-base"
+                                    >add</span
+                                >
+                                Lisa kategooria
+                            </button>
                         </div>
 
                         <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -506,6 +535,16 @@ onBeforeUnmount(() => {
                             >
                                 {{ form.errors.category_id }}
                             </p>
+                            <button
+                                type="button"
+                                class="mt-3 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary transition hover:bg-primary/20"
+                                @click="openCategoryModal"
+                            >
+                                <span class="material-symbols-outlined text-base"
+                                    >add</span
+                                >
+                                Lisa kategooria
+                            </button>
                         </div>
 
                         <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -665,6 +704,12 @@ onBeforeUnmount(() => {
             </div>
         </transition>
     </Teleport>
+    <CreateCategoryModal
+        :open="categoryModalOpen"
+        post-url="/seeds/categories"
+        @update:open="categoryModalOpen = $event"
+        @created="refreshCategoriesAfterCreate"
+    />
 </template>
 
 <style scoped>

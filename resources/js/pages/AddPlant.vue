@@ -2,6 +2,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { onBeforeUnmount, ref } from 'vue';
 
+import CreateCategoryModal from '@/components/CreateCategoryModal.vue';
 import SaveButton from '@/components/SaveButton.vue';
 import { normalizeImageForUpload } from '@/lib/imageUpload';
 
@@ -38,6 +39,7 @@ const form = useForm<PlantForm>({
 
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const imagePreview = ref<string | null>(null);
+const categoryModalOpen = ref(false);
 
 const revokePreview = () => {
     if (imagePreview.value) URL.revokeObjectURL(imagePreview.value);
@@ -74,6 +76,23 @@ function submit() {
 
 function openPicker() {
     fileInputRef.value?.click();
+}
+
+function openCategoryModal() {
+    categoryModalOpen.value = true;
+}
+
+function refreshCategoriesAfterCreate() {
+    router.reload({
+        only: ['categories'],
+        preserveState: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            if (!form.category_id && props.categories?.length) {
+                form.category_id = props.categories[0].id;
+            }
+        },
+    });
 }
 
 async function onFileChange(e: Event) {
@@ -142,14 +161,18 @@ onBeforeUnmount(() => {
                             Taimede kategooriaid pole veel lisatud.
                         </p>
                         <p class="mt-2 text-sm text-[#2E2E2E]/70">
-                            Loo esmalt vähemalt üks kategooria taimevaates.
+                            Loo kategooria siin ja jätka kohe taime lisamist.
                         </p>
-                        <Link
-                            href="/plants"
-                            class="mt-4 inline-flex items-center justify-center rounded-full bg-[#6B8C68] px-4 py-2 text-sm font-semibold text-white hover:bg-[#4F6A52]"
+                        <button
+                            type="button"
+                            class="mt-4 inline-flex items-center justify-center gap-2 rounded-full bg-[#6B8C68] px-4 py-2 text-sm font-semibold text-white hover:bg-[#4F6A52]"
+                            @click="openCategoryModal"
                         >
-                            Mine taimevaatesse
-                        </Link>
+                            <span class="material-symbols-outlined text-base"
+                                >add</span
+                            >
+                            Lisa kategooria
+                        </button>
                     </div>
 
                     <form
@@ -204,6 +227,16 @@ onBeforeUnmount(() => {
                             >
                                 {{ form.errors.category_id }}
                             </p>
+                            <button
+                                type="button"
+                                class="mt-3 inline-flex items-center gap-2 rounded-full border border-[#6B8C68]/30 bg-[#6B8C68]/10 px-3 py-1.5 text-sm font-medium text-[#4F6A52] transition hover:bg-[#6B8C68]/20"
+                                @click="openCategoryModal"
+                            >
+                                <span class="material-symbols-outlined text-base"
+                                    >add</span
+                                >
+                                Lisa kategooria
+                            </button>
                         </div>
 
                         <div>
@@ -346,4 +379,9 @@ onBeforeUnmount(() => {
             </div>
         </div>
     </div>
+    <CreateCategoryModal
+        :open="categoryModalOpen"
+        @update:open="categoryModalOpen = $event"
+        @created="refreshCategoriesAfterCreate"
+    />
 </template>

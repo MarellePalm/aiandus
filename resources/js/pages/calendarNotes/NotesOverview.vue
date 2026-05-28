@@ -327,8 +327,8 @@ watch(query, () => {
                                 class="flex-1 rounded-full py-1.5 text-[11px] font-semibold transition"
                                 :class="
                                     chip.key === activeChip
-                                        ? 'bg-primary text-white shadow-sm'
-                                        : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+                                        ? 'ui-tab-active shadow-sm'
+                                        : 'ui-chip-inactive'
                                 "
                                 @click="
                                     activeChip = chip.key;

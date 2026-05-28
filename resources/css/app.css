@@ -236,6 +236,23 @@
 }
 
 @layer utilities {
+    /* Shared tab/chip tones for consistent dark mode */
+    .ui-tab-active {
+        @apply bg-primary text-primary-foreground dark:bg-white dark:text-black;
+    }
+
+    .ui-tab-inactive {
+        @apply bg-primary/10 text-primary hover:bg-primary/15;
+    }
+
+    .ui-chip-active {
+        @apply bg-primary text-primary-foreground shadow-sm dark:bg-white dark:text-black;
+    }
+
+    .ui-chip-inactive {
+        @apply bg-muted/60 text-muted-foreground hover:bg-muted;
+    }
+
     /* Hide scrollbar but keep scrolling */
     .no-scrollbar {
         -ms-overflow-style: none; /* IE/Edge */
