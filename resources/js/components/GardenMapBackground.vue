@@ -20,6 +20,8 @@ const props = withDefaults(
         focusSpanMeters?: number;
         /** Hiirega liigutamine ja rullikuga suumimine. */
         interactive?: boolean;
+        /** Luba ainult kaardi lohistamine, jättes rulliku zoomi parent-vaate kätte. */
+        dragging?: boolean;
         /**
          * Sobita krunt TÄPSELT konteinerisse (fraktsionaalne suum, padding 0),
          * et CM_TO_PX-põhine ülekate kataks fotot 1:1. Kasutab paigutusvaade.
@@ -49,7 +51,13 @@ const emit = defineEmits<{
 const ORTOFOTO_TILE_URL =
     'https://tiles.maaamet.ee/tm/wmts/1.0.0/foto/default/GMC/{z}/{y}/{x}.jpg';
 
-const MAX_MAP_ZOOM = 19;
+/**
+ * Maa-ameti fotod on native tasemel kuni 18, aga Leaflet oskab neid üle selle
+ * CSS-iga suurendada. Planeerija peenrakiht kasutab kuni 4x teravsuumi, seega
+ * peab ka kaart saama samas ulatuses üle suumida, muidu peenar ujub foto pealt
+ * ära.
+ */
+const MAX_MAP_ZOOM = 22;
 const MAX_NATIVE_ZOOM = 18;
 
 const containerRef = ref<HTMLElement | null>(null);
@@ -137,6 +145,14 @@ function hasValidCenter(): boolean {
 
 function maxMapZoom(): number {
     return MAX_MAP_ZOOM;
+}
+
+function mapDraggingEnabled(): boolean {
+    return props.dragging ?? props.interactive;
+}
+
+function mapPointerEventsEnabled(): boolean {
+    return props.interactive || mapDraggingEnabled();
 }
 
 /** Sünkroonis MapView ORTOPHOTO_MIN_ZOOM_FACTOR (0.25). */
@@ -248,7 +264,7 @@ function initMap() {
         center: initialCenter as L.LatLngExpression,
         zoom: 17,
         maxZoom: maxMapZoom(),
-        dragging: props.interactive,
+        dragging: mapDraggingEnabled(),
         zoomControl: false,
         scrollWheelZoom: props.interactive,
         doubleClickZoom: props.interactive,
@@ -398,7 +414,7 @@ defineExpose({
         <div
             ref="containerRef"
             class="absolute inset-0 z-0"
-            :class="interactive ? '' : 'pointer-events-none'"
+            :class="mapPointerEventsEnabled() ? '' : 'pointer-events-none'"
             aria-hidden="true"
         />
         <transition name="fade">

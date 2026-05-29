@@ -89,6 +89,7 @@ import type {
     BedListTabKey,
     DimensionFormErrors,
     GardenAddressSearchResult,
+    GardenPlan,
     GardenSetupMode,
     MapViewProps,
     ViewportPinchState,
@@ -768,6 +769,7 @@ async function applyCreateGardenLocationDimensions(
     const anchorLng = roundGardenCoordinate(lng);
     createGardenPlanForm.center_lat = anchorLat;
     createGardenPlanForm.center_lng = anchorLng;
+    createGardenPlanForm.shape_mask = null;
     createGardenPlanForm.clearErrors('center_lat');
     createGardenPlanForm.clearErrors('center_lng');
 
@@ -775,8 +777,6 @@ async function applyCreateGardenLocationDimensions(
         const dims = addressBoundingBox
             ? dimensionsFromAddressBoundingBox(addressBoundingBox)
             : null;
-
-        createGardenPlanForm.shape_mask = null;
 
         if (dims) {
             createGardenPlanForm.widthMeters = dims.widthMeters;
@@ -1163,7 +1163,7 @@ function plannerZoomOnePercentDelta(): number {
 }
 
 function plannerZoomStepDelta(): number {
-    return plannerZoomOnePercentDelta();
+    return plannerZoomOnePercentDelta() * 10;
 }
 
 function snapPlannerZoomToOnePercent(value: number): number {
@@ -1575,6 +1575,12 @@ function plannerCanvasExceedsViewport(zoomLevel = zoom.value): boolean {
 const canPanPlannerViewport = computed(() => {
     if (!viewportSize.value.width || !viewportSize.value.height) {
         return false;
+    }
+
+    // Ortofotol lubame alati pannimist — kaart ja peenrad liiguvad koos
+    // läbi välise pan/zoom konteineri (Leaflet dragging on keelatud).
+    if (usesOrtophotoSharpZoom.value) {
+        return true;
     }
 
     const fitZoom = getFitGardenZoom();
@@ -4165,7 +4171,7 @@ function saveGardenPlan(options?: {
                                                                             $event.target as HTMLInputElement
                                                                         ).value,
                                                                     );
-                                                                gardenFormLocationChosen.value = true;
+                                                                gardenFormLocationChosen = true;
                                                                 gardenForm.clearErrors(
                                                                     'center_lat',
                                                                 );
@@ -4200,7 +4206,7 @@ function saveGardenPlan(options?: {
                                                                             $event.target as HTMLInputElement
                                                                         ).value,
                                                                     );
-                                                                gardenFormLocationChosen.value = true;
+                                                                gardenFormLocationChosen = true;
                                                                 gardenForm.clearErrors(
                                                                     'center_lat',
                                                                 );
@@ -5019,7 +5025,7 @@ function saveGardenPlan(options?: {
                                                                     "
                                                                 />
                                                                 <div
-                                                                    class="absolute inset-0"
+                                                                    class="pointer-events-none absolute inset-0"
                                                                     :style="
                                                                         plannerContentLayerStyle()
                                                                     "
@@ -5038,7 +5044,7 @@ function saveGardenPlan(options?: {
                                                                                 bed.id
                                                                             "
                                                                             data-bed-footprint="true"
-                                                                            class="bed-footprint-interactive absolute touch-none overflow-visible rounded-none transition"
+                                                                            class="bed-footprint-interactive pointer-events-auto absolute touch-none overflow-visible rounded-none transition"
                                                                             :class="[
                                                                                 draggingBedId ===
                                                                                 bed.id
@@ -5139,7 +5145,7 @@ function saveGardenPlan(options?: {
                                                                                 bed.id
                                                                             "
                                                                             data-bed-pin="true"
-                                                                            class="absolute touch-none"
+                                                                            class="pointer-events-auto absolute touch-none"
                                                                             :class="[
                                                                                 draggingBedId ===
                                                                                 bed.id

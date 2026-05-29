@@ -9,6 +9,7 @@ import {
 } from 'vue';
 
 import GardenMapBackground from '@/components/GardenMapBackground.vue';
+import { ortophotoFocusSpanMeters } from '@/lib/gardenAreaSelection';
 import {
     bedFootprintPx,
     draftPlacementOverlapsExistingBeds,
@@ -56,7 +57,10 @@ const canvasLayerRef = ref<HTMLElement | null>(null);
 const mapBgRef = ref<InstanceType<typeof GardenMapBackground> | null>(null);
 const viewportWidth = ref(0);
 const viewportHeight = ref(0);
+const placementZoom = ref(1);
 const isDraggingDraft = ref(false);
+const isDraftHovered = ref(false);
+const isDraftToolbarHovered = ref(false);
 const dragPointerId = ref<number | null>(null);
 const dragOffset = ref({ x: 0, y: 0 });
 const dragMoved = ref(false);
@@ -77,6 +81,12 @@ const usePinPlacement = computed(() => planUsesPinPlacement(props.gardenPlan));
 
 const gardenWidthCm = computed(() => gardenSizeCm(props.gardenPlan).widthCm);
 const gardenHeightCm = computed(() => gardenSizeCm(props.gardenPlan).heightCm);
+const ortophotoFocusSpanMetersValue = computed(() =>
+    ortophotoFocusSpanMeters(
+        gardenWidthCm.value / 100,
+        gardenHeightCm.value / 100,
+    ),
+);
 
 const fitScale = computed(() => {
     const w = viewportWidth.value;
@@ -90,11 +100,13 @@ const fitScale = computed(() => {
     return Math.max(0.5, Math.min(4, Math.min(fitW, fitH)));
 });
 
+const placementScale = computed(() => fitScale.value * placementZoom.value);
+
 const displayWidth = computed(() =>
-    Math.round(surface.value.width * fitScale.value),
+    Math.round(surface.value.width * placementScale.value),
 );
 const displayHeight = computed(() =>
-    Math.round(surface.value.height * fitScale.value),
+    Math.round(surface.value.height * placementScale.value),
 );
 
 const gridMajorGardenPx = computed(() => {
@@ -159,13 +171,31 @@ const gardenBackgroundStyle = computed(() => {
 });
 
 const canvasTransformStyle = computed(() => ({
-    transform: `scale(${fitScale.value})`,
+    transform: `scale(${placementScale.value})`,
     transformOrigin: 'top left',
     width: `${surface.value.width}px`,
     height: `${surface.value.height}px`,
 }));
 
-const scaleBarPx = computed(() => Math.round(100 * CM_TO_PX * fitScale.value));
+const scaleBarPx = computed(() =>
+    Math.round(100 * CM_TO_PX * placementScale.value),
+);
+const placementZoomPercent = computed(
+    () => `${Math.round(placementZoom.value * 100)}%`,
+);
+const draftToolbarVisible = computed(
+    () =>
+        isDraftHovered.value ||
+        isDraftToolbarHovered.value ||
+        isDraggingDraft.value,
+);
+
+function changePlacementZoom(delta: number) {
+    placementZoom.value = Math.max(
+        1,
+        Math.min(4, Math.round((placementZoom.value + delta) * 10) / 10),
+    );
+}
 
 function readGardenCoord(value: number | null | undefined): number | null {
     if (value == null || typeof value === 'object') {
@@ -234,11 +264,11 @@ const toolbarBelow = computed(() => {
         return false;
     }
     // Tööriistariba peenra sees (mitte kohal), et ülemine serv ei lõikaks ära.
-    return pos.y < 8 / Math.max(fitScale.value, 0.001);
+    return pos.y < 8 / Math.max(placementScale.value, 0.001);
 });
 
 const toolbarStyle = computed(() => {
-    const inv = 1 / Math.max(fitScale.value, 0.001);
+    const inv = 1 / Math.max(placementScale.value, 0.001);
     return {
         transform: `translateX(-50%) scale(${inv})`,
         transformOrigin: toolbarBelow.value ? '50% 100%' : '50% 0',
@@ -288,7 +318,7 @@ function gardenPointFromClient(clientX: number, clientY: number) {
     }
 
     const rect = layer.getBoundingClientRect();
-    const scale = Math.max(fitScale.value, 0.001);
+    const scale = Math.max(placementScale.value, 0.001);
 
     return {
         x: (clientX - rect.left) / scale,
@@ -478,6 +508,10 @@ const gardenLabel = computed(() => {
 });
 
 function scrollDraftIntoView() {
+    if (usePinPlacement.value) {
+        return;
+    }
+
     if (!effectiveDraftPosition.value || !hasVisibleDraft.value) {
         return;
     }
@@ -529,7 +563,7 @@ watch(
         draftPosition.value?.x,
         draftPosition.value?.y,
         hasVisibleDraft.value,
-        fitScale.value,
+        placementScale.value,
         displayWidth.value,
     ],
     () => {
@@ -564,11 +598,45 @@ onBeforeUnmount(() => {
             class="relative w-full rounded-[1.25rem] border border-emerald-900/15 p-2 shadow-inner"
             :class="
                 usePinPlacement
-                    ? 'overflow-hidden bg-[#e5e3df]'
+                    ? 'overflow-auto bg-[#e5e3df]'
                     : 'overflow-auto bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(241,247,235,0.98))]'
             "
             style="max-height: min(78vh, 720px); min-height: min(55vh, 480px)"
         >
+            <div
+                v-if="usePinPlacement"
+                class="absolute top-3 right-3 z-30 flex items-center gap-0.5 rounded-full border border-white/80 bg-black/55 p-1 shadow-lg backdrop-blur-sm"
+            >
+                <button
+                    type="button"
+                    class="inline-flex h-7 w-7 items-center justify-center rounded-full text-white transition hover:bg-white/20 disabled:opacity-45"
+                    :disabled="placementZoom <= 1"
+                    aria-label="Suumi välja"
+                    @click="changePlacementZoom(-0.2)"
+                >
+                    <span class="material-symbols-outlined text-base"
+                        >remove</span
+                    >
+                </button>
+                <button
+                    type="button"
+                    class="inline-flex h-7 min-w-12 items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white"
+                    title="Lähtesta suum"
+                    @click="placementZoom = 1"
+                >
+                    {{ placementZoomPercent }}
+                </button>
+                <button
+                    type="button"
+                    class="inline-flex h-7 w-7 items-center justify-center rounded-full text-white transition hover:bg-white/20 disabled:opacity-45"
+                    :disabled="placementZoom >= 4"
+                    aria-label="Suumi sisse"
+                    @click="changePlacementZoom(0.2)"
+                >
+                    <span class="material-symbols-outlined text-base">add</span>
+                </button>
+            </div>
+
             <div
                 class="relative mx-auto"
                 :style="{
@@ -629,12 +697,11 @@ onBeforeUnmount(() => {
                                 :center-lng="Number(gardenPlan.center_lng)"
                                 :width-cm="gardenWidthCm"
                                 :height-cm="gardenHeightCm"
-                                :focus-anchor-lat="null"
-                                :focus-anchor-lng="null"
-                                :focus-span-meters="0"
+                                :focus-anchor-lat="Number(gardenPlan.center_lat)"
+                                :focus-anchor-lng="Number(gardenPlan.center_lng)"
+                                :focus-span-meters="ortophotoFocusSpanMetersValue"
                                 :planner-zoom="1"
                                 :fit-zoom="1"
-                                exact-garden-fit
                             />
 
                             <div
@@ -707,16 +774,23 @@ onBeforeUnmount(() => {
                             tabindex="0"
                             aria-label="Lohista peenart aiaplaanil"
                             @pointerdown="startDraftDrag"
+                            @pointerenter="isDraftHovered = true"
+                            @pointerleave="isDraftHovered = false"
                             @click.stop
                         >
                             <div
                                 class="bed-placement-toolbar"
-                                :class="
+                                :class="[
                                     toolbarBelow
                                         ? 'bed-placement-toolbar--below'
-                                        : ''
-                                "
+                                        : '',
+                                    draftToolbarVisible
+                                        ? 'bed-placement-toolbar--visible'
+                                        : '',
+                                ]"
                                 :style="toolbarStyle"
+                                @pointerenter="isDraftToolbarHovered = true"
+                                @pointerleave="isDraftToolbarHovered = false"
                             >
                                 <span
                                     class="bed-placement-toolbar__grip"
@@ -871,12 +945,25 @@ onBeforeUnmount(() => {
     border: 1px solid rgba(22, 101, 52, 0.18);
     background: rgba(255, 255, 255, 0.96);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+    opacity: 0;
     white-space: nowrap;
+    transition: opacity 140ms ease;
 }
 
 .bed-placement-toolbar--below {
     top: auto;
     bottom: 4px;
+}
+
+.bed-placement-toolbar--visible {
+    opacity: 1;
+}
+
+.bed-placement-toolbar:not(.bed-placement-toolbar--visible)
+    .bed-placement-toolbar__grip,
+.bed-placement-toolbar:not(.bed-placement-toolbar--visible)
+    .bed-placement-toolbar__btn {
+    pointer-events: none;
 }
 
 .bed-placement-toolbar__grip {

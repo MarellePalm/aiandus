@@ -33,10 +33,10 @@ export type AreaPickerMode = 'rectangle' | 'polygon';
 const MIN_GARDEN_DIM_M = 5;
 const SHAPE_CELL_CM = 1000;
 /** Ortofoto algvaate min/max ulatus keskpunkti ümber (m). */
-const ORTOPHOTO_FOCUS_MIN_SPAN_M = 22;
-const ORTOPHOTO_FOCUS_MAX_SPAN_M = 56;
+const ORTOPHOTO_FOCUS_MIN_SPAN_M = 90;
+const ORTOPHOTO_FOCUS_MAX_SPAN_M = 180;
 
-/** Suumi ortofoto nii, et aed oleks loetav, mitte kogu krunt ühe ekraaniga. */
+/** 100% vaade jätab aia ümber piisavalt õue/krundi konteksti. */
 export function ortophotoFocusSpanMeters(
     widthMeters: number,
     heightMeters: number,
@@ -47,8 +47,8 @@ export function ortophotoFocusSpanMeters(
         Math.max(heightMeters, MIN_GARDEN_DIM_M),
     );
     const padded = Math.max(
-        maxDim * 1.3,
-        minDim * 1.55,
+        maxDim * 2.6,
+        minDim * 3.2,
         ORTOPHOTO_FOCUS_MIN_SPAN_M,
     );
 
