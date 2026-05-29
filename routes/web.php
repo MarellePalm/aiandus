@@ -109,6 +109,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
         abort_unless($bed->user_id === $request->user()->id, 403);
         $bed->load(['plants' => fn ($q) => $q->select('id', 'name', 'image_url', 'bed_id', 'position_in_bed')]);
 
+        $plantsWithoutBed = Plant::query()
+            ->where('user_id', $request->user()->id)
+            ->whereNull('bed_id')
+            ->orderBy('name')
+            ->with('category:id,name,slug')
+            ->get(['id', 'name', 'image_url', 'category_id', 'quantity', 'seed_id'])
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'name' => $p->name,
+                'image_url' => $p->image_url,
+                'quantity' => (int) $p->quantity,
+                'seed_id' => $p->seed_id,
+                'category' => $p->category ? ['name' => $p->category->name, 'slug' => $p->category->slug] : null,
+            ]);
+
         $startStep = $request->integer('step');
         if (! in_array($startStep, [1, 2, 3], true)) {
             $startStep = 1;
@@ -116,6 +131,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         return Inertia::render('map/EditBedPage', [
             'startStep' => $startStep,
+            'plantsWithoutBed' => $plantsWithoutBed,
             'bed' => [
                 'id' => $bed->id,
                 'garden_plan_id' => $bed->garden_plan_id,

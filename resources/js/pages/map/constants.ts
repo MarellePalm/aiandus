@@ -7,6 +7,13 @@ export const GARDEN_PADDING = 24;
 export const CM_TO_PX = 0.5;
 export const GARDEN_GRID_CELL_CM = 30;
 
+/** Aiaplaani ruudustiku jooned (manuaalne/plaanivaade). */
+export const GARDEN_GRID_MINOR_LINE = 'rgba(34, 98, 58, 0.12)';
+export const GARDEN_GRID_MAJOR_LINE = 'rgba(34, 98, 58, 0.24)';
+/** Servajoone klass (overlay peal ruudustiku — gradient ei joonista paremat/alumist serva). */
+export const GARDEN_GRID_EDGE_CLASS =
+    'pointer-events-none absolute inset-0 z-30 box-border border-2 border-[rgba(22,101,52,0.48)]';
+
 /** Ühe peenraruudu vaikimisi mõõt (cm) uue peenra loomisel. */
 export const DEFAULT_BED_CELL_SIZE_CM = 30;
 

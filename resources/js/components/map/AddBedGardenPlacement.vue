@@ -1,27 +1,45 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    ref,
+    watch,
+} from 'vue';
 
 import GardenMapBackground from '@/components/GardenMapBackground.vue';
-import { ortophotoFocusSpanMeters } from '@/lib/gardenAreaSelection';
 import {
     bedFootprintPx,
-    bedPinTipPx,
-    gardenPositionFromClick,
+    draftPlacementOverlapsExistingBeds,
+    findNonOverlappingDraftPlacement,
+    gardenPlacementPreviewCells,
     gardenSizeCm,
     gardenSurfacePx,
     gridStepPx,
+    placementSnapStepPx,
     planShapeCellCm,
     planUsesPinPlacement,
     shapeMaskClipRects,
+    snapPlacementPx,
+    snapToPlacementEdges,
     type GardenPlacementBed,
     type GardenPlacementPlan,
+    type GardenPlacementPreviewCell,
 } from '@/pages/map/bedGardenPlacement';
-import { CM_TO_PX } from '@/pages/map/constants';
+import {
+    CM_TO_PX,
+    GARDEN_GRID_EDGE_CLASS,
+    GARDEN_GRID_MAJOR_LINE,
+    GARDEN_GRID_MINOR_LINE,
+} from '@/pages/map/constants';
 
 const props = defineProps<{
     gardenPlan: GardenPlacementPlan;
     existingBeds: GardenPlacementBed[];
     draftBed: GardenPlacementBed;
+    draftPreviewCells?: GardenPlacementPreviewCell[];
+    draftFootprintPx?: { width: number; height: number };
     gardenX: number | null;
     gardenY: number | null;
 }>();
@@ -29,41 +47,36 @@ const props = defineProps<{
 const emit = defineEmits<{
     'update:gardenX': [value: number];
     'update:gardenY': [value: number];
+    rotate: [];
+    'placement-ready': [];
 }>();
 
 const viewportRef = ref<HTMLElement | null>(null);
+const canvasLayerRef = ref<HTMLElement | null>(null);
 const mapBgRef = ref<InstanceType<typeof GardenMapBackground> | null>(null);
 const viewportWidth = ref(0);
 const viewportHeight = ref(0);
+const isDraggingDraft = ref(false);
+const dragPointerId = ref<number | null>(null);
+const dragOffset = ref({ x: 0, y: 0 });
+const dragMoved = ref(false);
+let dragCaptureTarget: HTMLElement | null = null;
+let suppressNextCanvasClick = false;
 let resizeObserver: ResizeObserver | null = null;
 
 const surface = computed(() => gardenSurfacePx(props.gardenPlan));
-const draftSize = computed(() => bedFootprintPx(props.draftBed));
+
+const footprintPx = computed(
+    () => props.draftFootprintPx ?? bedFootprintPx(props.draftBed),
+);
+
+const hasVisibleDraft = computed(
+    () => footprintPx.value.width >= 4 && footprintPx.value.height >= 4,
+);
 const usePinPlacement = computed(() => planUsesPinPlacement(props.gardenPlan));
 
 const gardenWidthCm = computed(() => gardenSizeCm(props.gardenPlan).widthCm);
 const gardenHeightCm = computed(() => gardenSizeCm(props.gardenPlan).heightCm);
-
-const ortophotoFocusSpan = computed(() =>
-    ortophotoFocusSpanMeters(
-        gardenWidthCm.value / 100,
-        gardenHeightCm.value / 100,
-    ),
-);
-
-const placementFitZoom = computed(() => {
-    const w = viewportWidth.value;
-    const h = viewportHeight.value;
-    if (!w || !h) {
-        return 1;
-    }
-
-    const pad = 32;
-    const fitW = Math.max(1, w - pad) / surface.value.width;
-    const fitH = Math.max(1, h - pad) / surface.value.height;
-
-    return Math.min(fitW, fitH);
-});
 
 const fitScale = computed(() => {
     const w = viewportWidth.value;
@@ -71,11 +84,10 @@ const fitScale = computed(() => {
     if (!w || !h) {
         return 1;
     }
-    const fitW = Math.max(1, w - 16) / surface.value.width;
-    const fitH = Math.max(1, h - 16) / surface.value.height;
-    const fitToViewport = Math.min(fitW, fitH);
-    const preferredMinScale = 760 / surface.value.width;
-    return Math.max(0.35, Math.min(2.75, Math.max(fitToViewport, preferredMinScale)));
+    const pad = 12;
+    const fitW = Math.max(1, w - pad) / surface.value.width;
+    const fitH = Math.max(1, h - pad) / surface.value.height;
+    return Math.max(0.5, Math.min(4, Math.min(fitW, fitH)));
 });
 
 const displayWidth = computed(() =>
@@ -108,17 +120,22 @@ const clipPathId = computed(
     () => `add-bed-garden-clip-${props.gardenPlan.width}`,
 );
 
-const gardenSurfaceStyle = computed(() => {
+const gardenLayerSizeStyle = computed(() => ({
+    width: `${surface.value.width}px`,
+    height: `${surface.value.height}px`,
+}));
+
+/** Taust (ruudustik / ortofoto) — clip-path ainult siin, mitte peenra peal. */
+const gardenBackgroundStyle = computed(() => {
     const style: Record<string, string> = {
-        width: `${surface.value.width}px`,
-        height: `${surface.value.height}px`,
+        ...gardenLayerSizeStyle.value,
     };
 
     if (usePinPlacement.value) {
         style.backgroundColor = 'transparent';
     } else {
-        const minor = 'rgba(34, 98, 58, 0.12)';
-        const major = 'rgba(34, 98, 58, 0.24)';
+        const minor = GARDEN_GRID_MINOR_LINE;
+        const major = GARDEN_GRID_MAJOR_LINE;
         style.backgroundColor = 'rgba(240, 250, 235, 0.98)';
         style.backgroundImage = [
             `linear-gradient(${minor} 1px, transparent 1px)`,
@@ -150,24 +167,109 @@ const canvasTransformStyle = computed(() => ({
 
 const scaleBarPx = computed(() => Math.round(100 * CM_TO_PX * fitScale.value));
 
+function readGardenCoord(value: number | null | undefined): number | null {
+    if (value == null || typeof value === 'object') {
+        return null;
+    }
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : null;
+}
+
 const draftPosition = computed(() => {
-    if (props.gardenX == null || props.gardenY == null) {
+    const x = readGardenCoord(props.gardenX);
+    const y = readGardenCoord(props.gardenY);
+    if (x == null || y == null) {
         return null;
     }
 
+    return { x, y };
+});
+
+const defaultDraftCenter = computed(() => {
+    if (!hasVisibleDraft.value) {
+        return null;
+    }
+
+    return findNonOverlappingDraftPlacement(
+        footprintPx.value,
+        props.draftBed,
+        props.gardenPlan,
+        props.existingBeds,
+        0,
+    );
+});
+
+const placementOverlapsExisting = computed(() => {
+    const pos = effectiveDraftPosition.value;
+    if (!pos) {
+        return false;
+    }
+
+    return draftPlacementOverlapsExistingBeds(
+        pos.x,
+        pos.y,
+        props.draftBed,
+        props.existingBeds,
+    );
+});
+
+/** Kuvame peenart kohe; kui vanem pole veel x/y saatnud, kasutame keskpunkti. */
+const effectiveDraftPosition = computed(
+    () => draftPosition.value ?? defaultDraftCenter.value,
+);
+
+function syncDefaultPositionToParent() {
+    if (draftPosition.value != null || !defaultDraftCenter.value) {
+        return;
+    }
+
+    const center = defaultDraftCenter.value;
+    emit('update:gardenX', center.x);
+    emit('update:gardenY', center.y);
+}
+
+const toolbarBelow = computed(() => {
+    const pos = effectiveDraftPosition.value;
+    if (!pos) {
+        return false;
+    }
+    // Tööriistariba peenra sees (mitte kohal), et ülemine serv ei lõikaks ära.
+    return pos.y < 8 / Math.max(fitScale.value, 0.001);
+});
+
+const toolbarStyle = computed(() => {
+    const inv = 1 / Math.max(fitScale.value, 0.001);
     return {
-        x: props.gardenX,
-        y: props.gardenY,
+        transform: `translateX(-50%) scale(${inv})`,
+        transformOrigin: toolbarBelow.value ? '50% 100%' : '50% 0',
     };
 });
 
 function syncViewportSize() {
-    viewportWidth.value = viewportRef.value?.clientWidth ?? 0;
-    viewportHeight.value = viewportRef.value?.clientHeight ?? 0;
+    const el = viewportRef.value;
+    if (!el) {
+        viewportWidth.value = 0;
+        viewportHeight.value = 0;
+        return;
+    }
+
+    viewportWidth.value = el.clientWidth;
+    const measuredHeight = el.clientHeight;
+    const preferredHeight = Math.min(
+        Math.round(window.innerHeight * 0.55),
+        480,
+    );
+
+    viewportHeight.value = Math.max(measuredHeight, preferredHeight);
 }
 
 watch(
-    () => [fitScale.value, displayWidth.value, displayHeight.value, usePinPlacement.value],
+    () => [
+        fitScale.value,
+        displayWidth.value,
+        displayHeight.value,
+        usePinPlacement.value,
+    ],
     () => {
         if (!usePinPlacement.value) {
             return;
@@ -179,20 +281,151 @@ watch(
     },
 );
 
-function onCanvasClick(event: MouseEvent) {
-    const layer = event.currentTarget as HTMLElement | null;
+function gardenPointFromClient(clientX: number, clientY: number) {
+    const layer = canvasLayerRef.value;
     if (!layer) {
-        return;
+        return null;
     }
 
     const rect = layer.getBoundingClientRect();
     const scale = Math.max(fitScale.value, 0.001);
-    const x = (event.clientX - rect.left) / scale;
-    const y = (event.clientY - rect.top) / scale;
-    const next = gardenPositionFromClick(x, y, draftSize.value, props.gardenPlan);
+
+    return {
+        x: (clientX - rect.left) / scale,
+        y: (clientY - rect.top) / scale,
+    };
+}
+
+function applyDraftPosition(rawX: number, rawY: number) {
+    const step = placementSnapStepPx(props.draftBed, props.gardenPlan);
+    const snapped = {
+        x: snapPlacementPx(rawX, step),
+        y: snapPlacementPx(rawY, step),
+    };
+    const next = snapToPlacementEdges(
+        snapped.x,
+        snapped.y,
+        footprintPx.value,
+        props.gardenPlan,
+        0,
+    );
+
+    if (
+        draftPlacementOverlapsExistingBeds(
+            next.x,
+            next.y,
+            props.draftBed,
+            props.existingBeds,
+        )
+    ) {
+        return;
+    }
 
     emit('update:gardenX', next.x);
     emit('update:gardenY', next.y);
+}
+
+function onCanvasClick(event: MouseEvent) {
+    if (suppressNextCanvasClick) {
+        suppressNextCanvasClick = false;
+        return;
+    }
+
+    const point = gardenPointFromClient(event.clientX, event.clientY);
+    if (!point) {
+        return;
+    }
+
+    // Tsentreeritud asetus: klõpsupunkt = peenra keskpunkt. Sama loogika
+    // (haakumine + servad) kehtib nii aiaplaanil kui ortofotol.
+    applyDraftPosition(
+        point.x - footprintPx.value.width / 2,
+        point.y - footprintPx.value.height / 2,
+    );
+}
+
+function onDraftPointerMove(event: PointerEvent) {
+    if (!isDraggingDraft.value || event.pointerId !== dragPointerId.value) {
+        return;
+    }
+
+    const point = gardenPointFromClient(event.clientX, event.clientY);
+    if (!point) {
+        return;
+    }
+
+    dragMoved.value = true;
+    applyDraftPosition(
+        point.x - dragOffset.value.x,
+        point.y - dragOffset.value.y,
+    );
+}
+
+function stopDraftDrag() {
+    window.removeEventListener('pointermove', onDraftPointerMove);
+    window.removeEventListener('pointerup', stopDraftDrag);
+    window.removeEventListener('pointercancel', stopDraftDrag);
+
+    if (dragCaptureTarget && dragPointerId.value !== null) {
+        try {
+            dragCaptureTarget.releasePointerCapture(dragPointerId.value);
+        } catch {
+            /* noop */
+        }
+    }
+
+    if (dragMoved.value) {
+        suppressNextCanvasClick = true;
+    }
+
+    isDraggingDraft.value = false;
+    dragPointerId.value = null;
+    dragCaptureTarget = null;
+    dragMoved.value = false;
+}
+
+function startDraftDrag(event: PointerEvent) {
+    const pos = effectiveDraftPosition.value;
+    if (!pos) {
+        return;
+    }
+
+    if (draftPosition.value == null && defaultDraftCenter.value) {
+        emit('update:gardenX', pos.x);
+        emit('update:gardenY', pos.y);
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const point = gardenPointFromClient(event.clientX, event.clientY);
+    if (!point) {
+        return;
+    }
+
+    isDraggingDraft.value = true;
+    dragMoved.value = false;
+    dragPointerId.value = event.pointerId;
+    // Haardepunkt võib olla peenrast väljas (nt käepide peenra kohal), seega
+    // piirame nihke peenra piiridesse — muidu ei pääseks üla-/alaserva.
+    dragOffset.value = {
+        x: Math.max(0, Math.min(point.x - pos.x, footprintPx.value.width)),
+        y: Math.max(0, Math.min(point.y - pos.y, footprintPx.value.height)),
+    };
+
+    const captureEl = event.currentTarget as HTMLElement | null;
+    dragCaptureTarget = captureEl;
+    if (captureEl) {
+        try {
+            captureEl.setPointerCapture(event.pointerId);
+        } catch {
+            /* noop */
+        }
+    }
+
+    window.addEventListener('pointermove', onDraftPointerMove);
+    window.addEventListener('pointerup', stopDraftDrag);
+    window.addEventListener('pointercancel', stopDraftDrag);
 }
 
 function existingBedStyle(bed: GardenPlacementBed): Record<string, string> {
@@ -206,45 +439,36 @@ function existingBedStyle(bed: GardenPlacementBed): Record<string, string> {
     };
 }
 
-function bedPinStyle(
-    gardenX: number,
-    gardenY: number,
+function existingBedCells(
     bed: GardenPlacementBed,
+): GardenPlacementPreviewCell[] {
+    return gardenPlacementPreviewCells(bed);
+}
+
+function existingBedCellStyle(
+    cell: GardenPlacementPreviewCell,
 ): Record<string, string> {
-    const size = bedFootprintPx(bed);
-    const tip = bedPinTipPx(gardenX, gardenY, size);
-
     return {
-        left: `${tip.x}px`,
-        top: `${tip.y}px`,
-        transform: 'translate(-50%, -100%)',
+        left: `${cell.left}px`,
+        top: `${cell.top}px`,
+        width: `${cell.width}px`,
+        height: `${cell.height}px`,
     };
 }
 
-function draftBedStyle(): Record<string, string> | null {
-    if (!draftPosition.value) {
+const draftBedStyle = computed((): Record<string, string> | null => {
+    const pos = effectiveDraftPosition.value;
+    if (!pos || !hasVisibleDraft.value) {
         return null;
     }
 
     return {
-        left: `${draftPosition.value.x}px`,
-        top: `${draftPosition.value.y}px`,
-        width: `${draftSize.value.width}px`,
-        height: `${draftSize.value.height}px`,
+        left: `${pos.x}px`,
+        top: `${pos.y}px`,
+        width: `${footprintPx.value.width}px`,
+        height: `${footprintPx.value.height}px`,
     };
-}
-
-function draftPinStyle(): Record<string, string> | null {
-    if (!draftPosition.value) {
-        return null;
-    }
-
-    return bedPinStyle(
-        draftPosition.value.x,
-        draftPosition.value.y,
-        props.draftBed,
-    );
-}
+});
 
 const gardenLabel = computed(() => {
     const { widthCm, heightCm } = gardenSizeCm(props.gardenPlan);
@@ -252,6 +476,18 @@ const gardenLabel = computed(() => {
     const h = heightCm / 100;
     return `${w} m × ${h} m`;
 });
+
+function scrollDraftIntoView() {
+    if (!effectiveDraftPosition.value || !hasVisibleDraft.value) {
+        return;
+    }
+
+    void nextTick(() => {
+        viewportRef.value
+            ?.querySelector<HTMLElement>('.bed-placement-draft')
+            ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    });
+}
 
 onMounted(() => {
     syncViewportSize();
@@ -267,10 +503,42 @@ onMounted(() => {
 
     void nextTick(() => {
         mapBgRef.value?.scheduleMapRefresh();
+        syncDefaultPositionToParent();
+        scrollDraftIntoView();
+        emit('placement-ready');
     });
 });
 
+watch(
+    () => [
+        props.gardenX,
+        props.gardenY,
+        footprintPx.value.width,
+        footprintPx.value.height,
+        hasVisibleDraft.value,
+    ],
+    () => {
+        syncDefaultPositionToParent();
+        scrollDraftIntoView();
+    },
+    { immediate: true },
+);
+
+watch(
+    () => [
+        draftPosition.value?.x,
+        draftPosition.value?.y,
+        hasVisibleDraft.value,
+        fitScale.value,
+        displayWidth.value,
+    ],
+    () => {
+        scrollDraftIntoView();
+    },
+);
+
 onBeforeUnmount(() => {
+    stopDraftDrag();
     resizeObserver?.disconnect();
     resizeObserver = null;
 });
@@ -280,12 +548,14 @@ onBeforeUnmount(() => {
     <div class="space-y-3">
         <p class="text-sm leading-6 text-muted-foreground">
             <template v-if="usePinPlacement">
-                Klõpsa ortofotol, kuhu peenar tuleb — märgitakse täpiga. Täpne
-                kuju ja suurus seadistad järgmises sammus.
+                Klõpsa ortofotol või lohista peenart paika. Peenar on mõõtkavas
+                ({{ gardenLabel }}); käepidemest saad lohistada ja nupuga
+                keerata.
             </template>
             <template v-else>
-                Klõpsa aiaplaanil, kuhu peenar tuleb. Ruudustik on mõõtkavas
-                ({{ gardenLabel }}); sinu peenar kuvatakse amberina.
+                Klõpsa aiaplaanil või lohista peenart paika. Ruudustik on
+                mõõtkavas ({{ gardenLabel }}); serva juures kinnitub
+                automaatselt.
             </template>
         </p>
 
@@ -297,7 +567,7 @@ onBeforeUnmount(() => {
                     ? 'overflow-hidden bg-[#e5e3df]'
                     : 'overflow-auto bg-[linear-gradient(180deg,rgba(251,248,241,0.98),rgba(241,247,235,0.98))]'
             "
-            style="max-height: min(72vh, 620px)"
+            style="max-height: min(78vh, 720px); min-height: min(55vh, 480px)"
         >
             <div
                 class="relative mx-auto"
@@ -307,13 +577,14 @@ onBeforeUnmount(() => {
                 }"
             >
                 <div
-                    class="absolute top-0 left-0 cursor-crosshair touch-none"
+                    ref="canvasLayerRef"
+                    class="absolute top-0 left-0 touch-none"
+                    :class="
+                        usePinPlacement ? 'cursor-crosshair' : 'cursor-default'
+                    "
                     :style="canvasTransformStyle"
-                    role="button"
-                    tabindex="0"
-                    aria-label="Vali peenra asukoht aiaplaanil"
+                    role="presentation"
                     @click="onCanvasClick"
-                    @keydown.enter.prevent
                 >
                     <svg
                         v-if="useShapeClip"
@@ -338,88 +609,201 @@ onBeforeUnmount(() => {
                     </svg>
 
                     <div
-                        class="relative"
-                        :style="gardenSurfaceStyle"
+                        class="relative overflow-visible"
+                        :style="gardenLayerSizeStyle"
                     >
-                        <GardenMapBackground
-                            v-if="usePinPlacement"
-                            ref="mapBgRef"
-                            class="z-0"
-                            :center-lat="Number(gardenPlan.center_lat)"
-                            :center-lng="Number(gardenPlan.center_lng)"
-                            :width-cm="gardenWidthCm"
-                            :height-cm="gardenHeightCm"
-                            :focus-anchor-lat="Number(gardenPlan.center_lat)"
-                            :focus-anchor-lng="Number(gardenPlan.center_lng)"
-                            :focus-span-meters="ortophotoFocusSpan"
-                            :planner-zoom="placementFitZoom"
-                            :fit-zoom="placementFitZoom"
-                        />
-
-                        <template v-if="usePinPlacement">
+                        <div
+                            class="absolute inset-0"
+                            :style="gardenBackgroundStyle"
+                        >
                             <div
-                                v-for="(bed, index) in existingBeds"
-                                :key="`existing-pin-${index}`"
-                                class="pointer-events-none absolute z-20"
-                                :style="bedPinStyle(bed.garden_x, bed.garden_y, bed)"
+                                v-if="!usePinPlacement"
+                                :class="GARDEN_GRID_EDGE_CLASS"
                                 aria-hidden="true"
-                            >
-                                <div
-                                    class="flex flex-col-reverse items-center"
-                                >
-                                    <div
-                                        class="h-2 w-px rounded-full bg-slate-500/40"
-                                        aria-hidden="true"
-                                    />
-                                    <div
-                                        class="flex h-6 w-6 items-center justify-center rounded-full border border-slate-400/40 bg-card shadow-sm"
-                                    >
-                                        <span
-                                            class="h-2 w-2 rounded-full bg-slate-500"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
+                            />
+                            <GardenMapBackground
+                                v-if="usePinPlacement"
+                                ref="mapBgRef"
+                                class="z-0"
+                                :center-lat="Number(gardenPlan.center_lat)"
+                                :center-lng="Number(gardenPlan.center_lng)"
+                                :width-cm="gardenWidthCm"
+                                :height-cm="gardenHeightCm"
+                                :focus-anchor-lat="null"
+                                :focus-anchor-lng="null"
+                                :focus-span-meters="0"
+                                :planner-zoom="1"
+                                :fit-zoom="1"
+                                exact-garden-fit
+                            />
 
-                            <div
-                                v-if="draftPinStyle()"
-                                class="pointer-events-none absolute z-30"
-                                :style="draftPinStyle()!"
-                                aria-hidden="true"
-                            >
-                                <div
-                                    class="flex flex-col-reverse items-center"
-                                >
-                                    <div
-                                        class="h-2 w-px rounded-full bg-primary/45"
-                                        aria-hidden="true"
-                                    />
-                                    <div
-                                        class="flex h-7 w-7 items-center justify-center rounded-full border border-primary/35 bg-card shadow-md ring-4 ring-primary/25"
-                                    >
-                                        <span
-                                            class="h-2.5 w-2.5 rounded-full bg-primary shadow-sm"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
-                        <template v-else>
                             <div
                                 v-for="(bed, index) in existingBeds"
                                 :key="`existing-bed-${index}`"
-                                class="pointer-events-none absolute rounded-sm border border-slate-500/35 bg-slate-200/55"
+                                class="pointer-events-none absolute overflow-visible"
                                 :style="existingBedStyle(bed)"
                                 aria-hidden="true"
-                            />
+                            >
+                                <template v-if="existingBedCells(bed).length">
+                                    <div
+                                        v-for="(
+                                            cell, cellIndex
+                                        ) in existingBedCells(bed)"
+                                        :key="`existing-bed-${index}-cell-${cellIndex}`"
+                                        class="absolute overflow-hidden rounded-none opacity-90"
+                                        :class="
+                                            cell.kind === 'walkway'
+                                                ? 'bg-stone-300/35'
+                                                : ''
+                                        "
+                                        :style="existingBedCellStyle(cell)"
+                                    >
+                                        <img
+                                            v-if="
+                                                cell.image_url &&
+                                                cell.kind === 'plantable'
+                                            "
+                                            :src="cell.image_url"
+                                            alt=""
+                                            class="size-full object-cover"
+                                        />
+                                        <div
+                                            v-else-if="
+                                                cell.kind === 'plantable'
+                                            "
+                                            class="flex size-full items-center justify-center bg-emerald-50/40"
+                                        >
+                                            <span
+                                                class="material-symbols-outlined leading-none text-emerald-800/45"
+                                                :style="{
+                                                    fontSize: `clamp(8px, ${Math.min(cell.width, cell.height) * 0.42}px, 20px)`,
+                                                }"
+                                                aria-hidden="true"
+                                                >potted_plant</span
+                                            >
+                                        </div>
+                                    </div>
+                                </template>
+                                <div
+                                    v-else
+                                    class="absolute inset-0 rounded-none bg-slate-200/55 opacity-90"
+                                />
+                            </div>
+                        </div>
 
+                        <div
+                            v-if="draftBedStyle"
+                            class="bed-placement-draft absolute z-50 touch-none overflow-visible rounded-none"
+                            :class="[
+                                isDraggingDraft
+                                    ? 'is-dragging cursor-grabbing'
+                                    : 'cursor-grab',
+                                placementOverlapsExisting
+                                    ? 'bed-placement-draft--invalid'
+                                    : '',
+                            ]"
+                            :style="draftBedStyle"
+                            role="button"
+                            tabindex="0"
+                            aria-label="Lohista peenart aiaplaanil"
+                            @pointerdown="startDraftDrag"
+                            @click.stop
+                        >
                             <div
-                                v-if="draftBedStyle()"
-                                class="pointer-events-none absolute z-10 rounded-sm border-2 border-amber-800/50 bg-amber-100/85 shadow-md ring-4 ring-primary/20"
-                                :style="draftBedStyle()!"
+                                class="bed-placement-toolbar"
+                                :class="
+                                    toolbarBelow
+                                        ? 'bed-placement-toolbar--below'
+                                        : ''
+                                "
+                                :style="toolbarStyle"
+                            >
+                                <span
+                                    class="bed-placement-toolbar__grip"
+                                    :class="
+                                        isDraggingDraft
+                                            ? 'cursor-grabbing'
+                                            : 'cursor-grab'
+                                    "
+                                    aria-hidden="true"
+                                    @pointerdown="startDraftDrag"
+                                >
+                                    <svg
+                                        width="10"
+                                        height="10"
+                                        viewBox="0 0 10 10"
+                                        fill="currentColor"
+                                    >
+                                        <circle cx="2" cy="2" r="1.2" />
+                                        <circle cx="8" cy="2" r="1.2" />
+                                        <circle cx="2" cy="5" r="1.2" />
+                                        <circle cx="8" cy="5" r="1.2" />
+                                        <circle cx="2" cy="8" r="1.2" />
+                                        <circle cx="8" cy="8" r="1.2" />
+                                    </svg>
+                                </span>
+                                <button
+                                    type="button"
+                                    class="bed-placement-toolbar__btn"
+                                    title="Keera 90°"
+                                    aria-label="Keera peenart 90 kraadi"
+                                    @pointerdown.stop
+                                    @click.stop="emit('rotate')"
+                                >
+                                    <span
+                                        class="material-symbols-outlined text-[16px] leading-none"
+                                        aria-hidden="true"
+                                        >rotate_right</span
+                                    >
+                                </button>
+                            </div>
+                            <div
+                                class="pointer-events-none absolute inset-0 overflow-hidden rounded-none"
                                 aria-hidden="true"
-                            />
-                        </template>
+                            >
+                                <div
+                                    v-for="(
+                                        cell, cellIndex
+                                    ) in props.draftPreviewCells ?? []"
+                                    :key="`draft-cell-${cellIndex}`"
+                                    class="absolute overflow-hidden rounded-none"
+                                    :class="
+                                        cell.kind === 'walkway'
+                                            ? 'bg-stone-300/40'
+                                            : ''
+                                    "
+                                    :style="{
+                                        left: `${cell.left}px`,
+                                        top: `${cell.top}px`,
+                                        width: `${cell.width}px`,
+                                        height: `${cell.height}px`,
+                                    }"
+                                >
+                                    <img
+                                        v-if="
+                                            cell.image_url &&
+                                            cell.kind === 'plantable'
+                                        "
+                                        :src="cell.image_url"
+                                        alt=""
+                                        class="size-full object-cover"
+                                    />
+                                    <div
+                                        v-else-if="cell.kind === 'plantable'"
+                                        class="flex size-full items-center justify-center bg-emerald-50/40"
+                                    >
+                                        <span
+                                            class="material-symbols-outlined leading-none text-emerald-800/45"
+                                            :style="{
+                                                fontSize: `clamp(8px, ${Math.min(cell.width, cell.height) * 0.42}px, 20px)`,
+                                            }"
+                                            aria-hidden="true"
+                                            >potted_plant</span
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -442,14 +826,99 @@ onBeforeUnmount(() => {
         </div>
 
         <p
-            v-if="gardenX != null && gardenY != null"
+            v-if="
+                effectiveDraftPosition &&
+                hasVisibleDraft &&
+                placementOverlapsExisting
+            "
+            class="text-sm font-medium text-red-700 dark:text-red-300"
+        >
+            Peenar kattub olemasoleva peenraga — vali teine koht aiaplaanil.
+        </p>
+        <p
+            v-else-if="effectiveDraftPosition && hasVisibleDraft"
             class="text-sm font-medium text-emerald-800 dark:text-emerald-100"
         >
-            Asukoht valitud. Võid klõpsata teise koha või liikuda järgmise sammu
-            juurde.
+            Asukoht valitud. Lohista peenart, keera nupuga 90° või liigu
+            järgmise sammu juurde.
+        </p>
+        <p
+            v-else-if="!hasVisibleDraft"
+            class="text-sm font-medium text-amber-800"
+        >
+            Peenra kuju on puudu või liiga väike — mine tagasi „Kuju" sammu
+            juurde ja lisa vähemalt üks ruut.
         </p>
         <p v-else class="text-sm font-medium text-amber-800">
             Asukoht pole veel valitud — klõpsa aiaplaanil.
         </p>
     </div>
 </template>
+
+<style scoped>
+.bed-placement-toolbar {
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 9999px;
+    border: 1px solid rgba(22, 101, 52, 0.18);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+    white-space: nowrap;
+}
+
+.bed-placement-toolbar--below {
+    top: auto;
+    bottom: 4px;
+}
+
+.bed-placement-toolbar__grip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 9999px;
+    color: rgba(60, 80, 50, 0.7);
+    touch-action: none;
+    pointer-events: auto;
+}
+
+.bed-placement-toolbar__btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 9999px;
+    color: rgba(22, 101, 52, 0.9);
+    cursor: pointer;
+    touch-action: manipulation;
+    pointer-events: auto;
+}
+
+.bed-placement-toolbar__btn:hover {
+    background: rgba(22, 101, 52, 0.1);
+}
+
+.bed-placement-draft.is-dragging {
+    outline: 2px dashed rgba(47, 99, 60, 0.45);
+    outline-offset: 2px;
+}
+
+.bed-placement-draft.is-dragging .bed-placement-toolbar {
+    opacity: 0.6;
+}
+
+.bed-placement-draft--invalid {
+    outline: 2px dashed rgba(220, 38, 38, 0.55);
+    outline-offset: 2px;
+}
+</style>

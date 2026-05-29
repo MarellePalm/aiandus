@@ -43,6 +43,8 @@ export type PlantWithoutBed = {
     id: number;
     name: string;
     image_url: string | null;
+    quantity?: number;
+    seed_id?: number | null;
     category?: { name: string; slug: string } | null;
 };
 

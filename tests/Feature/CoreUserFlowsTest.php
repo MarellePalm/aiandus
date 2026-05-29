@@ -232,6 +232,56 @@ test('authenticated user can create a bed from coordinate cells payload', functi
     );
 });
 
+test('bed store can place same stock plant in two cells', function () {
+    $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
+
+    $plant = Plant::query()->create([
+        'user_id' => $user->id,
+        'name' => 'Lill',
+        'subtitle' => 'Lill',
+        'quantity' => 2,
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('beds.store'), [
+            'garden_plan_id' => $plan->id,
+            'name' => 'Lillepeenar',
+            'cell_bricks' => [
+                ['x' => 0, 'y' => 0, 'w' => 1, 'h' => 1, 'kind' => 'plantable'],
+                ['x' => 1, 'y' => 0, 'w' => 1, 'h' => 1, 'kind' => 'plantable'],
+            ],
+            'cells' => [
+                [
+                    'x' => 0,
+                    'y' => 0,
+                    'plants' => [['plant_id' => $plant->id, 'quantity' => 1]],
+                ],
+                [
+                    'x' => 1,
+                    'y' => 0,
+                    'plants' => [['plant_id' => $plant->id, 'quantity' => 1]],
+                ],
+            ],
+        ])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    $bed = Bed::query()->where('user_id', $user->id)->latest('id')->first();
+    expect($bed)->not()->toBeNull();
+
+    $onBed = Plant::query()
+        ->where('user_id', $user->id)
+        ->where('bed_id', $bed->id)
+        ->orderBy('position_in_bed')
+        ->get();
+
+    expect($onBed)->toHaveCount(2);
+    expect($onBed->pluck('position_in_bed')->all())->toBe(['0,0', '0,1']);
+    expect($onBed->every(fn ($p) => $p->name === 'Lill'))->toBeTrue();
+    expect(Plant::query()->where('user_id', $user->id)->whereNull('bed_id')->count())->toBe(0);
+});
+
 test('authenticated user can create a plant in own category', function () {
     $user = User::factory()->create();
     $category = Category::query()->create([

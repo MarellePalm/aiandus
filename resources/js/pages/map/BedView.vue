@@ -545,15 +545,6 @@ function onBedGridPointerDown(event: PointerEvent) {
         y: event.clientY,
     });
 
-    const viewport = bedGridViewportRef.value;
-    if (viewport) {
-        try {
-            viewport.setPointerCapture(event.pointerId);
-        } catch {
-            /* noop */
-        }
-    }
-
     if (bedGridPointerMap.size === 2) {
         const points = [...bedGridPointerMap.values()];
         bedGridPinchState.value = {
@@ -563,6 +554,15 @@ function onBedGridPointerDown(event: PointerEvent) {
             ),
             startZoom: bedGridZoom.value,
         };
+
+        const viewport = bedGridViewportRef.value;
+        if (viewport) {
+            try {
+                viewport.setPointerCapture(event.pointerId);
+            } catch {
+                /* noop */
+            }
+        }
     }
 }
 
@@ -975,11 +975,8 @@ function deleteCurrentBed() {
         return;
     }
 
-    router.delete(`/beds/${props.bed.id}`, {
-        onSuccess: () => {
-            router.get(mapHref);
-        },
-    });
+    // Backend suunab kustutamise järel aiaplaani kaardile.
+    router.delete(`/beds/${props.bed.id}`);
 }
 
 function handleBedStatusAction() {
@@ -1386,7 +1383,10 @@ function handleBedStatusAction() {
                                                 class="material-symbols-outlined text-[14px]"
                                                 >straighten</span
                                             >
-                                            {{ bed.cell_size_cm ?? DEFAULT_BED_CELL_SIZE_CM }}
+                                            {{
+                                                bed.cell_size_cm ??
+                                                DEFAULT_BED_CELL_SIZE_CM
+                                            }}
                                             cm/ruut
                                         </button>
                                         <form
@@ -2353,7 +2353,8 @@ function handleBedStatusAction() {
 
 .bed-grid-viewport {
     overflow: hidden;
-    touch-action: none;
+    /* Ühe sõrmega keri lehte; kahe sõrmega suumi ruudustikku. */
+    touch-action: pan-y pinch-zoom;
     user-select: none;
 }
 

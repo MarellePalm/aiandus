@@ -137,7 +137,8 @@ class GardenMapController extends Controller
             ->where('garden_plan_id', $gardenPlan->id)
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->get(['garden_x', 'garden_y', 'cell_size_cm', 'rows', 'columns', 'layout'])
+            ->with(['plants' => fn ($q) => $q->select('id', 'image_url', 'bed_id', 'position_in_bed')])
+            ->get(['garden_x', 'garden_y', 'cell_size_cm', 'rows', 'columns', 'layout', 'cell_bricks'])
             ->map(fn ($b) => [
                 'garden_x' => (int) ($b->garden_x ?? 0),
                 'garden_y' => (int) ($b->garden_y ?? 0),
@@ -145,6 +146,26 @@ class GardenMapController extends Controller
                 'rows' => (int) ($b->rows ?? 1),
                 'columns' => (int) ($b->columns ?? 1),
                 'layout' => $b->layout,
+                'cell_bricks' => $b->cell_bricks,
+                'plants' => $b->plants->map(fn ($p) => [
+                    'image_url' => $p->image_url,
+                    'position_in_bed' => $p->position_in_bed,
+                ]),
+            ]);
+
+        $plantsWithoutBed = Plant::query()
+            ->where('user_id', $request->user()->id)
+            ->whereNull('bed_id')
+            ->orderBy('name')
+            ->with('category:id,name,slug')
+            ->get(['id', 'name', 'image_url', 'category_id', 'quantity', 'seed_id'])
+            ->map(fn ($p) => [
+                'id' => $p->id,
+                'name' => $p->name,
+                'image_url' => $p->image_url,
+                'quantity' => (int) $p->quantity,
+                'seed_id' => $p->seed_id,
+                'category' => $p->category ? ['name' => $p->category->name, 'slug' => $p->category->slug] : null,
             ]);
 
         return Inertia::render('map/AddBedPage', [
@@ -159,6 +180,7 @@ class GardenMapController extends Controller
                 'center_lng' => $gardenPlan->center_lng,
             ],
             'existingBeds' => $existingBeds,
+            'plantsWithoutBed' => $plantsWithoutBed,
         ]);
     }
 }
