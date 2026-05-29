@@ -30,7 +30,52 @@ export type BedFootprintRectPx = {
 };
 
 function clampUnitCm(unitCm: number): number {
-    return Math.max(10, Math.min(200, Math.round(unitCm) || DEFAULT_BED_CELL_SIZE_CM));
+    return Math.max(
+        10,
+        Math.min(200, Math.round(unitCm) || DEFAULT_BED_CELL_SIZE_CM),
+    );
+}
+
+/** Redaktori alamruudustik (w=3) salvestati varem ilma width_cm-ta → 90 cm asemel 30 cm. */
+const EDITOR_SUBGRID_UNITS = 3;
+
+export function repairLegacySubgridBrick(
+    brick: BedCellBrick,
+    unitCm: number,
+): BedCellBrick {
+    const unit = clampUnitCm(unitCm);
+    const w = Math.max(1, brick.w ?? 1);
+    const h = Math.max(1, brick.h ?? 1);
+    const widthCm = brick.width_cm ?? w * unit;
+    const heightCm = brick.height_cm ?? h * unit;
+    const x = brick.x ?? 0;
+    const y = brick.y ?? 0;
+
+    const looksLikeSubgridMistake =
+        w >= EDITOR_SUBGRID_UNITS &&
+        h >= EDITOR_SUBGRID_UNITS &&
+        widthCm === w * unit &&
+        heightCm === h * unit &&
+        brick.left_cm == null &&
+        x % EDITOR_SUBGRID_UNITS === 0 &&
+        y % EDITOR_SUBGRID_UNITS === 0;
+
+    if (!looksLikeSubgridMistake) {
+        return brick;
+    }
+
+    const blockW = Math.max(1, Math.round(w / EDITOR_SUBGRID_UNITS));
+    const blockH = Math.max(1, Math.round(h / EDITOR_SUBGRID_UNITS));
+
+    return {
+        ...brick,
+        x: Math.round(x / EDITOR_SUBGRID_UNITS),
+        y: Math.round(y / EDITOR_SUBGRID_UNITS),
+        w: blockW,
+        h: blockH,
+        width_cm: unit * blockW,
+        height_cm: unit * blockH,
+    };
 }
 
 export function resolveBedBricksCm(
@@ -40,29 +85,30 @@ export function resolveBedBricksCm(
     const unit = clampUnitCm(unitCm);
 
     const normalized = bricks.map((brick) => {
-        const w = Math.max(1, brick.w ?? 1);
-        const h = Math.max(1, brick.h ?? 1);
+        const repaired = repairLegacySubgridBrick(brick, unit);
+        const w = Math.max(1, repaired.w ?? 1);
+        const h = Math.max(1, repaired.h ?? 1);
 
         return {
-            x: brick.x,
-            y: brick.y,
+            x: repaired.x ?? 0,
+            y: repaired.y ?? 0,
             width_cm: Math.max(
                 10,
-                Math.min(500, Math.round(brick.width_cm ?? w * unit)),
+                Math.min(500, Math.round(repaired.width_cm ?? w * unit)),
             ),
             height_cm: Math.max(
                 10,
-                Math.min(500, Math.round(brick.height_cm ?? h * unit)),
+                Math.min(500, Math.round(repaired.height_cm ?? h * unit)),
             ),
             left_cm:
-                brick.left_cm != null
-                    ? Math.max(0, Math.round(brick.left_cm))
+                repaired.left_cm != null
+                    ? Math.max(0, Math.round(repaired.left_cm))
                     : undefined,
             top_cm:
-                brick.top_cm != null
-                    ? Math.max(0, Math.round(brick.top_cm))
+                repaired.top_cm != null
+                    ? Math.max(0, Math.round(repaired.top_cm))
                     : undefined,
-            kind: brick.kind ?? 'plantable',
+            kind: repaired.kind ?? 'plantable',
         };
     });
 
@@ -83,9 +129,12 @@ export function resolveBedBricksCm(
     }));
 }
 
-export function bedBoundsCmFromBricks(
-    bricks: ResolvedBedBrick[],
-): { widthCm: number; heightCm: number; minLeft: number; minTop: number } {
+export function bedBoundsCmFromBricks(bricks: ResolvedBedBrick[]): {
+    widthCm: number;
+    heightCm: number;
+    minLeft: number;
+    minTop: number;
+} {
     if (!bricks.length) {
         return {
             widthCm: DEFAULT_BED_CELL_SIZE_CM,

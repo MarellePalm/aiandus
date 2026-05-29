@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bed;
+use App\Models\Plant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
@@ -62,9 +64,11 @@ class BedController extends Controller
     private function normalizeCellPlants(array $plants): array
     {
         return array_map(function ($plant) {
+            $quantity = (int) ($plant['quantity'] ?? 1);
+
             return [
                 'plant_id' => (int) ($plant['plant_id'] ?? 0),
-                'quantity' => max(1, (int) ($plant['quantity'] ?? 1)),
+                'quantity' => $quantity === 0 ? 0 : max(1, $quantity),
                 'size' => isset($plant['size']) ? (string) $plant['size'] : null,
                 'note' => isset($plant['note']) ? (string) $plant['note'] : null,
             ];
@@ -279,21 +283,18 @@ class BedController extends Controller
             ->all();
 
         $geometry = $this->buildLayoutFromCellBricks($bricks, $unitCm);
-        $plantPositions = [];
 
         $minX = min(array_column($bricks, 'x'));
         $minY = min(array_column($bricks, 'y'));
 
-        foreach ($normalized as $cell) {
-            $row = $cell['y'] - $minY;
-            $column = $cell['x'] - $minX;
-
-            foreach ($cell['plants'] as $plant) {
-                if (($plant['plant_id'] ?? 0) > 0) {
-                    $plantPositions[(int) $plant['plant_id']] = "{$row},{$column}";
-                }
-            }
-        }
+        $cellsForPlants = $normalized
+            ->map(fn ($cell) => [
+                'x' => $cell['x'] - $minX,
+                'y' => $cell['y'] - $minY,
+                'plants' => $cell['plants'],
+            ])
+            ->all();
+        $plantPositions = $this->collectPlantPositions($cellsForPlants);
 
         return [
             'layout' => $geometry['layout'],
@@ -359,9 +360,23 @@ class BedController extends Controller
         ]);
     }
 
+    /**
+     * @return list<string>
+     */
     private function collectPlantPositions(array $cells): array
     {
-        $plantPositions = [];
+        return array_values(array_unique(array_map(
+            fn (array $placement) => $placement['position'],
+            $this->expandCellPlantPlacements($cells),
+        )));
+    }
+
+    /**
+     * @return list<array{source_plant_id: int, position: string, quantity: int}>
+     */
+    private function expandCellPlantPlacements(array $cells): array
+    {
+        $placements = [];
 
         foreach ($cells as $cell) {
             if (! is_array($cell)) {
@@ -372,13 +387,127 @@ class BedController extends Controller
             $column = (int) ($cell['x'] ?? 0);
 
             foreach ($this->normalizeCellPlants($cell['plants'] ?? []) as $plant) {
-                if (($plant['plant_id'] ?? 0) > 0) {
-                    $plantPositions[(int) $plant['plant_id']] = "{$row},{$column}";
+                $plantId = (int) ($plant['plant_id'] ?? 0);
+                if ($plantId > 0) {
+                    $placements[] = [
+                        'source_plant_id' => $plantId,
+                        'position' => "{$row},{$column}",
+                        'quantity' => (int) ($plant['quantity'] ?? 1),
+                    ];
                 }
             }
         }
 
-        return $plantPositions;
+        return $placements;
+    }
+
+    private function syncBedPlantsFromCells(Bed $bed, int $userId, array $cells): void
+    {
+        $placements = $this->expandCellPlantPlacements($cells);
+        $desiredPositions = array_column($placements, 'position');
+
+        Plant::query()
+            ->where('user_id', $userId)
+            ->where('bed_id', $bed->id)
+            ->whereNotNull('position_in_bed')
+            ->when(
+                $desiredPositions !== [],
+                fn ($q) => $q->whereNotIn('position_in_bed', $desiredPositions),
+                fn ($q) => $q,
+            )
+            ->update(['bed_id' => null, 'position_in_bed' => null]);
+
+        foreach ($placements as $placement) {
+            $this->placeStockPlantOnBedCell(
+                $bed,
+                $userId,
+                $placement['source_plant_id'],
+                $placement['position'],
+                $placement['quantity'],
+            );
+        }
+    }
+
+    private function placeStockPlantOnBedCell(
+        Bed $bed,
+        int $userId,
+        int $sourcePlantId,
+        string $position,
+        int $requestedQty,
+    ): void {
+        $existing = Plant::query()
+            ->where('user_id', $userId)
+            ->where('bed_id', $bed->id)
+            ->where('position_in_bed', $position)
+            ->first();
+
+        if ($existing) {
+            if ((int) $existing->quantity !== 0 && $requestedQty > 0) {
+                $existing->update(['quantity' => max(1, $requestedQty)]);
+            }
+
+            return;
+        }
+
+        $stock = $this->findStockPlantForPlacement($userId, $sourcePlantId, $bed->id);
+        if (! $stock) {
+            return;
+        }
+
+        DB::transaction(function () use ($stock, $bed, $position, $requestedQty): void {
+            $locked = Plant::query()->whereKey($stock->id)->lockForUpdate()->firstOrFail();
+            $prevQty = max(0, (int) $locked->quantity);
+
+            $assignQty = $prevQty === 0
+                ? max(0, $requestedQty)
+                : max(1, min(max(1, $requestedQty), $prevQty));
+
+            $payload = [
+                'bed_id' => $bed->id,
+                'position_in_bed' => $position,
+            ];
+
+            if ($prevQty !== 0 && $assignQty > 0) {
+                $payload['quantity'] = $assignQty;
+            }
+
+            if ($locked->bed_id === null && $prevQty > 0 && $assignQty < $prevQty) {
+                $remainder = $prevQty - $assignQty;
+                $remainderPlant = $locked->replicate(['bed_id', 'position_in_bed', 'quantity']);
+                $remainderPlant->bed_id = null;
+                $remainderPlant->position_in_bed = null;
+                $remainderPlant->quantity = $remainder;
+                $remainderPlant->save();
+            }
+
+            $locked->update($payload);
+        });
+    }
+
+    private function findStockPlantForPlacement(
+        int $userId,
+        int $sourcePlantId,
+        int $bedId,
+    ): ?Plant {
+        $source = Plant::query()
+            ->where('user_id', $userId)
+            ->where('id', $sourcePlantId)
+            ->first();
+
+        if (! $source) {
+            return null;
+        }
+
+        if ($source->bed_id === null) {
+            return $source;
+        }
+
+        return Plant::query()
+            ->where('user_id', $userId)
+            ->whereNull('bed_id')
+            ->where('name', $source->name)
+            ->orderBy('id')
+            ->first();
     }
 
     private function validatePlantPositionsInLayout(array $plantPositions, array $layout): void
@@ -434,6 +563,10 @@ class BedController extends Controller
             'cell_bricks.*.y' => ['required_with:cell_bricks', 'integer', 'min:0'],
             'cell_bricks.*.w' => ['required_with:cell_bricks', 'integer', 'min:1', 'max:'.self::MAX_BRICK_GRID_SPAN],
             'cell_bricks.*.h' => ['required_with:cell_bricks', 'integer', 'min:1', 'max:'.self::MAX_BRICK_GRID_SPAN],
+            'cell_bricks.*.width_cm' => ['nullable', 'integer', 'min:10', 'max:500'],
+            'cell_bricks.*.height_cm' => ['nullable', 'integer', 'min:10', 'max:500'],
+            'cell_bricks.*.left_cm' => ['nullable', 'integer', 'min:0', 'max:5000'],
+            'cell_bricks.*.top_cm' => ['nullable', 'integer', 'min:0', 'max:5000'],
             'cell_bricks.*.kind' => ['nullable', 'string', 'in:plantable,walkway,empty'],
             'cells.*.w' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_BRICK_GRID_SPAN],
             'cells.*.h' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_BRICK_GRID_SPAN],
@@ -448,6 +581,7 @@ class BedController extends Controller
         $plantPositions = $geometry['plant_positions'] ?? null;
 
         $canStoreBedImage = Schema::hasColumn('beds', 'image_url');
+        $canStoreCellBricks = Schema::hasColumn('beds', 'cell_bricks');
         $imagePath = null;
         if ($canStoreBedImage && $request->hasFile('image')) {
             $imagePath = $request->file('image')->store('bed-images', 'public');
@@ -463,7 +597,6 @@ class BedController extends Controller
             'rows' => $rows,
             'columns' => $columns,
             'layout' => $layout,
-            'cell_bricks' => $cellBricks,
             'sort_order' => (Bed::query()->where('garden_plan_id', $gardenPlanId)->max('sort_order') ?? 0) + 1,
         ];
 
@@ -478,11 +611,23 @@ class BedController extends Controller
             $payload['image_url'] = $imagePath ? "/storage/{$imagePath}" : null;
         }
 
+        if ($canStoreCellBricks) {
+            $payload['cell_bricks'] = $cellBricks;
+        }
+
         $bed = Bed::create($payload);
 
-        if (is_array($plantPositions)) {
+        if (! empty($data['cells']) && is_array($data['cells'])) {
+            $this->syncBedPlantsFromCells($bed, $request->user()->id, $data['cells']);
+        } elseif (is_array($plantPositions)) {
             foreach ($plantPositions as $plantId => $position) {
-                $bed->plants()->where('id', $plantId)->update(['position_in_bed' => $position]);
+                Plant::query()
+                    ->where('user_id', $request->user()->id)
+                    ->where('id', (int) $plantId)
+                    ->update([
+                        'bed_id' => $bed->id,
+                        'position_in_bed' => $position,
+                    ]);
             }
         }
 
@@ -534,6 +679,10 @@ class BedController extends Controller
             'cell_bricks.*.y' => ['required_with:cell_bricks', 'integer', 'min:0'],
             'cell_bricks.*.w' => ['required_with:cell_bricks', 'integer', 'min:1', 'max:'.self::MAX_BRICK_GRID_SPAN],
             'cell_bricks.*.h' => ['required_with:cell_bricks', 'integer', 'min:1', 'max:'.self::MAX_BRICK_GRID_SPAN],
+            'cell_bricks.*.width_cm' => ['nullable', 'integer', 'min:10', 'max:500'],
+            'cell_bricks.*.height_cm' => ['nullable', 'integer', 'min:10', 'max:500'],
+            'cell_bricks.*.left_cm' => ['nullable', 'integer', 'min:0', 'max:5000'],
+            'cell_bricks.*.top_cm' => ['nullable', 'integer', 'min:0', 'max:5000'],
             'cell_bricks.*.kind' => ['nullable', 'string', 'in:plantable,walkway,empty'],
             'cells.*.w' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_BRICK_GRID_SPAN],
             'cells.*.h' => ['nullable', 'integer', 'min:1', 'max:'.self::MAX_BRICK_GRID_SPAN],
@@ -582,33 +731,33 @@ class BedController extends Controller
             $payload['rows'] = $geometry['rows'];
             $payload['columns'] = $geometry['columns'];
             $payload['layout'] = $normalizedLayout;
-            $payload['cell_bricks'] = $geometry['cell_bricks'];
+            if (Schema::hasColumn('beds', 'cell_bricks')) {
+                $payload['cell_bricks'] = $geometry['cell_bricks'];
+            } else {
+                unset($payload['cell_bricks']);
+            }
             $plantPositions = $geometry['plant_positions'] ?? null;
         }
 
         $bed->update($payload);
 
-        if (is_array($plantPositions)) {
-            $bedPlants = $bed->plants()->select('id', 'position_in_bed')->get()->keyBy('id');
-
-            foreach ($bedPlants as $plantId => $plant) {
-                if (! array_key_exists($plantId, $plantPositions)) {
-                    if (is_string($plant->position_in_bed) && preg_match('/^\d+,\d+$/', $plant->position_in_bed)) {
-                        throw ValidationException::withMessages([
-                            'cells' => 'Peenart ei saa salvestada nii, et olemasolev taim kaotab oma ruudu.',
-                        ]);
-                    }
-
-                    continue;
-                }
-            }
-
+        if (! empty($data['cells']) && is_array($data['cells'])) {
+            $this->syncBedPlantsFromCells($bed, $request->user()->id, $data['cells']);
+        } elseif (is_array($plantPositions)) {
+            $cellsFromPositions = [];
             foreach ($plantPositions as $plantId => $position) {
-                $plant = $bedPlants->get($plantId);
-                if (! $plant) {
+                if (! is_string($position) || ! preg_match('/^\d+,\d+$/', $position)) {
                     continue;
                 }
-                $plant->update(['position_in_bed' => $position]);
+                [$row, $column] = array_map('intval', explode(',', $position));
+                $cellsFromPositions[] = [
+                    'x' => $column,
+                    'y' => $row,
+                    'plants' => [['plant_id' => (int) $plantId, 'quantity' => 1]],
+                ];
+            }
+            if ($cellsFromPositions !== []) {
+                $this->syncBedPlantsFromCells($bed, $request->user()->id, $cellsFromPositions);
             }
         }
 
@@ -618,10 +767,14 @@ class BedController extends Controller
     public function destroy(Request $request, Bed $bed)
     {
         abort_unless($bed->user_id === $request->user()->id, 403);
+        $planId = $bed->garden_plan_id;
         $bed->plants()->update(['bed_id' => null, 'position_in_bed' => null]);
         $bed->delete();
 
-        return back()->with('success', 'Peenar eemaldatud.');
+        // Ära suuna tagasi kustutatud peenra lehele (back() → /beds/{id} → 404).
+        $target = $planId ? "/map/{$planId}" : route('map');
+
+        return redirect($target)->with('success', 'Peenar eemaldatud.');
     }
 
     public function toggleFavorite(Request $request, Bed $bed)

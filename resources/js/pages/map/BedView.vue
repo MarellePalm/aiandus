@@ -975,11 +975,8 @@ function deleteCurrentBed() {
         return;
     }
 
-    router.delete(`/beds/${props.bed.id}`, {
-        onSuccess: () => {
-            router.get(mapHref);
-        },
-    });
+    // Backend suunab kustutamise järel aiaplaani kaardile.
+    router.delete(`/beds/${props.bed.id}`);
 }
 
 function handleBedStatusAction() {
@@ -1386,7 +1383,10 @@ function handleBedStatusAction() {
                                                 class="material-symbols-outlined text-[14px]"
                                                 >straighten</span
                                             >
-                                            {{ bed.cell_size_cm ?? DEFAULT_BED_CELL_SIZE_CM }}
+                                            {{
+                                                bed.cell_size_cm ??
+                                                DEFAULT_BED_CELL_SIZE_CM
+                                            }}
                                             cm/ruut
                                         </button>
                                         <form

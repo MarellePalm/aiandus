@@ -165,6 +165,18 @@
         0 2px 6px rgba(22, 101, 52, 0.2);
 }
 
+.bed-cell--planted.bed-cell--photo {
+    display: block;
+    background: rgb(30, 58, 42);
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.35) inset,
+        0 4px 14px rgba(22, 101, 52, 0.22);
+}
+
+.bed-cell--planted.bed-cell--photo .plant-bloom {
+    display: none;
+}
+
 .bed-cell--planted:hover,
 .bed-cell--planted:focus-visible {
     transform: translateY(-2px) scale(1.015);

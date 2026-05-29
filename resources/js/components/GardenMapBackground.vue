@@ -20,10 +20,23 @@ const props = withDefaults(
         focusSpanMeters?: number;
         /** Hiirega liigutamine ja rullikuga suumimine. */
         interactive?: boolean;
+        /**
+         * Sobita krunt TÄPSELT konteinerisse (fraktsionaalne suum, padding 0),
+         * et CM_TO_PX-põhine ülekate kataks fotot 1:1. Kasutab paigutusvaade.
+         */
+        exactGardenFit?: boolean;
+        /**
+         * Luba fraktsionaalne suum (zoomSnap: 0), et kaart suureneks sujuvalt
+         * (mitte täisarvuliste Leaflet-astmetena). Planeerija kasutab seda, et
+         * suum järgiks sisukihi pidevat skaalat.
+         */
+        fractionalZoom?: boolean;
     }>(),
     {
         focusSpanMeters: 0,
         interactive: false,
+        exactGardenFit: false,
+        fractionalZoom: false,
     },
 );
 
@@ -145,9 +158,16 @@ function syncMapView() {
         return;
     }
 
+    map.invalidateSize({ pan: false });
+
+    if (props.exactGardenFit) {
+        // Krunt täidab pinna täpselt — foto ja CM_TO_PX-ülekate on joondatud.
+        map.fitBounds(gardenBounds(), { padding: [0, 0], animate: false });
+        return;
+    }
+
     const bounds = fitTargetBounds();
     const center = focusBounds()?.getCenter() ?? bounds.getCenter();
-    map.invalidateSize({ pan: false });
 
     const boundsKey = boundsSyncKey();
     const boundsChanged = boundsKey !== lastBoundsKey;
@@ -236,7 +256,7 @@ function initMap() {
         keyboard: props.interactive,
         touchZoom: props.interactive,
         attributionControl: false,
-        zoomSnap: 1,
+        zoomSnap: props.exactGardenFit || props.fractionalZoom ? 0 : 1,
         zoomDelta: props.interactive ? 1 : 1,
         wheelPxPerZoomLevel: props.interactive ? 60 : 60,
     });

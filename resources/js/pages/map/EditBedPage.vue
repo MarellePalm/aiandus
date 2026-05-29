@@ -7,6 +7,7 @@ import DiaryHeader from '@/components/DiaryHeader.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 import AddBed from '@/pages/map/AddBed.vue';
+import type { PlantWithoutBed } from '@/pages/map/types';
 
 type Bed = {
     id: number;
@@ -35,6 +36,7 @@ type Bed = {
 const props = defineProps<{
     bed: Bed;
     startStep?: number;
+    plantsWithoutBed?: PlantWithoutBed[];
 }>();
 
 const mapHref = `/map/${props.bed.garden_plan_id}`;
@@ -74,6 +76,7 @@ const breadcrumbs = [
                     mode="edit"
                     :bed="bed"
                     :initial-step="wizardStartStep"
+                    :plants-without-bed="props.plantsWithoutBed ?? []"
                 />
             </main>
 

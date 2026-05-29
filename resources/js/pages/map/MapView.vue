@@ -33,6 +33,7 @@ import BottomNav from '@/pages/BottomNav.vue';
 import {
     bedBoundsCmFromBricks,
     bedFootprintRectsPx,
+    repairLegacySubgridBrick,
     resolveBedBricksCm,
     type BedCellBrick,
 } from '@/pages/map/bedBrickFootprint';
@@ -48,6 +49,9 @@ import {
     FIT_VIEW_MIN_ZOOM,
     FOCUSED_BED_MIN_ZOOM,
     GARDEN_GRID_CELL_CM,
+    GARDEN_GRID_EDGE_CLASS,
+    GARDEN_GRID_MAJOR_LINE,
+    GARDEN_GRID_MINOR_LINE,
     GARDEN_SHAPE_CELL_CM,
     MAX_ZOOM,
     MIN_BED_VISUAL_SIZE,
@@ -91,7 +95,6 @@ import type {
 } from '@/pages/map/types';
 import SearchModal from '@/pages/Seeds/SearchModal.vue';
 import type { AppPageProps } from '@/types';
-
 
 const props = defineProps<MapViewProps>();
 
@@ -913,6 +916,10 @@ function onPlannerCanvasClick(event: MouseEvent) {
     if (activeBedCardId.value !== null) {
         activeBedCardId.value = null;
     }
+
+    if (hoveredBedId.value !== null) {
+        hoveredBedId.value = null;
+    }
 }
 
 function onFloatingPlusClick() {
@@ -1540,10 +1547,11 @@ function getPlannerCanvasSize(zoomLevel = zoom.value): {
     const base = gardenSurfaceSize.value;
 
     if (usesOrtophotoSharpZoom.value) {
-        const scale = plannerVisualScale(zoomLevel);
+        // Kaader on fikseeritud (kaart suumib sisemiselt) — suurendus ei muuda
+        // kaadri mõõtu, seega pan/tsentreerimine kasutab fikseeritud suurust.
         return {
-            width: base.width * scale,
-            height: base.height * scale,
+            width: base.width,
+            height: base.height,
         };
     }
 
@@ -1703,11 +1711,7 @@ watch(
 
 watch(
     () =>
-        props.beds.map((bed) => [
-            bed.id,
-            bed.garden_x ?? 0,
-            bed.garden_y ?? 0,
-        ]),
+        props.beds.map((bed) => [bed.id, bed.garden_x ?? 0, bed.garden_y ?? 0]),
     () => {
         const current = localPositions.value;
         const next: Record<number, { x: number; y: number }> = {};
@@ -1901,8 +1905,20 @@ function bedDimensionsLabel(bed: Bed): string {
     return `${formatCentimeters(getBedPhysicalWidthCm(bed))} × ${formatCentimeters(getBedPhysicalHeightCm(bed))}`;
 }
 
-function bedDimensionsCompactLabel(bed: Bed): string {
-    return `${getBedWidthInCells(bed)}×${getBedHeightInCells(bed)}, ${getBedCellSizeCm(bed)}cm`;
+/** Tegelik peenra mõõt: cm väikese (<1 m) ja m suurema peenra puhul. */
+function bedSizeLabel(bed: Bed): string {
+    const widthCm = getBedPhysicalWidthCm(bed);
+    const heightCm = getBedPhysicalHeightCm(bed);
+
+    if (Math.max(widthCm, heightCm) >= 100) {
+        const toM = (cm: number) => {
+            const m = cm / 100;
+            return Number.isInteger(m) ? `${m}` : m.toFixed(1);
+        };
+        return `${toM(widthCm)} × ${toM(heightCm)} m`;
+    }
+
+    return `${Math.round(widthCm)} × ${Math.round(heightCm)} cm`;
 }
 
 function isBedCardVisible(bedId: number): boolean {
@@ -1950,14 +1966,8 @@ function snapToGardenGrid(value: number): number {
 function clampBedPosition(bed: Bed, x: number, y: number) {
     const size = bedCardSize(bed);
     return {
-        x: Math.max(
-            0,
-            Math.min(x, gardenSurfaceWidth.value - size.width),
-        ),
-        y: Math.max(
-            0,
-            Math.min(y, gardenSurfaceHeight.value - size.height),
-        ),
+        x: Math.max(0, Math.min(x, gardenSurfaceWidth.value - size.width)),
+        y: Math.max(0, Math.min(y, gardenSurfaceHeight.value - size.height)),
     };
 }
 
@@ -2035,12 +2045,40 @@ type BedFootprintCell = {
     width: number;
     height: number;
     kind: 'plantable' | 'walkway' | 'empty';
+    image_url?: string | null;
 };
+
+function plantImageForFootprintBrick(
+    bed: Bed,
+    brick: BedCellBrick,
+): string | null {
+    const repaired = repairLegacySubgridBrick(brick, getBedCellSizeCm(bed));
+    const x = repaired.x ?? 0;
+    const y = repaired.y ?? 0;
+    const candidates = new Set([`${y},${x}`, `${y * 3},${x * 3}`]);
+
+    for (const plant of bed.plants ?? []) {
+        if (
+            plant.position_in_bed &&
+            candidates.has(plant.position_in_bed) &&
+            plant.image_url
+        ) {
+            return plant.image_url;
+        }
+    }
+
+    return null;
+}
 
 function getBedFootprintCells(bed: Bed): BedFootprintCell[] {
     const bricks = getBedCellBricks(bed);
     if (bricks.length > 0) {
-        return bedFootprintRectsPx(bricks, getBedCellSizeCm(bed));
+        const unit = getBedCellSizeCm(bed);
+
+        return bedFootprintRectsPx(bricks, unit).map((rect, index) => ({
+            ...rect,
+            image_url: plantImageForFootprintBrick(bed, bricks[index] ?? {}),
+        }));
     }
 
     const layout = getBedLayout(bed);
@@ -2084,6 +2122,8 @@ function bedCardFixedStyle(bed: Bed): Record<string, string> {
     let anchorY: number;
 
     if (usesOrtophotoSharpZoom.value) {
+        // Sisukiht skaleerub keskpunktist (transform-origin: 50% 50%), seega
+        // arvestame keskpunkti nihke ekraaniankrut arvutades.
         const surfaceW = gardenSurfaceSize.value.width;
         const surfaceH = gardenSurfaceSize.value.height;
         anchorX =
@@ -2155,15 +2195,40 @@ function showBedInfo(bedId: number) {
 }
 
 function hideBedInfo(bedId: number) {
+    if (activeBedCardId.value === bedId) {
+        return;
+    }
+
     if (hideBedInfoTimer) {
         clearTimeout(hideBedInfoTimer);
     }
+
     hideBedInfoTimer = setTimeout(() => {
-        if (hoveredBedId.value === bedId) {
+        if (hoveredBedId.value === bedId && activeBedCardId.value !== bedId) {
             hoveredBedId.value = null;
         }
         hideBedInfoTimer = null;
-    }, 150);
+    }, 320);
+}
+
+function onBedPointerEnter(bedId: number) {
+    showBedInfo(bedId);
+}
+
+function onBedPointerLeave(bedId: number) {
+    hideBedInfo(bedId);
+}
+
+function onBedCardPointerEnter(bedId: number) {
+    showBedInfo(bedId);
+}
+
+function onBedCardPointerLeave(bedId: number) {
+    if (activeBedCardId.value === bedId) {
+        return;
+    }
+
+    hideBedInfo(bedId);
 }
 
 function toggleBedCard(bedId: number) {
@@ -2171,7 +2236,14 @@ function toggleBedCard(bedId: number) {
         return;
     }
 
-    router.get(`/beds/${bedId}`);
+    if (activeBedCardId.value === bedId) {
+        activeBedCardId.value = null;
+        hideBedInfo(bedId);
+        return;
+    }
+
+    activeBedCardId.value = bedId;
+    showBedInfo(bedId);
 }
 
 function togglePlannerBedList() {
@@ -2233,12 +2305,8 @@ function onPointerMove(event: PointerEvent) {
     const rawY = pointer.y - dragOffset.value.y;
     const next = clampBedPosition(
         bed,
-        showBedsAsPlannerFootprints.value
-            ? snapToGardenGrid(rawX)
-            : rawX,
-        showBedsAsPlannerFootprints.value
-            ? snapToGardenGrid(rawY)
-            : rawY,
+        showBedsAsPlannerFootprints.value ? snapToGardenGrid(rawX) : rawX,
+        showBedsAsPlannerFootprints.value ? snapToGardenGrid(rawY) : rawY,
     );
 
     localPositions.value = {
@@ -2613,6 +2681,17 @@ function setZoomAtViewportPoint(
     nextZoom: number,
 ) {
     const clamped = clampUserZoom(nextZoom);
+
+    if (usesOrtophotoSharpZoom.value) {
+        // Ortofotol on kaader fikseeritud ja kaart suumib sisemiselt krundi
+        // keskpunkti ümber. Suurendus käib keskelt — pani ei muudeta, et kaart
+        // ei nihkuks. clampPlannerPan hoiab kaadri keskel/täidetuna.
+        zoom.value = clamped;
+        clampPlannerPan();
+        refreshPlannerOrtophoto();
+        return;
+    }
+
     const scale = plannerVisualScale();
     const gx = (viewportX - panX.value) / scale;
     const gy = (viewportY - panY.value) / scale;
@@ -2747,6 +2826,10 @@ function plannerGardenSurfaceFrameStyle(): Record<string, string> {
     };
 }
 
+const showManualGardenGrid = computed(
+    () => !(hasGardenCoordinates.value && showMapBackground.value),
+);
+
 function plannerGardenSurfaceInnerStyle(): Record<string, string> {
     const layout = gardenMaskLayout.value;
 
@@ -2764,8 +2847,8 @@ function plannerGardenSurfaceInnerStyle(): Record<string, string> {
         minorPx,
         Math.round(plannerMajorGridCm.value * plannerCmToPx.value),
     );
-    const minorLine = 'rgba(34, 98, 58, 0.12)';
-    const majorLine = 'rgba(34, 98, 58, 0.24)';
+    const minorLine = GARDEN_GRID_MINOR_LINE;
+    const majorLine = GARDEN_GRID_MAJOR_LINE;
 
     const style: Record<string, string> = {
         width: `${layout.fullW}px`,
@@ -4817,420 +4900,476 @@ function saveGardenPlan(options?: {
                                                 <div
                                                     class="flex flex-col items-start"
                                                 >
-                                                <div
-                                                    class="relative overflow-hidden rounded-none"
-                                                    :class="
-                                                        showMapBackground
-                                                            ? 'border border-emerald-900/10 bg-transparent dark:border-emerald-200/15'
-                                                            : useGardenShapeClip ||
-                                                                gardenMaskLayout.useTightFrame
-                                                              ? 'border-0 bg-transparent'
-                                                              : 'border border-emerald-900/10 bg-emerald-50/80 dark:border-emerald-200/15 dark:bg-emerald-950/35'
-                                                    "
-                                                    :style="
-                                                        plannerGardenSurfaceFrameStyle()
-                                                    "
-                                                >
                                                     <div
-                                                        class="origin-top-left"
+                                                        class="relative overflow-hidden rounded-none"
                                                         :class="
-                                                            gardenMaskLayout.useTightFrame
-                                                                ? 'relative'
-                                                                : 'absolute inset-0'
+                                                            showMapBackground
+                                                                ? 'border border-emerald-900/10 bg-transparent dark:border-emerald-200/15'
+                                                                : useGardenShapeClip ||
+                                                                    gardenMaskLayout.useTightFrame
+                                                                  ? 'border-0 bg-transparent'
+                                                                  : 'border border-emerald-900/10 bg-emerald-50/80 dark:border-emerald-200/15 dark:bg-emerald-950/35'
                                                         "
                                                         :style="
-                                                            plannerGardenSurfaceInnerStyle()
+                                                            plannerGardenSurfaceFrameStyle()
                                                         "
                                                     >
-                                                        <svg
-                                                            v-if="
-                                                                useGardenShapeClip
-                                                            "
-                                                            class="pointer-events-none absolute size-0 overflow-hidden"
-                                                            aria-hidden="true"
-                                                        >
-                                                            <defs>
-                                                                <clipPath
-                                                                    :id="
-                                                                        gardenShapeClipPathId
-                                                                    "
-                                                                    clipPathUnits="userSpaceOnUse"
-                                                                >
-                                                                    <rect
-                                                                        v-for="(
-                                                                            rect,
-                                                                            rectIndex
-                                                                        ) in gardenShapeMaskClipRects"
-                                                                        :key="`garden-clip-${rectIndex}`"
-                                                                        :x="
-                                                                            rect.x
-                                                                        "
-                                                                        :y="
-                                                                            rect.y
-                                                                        "
-                                                                        :width="
-                                                                            rect.w
-                                                                        "
-                                                                        :height="
-                                                                            rect.h
-                                                                        "
-                                                                    />
-                                                                </clipPath>
-                                                            </defs>
-                                                        </svg>
                                                         <div
-                                                            class="absolute inset-0 origin-top-left"
+                                                            class="origin-top-left"
+                                                            :class="
+                                                                gardenMaskLayout.useTightFrame
+                                                                    ? 'relative'
+                                                                    : 'absolute inset-0'
+                                                            "
                                                             :style="
-                                                                plannerOrtophotoInnerStyle()
+                                                                plannerGardenSurfaceInnerStyle()
                                                             "
                                                         >
-                                                            <GardenMapBackground
+                                                            <svg
                                                                 v-if="
-                                                                    hasGardenCoordinates
+                                                                    useGardenShapeClip
                                                                 "
-                                                                class="transition-opacity duration-150"
-                                                                :class="
-                                                                    showMapBackground
-                                                                        ? ''
-                                                                        : 'pointer-events-none opacity-0'
-                                                                "
-                                                                ref="plannerMapBgRef"
-                                                                :center-lat="
-                                                                    Number(
-                                                                        gardenPlan.center_lat,
-                                                                    )
-                                                                "
-                                                                :center-lng="
-                                                                    Number(
-                                                                        gardenPlan.center_lng,
-                                                                    )
-                                                                "
-                                                                :width-cm="
-                                                                    gardenWidthCm
-                                                                "
-                                                                :height-cm="
-                                                                    gardenHeightCm
-                                                                "
-                                                                :focus-anchor-lat="
-                                                                    Number(
-                                                                        gardenPlan.center_lat,
-                                                                    )
-                                                                "
-                                                                :focus-anchor-lng="
-                                                                    Number(
-                                                                        gardenPlan.center_lng,
-                                                                    )
-                                                                "
-                                                                :focus-span-meters="
-                                                                    plannerOrtophotoFocusSpanMeters
-                                                                "
-                                                                :planner-zoom="
-                                                                    zoom
-                                                                "
-                                                                :fit-zoom="
-                                                                    fitGardenZoom
-                                                                "
-                                                                @leaflet-zoom-change="
-                                                                    onPlannerLeafletZoomChange
-                                                                "
-                                                            />
+                                                                class="pointer-events-none absolute size-0 overflow-hidden"
+                                                                aria-hidden="true"
+                                                            >
+                                                                <defs>
+                                                                    <clipPath
+                                                                        :id="
+                                                                            gardenShapeClipPathId
+                                                                        "
+                                                                        clipPathUnits="userSpaceOnUse"
+                                                                    >
+                                                                        <rect
+                                                                            v-for="(
+                                                                                rect,
+                                                                                rectIndex
+                                                                            ) in gardenShapeMaskClipRects"
+                                                                            :key="`garden-clip-${rectIndex}`"
+                                                                            :x="
+                                                                                rect.x
+                                                                            "
+                                                                            :y="
+                                                                                rect.y
+                                                                            "
+                                                                            :width="
+                                                                                rect.w
+                                                                            "
+                                                                            :height="
+                                                                                rect.h
+                                                                            "
+                                                                        />
+                                                                    </clipPath>
+                                                                </defs>
+                                                            </svg>
                                                             <div
-                                                                class="absolute inset-0"
+                                                                class="absolute inset-0 origin-top-left"
                                                                 :style="
-                                                                    plannerContentLayerStyle()
-                                                                "
-                                                                @click="
-                                                                    onPlannerCanvasClick
+                                                                    plannerOrtophotoInnerStyle()
                                                                 "
                                                             >
-                                                                <template
+                                                                <GardenMapBackground
                                                                     v-if="
-                                                                        showBedsAsPlannerFootprints
+                                                                        hasGardenCoordinates
+                                                                    "
+                                                                    class="transition-opacity duration-150"
+                                                                    :class="
+                                                                        showMapBackground
+                                                                            ? ''
+                                                                            : 'pointer-events-none opacity-0'
+                                                                    "
+                                                                    ref="plannerMapBgRef"
+                                                                    :center-lat="
+                                                                        Number(
+                                                                            gardenPlan.center_lat,
+                                                                        )
+                                                                    "
+                                                                    :center-lng="
+                                                                        Number(
+                                                                            gardenPlan.center_lng,
+                                                                        )
+                                                                    "
+                                                                    :width-cm="
+                                                                        gardenWidthCm
+                                                                    "
+                                                                    :height-cm="
+                                                                        gardenHeightCm
+                                                                    "
+                                                                    :focus-anchor-lat="
+                                                                        Number(
+                                                                            gardenPlan.center_lat,
+                                                                        )
+                                                                    "
+                                                                    :focus-anchor-lng="
+                                                                        Number(
+                                                                            gardenPlan.center_lng,
+                                                                        )
+                                                                    "
+                                                                    :focus-span-meters="
+                                                                        plannerOrtophotoFocusSpanMeters
+                                                                    "
+                                                                    :planner-zoom="
+                                                                        zoom
+                                                                    "
+                                                                    :fit-zoom="
+                                                                        fitGardenZoom
+                                                                    "
+                                                                    fractional-zoom
+                                                                    @leaflet-zoom-change="
+                                                                        onPlannerLeafletZoomChange
+                                                                    "
+                                                                />
+                                                                <div
+                                                                    class="absolute inset-0"
+                                                                    :style="
+                                                                        plannerContentLayerStyle()
+                                                                    "
+                                                                    @click="
+                                                                        onPlannerCanvasClick
                                                                     "
                                                                 >
-                                                                    <div
-                                                                        v-for="bed in plannerBeds"
-                                                                        :key="
-                                                                            bed.id
-                                                                        "
-                                                                        data-bed-footprint="true"
-                                                                        class="absolute touch-none overflow-hidden rounded-none border-2 border-amber-800/35 bg-amber-50/88 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.35)] transition dark:border-amber-200/30 dark:bg-amber-950/35"
-                                                                        :class="[
-                                                                            draggingBedId ===
-                                                                            bed.id
-                                                                                ? 'z-30 cursor-grabbing ring-2 ring-primary/45'
-                                                                                : isBedCardVisible(
-                                                                                        bed.id,
-                                                                                    )
-                                                                                  ? 'z-20 cursor-pointer ring-2 ring-primary/35'
-                                                                                  : 'z-10 cursor-pointer hover:z-20 hover:ring-1 hover:ring-primary/25',
-                                                                        ]"
-                                                                        :style="
-                                                                            bedFootprintWrapperStyle(
-                                                                                bed,
-                                                                            )
-                                                                        "
-                                                                        @pointerdown="
-                                                                            startDragging(
-                                                                                bed,
-                                                                                $event,
-                                                                            )
-                                                                        "
-                                                                        @click.stop="
-                                                                            toggleBedCard(
-                                                                                bed.id,
-                                                                            )
-                                                                        "
-                                                                        @mouseenter="
-                                                                            showBedInfo(
-                                                                                bed.id,
-                                                                            )
-                                                                        "
-                                                                        @mouseleave="
-                                                                            hideBedInfo(
-                                                                                bed.id,
-                                                                            )
+                                                                    <template
+                                                                        v-if="
+                                                                            showBedsAsPlannerFootprints
                                                                         "
                                                                     >
                                                                         <div
-                                                                            v-if="
-                                                                                getBedPreviewImage(
+                                                                            v-for="bed in plannerBeds"
+                                                                            :key="
+                                                                                bed.id
+                                                                            "
+                                                                            data-bed-footprint="true"
+                                                                            class="bed-footprint-interactive absolute touch-none overflow-visible rounded-none transition"
+                                                                            :class="[
+                                                                                draggingBedId ===
+                                                                                bed.id
+                                                                                    ? 'z-30 cursor-grabbing'
+                                                                                    : isBedCardVisible(
+                                                                                            bed.id,
+                                                                                        )
+                                                                                      ? 'z-20 cursor-pointer'
+                                                                                      : 'z-10 cursor-pointer hover:z-20',
+                                                                            ]"
+                                                                            :style="
+                                                                                bedFootprintWrapperStyle(
                                                                                     bed,
                                                                                 )
                                                                             "
-                                                                            class="pointer-events-none absolute inset-0 bg-cover bg-center opacity-80"
-                                                                            :style="{
-                                                                                backgroundImage: `url('${getBedPreviewImage(
+                                                                            @pointerdown="
+                                                                                startDragging(
                                                                                     bed,
-                                                                                )}')`,
-                                                                            }"
-                                                                            aria-hidden="true"
-                                                                        />
-                                                                        <div
-                                                                            class="pointer-events-none absolute inset-0 bg-amber-900/10 dark:bg-amber-950/10"
-                                                                            aria-hidden="true"
-                                                                        />
-                                                                        <div
-                                                                            v-for="(
-                                                                                cell,
-                                                                                cellIndex
-                                                                            ) in getBedFootprintCells(
-                                                                                bed,
-                                                                            )"
-                                                                            :key="`${bed.id}-cell-${cellIndex}`"
-                                                                            class="absolute border border-amber-900/12"
-                                                                            :class="
-                                                                                cell.kind ===
-                                                                                'walkway'
-                                                                                    ? 'bg-stone-300/35 dark:bg-stone-600/28'
-                                                                                    : 'bg-amber-100/18 dark:bg-amber-900/14'
+                                                                                    $event,
+                                                                                )
                                                                             "
-                                                                            :style="{
-                                                                                left: `${cell.left}px`,
-                                                                                top: `${cell.top}px`,
-                                                                                width: `${cell.width}px`,
-                                                                                height: `${cell.height}px`,
-                                                                            }"
-                                                                            aria-hidden="true"
-                                                                        />
-                                                                    </div>
-                                                                </template>
-                                                                <template
-                                                                    v-else
-                                                                >
-                                                                    <div
-                                                                        v-for="bed in plannerBeds"
-                                                                        :key="
-                                                                            bed.id
-                                                                        "
-                                                                        data-bed-pin="true"
-                                                                        class="absolute touch-none"
-                                                                        :class="[
-                                                                            draggingBedId ===
-                                                                            bed.id
-                                                                                ? 'z-30 cursor-grabbing'
-                                                                                : 'z-10 cursor-pointer hover:z-20',
-                                                                        ]"
-                                                                        :style="
-                                                                            bedPinWrapperStyle(
-                                                                                bed,
-                                                                            )
-                                                                        "
-                                                                        @pointerdown="
-                                                                            startDragging(
-                                                                                bed,
-                                                                                $event,
-                                                                            )
-                                                                        "
-                                                                        @click.stop="
-                                                                            toggleBedCard(
-                                                                                bed.id,
-                                                                            )
-                                                                        "
-                                                                        @mouseenter="
-                                                                            showBedInfo(
-                                                                                bed.id,
-                                                                            )
-                                                                        "
-                                                                        @mouseleave="
-                                                                            hideBedInfo(
-                                                                                bed.id,
-                                                                            )
-                                                                        "
-                                                                    >
-                                                                        <div
-                                                                            class="flex flex-col-reverse items-center"
+                                                                            @click.stop="
+                                                                                toggleBedCard(
+                                                                                    bed.id,
+                                                                                )
+                                                                            "
+                                                                            @pointerenter="
+                                                                                onBedPointerEnter(
+                                                                                    bed.id,
+                                                                                )
+                                                                            "
+                                                                            @pointerleave="
+                                                                                onBedPointerLeave(
+                                                                                    bed.id,
+                                                                                )
+                                                                            "
                                                                         >
                                                                             <div
-                                                                                class="h-2 w-px rounded-full bg-primary/45"
-                                                                                aria-hidden="true"
-                                                                            />
-                                                                            <div
-                                                                                class="flex h-7 w-7 items-center justify-center rounded-full border border-primary/25 bg-card shadow-[0_2px_10px_rgba(47,67,44,0.14)] ring-2 ring-white/90 transition dark:border-primary/35 dark:bg-card dark:ring-background/80"
+                                                                                v-for="(
+                                                                                    cell,
+                                                                                    cellIndex
+                                                                                ) in getBedFootprintCells(
+                                                                                    bed,
+                                                                                )"
+                                                                                :key="`${bed.id}-cell-${cellIndex}`"
+                                                                                class="absolute overflow-hidden rounded-none"
                                                                                 :class="
+                                                                                    cell.kind ===
+                                                                                    'walkway'
+                                                                                        ? 'bg-stone-300/35 dark:bg-stone-600/28'
+                                                                                        : ''
+                                                                                "
+                                                                                :style="{
+                                                                                    left: `${cell.left}px`,
+                                                                                    top: `${cell.top}px`,
+                                                                                    width: `${cell.width}px`,
+                                                                                    height: `${cell.height}px`,
+                                                                                }"
+                                                                                aria-hidden="true"
+                                                                            >
+                                                                                <img
+                                                                                    v-if="
+                                                                                        cell.image_url &&
+                                                                                        cell.kind ===
+                                                                                            'plantable'
+                                                                                    "
+                                                                                    :src="
+                                                                                        cell.image_url
+                                                                                    "
+                                                                                    alt=""
+                                                                                    class="size-full object-cover"
+                                                                                />
+                                                                                <div
+                                                                                    v-else-if="
+                                                                                        cell.kind ===
+                                                                                        'plantable'
+                                                                                    "
+                                                                                    class="flex size-full items-center justify-center bg-emerald-50/40 dark:bg-emerald-950/20"
+                                                                                >
+                                                                                    <span
+                                                                                        class="material-symbols-outlined leading-none text-emerald-800/45 dark:text-emerald-100/45"
+                                                                                        :style="{
+                                                                                            fontSize: `clamp(8px, ${Math.min(cell.width, cell.height) * 0.42}px, 20px)`,
+                                                                                        }"
+                                                                                        aria-hidden="true"
+                                                                                        >potted_plant</span
+                                                                                    >
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </template>
+                                                                    <template
+                                                                        v-else
+                                                                    >
+                                                                        <div
+                                                                            v-for="bed in plannerBeds"
+                                                                            :key="
+                                                                                bed.id
+                                                                            "
+                                                                            data-bed-pin="true"
+                                                                            class="absolute touch-none"
+                                                                            :class="[
+                                                                                draggingBedId ===
+                                                                                bed.id
+                                                                                    ? 'z-30 cursor-grabbing'
+                                                                                    : 'z-10 cursor-pointer hover:z-20',
+                                                                            ]"
+                                                                            :style="
+                                                                                bedPinWrapperStyle(
+                                                                                    bed,
+                                                                                )
+                                                                            "
+                                                                            @pointerdown="
+                                                                                startDragging(
+                                                                                    bed,
+                                                                                    $event,
+                                                                                )
+                                                                            "
+                                                                            @click.stop="
+                                                                                toggleBedCard(
+                                                                                    bed.id,
+                                                                                )
+                                                                            "
+                                                                            @pointerenter="
+                                                                                onBedPointerEnter(
+                                                                                    bed.id,
+                                                                                )
+                                                                            "
+                                                                            @pointerleave="
+                                                                                onBedPointerLeave(
+                                                                                    bed.id,
+                                                                                )
+                                                                            "
+                                                                        >
+                                                                            <div
+                                                                                class="flex flex-col-reverse items-center"
+                                                                            >
+                                                                                <div
+                                                                                    class="h-2 w-px rounded-full bg-primary/45"
+                                                                                    aria-hidden="true"
+                                                                                />
+                                                                                <div
+                                                                                    class="flex h-7 w-7 items-center justify-center rounded-full border border-primary/25 bg-card shadow-[0_2px_10px_rgba(47,67,44,0.14)] ring-2 ring-white/90 transition dark:border-primary/35 dark:bg-card dark:ring-background/80"
+                                                                                    :class="
+                                                                                        isBedCardVisible(
+                                                                                            bed.id,
+                                                                                        )
+                                                                                            ? 'border-primary/50 bg-primary/8 ring-primary/20'
+                                                                                            : ''
+                                                                                    "
+                                                                                    aria-hidden="true"
+                                                                                >
+                                                                                    <span
+                                                                                        class="h-2.5 w-2.5 rounded-full bg-primary shadow-sm"
+                                                                                        aria-hidden="true"
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </template>
+
+                                                                    <Teleport
+                                                                        to="body"
+                                                                    >
+                                                                        <div
+                                                                            v-for="bed in plannerBeds"
+                                                                            :key="`bed-card-${bed.id}`"
+                                                                        >
+                                                                            <div
+                                                                                v-if="
                                                                                     isBedCardVisible(
                                                                                         bed.id,
                                                                                     )
-                                                                                        ? 'border-primary/50 bg-primary/8 ring-primary/20'
-                                                                                        : ''
                                                                                 "
-                                                                                aria-hidden="true"
-                                                                            >
-                                                                                <span
-                                                                                    class="h-2.5 w-2.5 rounded-full bg-primary shadow-sm"
-                                                                                    aria-hidden="true"
-                                                                                />
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </template>
-
-                                                                <Teleport
-                                                                    to="body"
-                                                                >
-                                                                    <div
-                                                                        v-for="bed in plannerBeds"
-                                                                        :key="`bed-card-${bed.id}`"
-                                                                    >
-                                                                        <div
-                                                                            v-if="
-                                                                                isBedCardVisible(
-                                                                                    bed.id,
-                                                                                )
-                                                                            "
-                                                                            data-no-drag="true"
-                                                                            class="pointer-events-auto w-52 rounded-xl border border-border/70 bg-card/95 p-2.5 text-left shadow-lg backdrop-blur-sm"
-                                                                            :style="
-                                                                                bedCardFixedStyle(
-                                                                                    bed,
-                                                                                )
-                                                                            "
-                                                                            @mouseenter="
-                                                                                showBedInfo(
-                                                                                    bed.id,
-                                                                                )
-                                                                            "
-                                                                            @mouseleave="
-                                                                                hideBedInfo(
-                                                                                    bed.id,
-                                                                                )
-                                                                            "
-                                                                            @click.stop
-                                                                        >
-                                                                            <p
-                                                                                class="truncate text-sm font-bold text-foreground"
-                                                                            >
-                                                                                {{
-                                                                                    bed.name
-                                                                                }}
-                                                                            </p>
-                                                                            <p
-                                                                                class="mt-0.5 text-xs text-muted-foreground"
-                                                                            >
-                                                                                {{
-                                                                                    bedDimensionsCompactLabel(
+                                                                                data-no-drag="true"
+                                                                                class="pointer-events-auto w-52 overflow-hidden rounded-xl border border-border/70 bg-card/95 text-left shadow-lg backdrop-blur-sm"
+                                                                                :style="
+                                                                                    bedCardFixedStyle(
                                                                                         bed,
                                                                                     )
-                                                                                }}
-                                                                            </p>
-                                                                            <p
-                                                                                class="text-xs text-muted-foreground"
-                                                                            >
-                                                                                {{
-                                                                                    bedPlantSummaryLine(
-                                                                                        bed,
+                                                                                "
+                                                                                @pointerenter="
+                                                                                    onBedCardPointerEnter(
+                                                                                        bed.id,
                                                                                     )
-                                                                                }}
-                                                                            </p>
-                                                                            <div
-                                                                                class="mt-2 flex gap-1.5"
+                                                                                "
+                                                                                @pointerleave="
+                                                                                    onBedCardPointerLeave(
+                                                                                        bed.id,
+                                                                                    )
+                                                                                "
+                                                                                @click.stop
                                                                             >
-                                                                                <button
-                                                                                    type="button"
-                                                                                    class="inline-flex min-h-9 flex-1 items-center justify-center rounded-full border border-primary/20 bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/15"
-                                                                                    @click.stop="
-                                                                                        openBedPage(
-                                                                                            bed.id,
+                                                                                <div
+                                                                                    v-if="
+                                                                                        getBedPreviewImage(
+                                                                                            bed,
                                                                                         )
                                                                                     "
+                                                                                    class="h-28 w-full overflow-hidden bg-muted/40"
                                                                                 >
-                                                                                    Ava
-                                                                                    peenar
-                                                                                </button>
-                                                                                <button
-                                                                                    type="button"
-                                                                                    class="inline-flex min-h-9 flex-1 items-center justify-center gap-1 rounded-full border border-border/70 bg-background px-2 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted"
-                                                                                    @click.stop="
-                                                                                        deleteBed(
-                                                                                            bed.id,
-                                                                                            bed.name,
-                                                                                        )
-                                                                                    "
+                                                                                    <img
+                                                                                        :src="
+                                                                                            getBedPreviewImage(
+                                                                                                bed,
+                                                                                            )!
+                                                                                        "
+                                                                                        :alt="
+                                                                                            bed.name
+                                                                                        "
+                                                                                        class="size-full object-cover"
+                                                                                    />
+                                                                                </div>
+                                                                                <div
+                                                                                    class="p-2.5"
                                                                                 >
-                                                                                    <span
-                                                                                        class="material-symbols-outlined text-sm text-muted-foreground"
-                                                                                        >delete</span
+                                                                                    <p
+                                                                                        class="truncate text-sm font-bold text-foreground"
                                                                                     >
-                                                                                    Kustuta
-                                                                                </button>
+                                                                                        {{
+                                                                                            bed.name
+                                                                                        }}
+                                                                                    </p>
+                                                                                    <p
+                                                                                        class="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground"
+                                                                                    >
+                                                                                        <span
+                                                                                            class="inline-flex items-center gap-1 font-medium text-foreground/80"
+                                                                                        >
+                                                                                            <span
+                                                                                                class="material-symbols-outlined text-[14px] leading-none"
+                                                                                                aria-hidden="true"
+                                                                                                >potted_plant</span
+                                                                                            >{{
+                                                                                                bedPlantsCount(
+                                                                                                    bed,
+                                                                                                )
+                                                                                            }}</span
+                                                                                        >
+                                                                                        <span
+                                                                                            class="opacity-50"
+                                                                                            aria-hidden="true"
+                                                                                            >·</span
+                                                                                        >
+                                                                                        <span
+                                                                                            >{{
+                                                                                                bedSizeLabel(
+                                                                                                    bed,
+                                                                                                )
+                                                                                            }}</span
+                                                                                        >
+                                                                                    </p>
+                                                                                    <div
+                                                                                        class="mt-2 flex gap-1.5"
+                                                                                    >
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            class="inline-flex min-h-9 flex-1 items-center justify-center rounded-full border border-primary/20 bg-primary/10 px-2 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/15"
+                                                                                            @click.stop="
+                                                                                                openBedPage(
+                                                                                                    bed.id,
+                                                                                                )
+                                                                                            "
+                                                                                        >
+                                                                                            Ava
+                                                                                            peenar
+                                                                                        </button>
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            class="inline-flex min-h-9 flex-1 items-center justify-center gap-1 rounded-full border border-border/70 bg-background px-2 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted"
+                                                                                            @click.stop="
+                                                                                                deleteBed(
+                                                                                                    bed.id,
+                                                                                                    bed.name,
+                                                                                                )
+                                                                                            "
+                                                                                        >
+                                                                                            <span
+                                                                                                class="material-symbols-outlined text-sm text-muted-foreground"
+                                                                                                >delete</span
+                                                                                            >
+                                                                                            Kustuta
+                                                                                        </button>
+                                                                                    </div>
+                                                                                </div>
                                                                             </div>
                                                                         </div>
-                                                                    </div>
-                                                                </Teleport>
+                                                                    </Teleport>
+                                                                </div>
                                                             </div>
                                                         </div>
+                                                        <div
+                                                            v-if="
+                                                                showManualGardenGrid
+                                                            "
+                                                            :class="
+                                                                GARDEN_GRID_EDGE_CLASS
+                                                            "
+                                                            aria-hidden="true"
+                                                        />
                                                     </div>
-                                                </div>
-                                                <div
-                                                    v-if="
-                                                        showMapBackground ||
-                                                        showBedsAsPlannerFootprints
-                                                    "
-                                                    class="mt-2"
-                                                >
                                                     <div
-                                                        class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-900/10 bg-white/88 px-2 py-1 text-[10px] text-emerald-950/70 shadow-sm backdrop-blur-sm dark:border-emerald-200/15 dark:bg-card/90 dark:text-emerald-100/75"
-                                                        aria-label="Mõõtkava: 1 meetri pikkune joon"
+                                                        v-if="
+                                                            showMapBackground ||
+                                                            showBedsAsPlannerFootprints
+                                                        "
+                                                        class="mt-2"
                                                     >
                                                         <div
-                                                            class="relative h-1.5 shrink-0 rounded-full bg-emerald-700/80"
-                                                            :style="{
-                                                                width: `${scaleBarWidthPx}px`,
-                                                            }"
+                                                            class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-900/10 bg-white/88 px-2 py-1 text-[10px] text-emerald-950/70 shadow-sm backdrop-blur-sm dark:border-emerald-200/15 dark:bg-card/90 dark:text-emerald-100/75"
+                                                            aria-label="Mõõtkava: 1 meetri pikkune joon"
                                                         >
+                                                            <div
+                                                                class="relative h-1.5 shrink-0 rounded-full bg-emerald-700/80"
+                                                                :style="{
+                                                                    width: `${scaleBarWidthPx}px`,
+                                                                }"
+                                                            >
+                                                                <span
+                                                                    class="absolute -top-1 -left-px h-3 w-px bg-emerald-900/50"
+                                                                ></span>
+                                                                <span
+                                                                    class="absolute -top-1 -right-px h-3 w-px bg-emerald-900/50"
+                                                                ></span>
+                                                            </div>
                                                             <span
-                                                                class="absolute -top-1 -left-px h-3 w-px bg-emerald-900/50"
-                                                            ></span>
-                                                            <span
-                                                                class="absolute -top-1 -right-px h-3 w-px bg-emerald-900/50"
-                                                            ></span>
+                                                                class="font-medium whitespace-nowrap text-foreground/80 tabular-nums"
+                                                                >1 m</span
+                                                            >
                                                         </div>
-                                                        <span
-                                                            class="font-medium whitespace-nowrap tabular-nums text-foreground/80"
-                                                            >1 m</span
-                                                        >
                                                     </div>
-                                                </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -5396,9 +5535,9 @@ function saveGardenPlan(options?: {
                         Aia asukoht
                     </p>
                     <p class="mt-1 text-sm leading-6 text-muted-foreground">
-                        Otsi aadressi või kasuta geolokatsiooni, seejärel sisesta
-                        aia laius ja sügavus meetrites. Aadressi korral täituvad
-                        mõõdud automaatselt.
+                        Otsi aadressi või kasuta geolokatsiooni, seejärel
+                        sisesta aia laius ja sügavus meetrites. Aadressi korral
+                        täituvad mõõdud automaatselt.
                     </p>
                     <div
                         class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start"
@@ -5676,5 +5815,9 @@ function saveGardenPlan(options?: {
 .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+}
+
+.bed-footprint-interactive {
+    pointer-events: auto;
 }
 </style>
