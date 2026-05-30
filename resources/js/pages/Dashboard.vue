@@ -742,11 +742,11 @@ function goToFabAction(href: string) {
                                         </span>
                                     </div>
                                     <div
-                                        class="grid gap-2 lg:grid-cols-[minmax(10rem,1.15fr)_minmax(0,2fr)]"
+                                        class="grid gap-2 md:grid-cols-[minmax(12rem,0.95fr)_minmax(0,1.35fr)]"
                                     >
                                         <Link
                                             :href="featuredGalleryItem.href"
-                                            class="group relative block h-36 overflow-hidden rounded-2xl border border-white/20 bg-muted/30 shadow-[0_10px_24px_rgba(0,0,0,0.18)] lg:h-full"
+                                            class="group relative block h-40 overflow-hidden rounded-2xl border border-white/20 bg-muted/30 shadow-[0_10px_24px_rgba(0,0,0,0.18)] md:h-44"
                                         >
                                             <img
                                                 :src="
@@ -796,13 +796,13 @@ function goToFabAction(href: string) {
                                         </Link>
                                         <div
                                             v-if="secondaryGalleryItems.length"
-                                            class="grid grid-cols-3 gap-2"
+                                            class="grid grid-cols-2 gap-2 sm:grid-cols-3"
                                         >
                                             <Link
                                                 v-for="photo in secondaryGalleryItems"
                                                 :key="photo.key"
                                                 :href="photo.href"
-                                                class="group relative h-16 overflow-hidden rounded-xl border border-white/15 bg-muted/30 sm:h-20"
+                                                class="group relative h-19 overflow-hidden rounded-xl border border-white/15 bg-muted/30 md:h-[5.25rem]"
                                             >
                                                 <img
                                                     :src="photo.image_url"
