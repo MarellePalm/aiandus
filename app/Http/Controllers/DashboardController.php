@@ -179,6 +179,7 @@ class DashboardController extends Controller
             ->filter(fn (array $item) => filled($item['image_url'] ?? null))
             ->unique(fn (array $item) => "{$item['kind']}|{$item['title']}|{$item['image_url']}")
             ->sortByDesc(fn (array $item) => $item['sort_date'] ?? '')
+            ->unique('image_url')
             ->take(18)
             ->map(function (array $item) {
                 unset($item['sort_date']);
