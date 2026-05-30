@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import { onBeforeUnmount, ref } from 'vue';
 
 import CreateCategoryModal from '@/components/CreateCategoryModal.vue';
@@ -232,7 +232,8 @@ onBeforeUnmount(() => {
                                 class="mt-3 inline-flex items-center gap-2 rounded-full border border-[#6B8C68]/30 bg-[#6B8C68]/10 px-3 py-1.5 text-sm font-medium text-[#4F6A52] transition hover:bg-[#6B8C68]/20"
                                 @click="openCategoryModal"
                             >
-                                <span class="material-symbols-outlined text-base"
+                                <span
+                                    class="material-symbols-outlined text-base"
                                     >add</span
                                 >
                                 Lisa kategooria

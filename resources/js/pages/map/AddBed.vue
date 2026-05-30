@@ -164,10 +164,12 @@ function gridPosFromMouse(
     const slotH = CELL_PX + GRID_MARGIN[1];
     const rawX = Math.floor((relX - pad) / slotW);
     const rawY = Math.floor((relY - pad) / slotH);
-    // Snap drop target to block grid (each new block is 3x3 subgrid units).
     const x = Math.floor(rawX / DEFAULT_BLOCK_UNITS) * DEFAULT_BLOCK_UNITS;
     const y = Math.floor(rawY / DEFAULT_BLOCK_UNITS) * DEFAULT_BLOCK_UNITS;
-    return { x, y };
+    return {
+        x: Math.max(0, x),
+        y: Math.max(0, y),
+    };
 }
 
 function onCanvasDragOver(event: DragEvent) {
@@ -844,6 +846,12 @@ function cellClasses(cell: BedCell): string[] {
         'transition',
         'duration-200',
     ];
+    const minSide = Math.min(cell.w, cell.h);
+    if (minSide <= 1) {
+        classes.push('bed-cell--compact');
+    } else if (minSide === 2) {
+        classes.push('bed-cell--medium');
+    }
     if (highlightedCellId.value === cell.id) {
         classes.push('scale-[1.04]', 'shadow-lg', 'shadow-primary/20');
     }
@@ -867,10 +875,17 @@ function cellClasses(cell: BedCell): string[] {
         classes.push(
             'bed-cell--editor-selected',
             'ring-2',
-            'ring-primary',
             'ring-offset-1',
             'z-10',
         );
+        if (cell.kind === 'walkway') {
+            classes.push(
+                'bed-cell--editor-selected-walkway',
+                'ring-stone-400/60',
+            );
+        } else {
+            classes.push('ring-primary');
+        }
         return classes;
     }
     if (cell.kind === 'plantable' && !cell.active) {
@@ -899,6 +914,16 @@ function cellClasses(cell: BedCell): string[] {
     classes.push(warm ? 'bed-cell--empty bed-cell--warm' : 'bed-cell--empty');
     classes.push('hover:-translate-y-0.5', 'hover:shadow-md');
     return classes;
+}
+
+function cellInlineStyle(cell: BedCell): Record<string, string> {
+    const minSide = Math.min(cell.w, cell.h);
+    const radius =
+        minSide <= 1 ? '0.25rem' : minSide === 2 ? '0.55rem' : '0.9rem';
+
+    return {
+        borderRadius: radius,
+    };
 }
 
 const plantCatalog = computed(() => {
@@ -1003,8 +1028,8 @@ const modalPlantEntry = computed(() => {
     if (!meta) return null;
     return {
         plant_id: plantId,
-        quantity: cell.plants[0].quantity,
         ...meta,
+        quantity: cell.plants[0].quantity,
     };
 });
 
@@ -1139,8 +1164,11 @@ function isPlantableEmptySlot(cell: BedCell): boolean {
 function brushPaletteCellClasses(kind: 'plantable' | 'walkway'): string[] {
     if (kind === 'walkway') {
         return [
-            'bed-cell',
-            'bed-cell--walkway',
+            'size-full',
+            'rounded-[0.9rem]',
+            'border',
+            'border-stone-400/60',
+            'bg-stone-300/70',
             'bed-brush-palette-cell',
             'relative',
         ];
@@ -1586,6 +1614,40 @@ function removeSelectedCell() {
 
 function selectedBrickSizeLabel(cell: BedCell): string {
     return `${cell.width_cm} × ${cell.height_cm} cm`;
+}
+
+function setSelectedCellSize(units: number) {
+    const current = selectedCell.value;
+    if (!current) return;
+
+    const overlaps = gridLayout.value.some(
+        (item) =>
+            item.i !== current.id &&
+            cellsOverlapGrid(
+                current.x,
+                current.y,
+                units,
+                units,
+                item.x,
+                item.y,
+                item.w,
+                item.h,
+            ),
+    );
+
+    if (overlaps) {
+        form.setError(
+            'cells',
+            'Selles suuruses ruut kattuks teise ruuduga. Vali väiksem suurus või nihuta ruutu.',
+        );
+        return;
+    }
+
+    gridLayout.value = gridLayout.value.map((item) =>
+        item.i === current.id ? { ...item, w: units, h: units } : item,
+    );
+    applyGridLayoutToCells(gridLayout.value);
+    form.clearErrors('cells');
 }
 
 function setCellKindAt(x: number, y: number, kind: DesignBrush) {
@@ -2289,6 +2351,7 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                                         :class="{
                                             'bed-brush-palette-item--active':
                                                 activeBrush === 'walkway',
+                                            'bed-brush-palette-item--walkway': true,
                                             'bed-brush-palette-item--dragging':
                                                 externalDragKind === 'walkway',
                                         }"
@@ -2450,10 +2513,13 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                                 >
                                     <div
                                         :class="[
-                                            ...brushPaletteCellClasses(
-                                                externalDragKind,
-                                            ),
-                                            'size-full opacity-75 ring-2 ring-primary/40 ring-offset-1',
+                                            externalDragKind === 'walkway'
+                                                ? 'size-full rounded-[0.9rem] border border-stone-400/60 bg-stone-300/70'
+                                                : 'size-full rounded-[0.9rem] border border-emerald-600/50 bg-emerald-100/80',
+                                            'opacity-75 ring-2 ring-offset-1',
+                                            externalDragKind === 'walkway'
+                                                ? 'ring-stone-400/50'
+                                                : 'ring-primary/40',
                                         ]"
                                     >
                                         <span
@@ -2512,6 +2578,11 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                                                 class="no-drag bed-shape-cell size-full"
                                                 :class="
                                                     cellClasses(
+                                                        cellMap.get(item.i)!,
+                                                    )
+                                                "
+                                                :style="
+                                                    cellInlineStyle(
                                                         cellMap.get(item.i)!,
                                                     )
                                                 "
@@ -2758,6 +2829,26 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                                 >
                                     Muuda suurust<br />nurgas lohistades
                                 </p>
+                                <div class="mt-3 grid grid-cols-3 gap-1.5">
+                                    <button
+                                        v-for="size in [1, 2, 3]"
+                                        :key="`cell-size-${size}`"
+                                        type="button"
+                                        class="rounded-lg border px-1.5 py-1.5 text-[10px] font-semibold transition"
+                                        :class="
+                                            selectedCellLive.w === size &&
+                                            selectedCellLive.h === size
+                                                ? selectedCellLive.kind ===
+                                                  'walkway'
+                                                    ? 'border-stone-500/45 bg-stone-200 text-stone-900'
+                                                    : 'border-emerald-500/55 bg-emerald-100 text-emerald-900'
+                                                : 'border-border/60 bg-background/70 text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                                        "
+                                        @click="setSelectedCellSize(size)"
+                                    >
+                                        {{ size * 10 }} cm
+                                    </button>
+                                </div>
                             </div>
                             <div
                                 v-if="!selectedHasPlants"
@@ -3745,20 +3836,36 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
 
 .bed-canvas {
     background-color: color-mix(in srgb, var(--card), rgb(240, 235, 220) 18%);
-    background-image: radial-gradient(
-        circle,
-        rgba(120, 100, 60, 0.18) 1px,
-        transparent 1px
-    );
-    background-size: 82px 82px; /* 3 * CELL_PX + 2 * GRID_MARGIN */
+    background-image:
+        linear-gradient(rgba(120, 100, 60, 0.12) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(120, 100, 60, 0.12) 1px, transparent 1px),
+        linear-gradient(rgba(120, 100, 60, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(120, 100, 60, 0.05) 1px, transparent 1px);
+    background-size:
+        82px 82px,
+        82px 82px,
+        28px 28px,
+        28px 28px;
     border-radius: 0 0 1.25rem 1.25rem;
 }
 
 .bed-canvas.bed-shape-grid :deep(.vgl-item) .bed-cell {
+    min-width: 0;
+    min-height: 0;
     border-width: 1.5px;
     box-shadow:
         0 4px 14px rgba(49, 79, 55, 0.16),
         0 1px 0 rgba(255, 255, 255, 0.5) inset;
+}
+
+.bed-shape-cell {
+    width: calc(100% + 2px);
+    height: calc(100% + 2px);
+}
+
+.bed-canvas.bed-shape-grid :deep(.vgl-item) .bed-cell--compact {
+    min-width: 0;
+    min-height: 0;
 }
 
 .bed-cell--editor-selected {
@@ -3767,6 +3874,49 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
         0 0 0 3px color-mix(in srgb, var(--primary), transparent 72%),
         0 6px 16px color-mix(in srgb, var(--primary), transparent 78%) !important;
     transform: translateY(-1px);
+}
+
+.bed-cell--empty.bed-cell--editor-selected {
+    background:
+        radial-gradient(
+            circle at 34% 28%,
+            rgba(132, 84, 47, 0.18) 0 2px,
+            transparent 2.5px
+        ),
+        linear-gradient(
+            145deg,
+            rgba(192, 156, 106, 0.34),
+            rgba(94, 66, 42, 0.18)
+        ),
+        rgb(223, 205, 174);
+}
+
+.bed-cell--empty.bed-cell--warm.bed-cell--editor-selected {
+    background:
+        radial-gradient(
+            circle at 64% 52%,
+            rgba(132, 84, 47, 0.16) 0 2px,
+            transparent 2.5px
+        ),
+        linear-gradient(
+            145deg,
+            rgba(207, 174, 124, 0.42),
+            rgba(101, 71, 44, 0.16)
+        ),
+        rgb(232, 215, 184);
+}
+
+.bed-cell--walkway {
+    border-color: rgba(168, 162, 158, 0.6);
+    background: rgba(214, 211, 209, 0.7);
+}
+
+.bed-cell--editor-selected-walkway {
+    border-color: rgba(120, 113, 108, 0.65) !important;
+    background: rgba(214, 211, 209, 0.7);
+    box-shadow:
+        0 0 0 3px rgba(168, 162, 158, 0.34),
+        0 6px 16px rgba(120, 113, 108, 0.24) !important;
 }
 
 .bed-canvas--drag-over {
@@ -3799,6 +3949,11 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
 .bed-brush-palette-item--active {
     border-color: color-mix(in srgb, var(--primary), transparent 35%);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary), transparent 78%);
+}
+
+.bed-brush-palette-item--walkway.bed-brush-palette-item--active {
+    border-color: rgba(120, 113, 108, 0.45);
+    box-shadow: 0 0 0 3px rgba(168, 162, 158, 0.34);
 }
 
 .bed-brush-palette-item--dragging {
@@ -3885,6 +4040,25 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
+.bed-shape-cell-shell:has(.bed-cell--compact) .bed-shape-drag-handle {
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+}
+
+.bed-shape-cell-shell:has(.bed-cell--compact)
+    .bed-shape-drag-handle
+    .material-symbols-outlined {
+    font-size: 14px;
+}
+
+.bed-cell--compact .bed-cell-slot-icon {
+    font-size: 14px;
+    opacity: 0.55;
+}
+
 .bed-shape-cell-shell:hover .bed-shape-drag-handle,
 .bed-shape-grid :deep(.vgl-item--dragging) .bed-shape-drag-handle,
 .bed-shape-grid
@@ -3949,6 +4123,16 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
     box-shadow:
         0 0 0 3px color-mix(in srgb, var(--primary), transparent 68%),
         0 8px 20px color-mix(in srgb, var(--primary), transparent 72%) !important;
+}
+
+.bed-shape-grid
+    :deep(.vgl-item--dragging .bed-cell.bed-cell--editor-selected-walkway),
+.bed-shape-grid
+    :deep(.vgl-item--resizing .bed-cell.bed-cell--editor-selected-walkway) {
+    border-color: rgba(120, 113, 108, 0.65) !important;
+    box-shadow:
+        0 0 0 3px rgba(168, 162, 158, 0.38),
+        0 8px 20px rgba(120, 113, 108, 0.26) !important;
 }
 
 .bed-shape-grid :deep(.vgl-item--resizing) {
