@@ -77,10 +77,9 @@ type GardenGalleryItem = {
 const gardenGallery = computed<GardenGalleryItem[]>(
     () => (page.props.gardenGallery as GardenGalleryItem[] | undefined) ?? [],
 );
-const featuredGalleryItem = computed(() => gardenGallery.value[0] ?? null);
-const secondaryGalleryItems = computed(() => gardenGallery.value.slice(1, 7));
+const galleryPreviewItems = computed(() => gardenGallery.value.slice(0, 8));
 const hiddenGalleryCount = computed(() =>
-    Math.max(0, gardenGallery.value.length - 7),
+    Math.max(0, gardenGallery.value.length - galleryPreviewItems.value.length),
 );
 
 type TodayTask = {
@@ -725,7 +724,10 @@ function goToFabAction(href: string) {
                                     </div>
                                 </div>
 
-                                <div v-if="featuredGalleryItem" class="mt-2">
+                                <div
+                                    v-if="galleryPreviewItems.length"
+                                    class="mt-2"
+                                >
                                     <div
                                         class="mb-1 flex items-center justify-between gap-2"
                                     >
@@ -742,17 +744,17 @@ function goToFabAction(href: string) {
                                         </span>
                                     </div>
                                     <div
-                                        class="grid gap-2 md:max-w-5xl md:grid-cols-[minmax(12rem,0.85fr)_minmax(0,1.15fr)] xl:max-w-6xl"
+                                        class="flex max-w-full gap-2 overflow-x-auto pb-0.5 md:max-w-5xl xl:max-w-6xl"
                                     >
                                         <Link
-                                            :href="featuredGalleryItem.href"
-                                            class="group relative block h-40 overflow-hidden rounded-2xl border border-white/20 bg-muted/30 shadow-[0_10px_24px_rgba(0,0,0,0.18)] md:h-44"
+                                            v-for="photo in galleryPreviewItems"
+                                            :key="photo.key"
+                                            :href="photo.href"
+                                            class="group relative h-24 w-28 shrink-0 overflow-hidden rounded-xl border border-white/20 bg-muted/30 shadow-[0_8px_18px_rgba(0,0,0,0.14)] sm:w-32 md:h-28 md:w-36"
                                         >
                                             <img
-                                                :src="
-                                                    featuredGalleryItem.image_url
-                                                "
-                                                :alt="featuredGalleryItem.title"
+                                                :src="photo.image_url"
+                                                :alt="photo.title"
                                                 class="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-105"
                                                 loading="lazy"
                                             />
@@ -761,71 +763,31 @@ function goToFabAction(href: string) {
                                                 aria-hidden="true"
                                             />
                                             <span
-                                                class="absolute top-2 left-2 rounded-full px-2 py-1 text-[10px] font-bold ring-1"
+                                                class="absolute top-1.5 left-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold ring-1"
                                                 :class="
                                                     galleryBadgeClass(
-                                                        featuredGalleryItem.kind,
+                                                        photo.kind,
                                                     )
                                                 "
                                             >
-                                                {{
-                                                    featuredGalleryItem.kind_label
-                                                }}
+                                                {{ photo.kind_label }}
                                             </span>
                                             <div
-                                                class="absolute right-2 bottom-2 left-2"
+                                                class="absolute right-1.5 bottom-1.5 left-1.5"
                                             >
                                                 <p
-                                                    class="truncate text-sm font-extrabold text-white"
+                                                    class="truncate text-xs font-extrabold text-white"
                                                 >
-                                                    {{
-                                                        featuredGalleryItem.title
-                                                    }}
+                                                    {{ photo.title }}
                                                 </p>
                                                 <p
-                                                    v-if="
-                                                        featuredGalleryItem.subtitle
-                                                    "
+                                                    v-if="photo.subtitle"
                                                     class="text-[10px] font-semibold text-white/75"
                                                 >
-                                                    {{
-                                                        featuredGalleryItem.subtitle
-                                                    }}
+                                                    {{ photo.subtitle }}
                                                 </p>
                                             </div>
                                         </Link>
-                                        <div
-                                            v-if="secondaryGalleryItems.length"
-                                            class="grid grid-cols-2 gap-2 sm:grid-cols-3"
-                                        >
-                                            <Link
-                                                v-for="photo in secondaryGalleryItems"
-                                                :key="photo.key"
-                                                :href="photo.href"
-                                                class="group relative h-19 overflow-hidden rounded-xl border border-white/15 bg-muted/30 md:h-[5.25rem]"
-                                            >
-                                                <img
-                                                    :src="photo.image_url"
-                                                    :alt="photo.title"
-                                                    class="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-105"
-                                                    loading="lazy"
-                                                />
-                                                <span
-                                                    class="absolute inset-0 bg-linear-to-t from-black/45 via-transparent to-transparent"
-                                                    aria-hidden="true"
-                                                />
-                                                <span
-                                                    class="absolute top-1 left-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold ring-1"
-                                                    :class="
-                                                        galleryBadgeClass(
-                                                            photo.kind,
-                                                        )
-                                                    "
-                                                >
-                                                    {{ photo.kind_label }}
-                                                </span>
-                                            </Link>
-                                        </div>
                                     </div>
                                 </div>
 
