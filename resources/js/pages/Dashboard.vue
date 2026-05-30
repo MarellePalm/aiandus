@@ -65,6 +65,19 @@ const recentSeeds = computed<RecentSeed[]>(
     () => (page.props.recentSeeds as RecentSeed[] | undefined) ?? [],
 );
 
+type GardenGalleryItem = {
+    key: string;
+    kind: 'bed' | 'plant' | 'seed' | 'note';
+    kind_label: string;
+    title: string;
+    subtitle?: string | null;
+    image_url: string;
+    href: string;
+};
+const gardenGallery = computed<GardenGalleryItem[]>(
+    () => (page.props.gardenGallery as GardenGalleryItem[] | undefined) ?? [],
+);
+
 type TodayTask = {
     id: number;
     note_date: string;
@@ -266,26 +279,6 @@ function noteRowToneClass(note: RecentNote): string {
     }
     return 'bg-linear-to-r from-muted/40 to-transparent';
 }
-
-const recentNotePhotos = computed(() =>
-    recentNotes.value
-        .flatMap((note) => note.media_urls ?? [])
-        .filter((url) => typeof url === 'string' && url.length > 0)
-        .slice(0, 6),
-);
-
-const notePhotoTimeline = computed(() =>
-    recentNotes.value
-        .flatMap((note) =>
-            (note.media_urls ?? []).map((url, index) => ({
-                url,
-                noteDate: note.note_date,
-                key: `${note.id}-${index}-${url}`,
-            })),
-        )
-        .filter((item) => typeof item.url === 'string' && item.url.length > 0)
-        .slice(0, 6),
-);
 
 // Wow-efekt: ühine sissetulekuanimatsiooni progress (0 → 1) – animeerib
 // tänaste tööde arvu sujuvalt sisse esimesel laadimisel.
@@ -716,45 +709,49 @@ function goToFabAction(href: string) {
                                     </div>
                                 </div>
 
-                                <div
-                                    v-if="recentNotePhotos.length"
-                                    class="mt-2"
-                                >
+                                <div v-if="gardenGallery.length" class="mt-2">
                                     <div
                                         class="mb-1 flex items-center justify-between gap-2"
                                     >
                                         <p
                                             class="text-[11px] font-semibold tracking-[0.14em] text-white/60 uppercase"
                                         >
-                                            Viimased aiapildid
+                                            Aia galerii
                                         </p>
                                         <Link
-                                            href="/calendar/overview"
+                                            href="/plants"
                                             class="text-xs font-medium text-emerald-200 transition hover:text-white"
                                         >
-                                            Ava märkmed
+                                            Ava kogu
                                         </Link>
                                     </div>
                                     <div
                                         class="flex gap-2 overflow-x-auto pb-0.5"
                                     >
-                                        <div
-                                            v-for="photo in notePhotoTimeline"
+                                        <Link
+                                            v-for="photo in gardenGallery"
                                             :key="photo.key"
-                                            class="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted/30 sm:h-28 sm:w-28"
+                                            :href="photo.href"
+                                            class="group relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted/30 sm:h-28 sm:w-28"
                                         >
                                             <img
-                                                :src="photo.url"
-                                                alt="Aiapilt"
-                                                class="h-full w-full object-cover transition-transform duration-300 ease-out hover:scale-105"
+                                                :src="photo.image_url"
+                                                :alt="photo.title"
+                                                class="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-105"
                                                 loading="lazy"
                                             />
                                             <span
+                                                class="absolute top-1 left-1 rounded-full bg-black/45 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                                            >
+                                                {{ photo.kind_label }}
+                                            </span>
+                                            <span
+                                                v-if="photo.subtitle"
                                                 class="absolute bottom-1 left-1 rounded-full bg-black/45 px-1.5 py-0.5 text-[10px] font-medium text-white"
                                             >
-                                                {{ photo.noteDate }}
+                                                {{ photo.subtitle }}
                                             </span>
-                                        </div>
+                                        </Link>
                                     </div>
                                 </div>
 
