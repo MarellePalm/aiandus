@@ -215,7 +215,7 @@ const dashboardHighlights = computed(() => {
             value: s.plantsCount,
             hint:
                 s.plantsWithoutBedCount > 0
-                    ? `${s.plantsWithoutBedCount} ilma peenardata`
+                    ? `${s.plantsWithoutBedCount} ilma peenrata`
                     : 'Kõik peenardes',
             icon: 'local_florist',
         },
@@ -675,12 +675,12 @@ function goToFabAction(href: string) {
 
                             <div class="relative z-10">
                                 <h2
-                                    class="text-lg font-bold tracking-tight text-white/95 sm:text-xl"
+                                    class="text-xl font-bold tracking-tight text-white/95 sm:text-2xl"
                                 >
                                     Sinu tänane ülevaade
                                 </h2>
                                 <p
-                                    class="mt-1 text-sm text-white/65 lg:text-[13px]"
+                                    class="mt-1 text-sm text-white/65 md:text-base"
                                 >
                                     {{ todayLabel }}
                                 </p>
@@ -701,7 +701,7 @@ function goToFabAction(href: string) {
                                             class="flex items-center justify-between gap-2"
                                         >
                                             <p
-                                                class="text-[9px] font-semibold tracking-[0.12em] text-white/60 uppercase"
+                                                class="text-[10px] font-semibold tracking-[0.12em] text-white/60 uppercase md:text-[11px]"
                                             >
                                                 {{ item.label }}
                                             </p>
@@ -712,12 +712,12 @@ function goToFabAction(href: string) {
                                             </span>
                                         </div>
                                         <p
-                                            class="mt-1 text-xl font-black tracking-tight text-white/95 tabular-nums"
+                                            class="mt-1 text-2xl font-black tracking-tight text-white/95 tabular-nums md:text-3xl"
                                         >
                                             {{ item.value }}
                                         </p>
                                         <p
-                                            class="mt-0.5 text-xs font-medium text-white/70"
+                                            class="mt-0.5 text-xs font-medium text-white/70 md:text-sm"
                                         >
                                             {{ item.hint }}
                                         </p>
@@ -732,13 +732,13 @@ function goToFabAction(href: string) {
                                         class="mb-1 flex items-center justify-between gap-2"
                                     >
                                         <p
-                                            class="text-[11px] font-semibold tracking-[0.14em] text-white/60 uppercase"
+                                            class="text-xs font-semibold tracking-[0.14em] text-white/60 uppercase md:text-sm"
                                         >
                                             Aia galerii
                                         </p>
                                         <span
                                             v-if="hiddenGalleryCount"
-                                            class="text-xs font-semibold text-emerald-100/80"
+                                            class="text-xs font-semibold text-emerald-100/80 md:text-sm"
                                         >
                                             +{{ hiddenGalleryCount }} veel
                                         </span>
@@ -763,7 +763,7 @@ function goToFabAction(href: string) {
                                                 aria-hidden="true"
                                             />
                                             <span
-                                                class="absolute top-1.5 left-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold ring-1"
+                                                class="absolute top-1.5 left-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold ring-1 md:text-[10px]"
                                                 :class="
                                                     galleryBadgeClass(
                                                         photo.kind,
@@ -776,13 +776,13 @@ function goToFabAction(href: string) {
                                                 class="absolute right-1.5 bottom-1.5 left-1.5"
                                             >
                                                 <p
-                                                    class="truncate text-xs font-extrabold text-white"
+                                                    class="truncate text-xs font-extrabold text-white md:text-sm"
                                                 >
                                                     {{ photo.title }}
                                                 </p>
                                                 <p
                                                     v-if="photo.subtitle"
-                                                    class="text-[10px] font-semibold text-white/75"
+                                                    class="text-[10px] font-semibold text-white/75 md:text-xs"
                                                 >
                                                     {{ photo.subtitle }}
                                                 </p>
@@ -807,7 +807,7 @@ function goToFabAction(href: string) {
                                         >
                                             <div class="min-w-0">
                                                 <p
-                                                    class="text-[11px] font-semibold tracking-[0.16em] text-white/60 uppercase"
+                                                    class="text-xs font-semibold tracking-[0.16em] text-white/60 uppercase md:text-sm"
                                                 >
                                                     {{ todayWorkSummary.title }}
                                                 </p>
@@ -820,7 +820,7 @@ function goToFabAction(href: string) {
                                                     {{ animatedTodayValue }}
                                                 </p>
                                                 <p
-                                                    class="mt-1 text-sm text-white/65"
+                                                    class="mt-1 text-sm text-white/65 md:text-base"
                                                 >
                                                     {{ todayWorkSummary.body }}
                                                 </p>
@@ -930,7 +930,7 @@ function goToFabAction(href: string) {
                                     class="flex items-center justify-between gap-2 px-4 pt-3 pb-1"
                                 >
                                     <h3
-                                        class="min-w-0 flex-1 text-[10px] font-semibold tracking-[0.18em] text-[#2a3824] uppercase dark:text-emerald-100"
+                                        class="min-w-0 flex-1 text-[11px] font-semibold tracking-[0.18em] text-[#2a3824] uppercase md:text-xs dark:text-emerald-100"
                                     >
                                         {{ sectionTitle('garden') }}
                                     </h3>
@@ -980,7 +980,7 @@ function goToFabAction(href: string) {
                                         <Link
                                             v-if="!editLayout"
                                             href="/map"
-                                            class="text-xs font-medium text-primary transition hover:text-primary/80"
+                                            class="text-xs font-medium text-primary transition hover:text-primary/80 md:text-sm"
                                         >
                                             <span class="md:hidden"
                                                 >Peenrad</span
@@ -1025,12 +1025,12 @@ function goToFabAction(href: string) {
                                         </div>
                                         <div class="px-2 py-1.5">
                                             <p
-                                                class="truncate text-xs font-semibold text-foreground"
+                                                class="truncate text-xs font-semibold text-foreground md:text-sm"
                                             >
                                                 {{ bed.name }}
                                             </p>
                                             <p
-                                                class="text-[10px] text-muted-foreground"
+                                                class="text-[10px] text-muted-foreground md:text-xs"
                                             >
                                                 {{ bed.plants_count ?? 0 }}
                                                 taime
@@ -1048,12 +1048,12 @@ function goToFabAction(href: string) {
                                         class="flex items-center justify-between px-4 pt-3 pb-1"
                                     >
                                         <span
-                                            class="text-[10px] font-semibold tracking-[0.16em] text-muted-foreground uppercase"
+                                            class="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase md:text-xs"
                                             >Viimased taimed</span
                                         >
                                         <Link
                                             href="/plants"
-                                            class="text-xs font-medium text-primary hover:text-primary/80"
+                                            class="text-xs font-medium text-primary hover:text-primary/80 md:text-sm"
                                             >Kõik</Link
                                         >
                                     </div>
@@ -1089,13 +1089,13 @@ function goToFabAction(href: string) {
                                             </div>
                                             <div class="min-w-0 flex-1">
                                                 <p
-                                                    class="truncate text-sm font-medium text-foreground"
+                                                    class="truncate text-sm font-medium text-foreground md:text-[15px]"
                                                 >
                                                     {{ plant.name }}
                                                 </p>
                                                 <p
                                                     v-if="plant.category"
-                                                    class="text-[10px] text-muted-foreground"
+                                                    class="text-[10px] text-muted-foreground md:text-xs"
                                                 >
                                                     {{ plant.category.name }}
                                                 </p>
@@ -1148,7 +1148,7 @@ function goToFabAction(href: string) {
                                     class="flex items-center justify-between gap-2 px-4 pt-3 pb-1"
                                 >
                                     <h3
-                                        class="min-w-0 flex-1 text-[10px] font-semibold tracking-[0.18em] text-[#2a3824] uppercase dark:text-stone-100"
+                                        class="min-w-0 flex-1 text-[11px] font-semibold tracking-[0.18em] text-[#2a3824] uppercase md:text-xs dark:text-stone-100"
                                     >
                                         {{ sectionTitle('notes') }}
                                     </h3>
@@ -1193,7 +1193,7 @@ function goToFabAction(href: string) {
                                         <Link
                                             v-if="!editLayout"
                                             href="/calendar/overview"
-                                            class="text-xs font-medium text-primary transition hover:text-primary/80"
+                                            class="text-xs font-medium text-primary transition hover:text-primary/80 md:text-sm"
                                         >
                                             Ava kõik
                                         </Link>
@@ -1243,7 +1243,7 @@ function goToFabAction(href: string) {
                                                         </span>
                                                     </span>
                                                     <span
-                                                        class="min-w-0 truncate text-sm leading-snug font-semibold text-foreground"
+                                                        class="min-w-0 truncate text-sm leading-snug font-semibold text-foreground md:text-[15px]"
                                                         :class="
                                                             note.done === true
                                                                 ? 'line-through decoration-emerald-500/50 decoration-1'
@@ -1260,7 +1260,7 @@ function goToFabAction(href: string) {
                                                     class="mt-0.5 flex items-center gap-1.5"
                                                 >
                                                     <span
-                                                        class="shrink-0 text-xs font-normal text-muted-foreground"
+                                                        class="shrink-0 text-xs font-normal text-muted-foreground md:text-sm"
                                                     >
                                                         {{
                                                             noteRelativeDate(
@@ -1272,7 +1272,7 @@ function goToFabAction(href: string) {
                                                         v-if="
                                                             note.done === true
                                                         "
-                                                        class="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-emerald-500/10 px-1.5 py-px text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300"
+                                                        class="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-emerald-500/10 px-1.5 py-px text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-500/20 md:text-[11px] dark:text-emerald-300"
                                                     >
                                                         <span
                                                             class="material-symbols-outlined text-[11px]"
@@ -1337,7 +1337,7 @@ function goToFabAction(href: string) {
                                     @click="toggleSectionCollapsed('weather')"
                                 >
                                     <h3
-                                        class="min-w-0 flex-1 text-[10px] font-semibold tracking-[0.18em] text-sky-950 uppercase dark:text-sky-100"
+                                        class="min-w-0 flex-1 text-[11px] font-semibold tracking-[0.18em] text-sky-950 uppercase md:text-xs dark:text-sky-100"
                                     >
                                         {{ sectionTitle('weather') }}
                                     </h3>
@@ -1426,7 +1426,7 @@ function goToFabAction(href: string) {
                                     @click="toggleSectionCollapsed('moon')"
                                 >
                                     <h3
-                                        class="min-w-0 flex-1 text-[10px] font-semibold tracking-[0.18em] text-white/50 uppercase"
+                                        class="min-w-0 flex-1 text-[11px] font-semibold tracking-[0.18em] text-white/50 uppercase md:text-xs"
                                     >
                                         {{ sectionTitle('moon') }}
                                     </h3>
@@ -1471,7 +1471,7 @@ function goToFabAction(href: string) {
                                         <Link
                                             v-if="!editLayout"
                                             href="/calendar/moon"
-                                            class="shrink-0 text-xs font-medium text-white/60 transition hover:text-white/90"
+                                            class="shrink-0 text-xs font-medium text-white/60 transition hover:text-white/90 md:text-sm"
                                             @click.stop
                                         >
                                             Ava kõik
