@@ -8,6 +8,7 @@ use App\Models\GardenPlan;
 use App\Models\Plant;
 use App\Models\Seed;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -109,13 +110,22 @@ class DashboardController extends Controller
             ->where('user_id', $user->id)
             ->whereNotNull('image_url')
             ->orderByDesc('created_at')
-            ->limit(16)
-            ->get(['id', 'name', 'image_url', 'created_at'])
+            ->limit(60)
+            ->get(['id', 'name', 'subtitle', 'image_url', 'created_at'])
+            ->groupBy(function (Plant $plant): string {
+                $label = filled($plant->subtitle) ? $plant->subtitle : $plant->name;
+
+                return Str::lower(trim((string) $label)).'|'.$plant->image_url;
+            })
+            ->map(fn ($group) => $group->sortByDesc(
+                fn (Plant $plant) => $plant->created_at?->getTimestamp() ?? 0,
+            )->first())
+            ->take(12)
             ->each(fn (Plant $plant) => $galleryItems->push([
                 'key' => "plant-{$plant->id}",
                 'kind' => 'plant',
                 'kind_label' => 'Taim',
-                'title' => $plant->name,
+                'title' => filled($plant->subtitle) ? $plant->subtitle : $plant->name,
                 'subtitle' => $plant->created_at?->format('Y-m-d'),
                 'image_url' => $plant->image_url,
                 'href' => "/plants/{$plant->id}",
@@ -167,6 +177,7 @@ class DashboardController extends Controller
 
         $gardenGallery = $galleryItems
             ->filter(fn (array $item) => filled($item['image_url'] ?? null))
+            ->unique(fn (array $item) => "{$item['kind']}|{$item['title']}|{$item['image_url']}")
             ->sortByDesc(fn (array $item) => $item['sort_date'] ?? '')
             ->take(18)
             ->map(function (array $item) {
