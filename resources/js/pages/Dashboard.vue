@@ -888,7 +888,7 @@ function goToFabAction(href: string) {
                             <!-- Minu aed: peenrad + taimed -->
                             <section
                                 v-if="id === 'garden'"
-                                class="wow-fade-up overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,#edf7ea_0%,#f5fbf3_60%,#f0f7ed_100%)] shadow-[0_10px_28px_rgba(69,120,58,0.09)] ring-1 ring-[#b5d9a3]/40 dark:bg-[linear-gradient(180deg,#142017_0%,#1a2a1f_60%,#18261d_100%)] dark:shadow-[0_12px_30px_rgba(0,0,0,0.35)] dark:ring-emerald-800/45 lg:mx-0 lg:mb-4 lg:break-inside-avoid"
+                                class="wow-fade-up overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,#edf7ea_0%,#f5fbf3_60%,#f0f7ed_100%)] shadow-[0_10px_28px_rgba(69,120,58,0.09)] ring-1 ring-[#b5d9a3]/40 lg:mx-0 lg:mb-4 lg:break-inside-avoid dark:bg-[linear-gradient(180deg,#142017_0%,#1a2a1f_60%,#18261d_100%)] dark:shadow-[0_12px_30px_rgba(0,0,0,0.35)] dark:ring-emerald-800/45"
                                 :style="{
                                     '--wow-delay': `${260 + sectionIndex * 110}ms`,
                                 }"
@@ -897,7 +897,7 @@ function goToFabAction(href: string) {
                                     class="flex items-center justify-between gap-2 px-4 pt-3 pb-1"
                                 >
                                     <h3
-                                        class="min-w-0 flex-1 text-[10px] font-semibold tracking-[0.18em] text-[#2a3824] dark:text-emerald-100 uppercase"
+                                        class="min-w-0 flex-1 text-[10px] font-semibold tracking-[0.18em] text-[#2a3824] uppercase dark:text-emerald-100"
                                     >
                                         {{ sectionTitle('garden') }}
                                     </h3>
@@ -967,7 +967,7 @@ function goToFabAction(href: string) {
                                     <Link
                                         v-for="bed in recentBeds"
                                         :key="bed.id"
-                                        href="/map"
+                                        :href="`/beds/${bed.id}`"
                                         class="group flex w-28 shrink-0 flex-col overflow-hidden rounded-xl border border-border/50 bg-muted/30 transition hover:border-primary/40 hover:bg-muted/60"
                                     >
                                         <div
@@ -1103,7 +1103,7 @@ function goToFabAction(href: string) {
                             <!-- Viimased märkmed -->
                             <section
                                 v-if="id === 'notes'"
-                                class="wow-fade-up overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,#fffaf0_0%,#f3f7ed_100%)] shadow-[0_10px_28px_rgba(69,89,58,0.1)] ring-1 ring-[#d9cbae]/45 dark:bg-[linear-gradient(180deg,#1b1a16_0%,#1b241d_100%)] dark:shadow-[0_12px_30px_rgba(0,0,0,0.35)] dark:ring-stone-700/45 lg:mx-0 lg:mb-4 lg:break-inside-avoid"
+                                class="wow-fade-up overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,#fffaf0_0%,#f3f7ed_100%)] shadow-[0_10px_28px_rgba(69,89,58,0.1)] ring-1 ring-[#d9cbae]/45 lg:mx-0 lg:mb-4 lg:break-inside-avoid dark:bg-[linear-gradient(180deg,#1b1a16_0%,#1b241d_100%)] dark:shadow-[0_12px_30px_rgba(0,0,0,0.35)] dark:ring-stone-700/45"
                                 :class="
                                     editLayout ? 'ring-1 ring-primary/25' : ''
                                 "
@@ -1115,7 +1115,7 @@ function goToFabAction(href: string) {
                                     class="flex items-center justify-between gap-2 px-4 pt-3 pb-1"
                                 >
                                     <h3
-                                        class="min-w-0 flex-1 text-[10px] font-semibold tracking-[0.18em] text-[#2a3824] dark:text-stone-100 uppercase"
+                                        class="min-w-0 flex-1 text-[10px] font-semibold tracking-[0.18em] text-[#2a3824] uppercase dark:text-stone-100"
                                     >
                                         {{ sectionTitle('notes') }}
                                     </h3>
@@ -1291,7 +1291,7 @@ function goToFabAction(href: string) {
                             <!-- Weather -->
                             <section
                                 v-if="id === 'weather'"
-                                class="wow-fade-up overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,#eaf6ff_0%,#f7fbff_54%,#eef7f0_100%)] shadow-[0_10px_28px_rgba(92,132,161,0.12)] ring-1 ring-[#a2c6e5]/40 dark:bg-[linear-gradient(180deg,#101a25_0%,#12202e_54%,#14231b_100%)] dark:shadow-[0_12px_30px_rgba(0,0,0,0.35)] dark:ring-sky-800/45 lg:mx-0 lg:mb-4 lg:break-inside-avoid"
+                                class="wow-fade-up overflow-hidden rounded-[1.6rem] bg-[linear-gradient(180deg,#eaf6ff_0%,#f7fbff_54%,#eef7f0_100%)] shadow-[0_10px_28px_rgba(92,132,161,0.12)] ring-1 ring-[#a2c6e5]/40 lg:mx-0 lg:mb-4 lg:break-inside-avoid dark:bg-[linear-gradient(180deg,#101a25_0%,#12202e_54%,#14231b_100%)] dark:shadow-[0_12px_30px_rgba(0,0,0,0.35)] dark:ring-sky-800/45"
                                 :class="
                                     editLayout ? 'ring-1 ring-primary/25' : ''
                                 "
@@ -1304,7 +1304,7 @@ function goToFabAction(href: string) {
                                     @click="toggleSectionCollapsed('weather')"
                                 >
                                     <h3
-                                        class="min-w-0 flex-1 text-[10px] font-semibold tracking-[0.18em] text-sky-950 dark:text-sky-100 uppercase"
+                                        class="min-w-0 flex-1 text-[10px] font-semibold tracking-[0.18em] text-sky-950 uppercase dark:text-sky-100"
                                     >
                                         {{ sectionTitle('weather') }}
                                     </h3>

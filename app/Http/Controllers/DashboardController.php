@@ -46,6 +46,7 @@ class DashboardController extends Controller
 
         $recentBeds = Bed::query()
             ->where('user_id', $user->id)
+            ->with(['plants:id,bed_id,image_url'])
             ->withCount('plants')
             ->orderByDesc('updated_at')
             ->limit(5)
@@ -53,7 +54,8 @@ class DashboardController extends Controller
             ->map(fn ($b) => [
                 'id' => $b->id,
                 'name' => $b->name,
-                'image_url' => $b->image_url,
+                'image_url' => $b->image_url
+                    ?: $b->plants->firstWhere('image_url')?->image_url,
                 'location' => $b->location,
                 'plants_count' => $b->plants_count,
             ]);
