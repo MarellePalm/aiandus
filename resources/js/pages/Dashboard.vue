@@ -77,6 +77,11 @@ type GardenGalleryItem = {
 const gardenGallery = computed<GardenGalleryItem[]>(
     () => (page.props.gardenGallery as GardenGalleryItem[] | undefined) ?? [],
 );
+const featuredGalleryItem = computed(() => gardenGallery.value[0] ?? null);
+const secondaryGalleryItems = computed(() => gardenGallery.value.slice(1, 7));
+const hiddenGalleryCount = computed(() =>
+    Math.max(0, gardenGallery.value.length - 7),
+);
 
 type TodayTask = {
     id: number;
@@ -254,6 +259,17 @@ function noteAccentClass(note: RecentNote): string {
     if (note.done === true) return 'bg-emerald-400';
     if (note.done === false) return 'bg-amber-400';
     return 'bg-primary/60';
+}
+
+function galleryBadgeClass(kind: GardenGalleryItem['kind']): string {
+    const classes: Record<GardenGalleryItem['kind'], string> = {
+        bed: 'bg-emerald-950/70 text-emerald-50 ring-emerald-200/25',
+        plant: 'bg-lime-950/70 text-lime-50 ring-lime-200/25',
+        seed: 'bg-amber-950/70 text-amber-50 ring-amber-200/25',
+        note: 'bg-sky-950/70 text-sky-50 ring-sky-200/25',
+    };
+
+    return classes[kind];
 }
 
 function noteRowToneClass(note: RecentNote): string {
@@ -709,7 +725,7 @@ function goToFabAction(href: string) {
                                     </div>
                                 </div>
 
-                                <div v-if="gardenGallery.length" class="mt-2">
+                                <div v-if="featuredGalleryItem" class="mt-2">
                                     <div
                                         class="mb-1 flex items-center justify-between gap-2"
                                     >
@@ -718,40 +734,98 @@ function goToFabAction(href: string) {
                                         >
                                             Aia galerii
                                         </p>
-                                        <Link
-                                            href="/plants"
-                                            class="text-xs font-medium text-emerald-200 transition hover:text-white"
+                                        <span
+                                            v-if="hiddenGalleryCount"
+                                            class="text-xs font-semibold text-emerald-100/80"
                                         >
-                                            Ava kogu
-                                        </Link>
+                                            +{{ hiddenGalleryCount }} veel
+                                        </span>
                                     </div>
                                     <div
-                                        class="flex gap-2 overflow-x-auto pb-0.5"
+                                        class="grid gap-2 lg:grid-cols-[minmax(10rem,1.15fr)_minmax(0,2fr)]"
                                     >
                                         <Link
-                                            v-for="photo in gardenGallery"
-                                            :key="photo.key"
-                                            :href="photo.href"
-                                            class="group relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted/30 sm:h-28 sm:w-28"
+                                            :href="featuredGalleryItem.href"
+                                            class="group relative block h-36 overflow-hidden rounded-2xl border border-white/20 bg-muted/30 shadow-[0_10px_24px_rgba(0,0,0,0.18)] lg:h-full"
                                         >
                                             <img
-                                                :src="photo.image_url"
-                                                :alt="photo.title"
+                                                :src="
+                                                    featuredGalleryItem.image_url
+                                                "
+                                                :alt="featuredGalleryItem.title"
                                                 class="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-105"
                                                 loading="lazy"
                                             />
                                             <span
-                                                class="absolute top-1 left-1 rounded-full bg-black/45 px-1.5 py-0.5 text-[10px] font-semibold text-white"
-                                            >
-                                                {{ photo.kind_label }}
-                                            </span>
+                                                class="absolute inset-0 bg-linear-to-t from-black/55 via-black/5 to-transparent"
+                                                aria-hidden="true"
+                                            />
                                             <span
-                                                v-if="photo.subtitle"
-                                                class="absolute bottom-1 left-1 rounded-full bg-black/45 px-1.5 py-0.5 text-[10px] font-medium text-white"
+                                                class="absolute top-2 left-2 rounded-full px-2 py-1 text-[10px] font-bold ring-1"
+                                                :class="
+                                                    galleryBadgeClass(
+                                                        featuredGalleryItem.kind,
+                                                    )
+                                                "
                                             >
-                                                {{ photo.subtitle }}
+                                                {{
+                                                    featuredGalleryItem.kind_label
+                                                }}
                                             </span>
+                                            <div
+                                                class="absolute right-2 bottom-2 left-2"
+                                            >
+                                                <p
+                                                    class="truncate text-sm font-extrabold text-white"
+                                                >
+                                                    {{
+                                                        featuredGalleryItem.title
+                                                    }}
+                                                </p>
+                                                <p
+                                                    v-if="
+                                                        featuredGalleryItem.subtitle
+                                                    "
+                                                    class="text-[10px] font-semibold text-white/75"
+                                                >
+                                                    {{
+                                                        featuredGalleryItem.subtitle
+                                                    }}
+                                                </p>
+                                            </div>
                                         </Link>
+                                        <div
+                                            v-if="secondaryGalleryItems.length"
+                                            class="grid grid-cols-3 gap-2"
+                                        >
+                                            <Link
+                                                v-for="photo in secondaryGalleryItems"
+                                                :key="photo.key"
+                                                :href="photo.href"
+                                                class="group relative h-16 overflow-hidden rounded-xl border border-white/15 bg-muted/30 sm:h-20"
+                                            >
+                                                <img
+                                                    :src="photo.image_url"
+                                                    :alt="photo.title"
+                                                    class="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-105"
+                                                    loading="lazy"
+                                                />
+                                                <span
+                                                    class="absolute inset-0 bg-linear-to-t from-black/45 via-transparent to-transparent"
+                                                    aria-hidden="true"
+                                                />
+                                                <span
+                                                    class="absolute top-1 left-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold ring-1"
+                                                    :class="
+                                                        galleryBadgeClass(
+                                                            photo.kind,
+                                                        )
+                                                    "
+                                                >
+                                                    {{ photo.kind_label }}
+                                                </span>
+                                            </Link>
+                                        </div>
                                     </div>
                                 </div>
 
