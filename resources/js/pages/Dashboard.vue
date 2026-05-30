@@ -674,7 +674,7 @@ function goToFabAction(href: string) {
                                 aria-hidden="true"
                             />
 
-                            <div class="relative z-10">
+                            <div class="relative z-10 mx-auto max-w-7xl">
                                 <h2
                                     class="text-lg font-bold tracking-tight text-white/95 sm:text-xl"
                                 >
@@ -742,7 +742,7 @@ function goToFabAction(href: string) {
                                         </span>
                                     </div>
                                     <div
-                                        class="grid gap-2 md:grid-cols-[minmax(12rem,0.95fr)_minmax(0,1.35fr)]"
+                                        class="grid gap-2 md:max-w-5xl md:grid-cols-[minmax(12rem,0.85fr)_minmax(0,1.15fr)] xl:max-w-6xl"
                                     >
                                         <Link
                                             :href="featuredGalleryItem.href"
