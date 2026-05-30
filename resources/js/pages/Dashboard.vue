@@ -673,7 +673,7 @@ function goToFabAction(href: string) {
                                 aria-hidden="true"
                             />
 
-                            <div class="relative z-10 mx-auto max-w-7xl">
+                            <div class="relative z-10">
                                 <h2
                                     class="text-lg font-bold tracking-tight text-white/95 sm:text-xl"
                                 >
@@ -744,7 +744,7 @@ function goToFabAction(href: string) {
                                         </span>
                                     </div>
                                     <div
-                                        class="flex max-w-full gap-2 overflow-x-auto pb-0.5 md:max-w-5xl xl:max-w-6xl"
+                                        class="flex max-w-full gap-2 overflow-x-auto pb-0.5"
                                     >
                                         <Link
                                             v-for="photo in galleryPreviewItems"
