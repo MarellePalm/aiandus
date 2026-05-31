@@ -598,6 +598,59 @@ function onBedGridPointerUp(event: PointerEvent) {
     }
 }
 
+function saveLocalLayout(successMessage: string, errorMessage: string) {
+    const { layout: newLayout, cell_bricks: newBricks } =
+        buildLayoutPayloadFromLocalCells();
+    router.put(
+        `/beds/${props.bed.id}`,
+        { layout: newLayout, cell_bricks: newBricks },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                buildLocalCells();
+                setInlineFeedback('success', successMessage);
+            },
+            onError: () => {
+                buildLocalCells();
+                setInlineFeedback('error', errorMessage);
+            },
+        },
+    );
+}
+
+function toggleLayoutCellKind(cell: GridCell) {
+    if (!editingLayout.value) {
+        return;
+    }
+
+    if (cell.plant) {
+        setInlineFeedback(
+            'error',
+            'Taimega ruutu ei saa muuta kivide/vaba ala plokiks.',
+        );
+        return;
+    }
+
+    const nextWalkway = !cell.walkway;
+    localCells.value = localCells.value.map((item) =>
+        item.key === cell.key
+            ? {
+                  ...item,
+                  active: !nextWalkway,
+                  walkway: nextWalkway,
+              }
+            : item,
+    );
+
+    saveLocalLayout(
+        nextWalkway
+            ? 'Ruut märgiti kivide/vaba ala plokiks.'
+            : 'Ruut märgiti istutusalaks.',
+        'Ruudu tüüpi ei õnnestunud salvestada.',
+    );
+}
+
 function plantAt(row: number, col: number): PlantInBed | undefined {
     const key = `${row},${col}`;
     return props.bed.plants.find((p) => p.position_in_bed === key);
@@ -1464,7 +1517,9 @@ function handleBedStatusAction() {
                                         v-if="editingLayout"
                                         class="max-w-md text-xs leading-relaxed text-muted-foreground"
                                     >
-                                        Lohista ruute ümber. Uue ploki
+                                        Lohista ruute ümber või klõpsa tühjal
+                                        ruudul, et vahetada istutusala ja
+                                        kivide/vaba ala vahel. Uue ploki
                                         lisamiseks ava
                                         <Link
                                             :href="`/beds/${bed.id}/edit?step=2`"
@@ -1703,13 +1758,21 @@ function handleBedStatusAction() {
                                                         >
                                                     </button>
                                                 </div>
-                                                <div
+                                                <button
                                                     v-else-if="cell.walkway"
+                                                    type="button"
                                                     class="bed-cell bed-cell--walkway"
                                                     :style="
                                                         bedCellSpanStyle(cell)
                                                     "
-                                                />
+                                                    title="Muuda istutusalaks"
+                                                    :aria-label="`Kivid / vaba ala, rida ${cell.row + 1}, veerg ${cell.col + 1}. Muuda istutusalaks.`"
+                                                    @click="
+                                                        toggleLayoutCellKind(
+                                                            cell,
+                                                        )
+                                                    "
+                                                ></button>
                                                 <button
                                                     v-else-if="cell.active"
                                                     type="button"
@@ -1723,14 +1786,25 @@ function handleBedStatusAction() {
                                                     :style="
                                                         bedCellSpanStyle(cell)
                                                     "
-                                                    :title="`Lisa taim ruutu (rida ${cell.row + 1}, veerg ${cell.col + 1})`"
-                                                    :aria-label="`Lisa taim ruutu, rida ${cell.row + 1}, veerg ${cell.col + 1}`"
+                                                    :title="
+                                                        editingLayout
+                                                            ? `Muuda kivide/vaba ala plokiks (rida ${cell.row + 1}, veerg ${cell.col + 1})`
+                                                            : `Lisa taim ruutu (rida ${cell.row + 1}, veerg ${cell.col + 1})`
+                                                    "
+                                                    :aria-label="
+                                                        editingLayout
+                                                            ? `Istutusala, rida ${cell.row + 1}, veerg ${cell.col + 1}. Muuda kivide või vaba ala plokiks.`
+                                                            : `Lisa taim ruutu, rida ${cell.row + 1}, veerg ${cell.col + 1}`
+                                                    "
                                                     @click="
-                                                        !editingLayout &&
-                                                        openCellModal(
-                                                            cell.row,
-                                                            cell.col,
-                                                        )
+                                                        editingLayout
+                                                            ? toggleLayoutCellKind(
+                                                                  cell,
+                                                              )
+                                                            : openCellModal(
+                                                                  cell.row,
+                                                                  cell.col,
+                                                              )
                                                     "
                                                 >
                                                     <span
