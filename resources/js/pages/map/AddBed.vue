@@ -1088,18 +1088,6 @@ function changeSelectedPlantQuantity(delta: number) {
     );
 }
 
-function openPlantModal(cell: BedCell) {
-    if (cell.kind !== 'plantable' || !cell.active) return;
-    plantModalCellId.value = cell.id;
-    selectedCellId.value = cell.id;
-    const existing = cell.plants[0];
-    if (existing && existing.quantity > 0) {
-        selectedPlantQuantity.value = existing.quantity;
-    } else {
-        selectedPlantQuantity.value = 1;
-    }
-}
-
 function closePlantModal() {
     plantModalCellId.value = null;
     selectedPlantQuantity.value = 1;
@@ -1163,11 +1151,7 @@ function cellIcon(cell: BedCell): string {
     if (cell.kind === 'walkway') return 'texture';
     if (cell.kind === 'empty') return 'crop_free';
     if (!cell.active) return 'crop_square';
-    return 'add';
-}
-
-function isPlantableEmptySlot(cell: BedCell): boolean {
-    return cell.kind === 'plantable' && cell.active && cell.plants.length === 0;
+    return 'crop_square';
 }
 
 function brushPaletteCellClasses(kind: 'plantable' | 'walkway'): string[] {
@@ -1236,9 +1220,6 @@ function selectCell(cell: BedCell) {
 
 function onBedCellClick(cell: BedCell) {
     selectCell(cell);
-    if (cell.kind === 'plantable' && cell.active) {
-        openPlantModal(cell);
-    }
 }
 
 const plantModalLabel = computed(() => {
@@ -2852,29 +2833,7 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                                                     v-else
                                                     class="relative z-10 flex size-full flex-col items-center justify-center px-1 text-center"
                                                 >
-                                                    <button
-                                                        v-if="
-                                                            isPlantableEmptySlot(
-                                                                cellMap.get(
-                                                                    item.i,
-                                                                )!,
-                                                            )
-                                                        "
-                                                        type="button"
-                                                        class="material-symbols-outlined bed-cell-slot-icon relative z-10"
-                                                        title="Lisa taim"
-                                                        @click.stop="
-                                                            openPlantModal(
-                                                                cellMap.get(
-                                                                    item.i,
-                                                                )!,
-                                                            )
-                                                        "
-                                                    >
-                                                        add
-                                                    </button>
                                                     <span
-                                                        v-else
                                                         class="material-symbols-outlined"
                                                         :class="
                                                             selectedCell?.id ===
@@ -3062,24 +3021,15 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                                     Kivid / vaba ala
                                 </button>
                             </div>
-                            <button
+                            <p
                                 v-if="
                                     selectedCellLive.kind === 'plantable' &&
                                     selectedCellLive.active
                                 "
-                                type="button"
-                                class="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-500/35 bg-emerald-50/80 px-2 py-2.5 text-[12px] font-semibold text-emerald-900 transition hover:bg-emerald-100"
-                                @click="openPlantModal(selectedCellLive)"
+                                class="rounded-xl border border-emerald-900/10 bg-emerald-50/70 px-3 py-2 text-[11px] leading-snug text-emerald-950/70"
                             >
-                                <span class="material-symbols-outlined text-sm"
-                                    >eco</span
-                                >
-                                {{
-                                    selectedHasPlants
-                                        ? 'Muuda taimi'
-                                        : 'Lisa taim'
-                                }}
-                            </button>
+                                Taimed lisad hiljem loodud peenra vaates.
+                            </p>
                             <button
                                 type="button"
                                 class="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-red-200/65 bg-red-50/60 px-2 py-2 text-[12px] font-semibold text-red-700/85 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-35"
