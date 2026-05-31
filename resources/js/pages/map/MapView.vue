@@ -3348,11 +3348,11 @@ function saveGardenPlan(options?: {
                                                     class="flex min-w-0 flex-wrap items-end gap-x-2.5 gap-y-1.5 md:block"
                                                 >
                                                     <div
-                                                        class="relative inline-block w-max max-w-full min-w-0 md:block md:w-full"
+                                                        class="relative block w-full min-w-0 md:block md:w-full"
                                                     >
                                                         <select
                                                             id="garden-plan-select"
-                                                            class="block w-max max-w-full min-w-0 appearance-none truncate bg-transparent pr-8 text-2xl leading-tight font-semibold text-foreground transition outline-none hover:text-primary focus:text-primary max-md:[field-sizing:content] md:block md:w-full [&_option]:text-sm [&_option]:font-medium"
+                                                            class="block w-full max-w-full min-w-0 appearance-none truncate bg-transparent pr-8 text-2xl leading-tight font-semibold text-foreground transition outline-none hover:text-primary focus:text-primary md:block md:w-full [&_option]:text-sm [&_option]:font-medium"
                                                             :value="
                                                                 gardenPlan.id
                                                             "
@@ -3448,7 +3448,7 @@ function saveGardenPlan(options?: {
                                             >
                                                 <div
                                                     v-if="showPlannerMapCanvas"
-                                                    class="inline-flex items-center gap-0.5 rounded-full bg-muted/45 p-1 ring-1 ring-border/70"
+                                                    class="hidden items-center gap-0.5 rounded-full bg-muted/45 p-1 ring-1 ring-border/70 md:inline-flex"
                                                 >
                                                     <button
                                                         type="button"
