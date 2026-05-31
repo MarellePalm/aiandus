@@ -85,6 +85,8 @@ const cellSizeInput = ref<number>(
 );
 const savingCellSize = ref(false);
 const editingLayout = ref(false);
+const plantEditingMode = ref(false);
+const isDesktop = ref(false);
 const coverTick = ref(0);
 const inlineFeedback = ref<{
     tone: 'success' | 'error';
@@ -92,6 +94,8 @@ const inlineFeedback = ref<{
 } | null>(null);
 let coverTimer: ReturnType<typeof setInterval> | null = null;
 let inlineFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
+let desktopMediaQuery: MediaQueryList | null = null;
+let handleDesktopChange: ((event: MediaQueryListEvent) => void) | null = null;
 
 type CellBrick = {
     x: number;
@@ -357,6 +361,18 @@ watch(
 onMounted(() => {
     buildLocalCells();
 
+    if (typeof window !== 'undefined') {
+        desktopMediaQuery = window.matchMedia('(min-width: 768px)');
+        isDesktop.value = desktopMediaQuery.matches;
+        handleDesktopChange = (event) => {
+            isDesktop.value = event.matches;
+            if (event.matches) {
+                plantEditingMode.value = false;
+            }
+        };
+        desktopMediaQuery.addEventListener('change', handleDesktopChange);
+    }
+
     coverTimer = setInterval(() => {
         coverTick.value += 1;
     }, 3500);
@@ -381,6 +397,9 @@ onMounted(() => {
 onBeforeUnmount(() => {
     if (coverTimer) clearInterval(coverTimer);
     if (inlineFeedbackTimer) clearTimeout(inlineFeedbackTimer);
+    if (desktopMediaQuery && handleDesktopChange) {
+        desktopMediaQuery.removeEventListener('change', handleDesktopChange);
+    }
     bedGridResizeObserver?.disconnect();
     bedGridResizeObserver = null;
     if (typeof document !== 'undefined') {
@@ -864,6 +883,9 @@ function formatNoteDate(iso: string | null): string {
 
 const gridLayout = computed(() => getBedLayout());
 const hasPlantsInBed = computed(() => props.bed.plants.length > 0);
+const canManagePlantsInGrid = computed(
+    () => isDesktop.value || plantEditingMode.value,
+);
 
 watch(
     () => [
@@ -1025,9 +1047,32 @@ function handleBedStatusAction() {
                         </template>
                         <template #actions>
                             <div class="flex max-w-full items-center gap-2">
+                                <button
+                                    type="button"
+                                    class="inline-flex min-h-11 max-w-full items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 text-sm font-semibold text-primary transition hover:bg-primary/15 md:hidden"
+                                    :aria-pressed="plantEditingMode"
+                                    aria-label="Muuda peenra taimi"
+                                    @click="
+                                        plantEditingMode = !plantEditingMode
+                                    "
+                                >
+                                    <span
+                                        class="material-symbols-outlined shrink-0 text-xl leading-none"
+                                        >{{
+                                            plantEditingMode ? 'check' : 'edit'
+                                        }}</span
+                                    >
+                                    <span class="truncate">
+                                        {{
+                                            plantEditingMode
+                                                ? 'Valmis'
+                                                : 'Muuda peenart'
+                                        }}
+                                    </span>
+                                </button>
                                 <Link
                                     :href="`/beds/${bed.id}/edit`"
-                                    class="inline-flex min-h-11 max-w-full items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 text-sm font-semibold text-primary transition hover:bg-primary/15 sm:h-10 sm:min-h-0 sm:gap-2 sm:px-4"
+                                    class="hidden min-h-11 max-w-full items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 text-sm font-semibold text-primary transition hover:bg-primary/15 sm:h-10 sm:min-h-0 sm:gap-2 sm:px-4 md:inline-flex"
                                     aria-label="Muuda peenart"
                                 >
                                     <span
@@ -1040,7 +1085,7 @@ function handleBedStatusAction() {
                                 </Link>
                                 <button
                                     type="button"
-                                    class="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-full border border-border/70 bg-card px-3 text-sm font-semibold text-foreground shadow-sm ring-1 ring-border/70 transition hover:bg-muted sm:h-10 sm:min-h-0 sm:px-4"
+                                    class="hidden min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-full border border-border/70 bg-card px-3 text-sm font-semibold text-foreground shadow-sm ring-1 ring-border/70 transition hover:bg-muted sm:h-10 sm:min-h-0 sm:px-4 md:inline-flex"
                                     aria-label="Kustuta peenar"
                                     @click="deleteCurrentBed"
                                 >
@@ -1346,7 +1391,7 @@ function handleBedStatusAction() {
                         </section>
 
                         <section
-                            class="rounded-[1.75rem] border border-emerald-900/10 bg-card p-3 shadow-[0_18px_45px_rgba(49,79,55,0.12)] dark:border-emerald-800/40 dark:bg-card/95 dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] sm:p-4"
+                            class="rounded-[1.75rem] border border-emerald-900/10 bg-card p-3 shadow-[0_18px_45px_rgba(49,79,55,0.12)] sm:p-4 dark:border-emerald-800/40 dark:bg-card/95 dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)]"
                         >
                             <div
                                 class="mb-3 flex flex-col gap-3 px-1 sm:flex-row sm:items-start sm:justify-between"
@@ -1363,6 +1408,13 @@ function handleBedStatusAction() {
                                         Puuduta ruutu, et lisada, muuta või
                                         eemaldada taim.
                                     </p>
+                                    <p
+                                        v-if="!canManagePlantsInGrid"
+                                        class="mt-1 text-xs leading-relaxed text-muted-foreground md:hidden"
+                                    >
+                                        Taimede lisamiseks või eemaldamiseks
+                                        vajuta ülevalt „Muuda peenart”.
+                                    </p>
                                     <div
                                         class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1"
                                     >
@@ -1375,7 +1427,7 @@ function handleBedStatusAction() {
                                         <button
                                             v-if="!editingCellSize"
                                             type="button"
-                                            class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                            class="hidden items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground md:inline-flex"
                                             title="Muuda ruudu mõõtu"
                                             @click="beginEditCellSize"
                                         >
@@ -1391,7 +1443,7 @@ function handleBedStatusAction() {
                                         </button>
                                         <form
                                             v-else
-                                            class="inline-flex items-center gap-1"
+                                            class="hidden items-center gap-1 md:inline-flex"
                                             @submit.prevent="saveCellSize"
                                         >
                                             <input
@@ -1432,7 +1484,7 @@ function handleBedStatusAction() {
                                     </div>
                                 </div>
                                 <div
-                                    class="flex shrink-0 flex-wrap items-center gap-2"
+                                    class="hidden shrink-0 flex-wrap items-center gap-2 md:flex"
                                 >
                                     <button
                                         type="button"
@@ -1501,7 +1553,7 @@ function handleBedStatusAction() {
                                 >
                                     <div>
                                         <p
-                                            class="text-xs font-bold tracking-[0.16em] text-emerald-950/55 dark:text-emerald-200/70 uppercase"
+                                            class="text-xs font-bold tracking-[0.16em] text-emerald-950/55 uppercase dark:text-emerald-200/70"
                                         >
                                             Peenar täitub
                                         </p>
@@ -1597,7 +1649,7 @@ function handleBedStatusAction() {
                                         <draggable
                                             v-model="localCells"
                                             item-key="key"
-                                            class="bed-grid-frame inline-grid w-max min-w-0 gap-2 rounded-[1.35rem] border border-emerald-900/10 bg-card/40 p-3 ring-1 ring-white/70 dark:border-emerald-800/35 dark:bg-card/65 dark:ring-white/10 sm:gap-2.5 sm:p-4"
+                                            class="bed-grid-frame inline-grid w-max min-w-0 gap-2 rounded-[1.35rem] border border-emerald-900/10 bg-card/40 p-3 ring-1 ring-white/70 sm:gap-2.5 sm:p-4 dark:border-emerald-800/35 dark:bg-card/65 dark:ring-white/10"
                                             :style="{
                                                 gridTemplateColumns: `repeat(${getBedColumns()}, ${bedCellSize}px)`,
                                                 gridTemplateRows: `repeat(${gridLayout.length}, ${bedCellSize}px)`,
@@ -1628,6 +1680,7 @@ function handleBedStatusAction() {
                                                     :aria-label="`Ruut: ${cell.plant?.name ?? 'taim'}. Ava üksikasjad.`"
                                                     @click="
                                                         !editingLayout &&
+                                                        canManagePlantsInGrid &&
                                                         openCellModal(
                                                             cell.row,
                                                             cell.col,
@@ -1635,6 +1688,7 @@ function handleBedStatusAction() {
                                                     "
                                                     @keydown.enter.prevent="
                                                         !editingLayout &&
+                                                        canManagePlantsInGrid &&
                                                         openCellModal(
                                                             cell.row,
                                                             cell.col,
@@ -1642,6 +1696,7 @@ function handleBedStatusAction() {
                                                     "
                                                     @keydown.space.prevent="
                                                         !editingLayout &&
+                                                        canManagePlantsInGrid &&
                                                         openCellModal(
                                                             cell.row,
                                                             cell.col,
@@ -1687,7 +1742,12 @@ function handleBedStatusAction() {
                                                     </span>
                                                     <button
                                                         type="button"
-                                                        class="absolute top-1 right-1 z-20 flex min-h-9 min-w-9 items-center justify-center rounded-full bg-black/60 p-1.5 text-white opacity-100 shadow-sm md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100"
+                                                        class="absolute top-1 right-1 z-20 min-h-9 min-w-9 items-center justify-center rounded-full bg-black/60 p-1.5 text-white opacity-100 shadow-sm md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100"
+                                                        :class="
+                                                            canManagePlantsInGrid
+                                                                ? 'flex'
+                                                                : 'hidden'
+                                                        "
                                                         aria-label="Eemalda taim ruudust"
                                                         @click.stop="
                                                             removePlantFromBed(
@@ -1725,6 +1785,7 @@ function handleBedStatusAction() {
                                                     :aria-label="`Lisa taim ruutu, rida ${cell.row + 1}, veerg ${cell.col + 1}`"
                                                     @click="
                                                         !editingLayout &&
+                                                        canManagePlantsInGrid &&
                                                         openCellModal(
                                                             cell.row,
                                                             cell.col,
