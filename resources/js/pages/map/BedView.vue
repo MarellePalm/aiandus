@@ -194,12 +194,12 @@ function buildLocalCells() {
 
     layout.forEach((rowArr, row) => {
         rowArr.forEach((cellValue, col) => {
-            const brick = brickAnchorAt(row, col);
-            if (brick && (brick.x !== col || brick.y !== row)) {
+            const brick = editingLayout.value ? brickAnchorAt(row, col) : null;
+            if (cellValue === 0 && !brick) {
                 return;
             }
 
-            if (!brick && cellValue === 0) {
+            if (brick && (brick.x !== col || brick.y !== row)) {
                 return;
             }
 
@@ -357,6 +357,10 @@ watch(
     },
     { deep: true },
 );
+
+watch(editingLayout, () => {
+    buildLocalCells();
+});
 
 onMounted(() => {
     buildLocalCells();
@@ -1298,6 +1302,11 @@ function handleBedStatusAction() {
                                 </div>
 
                                 <button
+                                    v-if="
+                                        isDesktop ||
+                                        plantEditingMode ||
+                                        bedStatus.actionType === 'create-note'
+                                    "
                                     type="button"
                                     class="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-3.5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 sm:min-h-0 sm:w-auto"
                                     @click="handleBedStatusAction"
@@ -1403,17 +1412,10 @@ function handleBedStatusAction() {
                                         Peenra ruudustik
                                     </h3>
                                     <p
-                                        class="mt-0.5 text-xs leading-relaxed text-muted-foreground"
+                                        class="mt-0.5 hidden text-xs leading-relaxed text-muted-foreground md:block"
                                     >
                                         Puuduta ruutu, et lisada, muuta või
                                         eemaldada taim.
-                                    </p>
-                                    <p
-                                        v-if="!canManagePlantsInGrid"
-                                        class="mt-1 text-xs leading-relaxed text-muted-foreground md:hidden"
-                                    >
-                                        Taimede lisamiseks või eemaldamiseks
-                                        vajuta ülevalt „Muuda peenart”.
                                     </p>
                                     <div
                                         class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1"
