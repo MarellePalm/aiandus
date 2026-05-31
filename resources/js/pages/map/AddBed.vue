@@ -2919,7 +2919,7 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                                     >{{
                                         plantPlacementMode && !selectedHasPlants
                                             ? 'check'
-                                            : 'eco'
+                                            : 'potted_plant'
                                     }}</span
                                 >
                                 {{
