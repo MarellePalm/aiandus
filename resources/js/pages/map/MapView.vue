@@ -4868,9 +4868,11 @@ function saveGardenPlan(options?: {
                                                         <p
                                                             class="max-w-[16rem] text-xs leading-relaxed text-muted-foreground"
                                                         >
-                                                            Proovi otsingut
-                                                            muuta või lisa uus
-                                                            peenar plussnupust.
+                                                            {{
+                                                                searchQuery.trim()
+                                                                    ? 'Proovi otsingut muuta.'
+                                                                    : 'Selles aias pole veel peenraid. Uue peenra loomine on suuremas vaates.'
+                                                            }}
                                                         </p>
                                                     </template>
                                                 </div>
