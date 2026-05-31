@@ -1186,7 +1186,7 @@ function brushPaletteCellClasses(kind: 'plantable' | 'walkway'): string[] {
 }
 
 function cellKindLabel(cell: BedCell): string {
-    if (cell.kind === 'walkway') return 'tee või kivi';
+    if (cell.kind === 'walkway') return 'kivid / vaba ala';
     if (cell.kind === 'empty') return 'tühi ala';
     if (!cell.active) return 'kasutamata ruut';
     return 'peenraruut';
@@ -2408,10 +2408,10 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                             <p
                                 class="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground"
                             >
-                                Lohista peenraruutu või käiguteed allpool
-                                olevasse kujundusalasse, et luua ruute. Ruutusid
-                                saab lohistada, suurust muuta nurgast ja
-                                eemaldada paremal paneelil.
+                                Lohista peenraruutu või kivide/vaba ala plokki
+                                allpool olevasse kujundusalasse. Ruutusid saab
+                                lohistada, suurust muuta nurgast ja eemaldada
+                                paremal paneelil.
                             </p>
                         </div>
                     </div>
@@ -2517,7 +2517,7 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                                             'bed-brush-palette-item--dragging':
                                                 externalDragKind === 'walkway',
                                         }"
-                                        aria-label="Käigutee — lohista kujundusalasse"
+                                        aria-label="Kivid või vaba ala — lohista kujundusalasse"
                                         @click="activeBrush = 'walkway'"
                                         @dragstart="
                                             onChipDragStart('walkway', $event)
@@ -3050,7 +3050,7 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                                         )
                                     "
                                 >
-                                    Käigutee
+                                    Kivid / vaba ala
                                 </button>
                             </div>
                             <button
