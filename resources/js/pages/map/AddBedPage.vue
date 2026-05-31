@@ -50,18 +50,34 @@ const breadcrumbs = [
                 </DiaryHeader>
                 <p
                     v-if="props.showGuide"
-                    class="rounded-xl bg-primary/8 px-4 py-3 text-sm leading-6 text-muted-foreground ring-1 ring-primary/15"
+                    class="hidden rounded-xl bg-primary/8 px-4 py-3 text-sm leading-6 text-muted-foreground ring-1 ring-primary/15 md:block"
                 >
                     Alusta nimest, joonista kuju ja lisa taimed samas vaates,
                     seejärel paiguta peenar aiaplaanile.
                 </p>
 
-                <AddBed
-                    :garden-plan-id="props.gardenPlanId"
-                    :garden-plan="props.gardenPlan"
-                    :existing-beds="props.existingBeds"
-                    :plants-without-bed="props.plantsWithoutBed ?? []"
-                />
+                <section
+                    class="rounded-[1.5rem] border border-primary/15 bg-primary/5 px-4 py-5 shadow-sm md:hidden"
+                >
+                    <p class="text-base font-semibold text-foreground">
+                        Peenra loomine on suuremas vaates
+                    </p>
+                    <p class="mt-2 text-sm leading-6 text-muted-foreground">
+                        Mobiilis näitame selle aia peenarde loendit ja
+                        peenravaates saab taimi olemasolevatele ruutudele
+                        lisada. Uue peenra kuju ja paigutus tee arvutis või
+                        laiemas vaates.
+                    </p>
+                </section>
+
+                <div class="hidden md:block">
+                    <AddBed
+                        :garden-plan-id="props.gardenPlanId"
+                        :garden-plan="props.gardenPlan"
+                        :existing-beds="props.existingBeds"
+                        :plants-without-bed="props.plantsWithoutBed ?? []"
+                    />
+                </div>
             </main>
 
             <BottomNav active="map" />

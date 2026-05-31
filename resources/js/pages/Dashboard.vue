@@ -8,7 +8,7 @@ import DiaryHeader from '@/components/DiaryHeader.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import BottomNav from '@/pages/BottomNav.vue';
 import Moon from '@/pages/calendarNotes/moon.vue';
-import { dashboard, map } from '@/routes';
+import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 
 const page = usePage();
@@ -588,7 +588,6 @@ const fabActions = [
     { href: '/calendar/note-form', icon: 'edit_note', label: 'Lisa märkmed' },
     { href: '/plants/create', icon: 'local_florist', label: 'Lisa taim' },
     { href: '/seeds/create', icon: 'shelves', label: 'Lisa varu' },
-    { href: map().url, icon: 'map', label: 'Lisa peenar' },
 ];
 function closeFabMenu() {
     showFabMenu.value = false;
@@ -1520,7 +1519,7 @@ function goToFabAction(href: string) {
                 </Transition>
                 <button
                     type="button"
-                    aria-label="Lisa (märkmed, taim, varud, peenar)"
+                    aria-label="Lisa (märkmed, taim, varud)"
                     :aria-expanded="showFabMenu"
                     class="wow-fab relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:scale-105 active:scale-95"
                     @click="showFabMenu = !showFabMenu"
