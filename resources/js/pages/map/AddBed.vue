@@ -1750,8 +1750,8 @@ function fillFromGardenPlan() {
     form.clearErrors('cells');
 }
 
-function parseApproximateMeters(value: string): number | null {
-    const normalized = value.replace(',', '.').trim();
+function parseApproximateMeters(value: string | number): number | null {
+    const normalized = String(value).replace(',', '.').trim();
     if (!normalized) return null;
     const parsed = Number(normalized);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
@@ -1824,6 +1824,14 @@ function generateGridFromDimensions() {
     form.clearErrors('cells');
     scheduleCenterLayoutInCanvas();
     return true;
+}
+
+function generateGridFromDimensionsAndContinue() {
+    if (!generateGridFromDimensions()) return;
+    currentStep.value = 2;
+    void nextTick(() => {
+        scheduleCenterLayoutInCanvas();
+    });
 }
 
 function ensureInitialGridFromDimensions() {
@@ -2354,7 +2362,9 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                                     type="button"
                                     class="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                                     :disabled="!canGenerateGridFromDimensions"
-                                    @click="generateGridFromDimensions"
+                                    @click="
+                                        generateGridFromDimensionsAndContinue
+                                    "
                                 >
                                     <span
                                         class="material-symbols-outlined text-base"
