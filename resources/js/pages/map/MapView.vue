@@ -3279,25 +3279,37 @@ function saveGardenPlan(options?: {
                                     class="rounded-xl border border-primary/20 bg-primary/5 p-5 shadow-sm"
                                 >
                                     <div
-                                        class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+                                        class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
                                     >
                                         <div class="max-w-2xl">
                                             <p
                                                 class="text-base font-semibold text-foreground"
                                             >
-                                                Lisa esimene peenar
+                                                <span class="md:hidden">
+                                                    Peenraid veel pole
+                                                </span>
+                                                <span class="hidden md:inline">
+                                                    Lisa esimene peenar
+                                                </span>
                                             </p>
                                             <p
                                                 class="mt-1 text-sm leading-6 text-muted-foreground"
                                             >
-                                                Lisa esimene peenar: nimeta,
-                                                joonista kuju ja paiguta see
-                                                aiaplaanile.
+                                                <span class="md:hidden">
+                                                    Lisa peenrad arvutis ja tule
+                                                    siis siia taimi ruutudesse
+                                                    sättima.
+                                                </span>
+                                                <span class="hidden md:inline">
+                                                    Lisa esimene peenar: nimeta,
+                                                    joonista kuju ja paiguta see
+                                                    aiaplaanile.
+                                                </span>
                                             </p>
                                         </div>
                                         <button
                                             type="button"
-                                            class="inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+                                            class="hidden items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 md:inline-flex"
                                             @click="startNewBedOnMap"
                                         >
                                             Lisa peenar kaardile
@@ -3348,11 +3360,11 @@ function saveGardenPlan(options?: {
                                                     class="flex min-w-0 flex-wrap items-end gap-x-2.5 gap-y-1.5 md:block"
                                                 >
                                                     <div
-                                                        class="relative inline-block w-max max-w-full min-w-0 md:block md:w-full"
+                                                        class="relative block w-full min-w-0 md:block md:w-full"
                                                     >
                                                         <select
                                                             id="garden-plan-select"
-                                                            class="block w-max max-w-full min-w-0 appearance-none truncate bg-transparent pr-8 text-2xl leading-tight font-semibold text-foreground transition outline-none hover:text-primary focus:text-primary max-md:[field-sizing:content] md:block md:w-full [&_option]:text-sm [&_option]:font-medium"
+                                                            class="block w-full max-w-full min-w-0 appearance-none truncate bg-transparent pr-8 text-2xl leading-tight font-semibold text-foreground transition outline-none hover:text-primary focus:text-primary md:block md:w-full [&_option]:text-sm [&_option]:font-medium"
                                                             :value="
                                                                 gardenPlan.id
                                                             "
@@ -3448,7 +3460,7 @@ function saveGardenPlan(options?: {
                                             >
                                                 <div
                                                     v-if="showPlannerMapCanvas"
-                                                    class="inline-flex items-center gap-0.5 rounded-full bg-muted/45 p-1 ring-1 ring-border/70"
+                                                    class="hidden items-center gap-0.5 rounded-full bg-muted/45 p-1 ring-1 ring-border/70 md:inline-flex"
                                                 >
                                                     <button
                                                         type="button"
@@ -4868,9 +4880,11 @@ function saveGardenPlan(options?: {
                                                         <p
                                                             class="max-w-[16rem] text-xs leading-relaxed text-muted-foreground"
                                                         >
-                                                            Proovi otsingut
-                                                            muuta või lisa uus
-                                                            peenar plussnupust.
+                                                            {{
+                                                                searchQuery.trim()
+                                                                    ? 'Proovi otsingut muuta.'
+                                                                    : 'Lisa peenrad arvutis ja tule siis siia taimi ruutudesse sättima.'
+                                                            }}
                                                         </p>
                                                     </template>
                                                 </div>
@@ -5388,7 +5402,7 @@ function saveGardenPlan(options?: {
 
                 <div
                     v-if="createMenuOpen"
-                    class="fixed right-6 bottom-[176px] z-40 w-44 rounded-2xl border border-border/80 bg-card/96 p-2 shadow-xl shadow-emerald-950/10 backdrop-blur"
+                    class="fixed right-6 bottom-[176px] z-40 hidden w-44 rounded-2xl border border-border/80 bg-card/96 p-2 shadow-xl shadow-emerald-950/10 backdrop-blur md:block"
                 >
                     <button
                         type="button"
@@ -5426,6 +5440,7 @@ function saveGardenPlan(options?: {
                 </div>
 
                 <FloatingPlusButton
+                    class="hidden md:flex"
                     aria-label="Lisa"
                     :size-px="52"
                     :icon-size-px="30"
