@@ -513,6 +513,7 @@ const form = useForm<{
         h: number;
         kind: 'plantable' | 'walkway' | 'empty';
     }>;
+    geometry_json: string | null;
 }>({
     name: props.mode === 'edit' ? (props.bed?.name ?? '') : '',
     location: props.mode === 'edit' ? (props.bed?.location ?? '') : '',
@@ -524,6 +525,7 @@ const form = useForm<{
     cells: [],
     layout: [],
     cell_bricks: [],
+    geometry_json: null,
 });
 const approximateWidthMeters = ref('');
 const approximateDepthMeters = ref('');
@@ -1951,6 +1953,11 @@ function syncCellsToForm() {
                 note: plant.note,
             })),
         }));
+    form.geometry_json = JSON.stringify({
+        layout: form.layout,
+        cell_bricks: form.cell_bricks,
+        cells: form.cells,
+    });
 }
 
 function resetForm() {
@@ -2001,7 +2008,6 @@ function submit() {
 
     form.transform((data) => {
         const base = {
-            ...data,
             name: data.name.trim(),
             location: data.location.trim(),
             cell_size_cm: Math.max(
@@ -2013,7 +2019,8 @@ function submit() {
                     ),
                 ),
             ),
-            cells: form.cells,
+            image: data.image,
+            geometry_json: form.geometry_json,
         };
         if (props.mode !== 'edit' && props.gardenPlanId != null) {
             const payload: Record<string, unknown> = {
