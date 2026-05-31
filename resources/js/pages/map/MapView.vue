@@ -3276,7 +3276,7 @@ function saveGardenPlan(options?: {
                                     v-if="
                                         showOnboardingHint && canPlaceBedsOnMap
                                     "
-                                    class="rounded-xl border border-primary/20 bg-primary/5 p-5 shadow-sm"
+                                    class="hidden rounded-xl border border-primary/20 bg-primary/5 p-5 shadow-sm md:block"
                                 >
                                     <div
                                         class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
@@ -5388,7 +5388,7 @@ function saveGardenPlan(options?: {
 
                 <div
                     v-if="createMenuOpen"
-                    class="fixed right-6 bottom-[176px] z-40 w-44 rounded-2xl border border-border/80 bg-card/96 p-2 shadow-xl shadow-emerald-950/10 backdrop-blur"
+                    class="fixed right-6 bottom-[176px] z-40 hidden w-44 rounded-2xl border border-border/80 bg-card/96 p-2 shadow-xl shadow-emerald-950/10 backdrop-blur md:block"
                 >
                     <button
                         type="button"
@@ -5426,6 +5426,7 @@ function saveGardenPlan(options?: {
                 </div>
 
                 <FloatingPlusButton
+                    class="hidden md:flex"
                     aria-label="Lisa"
                     :size-px="52"
                     :icon-size-px="30"
