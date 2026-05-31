@@ -85,6 +85,8 @@ const cellSizeInput = ref<number>(
 );
 const savingCellSize = ref(false);
 const editingLayout = ref(false);
+const plantEditingMode = ref(false);
+const isDesktop = ref(false);
 const coverTick = ref(0);
 const inlineFeedback = ref<{
     tone: 'success' | 'error';
@@ -92,6 +94,8 @@ const inlineFeedback = ref<{
 } | null>(null);
 let coverTimer: ReturnType<typeof setInterval> | null = null;
 let inlineFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
+let desktopMediaQuery: MediaQueryList | null = null;
+let handleDesktopChange: ((event: MediaQueryListEvent) => void) | null = null;
 
 type CellBrick = {
     x: number;
@@ -190,12 +194,12 @@ function buildLocalCells() {
 
     layout.forEach((rowArr, row) => {
         rowArr.forEach((cellValue, col) => {
-            const brick = brickAnchorAt(row, col);
-            if (brick && (brick.x !== col || brick.y !== row)) {
+            const brick = editingLayout.value ? brickAnchorAt(row, col) : null;
+            if (cellValue === 0 && !brick) {
                 return;
             }
 
-            if (!brick && cellValue === 0) {
+            if (brick && (brick.x !== col || brick.y !== row)) {
                 return;
             }
 
@@ -354,8 +358,24 @@ watch(
     { deep: true },
 );
 
+watch(editingLayout, () => {
+    buildLocalCells();
+});
+
 onMounted(() => {
     buildLocalCells();
+
+    if (typeof window !== 'undefined') {
+        desktopMediaQuery = window.matchMedia('(min-width: 768px)');
+        isDesktop.value = desktopMediaQuery.matches;
+        handleDesktopChange = (event) => {
+            isDesktop.value = event.matches;
+            if (event.matches) {
+                plantEditingMode.value = false;
+            }
+        };
+        desktopMediaQuery.addEventListener('change', handleDesktopChange);
+    }
 
     coverTimer = setInterval(() => {
         coverTick.value += 1;
@@ -381,6 +401,9 @@ onMounted(() => {
 onBeforeUnmount(() => {
     if (coverTimer) clearInterval(coverTimer);
     if (inlineFeedbackTimer) clearTimeout(inlineFeedbackTimer);
+    if (desktopMediaQuery && handleDesktopChange) {
+        desktopMediaQuery.removeEventListener('change', handleDesktopChange);
+    }
     bedGridResizeObserver?.disconnect();
     bedGridResizeObserver = null;
     if (typeof document !== 'undefined') {
@@ -864,6 +887,9 @@ function formatNoteDate(iso: string | null): string {
 
 const gridLayout = computed(() => getBedLayout());
 const hasPlantsInBed = computed(() => props.bed.plants.length > 0);
+const canManagePlantsInGrid = computed(
+    () => isDesktop.value || plantEditingMode.value,
+);
 
 watch(
     () => [
@@ -1024,12 +1050,33 @@ function handleBedStatusAction() {
                             />
                         </template>
                         <template #actions>
-                            <div
-                                class="hidden max-w-full items-center gap-2 md:flex"
-                            >
+                            <div class="flex max-w-full items-center gap-2">
+                                <button
+                                    type="button"
+                                    class="inline-flex min-h-11 max-w-full items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 text-sm font-semibold text-primary transition hover:bg-primary/15 md:hidden"
+                                    :aria-pressed="plantEditingMode"
+                                    aria-label="Muuda peenra taimi"
+                                    @click="
+                                        plantEditingMode = !plantEditingMode
+                                    "
+                                >
+                                    <span
+                                        class="material-symbols-outlined shrink-0 text-xl leading-none"
+                                        >{{
+                                            plantEditingMode ? 'check' : 'edit'
+                                        }}</span
+                                    >
+                                    <span class="truncate">
+                                        {{
+                                            plantEditingMode
+                                                ? 'Valmis'
+                                                : 'Muuda peenart'
+                                        }}
+                                    </span>
+                                </button>
                                 <Link
                                     :href="`/beds/${bed.id}/edit`"
-                                    class="inline-flex min-h-11 max-w-full items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 text-sm font-semibold text-primary transition hover:bg-primary/15 sm:h-10 sm:min-h-0 sm:gap-2 sm:px-4"
+                                    class="hidden min-h-11 max-w-full items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 text-sm font-semibold text-primary transition hover:bg-primary/15 sm:h-10 sm:min-h-0 sm:gap-2 sm:px-4 md:inline-flex"
                                     aria-label="Muuda peenart"
                                 >
                                     <span
@@ -1042,7 +1089,7 @@ function handleBedStatusAction() {
                                 </Link>
                                 <button
                                     type="button"
-                                    class="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-full border border-border/70 bg-card px-3 text-sm font-semibold text-foreground shadow-sm ring-1 ring-border/70 transition hover:bg-muted sm:h-10 sm:min-h-0 sm:px-4"
+                                    class="hidden min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-full border border-border/70 bg-card px-3 text-sm font-semibold text-foreground shadow-sm ring-1 ring-border/70 transition hover:bg-muted sm:h-10 sm:min-h-0 sm:px-4 md:inline-flex"
                                     aria-label="Kustuta peenar"
                                     @click="deleteCurrentBed"
                                 >
@@ -1255,6 +1302,11 @@ function handleBedStatusAction() {
                                 </div>
 
                                 <button
+                                    v-if="
+                                        isDesktop ||
+                                        plantEditingMode ||
+                                        bedStatus.actionType === 'create-note'
+                                    "
                                     type="button"
                                     class="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-3.5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 sm:min-h-0 sm:w-auto"
                                     @click="handleBedStatusAction"
@@ -1292,7 +1344,7 @@ function handleBedStatusAction() {
                                     <p
                                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                                     >
-                                        Täidetud ruudud
+                                        Istutatud taimed
                                     </p>
                                     <p
                                         class="mt-1 text-lg font-semibold text-foreground"
@@ -1308,7 +1360,7 @@ function handleBedStatusAction() {
                                     <p
                                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                                     >
-                                        Vabad ruudud
+                                        Vabad istutuskohad
                                     </p>
                                     <p
                                         class="mt-1 text-lg font-semibold text-foreground"
@@ -1360,7 +1412,7 @@ function handleBedStatusAction() {
                                         Peenra ruudustik
                                     </h3>
                                     <p
-                                        class="mt-0.5 text-xs leading-relaxed text-muted-foreground"
+                                        class="mt-0.5 hidden text-xs leading-relaxed text-muted-foreground md:block"
                                     >
                                         Puuduta ruutu, et lisada, muuta või
                                         eemaldada taim.
@@ -1630,6 +1682,7 @@ function handleBedStatusAction() {
                                                     :aria-label="`Ruut: ${cell.plant?.name ?? 'taim'}. Ava üksikasjad.`"
                                                     @click="
                                                         !editingLayout &&
+                                                        canManagePlantsInGrid &&
                                                         openCellModal(
                                                             cell.row,
                                                             cell.col,
@@ -1637,6 +1690,7 @@ function handleBedStatusAction() {
                                                     "
                                                     @keydown.enter.prevent="
                                                         !editingLayout &&
+                                                        canManagePlantsInGrid &&
                                                         openCellModal(
                                                             cell.row,
                                                             cell.col,
@@ -1644,6 +1698,7 @@ function handleBedStatusAction() {
                                                     "
                                                     @keydown.space.prevent="
                                                         !editingLayout &&
+                                                        canManagePlantsInGrid &&
                                                         openCellModal(
                                                             cell.row,
                                                             cell.col,
@@ -1689,7 +1744,12 @@ function handleBedStatusAction() {
                                                     </span>
                                                     <button
                                                         type="button"
-                                                        class="absolute top-1 right-1 z-20 flex min-h-9 min-w-9 items-center justify-center rounded-full bg-black/60 p-1.5 text-white opacity-100 shadow-sm md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100"
+                                                        class="absolute top-1 right-1 z-20 min-h-9 min-w-9 items-center justify-center rounded-full bg-black/60 p-1.5 text-white opacity-100 shadow-sm md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100"
+                                                        :class="
+                                                            canManagePlantsInGrid
+                                                                ? 'flex'
+                                                                : 'hidden'
+                                                        "
                                                         aria-label="Eemalda taim ruudust"
                                                         @click.stop="
                                                             removePlantFromBed(
@@ -1727,6 +1787,7 @@ function handleBedStatusAction() {
                                                     :aria-label="`Lisa taim ruutu, rida ${cell.row + 1}, veerg ${cell.col + 1}`"
                                                     @click="
                                                         !editingLayout &&
+                                                        canManagePlantsInGrid &&
                                                         openCellModal(
                                                             cell.row,
                                                             cell.col,
