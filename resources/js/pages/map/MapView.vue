@@ -3276,7 +3276,7 @@ function saveGardenPlan(options?: {
                                     v-if="
                                         showOnboardingHint && canPlaceBedsOnMap
                                     "
-                                    class="rounded-xl border border-primary/20 bg-primary/5 p-5 shadow-sm"
+                                    class="hidden rounded-xl border border-primary/20 bg-primary/5 p-5 shadow-sm md:block"
                                 >
                                     <div
                                         class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
@@ -3285,26 +3285,14 @@ function saveGardenPlan(options?: {
                                             <p
                                                 class="text-base font-semibold text-foreground"
                                             >
-                                                <span class="md:hidden">
-                                                    Peenraid veel pole
-                                                </span>
-                                                <span class="hidden md:inline">
-                                                    Lisa esimene peenar
-                                                </span>
+                                                Lisa esimene peenar
                                             </p>
                                             <p
                                                 class="mt-1 text-sm leading-6 text-muted-foreground"
                                             >
-                                                <span class="md:hidden">
-                                                    Lisa peenrad arvutis ja tule
-                                                    siis siia taimi ruutudesse
-                                                    sättima.
-                                                </span>
-                                                <span class="hidden md:inline">
-                                                    Lisa esimene peenar: nimeta,
-                                                    joonista kuju ja paiguta see
-                                                    aiaplaanile.
-                                                </span>
+                                                Lisa esimene peenar: nimeta,
+                                                joonista kuju ja paiguta see
+                                                aiaplaanile.
                                             </p>
                                         </div>
                                         <button
@@ -4874,8 +4862,11 @@ function saveGardenPlan(options?: {
                                                         <p
                                                             class="text-sm font-medium text-foreground"
                                                         >
-                                                            Siin pole praegu
-                                                            midagi
+                                                            {{
+                                                                searchQuery.trim()
+                                                                    ? 'Siin pole praegu midagi'
+                                                                    : 'Peenraid veel pole'
+                                                            }}
                                                         </p>
                                                         <p
                                                             class="max-w-[16rem] text-xs leading-relaxed text-muted-foreground"
