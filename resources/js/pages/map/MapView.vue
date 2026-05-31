@@ -3292,7 +3292,7 @@ function saveGardenPlan(options?: {
                                     class="hidden rounded-xl border border-primary/20 bg-primary/5 p-5 shadow-sm md:block"
                                 >
                                     <div
-                                        class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+                                        class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
                                     >
                                         <div class="max-w-2xl">
                                             <p
@@ -3310,7 +3310,7 @@ function saveGardenPlan(options?: {
                                         </div>
                                         <button
                                             type="button"
-                                            class="inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+                                            class="hidden items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 md:inline-flex"
                                             @click="startNewBedOnMap"
                                         >
                                             Lisa peenar kaardile
@@ -4875,8 +4875,11 @@ function saveGardenPlan(options?: {
                                                         <p
                                                             class="text-sm font-medium text-foreground"
                                                         >
-                                                            Siin pole praegu
-                                                            midagi
+                                                            {{
+                                                                searchQuery.trim()
+                                                                    ? 'Siin pole praegu midagi'
+                                                                    : 'Peenraid veel pole'
+                                                            }}
                                                         </p>
                                                         <p
                                                             class="max-w-[16rem] text-xs leading-relaxed text-muted-foreground"
@@ -4884,7 +4887,7 @@ function saveGardenPlan(options?: {
                                                             {{
                                                                 searchQuery.trim()
                                                                     ? 'Proovi otsingut muuta.'
-                                                                    : 'Selles aias pole veel peenraid. Uue peenra loomine on suuremas vaates.'
+                                                                    : 'Lisa peenrad arvutis ja tule siis siia taimi ruutudesse sättima.'
                                                             }}
                                                         </p>
                                                     </template>
