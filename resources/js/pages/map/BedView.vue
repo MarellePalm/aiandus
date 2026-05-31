@@ -1024,7 +1024,9 @@ function handleBedStatusAction() {
                             />
                         </template>
                         <template #actions>
-                            <div class="flex max-w-full items-center gap-2">
+                            <div
+                                class="hidden max-w-full items-center gap-2 md:flex"
+                            >
                                 <Link
                                     :href="`/beds/${bed.id}/edit`"
                                     class="inline-flex min-h-11 max-w-full items-center justify-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 text-sm font-semibold text-primary transition hover:bg-primary/15 sm:h-10 sm:min-h-0 sm:gap-2 sm:px-4"
@@ -1346,7 +1348,7 @@ function handleBedStatusAction() {
                         </section>
 
                         <section
-                            class="rounded-[1.75rem] border border-emerald-900/10 bg-card p-3 shadow-[0_18px_45px_rgba(49,79,55,0.12)] dark:border-emerald-800/40 dark:bg-card/95 dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] sm:p-4"
+                            class="rounded-[1.75rem] border border-emerald-900/10 bg-card p-3 shadow-[0_18px_45px_rgba(49,79,55,0.12)] sm:p-4 dark:border-emerald-800/40 dark:bg-card/95 dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)]"
                         >
                             <div
                                 class="mb-3 flex flex-col gap-3 px-1 sm:flex-row sm:items-start sm:justify-between"
@@ -1375,7 +1377,7 @@ function handleBedStatusAction() {
                                         <button
                                             v-if="!editingCellSize"
                                             type="button"
-                                            class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                            class="hidden items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground md:inline-flex"
                                             title="Muuda ruudu mõõtu"
                                             @click="beginEditCellSize"
                                         >
@@ -1391,7 +1393,7 @@ function handleBedStatusAction() {
                                         </button>
                                         <form
                                             v-else
-                                            class="inline-flex items-center gap-1"
+                                            class="hidden items-center gap-1 md:inline-flex"
                                             @submit.prevent="saveCellSize"
                                         >
                                             <input
@@ -1432,7 +1434,7 @@ function handleBedStatusAction() {
                                     </div>
                                 </div>
                                 <div
-                                    class="flex shrink-0 flex-wrap items-center gap-2"
+                                    class="hidden shrink-0 flex-wrap items-center gap-2 md:flex"
                                 >
                                     <button
                                         type="button"
@@ -1501,7 +1503,7 @@ function handleBedStatusAction() {
                                 >
                                     <div>
                                         <p
-                                            class="text-xs font-bold tracking-[0.16em] text-emerald-950/55 dark:text-emerald-200/70 uppercase"
+                                            class="text-xs font-bold tracking-[0.16em] text-emerald-950/55 uppercase dark:text-emerald-200/70"
                                         >
                                             Peenar täitub
                                         </p>
@@ -1597,7 +1599,7 @@ function handleBedStatusAction() {
                                         <draggable
                                             v-model="localCells"
                                             item-key="key"
-                                            class="bed-grid-frame inline-grid w-max min-w-0 gap-2 rounded-[1.35rem] border border-emerald-900/10 bg-card/40 p-3 ring-1 ring-white/70 dark:border-emerald-800/35 dark:bg-card/65 dark:ring-white/10 sm:gap-2.5 sm:p-4"
+                                            class="bed-grid-frame inline-grid w-max min-w-0 gap-2 rounded-[1.35rem] border border-emerald-900/10 bg-card/40 p-3 ring-1 ring-white/70 sm:gap-2.5 sm:p-4 dark:border-emerald-800/35 dark:bg-card/65 dark:ring-white/10"
                                             :style="{
                                                 gridTemplateColumns: `repeat(${getBedColumns()}, ${bedCellSize}px)`,
                                                 gridTemplateRows: `repeat(${gridLayout.length}, ${bedCellSize}px)`,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 import BackIconButton from '@/components/BackIconButton.vue';
@@ -72,12 +72,33 @@ const breadcrumbs = [
                     </template>
                 </DiaryHeader>
 
-                <AddBed
-                    mode="edit"
-                    :bed="bed"
-                    :initial-step="wizardStartStep"
-                    :plants-without-bed="props.plantsWithoutBed ?? []"
-                />
+                <section
+                    class="rounded-[1.5rem] border border-primary/15 bg-primary/5 px-4 py-5 shadow-sm md:hidden"
+                >
+                    <p class="text-base font-semibold text-foreground">
+                        Peenra kuju muutmine on suuremas vaates
+                    </p>
+                    <p class="mt-2 text-sm leading-6 text-muted-foreground">
+                        Mobiilis saab peenravaates taimi olemasolevatele
+                        ruutudele lisada. Peenra kuju, mõõte ja asukohta muuda
+                        arvutis või laiemas vaates.
+                    </p>
+                    <Link
+                        :href="`/beds/${bed.id}`"
+                        class="mt-4 inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+                    >
+                        Ava peenravaade
+                    </Link>
+                </section>
+
+                <div class="hidden md:block">
+                    <AddBed
+                        mode="edit"
+                        :bed="bed"
+                        :initial-step="wizardStartStep"
+                        :plants-without-bed="props.plantsWithoutBed ?? []"
+                    />
+                </div>
             </main>
 
             <BottomNav active="map" />
