@@ -113,6 +113,7 @@ const existingImageUrl = ref(
 const newBedImagePreview = ref<string | null>(null);
 const highlightedCellId = ref<string | null>(null);
 const plantModalCellId = ref<string | null>(null);
+const plantPlacementMode = ref(false);
 const selectedPlantQuantity = ref(1);
 /** Ruut, mida parasjagu lohistatakse või suurust muudetakse. */
 const gridInteractionCellId = ref<string | null>(null);
@@ -1081,6 +1082,7 @@ function changeSelectedPlantQuantity(delta: number) {
 
 function openPlantModal(cell: BedCell) {
     if (cell.kind !== 'plantable' || !cell.active) return;
+    plantPlacementMode.value = true;
     plantModalCellId.value = cell.id;
     selectedCellId.value = cell.id;
     const existing = cell.plants[0];
@@ -1094,6 +1096,13 @@ function openPlantModal(cell: BedCell) {
 function closePlantModal() {
     plantModalCellId.value = null;
     selectedPlantQuantity.value = 1;
+}
+
+function togglePlantPlacementMode() {
+    plantPlacementMode.value = !plantPlacementMode.value;
+    if (!plantPlacementMode.value) {
+        closePlantModal();
+    }
 }
 
 function assignPlantToModalCell(plantId: number) {
@@ -1227,7 +1236,7 @@ function selectCell(cell: BedCell) {
 
 function onBedCellClick(cell: BedCell) {
     selectCell(cell);
-    if (cell.kind === 'plantable' && cell.active) {
+    if (plantPlacementMode.value && cell.kind === 'plantable' && cell.active) {
         openPlantModal(cell);
     }
 }
@@ -2683,6 +2692,7 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                                                 >
                                                     <button
                                                         v-if="
+                                                            plantPlacementMode &&
                                                             isPlantableEmptySlot(
                                                                 cellMap.get(
                                                                     item.i,
@@ -2898,15 +2908,26 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                                 "
                                 type="button"
                                 class="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-500/35 bg-emerald-50/80 px-2 py-2.5 text-[12px] font-semibold text-emerald-900 transition hover:bg-emerald-100"
-                                @click="openPlantModal(selectedCellLive)"
+                                @click="
+                                    selectedHasPlants || !plantPlacementMode
+                                        ? openPlantModal(selectedCellLive)
+                                        : togglePlantPlacementMode()
+                                "
                             >
-                                <span class="material-symbols-outlined text-sm"
-                                    >eco</span
+                                <span
+                                    class="material-symbols-outlined text-sm"
+                                    >{{
+                                        plantPlacementMode && !selectedHasPlants
+                                            ? 'check'
+                                            : 'potted_plant'
+                                    }}</span
                                 >
                                 {{
                                     selectedHasPlants
                                         ? 'Muuda taimi'
-                                        : 'Lisa taim'
+                                        : plantPlacementMode
+                                          ? 'Lõpeta lisamine'
+                                          : 'Lisa taim'
                                 }}
                             </button>
                             <button
