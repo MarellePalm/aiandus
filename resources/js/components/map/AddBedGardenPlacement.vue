@@ -12,9 +12,11 @@ import GardenMapBackground from '@/components/GardenMapBackground.vue';
 import { ortophotoFocusSpanMeters } from '@/lib/gardenAreaSelection';
 import {
     bedFootprintPx,
+    bedPinTipPx,
     draftPlacementOverlapsExistingBeds,
     findNonOverlappingDraftPlacement,
     gardenPlacementPreviewCells,
+    gardenPositionFromPinClick,
     gardenSizeCm,
     gardenSurfacePx,
     gridStepPx,
@@ -355,6 +357,29 @@ function applyDraftPosition(rawX: number, rawY: number) {
     emit('update:gardenY', next.y);
 }
 
+function applyDraftPinPosition(pinX: number, pinY: number) {
+    const next = gardenPositionFromPinClick(
+        pinX,
+        pinY,
+        footprintPx.value,
+        props.gardenPlan,
+    );
+
+    if (
+        draftPlacementOverlapsExistingBeds(
+            next.x,
+            next.y,
+            props.draftBed,
+            props.existingBeds,
+        )
+    ) {
+        return;
+    }
+
+    emit('update:gardenX', next.x);
+    emit('update:gardenY', next.y);
+}
+
 function onCanvasClick(event: MouseEvent) {
     if (suppressNextCanvasClick) {
         suppressNextCanvasClick = false;
@@ -366,8 +391,12 @@ function onCanvasClick(event: MouseEvent) {
         return;
     }
 
-    // Tsentreeritud asetus: klõpsupunkt = peenra keskpunkt. Sama loogika
-    // (haakumine + servad) kehtib nii aiaplaanil kui ortofotol.
+    if (usePinPlacement.value) {
+        applyDraftPinPosition(point.x, point.y);
+        return;
+    }
+
+    // Tsentreeritud asetus: klõpsupunkt = peenra keskpunkt.
     applyDraftPosition(
         point.x - footprintPx.value.width / 2,
         point.y - footprintPx.value.height / 2,
@@ -385,6 +414,11 @@ function onDraftPointerMove(event: PointerEvent) {
     }
 
     dragMoved.value = true;
+    if (usePinPlacement.value) {
+        applyDraftPinPosition(point.x, point.y);
+        return;
+    }
+
     applyDraftPosition(
         point.x - dragOffset.value.x,
         point.y - dragOffset.value.y,
@@ -469,6 +503,30 @@ function existingBedStyle(bed: GardenPlacementBed): Record<string, string> {
     };
 }
 
+function pinMarkerStyle(
+    x: number,
+    y: number,
+    bedSize: { width: number; height: number },
+): Record<string, string> {
+    const tip = bedPinTipPx(x, y, bedSize);
+    const inv = 1 / Math.max(placementScale.value, 0.001);
+
+    return {
+        left: `${tip.x}px`,
+        top: `${tip.y}px`,
+        transform: `translate(-50%, -100%) scale(${inv})`,
+        transformOrigin: 'bottom center',
+    };
+}
+
+function existingBedPinStyle(bed: GardenPlacementBed): Record<string, string> {
+    return pinMarkerStyle(
+        bed.garden_x ?? 0,
+        bed.garden_y ?? 0,
+        bedFootprintPx(bed),
+    );
+}
+
 function existingBedCells(
     bed: GardenPlacementBed,
 ): GardenPlacementPreviewCell[] {
@@ -487,6 +545,10 @@ function existingBedCellStyle(
 }
 
 const draftBedStyle = computed((): Record<string, string> | null => {
+    if (usePinPlacement.value) {
+        return null;
+    }
+
     const pos = effectiveDraftPosition.value;
     if (!pos || !hasVisibleDraft.value) {
         return null;
@@ -498,6 +560,15 @@ const draftBedStyle = computed((): Record<string, string> | null => {
         width: `${footprintPx.value.width}px`,
         height: `${footprintPx.value.height}px`,
     };
+});
+
+const draftPinStyle = computed((): Record<string, string> | null => {
+    const pos = effectiveDraftPosition.value;
+    if (!usePinPlacement.value || !pos || !hasVisibleDraft.value) {
+        return null;
+    }
+
+    return pinMarkerStyle(pos.x, pos.y, footprintPx.value);
 });
 
 const gardenLabel = computed(() => {
@@ -697,9 +768,15 @@ onBeforeUnmount(() => {
                                 :center-lng="Number(gardenPlan.center_lng)"
                                 :width-cm="gardenWidthCm"
                                 :height-cm="gardenHeightCm"
-                                :focus-anchor-lat="Number(gardenPlan.center_lat)"
-                                :focus-anchor-lng="Number(gardenPlan.center_lng)"
-                                :focus-span-meters="ortophotoFocusSpanMetersValue"
+                                :focus-anchor-lat="
+                                    Number(gardenPlan.center_lat)
+                                "
+                                :focus-anchor-lng="
+                                    Number(gardenPlan.center_lng)
+                                "
+                                :focus-span-meters="
+                                    ortophotoFocusSpanMetersValue
+                                "
                                 :planner-zoom="1"
                                 :fit-zoom="1"
                             />
@@ -708,10 +785,24 @@ onBeforeUnmount(() => {
                                 v-for="(bed, index) in existingBeds"
                                 :key="`existing-bed-${index}`"
                                 class="pointer-events-none absolute overflow-visible"
-                                :style="existingBedStyle(bed)"
+                                :style="
+                                    usePinPlacement
+                                        ? existingBedPinStyle(bed)
+                                        : existingBedStyle(bed)
+                                "
                                 aria-hidden="true"
                             >
-                                <template v-if="existingBedCells(bed).length">
+                                <template v-if="usePinPlacement">
+                                    <div class="bed-placement-pin__marker">
+                                        <span
+                                            class="bed-placement-pin__dot"
+                                            aria-hidden="true"
+                                        />
+                                    </div>
+                                </template>
+                                <template
+                                    v-else-if="existingBedCells(bed).length"
+                                >
                                     <div
                                         v-for="(
                                             cell, cellIndex
@@ -759,7 +850,36 @@ onBeforeUnmount(() => {
                         </div>
 
                         <div
-                            v-if="draftBedStyle"
+                            v-if="draftPinStyle"
+                            class="bed-placement-pin absolute z-50 touch-none"
+                            :class="[
+                                isDraggingDraft
+                                    ? 'is-dragging cursor-grabbing'
+                                    : 'cursor-grab',
+                                placementOverlapsExisting
+                                    ? 'bed-placement-pin--invalid'
+                                    : '',
+                            ]"
+                            :style="draftPinStyle"
+                            role="button"
+                            tabindex="0"
+                            aria-label="Märgi peenra asukoht ortofotol"
+                            @pointerdown="startDraftDrag"
+                            @pointerenter="isDraftHovered = true"
+                            @pointerleave="isDraftHovered = false"
+                            @click.stop
+                        >
+                            <div class="bed-placement-pin__stem" />
+                            <div class="bed-placement-pin__marker">
+                                <span
+                                    class="bed-placement-pin__dot"
+                                    aria-hidden="true"
+                                />
+                            </div>
+                        </div>
+
+                        <div
+                            v-else-if="draftBedStyle"
                             class="bed-placement-draft absolute z-50 touch-none overflow-visible rounded-none"
                             :class="[
                                 isDraggingDraft
@@ -913,8 +1033,11 @@ onBeforeUnmount(() => {
             v-else-if="effectiveDraftPosition && hasVisibleDraft"
             class="text-sm font-medium text-emerald-800 dark:text-emerald-100"
         >
-            Asukoht valitud. Lohista peenart, keera nupuga 90° või liigu
-            järgmise sammu juurde.
+            {{
+                usePinPlacement
+                    ? 'Asukoht valitud. Lohista täppi või liigu järgmise sammu juurde.'
+                    : 'Asukoht valitud. Lohista peenart, keera nupuga 90° või liigu järgmise sammu juurde.'
+            }}
         </p>
         <p
             v-else-if="!hasVisibleDraft"
@@ -930,6 +1053,56 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.bed-placement-pin {
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: center;
+    pointer-events: auto;
+    transform-origin: bottom center;
+}
+
+.bed-placement-pin__stem {
+    width: 1px;
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--primary), transparent 45%);
+}
+
+.bed-placement-pin__marker {
+    display: flex;
+    width: 1.9rem;
+    height: 1.9rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in srgb, var(--primary), transparent 70%);
+    background: color-mix(in srgb, var(--card), white 8%);
+    box-shadow: 0 2px 10px rgba(47, 67, 44, 0.18);
+    outline: 2px solid rgba(255, 255, 255, 0.88);
+}
+
+.bed-placement-pin__dot {
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 9999px;
+    background: var(--primary);
+    box-shadow: 0 1px 4px rgba(47, 67, 44, 0.24);
+}
+
+.bed-placement-pin.is-dragging .bed-placement-pin__marker {
+    outline-color: color-mix(in srgb, var(--primary), transparent 70%);
+}
+
+.bed-placement-pin--invalid .bed-placement-pin__marker {
+    border-color: rgba(220, 38, 38, 0.7);
+    outline-color: rgba(254, 202, 202, 0.9);
+}
+
+.bed-placement-pin--invalid .bed-placement-pin__dot,
+.bed-placement-pin--invalid .bed-placement-pin__stem {
+    background: rgb(220, 38, 38);
+}
+
 .bed-placement-toolbar {
     position: absolute;
     top: 4px;

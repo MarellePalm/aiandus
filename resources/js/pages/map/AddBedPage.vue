@@ -52,8 +52,9 @@ const breadcrumbs = [
                     v-if="props.showGuide"
                     class="hidden rounded-xl bg-primary/8 px-4 py-3 text-sm leading-6 text-muted-foreground ring-1 ring-primary/15 md:block"
                 >
-                    Alusta nimest, joonista kuju ja lisa taimed samas vaates,
-                    seejärel paiguta peenar aiaplaanile.
+                    Alusta nimest, joonista kuju ja vali ruutude tüübid,
+                    seejärel paiguta peenar aiaplaanile. Taimed lisad hiljem
+                    peenra vaates.
                 </p>
 
                 <section

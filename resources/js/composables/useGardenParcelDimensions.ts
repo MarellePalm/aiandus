@@ -194,8 +194,7 @@ export async function fetchCadastralGardenDimensions(
     return {
         ...dims,
         source: 'cadastral',
-        /** Krundi l_aadress; katastritunnust kasutajale ei kuvata. */
-        detail: pick.lAddress ?? undefined,
+        detail: [pick.lAddress, pick.tunnus].filter(Boolean).join(' · '),
     };
 }
 

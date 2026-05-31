@@ -95,3 +95,55 @@ test('user can save bed brick up to three meters wide', function () {
     expect($bed->cell_bricks[0]['width_cm'])->toBe(300);
     expect($bed->cell_bricks[0]['w'])->toBe(10);
 });
+
+test('user can save bed geometry as json payload', function () {
+    $user = User::factory()->create();
+    $plan = makeGardenPlan($user);
+
+    $this->actingAs($user)
+        ->post(route('beds.store'), [
+            'garden_plan_id' => $plan->id,
+            'name' => 'Okaspuud',
+            'cell_size_cm' => 30,
+            'geometry_json' => json_encode([
+                'layout' => [
+                    [1, -1],
+                    [1, 1],
+                ],
+                'cell_bricks' => [
+                    [
+                        'x' => 0,
+                        'y' => 0,
+                        'w' => 1,
+                        'h' => 2,
+                        'kind' => 'plantable',
+                    ],
+                    [
+                        'x' => 1,
+                        'y' => 0,
+                        'w' => 1,
+                        'h' => 1,
+                        'kind' => 'walkway',
+                    ],
+                    [
+                        'x' => 1,
+                        'y' => 1,
+                        'w' => 1,
+                        'h' => 1,
+                        'kind' => 'plantable',
+                    ],
+                ],
+                'cells' => [],
+            ]),
+        ])
+        ->assertSessionHasNoErrors();
+
+    $bed = Bed::query()->where('user_id', $user->id)->first();
+
+    expect($bed)->not()->toBeNull();
+    expect($bed->layout)->toBe([
+        [1, -1],
+        [1, 1],
+    ]);
+    expect($bed->cell_bricks[1]['kind'])->toBe('walkway');
+});

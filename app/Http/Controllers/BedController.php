@@ -530,8 +530,31 @@ class BedController extends Controller
         }
     }
 
+    private function mergeGeometryJson(Request $request): void
+    {
+        $raw = $request->input('geometry_json');
+        if (! is_string($raw) || trim($raw) === '') {
+            return;
+        }
+
+        $decoded = json_decode($raw, true);
+        if (! is_array($decoded)) {
+            throw ValidationException::withMessages([
+                'layout' => 'Peenra kuju andmeid ei saanud lugeda.',
+            ]);
+        }
+
+        $request->merge([
+            'layout' => $decoded['layout'] ?? null,
+            'cell_bricks' => $decoded['cell_bricks'] ?? null,
+            'cells' => $decoded['cells'] ?? null,
+        ]);
+    }
+
     public function store(Request $request)
     {
+        $this->mergeGeometryJson($request);
+
         $data = $request->validate([
             'garden_plan_id' => [
                 'required',
@@ -652,6 +675,8 @@ class BedController extends Controller
     public function update(Request $request, Bed $bed)
     {
         abort_unless($bed->user_id === $request->user()->id, 403);
+
+        $this->mergeGeometryJson($request);
 
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:120'],

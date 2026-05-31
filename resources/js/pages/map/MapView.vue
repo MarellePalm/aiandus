@@ -25,7 +25,10 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { dimensionsFromAddressBoundingBox } from '@/composables/useGardenParcelDimensions';
+import {
+    dimensionsFromAddressBoundingBox,
+    fetchCadastralGardenDimensions,
+} from '@/composables/useGardenParcelDimensions';
 import { useGeolocation } from '@/composables/useGeolocation';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { ortophotoFocusSpanMeters } from '@/lib/gardenAreaSelection';
@@ -339,19 +342,24 @@ async function applyGardenLocationDimensions(
     gardenForm.clearErrors('center_lng');
 
     try {
-        const dims = addressBoundingBox
-            ? dimensionsFromAddressBoundingBox(addressBoundingBox)
-            : null;
+        const dims =
+            (addressBoundingBox
+                ? dimensionsFromAddressBoundingBox(addressBoundingBox)
+                : null) ?? (await fetchCadastralGardenDimensions(lat, lng));
 
         if (dims) {
             gardenForm.widthMeters = dims.widthMeters;
             gardenForm.heightMeters = dims.heightMeters;
             gardenForm.clearErrors('widthMeters');
             gardenForm.clearErrors('heightMeters');
+            const sourceLabel =
+                dims.source === 'cadastral'
+                    ? `Katastriüksus${dims.detail ? `: ${dims.detail}` : ''}`
+                    : 'Aadressi piirkond';
             gardenDimensionsMessage.value =
                 gardenSetupMode.value === 'ortophoto'
-                    ? `Aadressi piirkond: ${dims.widthMeters} × ${dims.heightMeters} m. Võid mõõte enne salvestamist muuta.`
-                    : `Aadressi piirkond: ${dims.widthMeters} × ${dims.heightMeters} m. Võid mõõte käsitsi muuta.`;
+                    ? `${sourceLabel}: ${dims.widthMeters} × ${dims.heightMeters} m. Võid mõõte enne salvestamist muuta.`
+                    : `${sourceLabel}: ${dims.widthMeters} × ${dims.heightMeters} m. Võid mõõte käsitsi muuta.`;
             return;
         }
 
@@ -774,14 +782,19 @@ async function applyCreateGardenLocationDimensions(
     createGardenPlanForm.clearErrors('center_lng');
 
     try {
-        const dims = addressBoundingBox
-            ? dimensionsFromAddressBoundingBox(addressBoundingBox)
-            : null;
+        const dims =
+            (addressBoundingBox
+                ? dimensionsFromAddressBoundingBox(addressBoundingBox)
+                : null) ?? (await fetchCadastralGardenDimensions(lat, lng));
 
         if (dims) {
             createGardenPlanForm.widthMeters = dims.widthMeters;
             createGardenPlanForm.heightMeters = dims.heightMeters;
-            createGardenDimensionsMessage.value = `Aadressi piirkond: ${dims.widthMeters} × ${dims.heightMeters} m. Võid mõõte enne salvestamist muuta.`;
+            const sourceLabel =
+                dims.source === 'cadastral'
+                    ? `Katastriüksus${dims.detail ? `: ${dims.detail}` : ''}`
+                    : 'Aadressi piirkond';
+            createGardenDimensionsMessage.value = `${sourceLabel}: ${dims.widthMeters} × ${dims.heightMeters} m. Võid mõõte enne salvestamist muuta.`;
             return;
         }
 

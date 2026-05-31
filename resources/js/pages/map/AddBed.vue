@@ -113,7 +113,6 @@ const existingImageUrl = ref(
 const newBedImagePreview = ref<string | null>(null);
 const highlightedCellId = ref<string | null>(null);
 const plantModalCellId = ref<string | null>(null);
-const plantPlacementMode = ref(false);
 const selectedPlantQuantity = ref(1);
 /** Ruut, mida parasjagu lohistatakse või suurust muudetakse. */
 const gridInteractionCellId = ref<string | null>(null);
@@ -454,6 +453,12 @@ const dynamicColNum = computed(() => {
         : 6;
     return Math.max(maxCellX + 3, cols, 4);
 });
+const bedShapeGridMinWidth = computed(
+    () =>
+        dynamicColNum.value * CELL_PX +
+        Math.max(0, dynamicColNum.value - 1) * GRID_MARGIN[0] +
+        32,
+);
 
 const cellMap = computed(() => new Map(cells.value.map((c) => [c.id, c])));
 
@@ -508,6 +513,7 @@ const form = useForm<{
         h: number;
         kind: 'plantable' | 'walkway' | 'empty';
     }>;
+    geometry_json: string | null;
 }>({
     name: props.mode === 'edit' ? (props.bed?.name ?? '') : '',
     location: props.mode === 'edit' ? (props.bed?.location ?? '') : '',
@@ -519,7 +525,11 @@ const form = useForm<{
     cells: [],
     layout: [],
     cell_bricks: [],
+    geometry_json: null,
 });
+const approximateWidthMeters = ref('');
+const approximateDepthMeters = ref('');
+const dimensionGridError = ref<string | null>(null);
 
 const selectedCell = computed(
     () => cells.value.find((cell) => cell.id === selectedCellId.value) ?? null,
@@ -1080,29 +1090,9 @@ function changeSelectedPlantQuantity(delta: number) {
     );
 }
 
-function openPlantModal(cell: BedCell) {
-    if (cell.kind !== 'plantable' || !cell.active) return;
-    plantPlacementMode.value = true;
-    plantModalCellId.value = cell.id;
-    selectedCellId.value = cell.id;
-    const existing = cell.plants[0];
-    if (existing && existing.quantity > 0) {
-        selectedPlantQuantity.value = existing.quantity;
-    } else {
-        selectedPlantQuantity.value = 1;
-    }
-}
-
 function closePlantModal() {
     plantModalCellId.value = null;
     selectedPlantQuantity.value = 1;
-}
-
-function togglePlantPlacementMode() {
-    plantPlacementMode.value = !plantPlacementMode.value;
-    if (!plantPlacementMode.value) {
-        closePlantModal();
-    }
 }
 
 function assignPlantToModalCell(plantId: number) {
@@ -1163,11 +1153,7 @@ function cellIcon(cell: BedCell): string {
     if (cell.kind === 'walkway') return 'texture';
     if (cell.kind === 'empty') return 'crop_free';
     if (!cell.active) return 'crop_square';
-    return 'add';
-}
-
-function isPlantableEmptySlot(cell: BedCell): boolean {
-    return cell.kind === 'plantable' && cell.active && cell.plants.length === 0;
+    return 'crop_square';
 }
 
 function brushPaletteCellClasses(kind: 'plantable' | 'walkway'): string[] {
@@ -1192,7 +1178,7 @@ function brushPaletteCellClasses(kind: 'plantable' | 'walkway'): string[] {
 }
 
 function cellKindLabel(cell: BedCell): string {
-    if (cell.kind === 'walkway') return 'tee või kivi';
+    if (cell.kind === 'walkway') return 'kivid / vaba ala';
     if (cell.kind === 'empty') return 'tühi ala';
     if (!cell.active) return 'kasutamata ruut';
     return 'peenraruut';
@@ -1236,9 +1222,6 @@ function selectCell(cell: BedCell) {
 
 function onBedCellClick(cell: BedCell) {
     selectCell(cell);
-    if (plantPlacementMode.value && cell.kind === 'plantable' && cell.active) {
-        openPlantModal(cell);
-    }
 }
 
 const plantModalLabel = computed(() => {
@@ -1756,6 +1739,96 @@ function fillFromGardenPlan() {
     form.clearErrors('cells');
 }
 
+function parseApproximateMeters(value: string | number): number | null {
+    const normalized = String(value).replace(',', '.').trim();
+    if (!normalized) return null;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+const canGenerateGridFromDimensions = computed(
+    () =>
+        parseApproximateMeters(approximateWidthMeters.value) !== null &&
+        parseApproximateMeters(approximateDepthMeters.value) !== null,
+);
+
+function generateCellsFromDimensions(widthMeters: number, depthMeters: number) {
+    const widthCm = Math.max(1, Math.round(widthMeters * 100));
+    const depthCm = Math.max(1, Math.round(depthMeters * 100));
+    const widthUnits = Math.max(
+        1,
+        Math.round((widthCm / gridUnitCm()) * DEFAULT_BLOCK_UNITS),
+    );
+    const depthUnits = Math.max(
+        1,
+        Math.round((depthCm / gridUnitCm()) * DEFAULT_BLOCK_UNITS),
+    );
+    const nextCells: BedCell[] = [];
+
+    for (let y = 0; y < depthUnits; y += DEFAULT_BLOCK_UNITS) {
+        const h = Math.min(DEFAULT_BLOCK_UNITS, depthUnits - y);
+        for (let x = 0; x < widthUnits; x += DEFAULT_BLOCK_UNITS) {
+            const w = Math.min(DEFAULT_BLOCK_UNITS, widthUnits - x);
+            nextCells.push({
+                id: makeCellId(x, y),
+                x,
+                y,
+                w,
+                h,
+                left_cm: unitsToCm(x),
+                top_cm: unitsToCm(y),
+                width_cm: unitsToCm(w),
+                height_cm: unitsToCm(h),
+                active: true,
+                kind: 'plantable',
+                plants: [],
+            });
+        }
+    }
+
+    return nextCells;
+}
+
+function generateGridFromDimensions() {
+    const widthMeters = parseApproximateMeters(approximateWidthMeters.value);
+    const depthMeters = parseApproximateMeters(approximateDepthMeters.value);
+
+    if (widthMeters === null || depthMeters === null) {
+        dimensionGridError.value =
+            'Sisesta peenra ligikaudne laius ja sügavus meetrites.';
+        return false;
+    }
+
+    if (activeCells.value.some((cell) => cell.plants.length > 0)) {
+        dimensionGridError.value =
+            'Taimedega peenra ruudustikku ei saa mõõtudest uuesti luua.';
+        return false;
+    }
+
+    const nextCells = generateCellsFromDimensions(widthMeters, depthMeters);
+    cells.value = nextCells;
+    selectedCellId.value = nextCells[0]?.id ?? '';
+    replaceGridLayout(nextCells.map(layoutItemForCell));
+    dimensionGridError.value = null;
+    form.clearErrors('cells');
+    scheduleCenterLayoutInCanvas();
+    return true;
+}
+
+function generateGridFromDimensionsAndContinue() {
+    if (!generateGridFromDimensions()) return;
+    currentStep.value = 2;
+    void nextTick(() => {
+        scheduleCenterLayoutInCanvas();
+    });
+}
+
+function ensureInitialGridFromDimensions() {
+    if (props.mode !== 'create' || cells.value.length > 0) return;
+    if (!canGenerateGridFromDimensions.value) return;
+    generateGridFromDimensions();
+}
+
 function goToStep(step: WizardStep) {
     if (step > currentStep.value && !canContinueFromStep.value) {
         if (currentStep.value === 1) {
@@ -1790,6 +1863,9 @@ function goToStep(step: WizardStep) {
     if (step !== 2) {
         form.clearErrors('cells');
     }
+    if (currentStep.value === 1 && step === 2) {
+        ensureInitialGridFromDimensions();
+    }
     if (
         placementStep.value !== null &&
         step === placementStep.value &&
@@ -1802,6 +1878,9 @@ function goToStep(step: WizardStep) {
 
 function nextStep() {
     if (currentStep.value >= maxStep.value) return;
+    if (currentStep.value === 1) {
+        ensureInitialGridFromDimensions();
+    }
     if (currentStep.value === 2 && placementStep.value !== null) {
         compactToOrigin();
         syncCellsToForm();
@@ -1874,6 +1953,11 @@ function syncCellsToForm() {
                 note: plant.note,
             })),
         }));
+    form.geometry_json = JSON.stringify({
+        layout: form.layout,
+        cell_bricks: form.cell_bricks,
+        cells: form.cells,
+    });
 }
 
 function resetForm() {
@@ -1924,7 +2008,6 @@ function submit() {
 
     form.transform((data) => {
         const base = {
-            ...data,
             name: data.name.trim(),
             location: data.location.trim(),
             cell_size_cm: Math.max(
@@ -1936,7 +2019,8 @@ function submit() {
                     ),
                 ),
             ),
-            cells: form.cells,
+            image: data.image,
+            geometry_json: form.geometry_json,
         };
         if (props.mode !== 'edit' && props.gardenPlanId != null) {
             const payload: Record<string, unknown> = {
@@ -2235,6 +2319,69 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                                 </p>
                             </div>
                         </div>
+                        <div
+                            v-if="mode === 'create'"
+                            class="mt-4 rounded-2xl border border-emerald-900/10 bg-emerald-50/40 p-3"
+                        >
+                            <div
+                                class="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-start"
+                            >
+                                <label
+                                    class="floating-field floating-field--compact"
+                                >
+                                    <input
+                                        v-model="approximateWidthMeters"
+                                        type="number"
+                                        min="0.1"
+                                        step="0.1"
+                                        placeholder=" "
+                                        @input="dimensionGridError = null"
+                                    />
+                                    <span>Laius (m)</span>
+                                </label>
+                                <label
+                                    class="floating-field floating-field--compact"
+                                >
+                                    <input
+                                        v-model="approximateDepthMeters"
+                                        type="number"
+                                        min="0.1"
+                                        step="0.1"
+                                        placeholder=" "
+                                        @input="dimensionGridError = null"
+                                    />
+                                    <span>Sügavus (m)</span>
+                                </label>
+                                <button
+                                    type="button"
+                                    class="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                                    :disabled="!canGenerateGridFromDimensions"
+                                    @click="
+                                        generateGridFromDimensionsAndContinue
+                                    "
+                                >
+                                    <span
+                                        class="material-symbols-outlined text-base"
+                                        >grid_view</span
+                                    >
+                                    Loo ruudustik
+                                </button>
+                            </div>
+                            <p
+                                v-if="dimensionGridError"
+                                class="mt-2 text-sm text-red-600"
+                            >
+                                {{ dimensionGridError }}
+                            </p>
+                            <p
+                                v-else
+                                class="mt-2 text-sm leading-5 text-muted-foreground"
+                            >
+                                Kui mõõdud on kirjas, teen neist algse peenra
+                                kuju. Järgmises sammus saad ruute liigutada,
+                                muuta ja kustutada.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -2255,10 +2402,10 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                             <p
                                 class="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground"
                             >
-                                Lohista peenraruutu või käiguteed allpool
-                                olevasse kujundusalasse, et luua ruute. Ruutusid
-                                saab lohistada, suurust muuta nurgast ja
-                                eemaldada paremal paneelil.
+                                Lohista peenraruutu või kivide/vaba ala plokki
+                                allpool olevasse kujundusalasse. Ruutusid saab
+                                lohistada, suurust muuta nurgast ja eemaldada
+                                paremal paneelil.
                             </p>
                         </div>
                     </div>
@@ -2364,7 +2511,7 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                                             'bed-brush-palette-item--dragging':
                                                 externalDragKind === 'walkway',
                                         }"
-                                        aria-label="Käigutee — lohista kujundusalasse"
+                                        aria-label="Kivid või vaba ala — lohista kujundusalasse"
                                         @click="activeBrush = 'walkway'"
                                         @dragstart="
                                             onChipDragStart('walkway', $event)
@@ -2558,6 +2705,9 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                                     :prevent-collision="false"
                                     auto-size
                                     use-css-transforms
+                                    :style="{
+                                        minWidth: `${bedShapeGridMinWidth}px`,
+                                    }"
                                     @layout-updated="onLayoutUpdated"
                                 >
                                     <GridItem
@@ -2690,30 +2840,7 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                                                     v-else
                                                     class="relative z-10 flex size-full flex-col items-center justify-center px-1 text-center"
                                                 >
-                                                    <button
-                                                        v-if="
-                                                            plantPlacementMode &&
-                                                            isPlantableEmptySlot(
-                                                                cellMap.get(
-                                                                    item.i,
-                                                                )!,
-                                                            )
-                                                        "
-                                                        type="button"
-                                                        class="material-symbols-outlined bed-cell-slot-icon relative z-10"
-                                                        title="Lisa taim"
-                                                        @click.stop="
-                                                            openPlantModal(
-                                                                cellMap.get(
-                                                                    item.i,
-                                                                )!,
-                                                            )
-                                                        "
-                                                    >
-                                                        add
-                                                    </button>
                                                     <span
-                                                        v-else
                                                         class="material-symbols-outlined"
                                                         :class="
                                                             selectedCell?.id ===
@@ -2898,38 +3025,18 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                                         )
                                     "
                                 >
-                                    Käigutee
+                                    Kivid / vaba ala
                                 </button>
                             </div>
-                            <button
+                            <p
                                 v-if="
                                     selectedCellLive.kind === 'plantable' &&
                                     selectedCellLive.active
                                 "
-                                type="button"
-                                class="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-500/35 bg-emerald-50/80 px-2 py-2.5 text-[12px] font-semibold text-emerald-900 transition hover:bg-emerald-100"
-                                @click="
-                                    selectedHasPlants || !plantPlacementMode
-                                        ? openPlantModal(selectedCellLive)
-                                        : togglePlantPlacementMode()
-                                "
+                                class="rounded-xl border border-emerald-900/10 bg-emerald-50/70 px-3 py-2 text-[11px] leading-snug text-emerald-950/70"
                             >
-                                <span
-                                    class="material-symbols-outlined text-sm"
-                                    >{{
-                                        plantPlacementMode && !selectedHasPlants
-                                            ? 'check'
-                                            : 'potted_plant'
-                                    }}</span
-                                >
-                                {{
-                                    selectedHasPlants
-                                        ? 'Muuda taimi'
-                                        : plantPlacementMode
-                                          ? 'Lõpeta lisamine'
-                                          : 'Lisa taim'
-                                }}
-                            </button>
+                                Taimed lisad hiljem loodud peenra vaates.
+                            </p>
                             <button
                                 type="button"
                                 class="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-red-200/65 bg-red-50/60 px-2 py-2 text-[12px] font-semibold text-red-700/85 transition hover:bg-red-50 hover:text-red-700 disabled:opacity-35"
@@ -3868,6 +3975,11 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
         28px 28px,
         28px 28px;
     border-radius: 0 0 1.25rem 1.25rem;
+}
+
+.bed-shape-grid {
+    overflow-x: auto;
+    overflow-y: auto;
 }
 
 .bed-canvas.bed-shape-grid :deep(.vgl-item) .bed-cell {
