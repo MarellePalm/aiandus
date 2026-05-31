@@ -453,6 +453,12 @@ const dynamicColNum = computed(() => {
         : 6;
     return Math.max(maxCellX + 3, cols, 4);
 });
+const bedShapeGridMinWidth = computed(
+    () =>
+        dynamicColNum.value * CELL_PX +
+        Math.max(0, dynamicColNum.value - 1) * GRID_MARGIN[0] +
+        32,
+);
 
 const cellMap = computed(() => new Map(cells.value.map((c) => [c.id, c])));
 
@@ -2711,6 +2717,9 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                                     :prevent-collision="false"
                                     auto-size
                                     use-css-transforms
+                                    :style="{
+                                        minWidth: `${bedShapeGridMinWidth}px`,
+                                    }"
                                     @layout-updated="onLayoutUpdated"
                                 >
                                     <GridItem
@@ -4009,6 +4018,11 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
         28px 28px,
         28px 28px;
     border-radius: 0 0 1.25rem 1.25rem;
+}
+
+.bed-shape-grid {
+    overflow-x: auto;
+    overflow-y: auto;
 }
 
 .bed-canvas.bed-shape-grid :deep(.vgl-item) .bed-cell {
