@@ -519,6 +519,9 @@ const form = useForm<{
     layout: [],
     cell_bricks: [],
 });
+const approximateWidthMeters = ref('');
+const approximateDepthMeters = ref('');
+const dimensionGridError = ref<string | null>(null);
 
 const selectedCell = computed(
     () => cells.value.find((cell) => cell.id === selectedCellId.value) ?? null,
@@ -1747,6 +1750,88 @@ function fillFromGardenPlan() {
     form.clearErrors('cells');
 }
 
+function parseApproximateMeters(value: string): number | null {
+    const normalized = value.replace(',', '.').trim();
+    if (!normalized) return null;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+const canGenerateGridFromDimensions = computed(
+    () =>
+        parseApproximateMeters(approximateWidthMeters.value) !== null &&
+        parseApproximateMeters(approximateDepthMeters.value) !== null,
+);
+
+function generateCellsFromDimensions(widthMeters: number, depthMeters: number) {
+    const widthCm = Math.max(1, Math.round(widthMeters * 100));
+    const depthCm = Math.max(1, Math.round(depthMeters * 100));
+    const widthUnits = Math.max(
+        1,
+        Math.round((widthCm / gridUnitCm()) * DEFAULT_BLOCK_UNITS),
+    );
+    const depthUnits = Math.max(
+        1,
+        Math.round((depthCm / gridUnitCm()) * DEFAULT_BLOCK_UNITS),
+    );
+    const nextCells: BedCell[] = [];
+
+    for (let y = 0; y < depthUnits; y += DEFAULT_BLOCK_UNITS) {
+        const h = Math.min(DEFAULT_BLOCK_UNITS, depthUnits - y);
+        for (let x = 0; x < widthUnits; x += DEFAULT_BLOCK_UNITS) {
+            const w = Math.min(DEFAULT_BLOCK_UNITS, widthUnits - x);
+            nextCells.push({
+                id: makeCellId(x, y),
+                x,
+                y,
+                w,
+                h,
+                left_cm: unitsToCm(x),
+                top_cm: unitsToCm(y),
+                width_cm: unitsToCm(w),
+                height_cm: unitsToCm(h),
+                active: true,
+                kind: 'plantable',
+                plants: [],
+            });
+        }
+    }
+
+    return nextCells;
+}
+
+function generateGridFromDimensions() {
+    const widthMeters = parseApproximateMeters(approximateWidthMeters.value);
+    const depthMeters = parseApproximateMeters(approximateDepthMeters.value);
+
+    if (widthMeters === null || depthMeters === null) {
+        dimensionGridError.value =
+            'Sisesta peenra ligikaudne laius ja sügavus meetrites.';
+        return false;
+    }
+
+    if (activeCells.value.some((cell) => cell.plants.length > 0)) {
+        dimensionGridError.value =
+            'Taimedega peenra ruudustikku ei saa mõõtudest uuesti luua.';
+        return false;
+    }
+
+    const nextCells = generateCellsFromDimensions(widthMeters, depthMeters);
+    cells.value = nextCells;
+    selectedCellId.value = nextCells[0]?.id ?? '';
+    replaceGridLayout(nextCells.map(layoutItemForCell));
+    dimensionGridError.value = null;
+    form.clearErrors('cells');
+    scheduleCenterLayoutInCanvas();
+    return true;
+}
+
+function ensureInitialGridFromDimensions() {
+    if (props.mode !== 'create' || cells.value.length > 0) return;
+    if (!canGenerateGridFromDimensions.value) return;
+    generateGridFromDimensions();
+}
+
 function goToStep(step: WizardStep) {
     if (step > currentStep.value && !canContinueFromStep.value) {
         if (currentStep.value === 1) {
@@ -1781,6 +1866,9 @@ function goToStep(step: WizardStep) {
     if (step !== 2) {
         form.clearErrors('cells');
     }
+    if (currentStep.value === 1 && step === 2) {
+        ensureInitialGridFromDimensions();
+    }
     if (
         placementStep.value !== null &&
         step === placementStep.value &&
@@ -1793,6 +1881,9 @@ function goToStep(step: WizardStep) {
 
 function nextStep() {
     if (currentStep.value >= maxStep.value) return;
+    if (currentStep.value === 1) {
+        ensureInitialGridFromDimensions();
+    }
     if (currentStep.value === 2 && placementStep.value !== null) {
         compactToOrigin();
         syncCellsToForm();
@@ -2225,6 +2316,67 @@ watch(hasVisiblePlacementFootprint, (visible, wasVisible) => {
                                     {{ form.errors.cell_size_cm }}
                                 </p>
                             </div>
+                        </div>
+                        <div
+                            v-if="mode === 'create'"
+                            class="mt-4 rounded-2xl border border-emerald-900/10 bg-emerald-50/40 p-3"
+                        >
+                            <div
+                                class="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-start"
+                            >
+                                <label
+                                    class="floating-field floating-field--compact"
+                                >
+                                    <input
+                                        v-model="approximateWidthMeters"
+                                        type="number"
+                                        min="0.1"
+                                        step="0.1"
+                                        placeholder=" "
+                                        @input="dimensionGridError = null"
+                                    />
+                                    <span>Laius (m)</span>
+                                </label>
+                                <label
+                                    class="floating-field floating-field--compact"
+                                >
+                                    <input
+                                        v-model="approximateDepthMeters"
+                                        type="number"
+                                        min="0.1"
+                                        step="0.1"
+                                        placeholder=" "
+                                        @input="dimensionGridError = null"
+                                    />
+                                    <span>Sügavus (m)</span>
+                                </label>
+                                <button
+                                    type="button"
+                                    class="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                                    :disabled="!canGenerateGridFromDimensions"
+                                    @click="generateGridFromDimensions"
+                                >
+                                    <span
+                                        class="material-symbols-outlined text-base"
+                                        >grid_view</span
+                                    >
+                                    Loo ruudustik
+                                </button>
+                            </div>
+                            <p
+                                v-if="dimensionGridError"
+                                class="mt-2 text-sm text-red-600"
+                            >
+                                {{ dimensionGridError }}
+                            </p>
+                            <p
+                                v-else
+                                class="mt-2 text-sm leading-5 text-muted-foreground"
+                            >
+                                Kui mõõdud on kirjas, teen neist algse peenra
+                                kuju. Järgmises sammus saad ruute liigutada,
+                                muuta ja kustutada.
+                            </p>
                         </div>
                     </div>
                 </div>
