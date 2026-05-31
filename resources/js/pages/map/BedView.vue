@@ -1344,7 +1344,7 @@ function handleBedStatusAction() {
                                     <p
                                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                                     >
-                                        Täidetud ruudud
+                                        Istutatud taimed
                                     </p>
                                     <p
                                         class="mt-1 text-lg font-semibold text-foreground"
@@ -1360,7 +1360,7 @@ function handleBedStatusAction() {
                                     <p
                                         class="text-[11px] font-semibold tracking-[0.14em] text-muted-foreground uppercase"
                                     >
-                                        Vabad ruudud
+                                        Vabad istutuskohad
                                     </p>
                                     <p
                                         class="mt-1 text-lg font-semibold text-foreground"
