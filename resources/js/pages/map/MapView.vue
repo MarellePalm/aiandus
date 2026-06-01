@@ -40,6 +40,7 @@ import {
     resolveBedBricksCm,
     type BedCellBrick,
 } from '@/pages/map/bedBrickFootprint';
+import { bedFootprintPx } from '@/pages/map/bedGardenPlacement';
 import {
     getInitialFocusedBedId,
     sortBedsForPlanner,
@@ -1964,9 +1965,22 @@ function bedCardSize(bed: Bed) {
     };
 }
 
+function bedPositionFootprintSize(bed: Bed) {
+    if (showBedsAsPlannerFootprints.value) {
+        return bedCardSize(bed);
+    }
+
+    const size = bedFootprintPx(bed);
+
+    return {
+        width: Math.max(1, size.width),
+        height: Math.max(1, size.height),
+    };
+}
+
 function getBedDisplayRect(bed: Bed) {
     const position = getBedPosition(bed);
-    const size = bedCardSize(bed);
+    const size = bedPositionFootprintSize(bed);
 
     return {
         x: position.x,
@@ -1983,7 +1997,7 @@ function snapToGardenGrid(value: number): number {
 }
 
 function clampBedPosition(bed: Bed, x: number, y: number) {
-    const size = bedCardSize(bed);
+    const size = bedPositionFootprintSize(bed);
     return {
         x: Math.max(0, Math.min(x, gardenSurfaceWidth.value - size.width)),
         y: Math.max(0, Math.min(y, gardenSurfaceHeight.value - size.height)),
