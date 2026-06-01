@@ -194,7 +194,7 @@ function buildLocalCells() {
 
     layout.forEach((rowArr, row) => {
         rowArr.forEach((cellValue, col) => {
-            const brick = editingLayout.value ? brickAnchorAt(row, col) : null;
+            const brick = brickAnchorAt(row, col);
             if (cellValue === 0 && !brick) {
                 return;
             }
@@ -213,8 +213,8 @@ function buildLocalCells() {
                 w,
                 h,
                 plant: plantAt(row, col) ?? null,
-                active: cellValue === 1,
-                walkway: cellValue === -1,
+                active: brick ? brick.kind === 'plantable' : cellValue === 1,
+                walkway: brick ? brick.kind === 'walkway' : cellValue === -1,
             });
         });
     });
